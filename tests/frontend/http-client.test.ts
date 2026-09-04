@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   AuthTokenProviderError,
   HttpApiClient,
+  LinguaActorAbortedError,
   LinguaApiError,
   mapApiErrorToUi,
   mockApiResponses,
@@ -140,5 +141,67 @@ describe('HttpApiClient', () => {
       fetchFn: vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
     });
     await expect(malformedSuccess.getMe()).rejects.toMatchObject({ code: 'INTERNAL_ERROR', httpStatus: 200 });
+  });
+
+  it('TEST-AUTH-05: isolates cached ETags across actor transitions (User A -> Sign-Out -> User B)', async () => {
+    const fetchFn = vi.fn(async () => response(mockApiResponses.me, { headers: { ETag: '"etag-user-a"' } }));
+    const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn, actorId: 'user-a' });
+
+    await client.getMe();
+    expect(client.getLastEtag('me')).toBe('"etag-user-a"');
+
+    // Sign out
+    client.setActor(null);
+    expect(client.getLastEtag('me')).toBeUndefined();
+
+    // User B signs in
+    fetchFn.mockResolvedValueOnce(response(mockApiResponses.me, { headers: { ETag: '"etag-user-b"' } }));
+    client.setActor('user-b');
+    expect(client.getLastEtag('me')).toBeUndefined();
+
+    await client.getMe();
+    expect(client.getLastEtag('me')).toBe('"etag-user-b"');
+  });
+
+  it('TEST-AUTH-06: clears ETags and advances generation on direct actor switch (A -> B)', async () => {
+    const fetchFn = vi.fn(async () => response(mockApiResponses.me, { headers: { ETag: '"etag-a"' } }));
+    const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn, actorId: 'user-a' });
+
+    await client.getMe();
+    expect(client.getLastEtag('me')).toBe('"etag-a"');
+    const genA = client.getActorGeneration();
+
+    client.setActor('user-b');
+    expect(client.getLastEtag('me')).toBeUndefined();
+    expect(client.getActorGeneration()).toBeGreaterThan(genA);
+    expect(client.getCurrentActorId()).toBe('user-b');
+  });
+
+  it('TEST-AUTH-07: discards late in-flight response when actor changes before response arrives', async () => {
+    let resolveLateFetch: (resp: Response) => void;
+    const latePromise = new Promise<Response>((resolve) => {
+      resolveLateFetch = resolve;
+    });
+
+    const fetchFn = vi.fn(async () => latePromise);
+    const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn, actorId: 'user-a' });
+
+    // Initiate request during user-a lifecycle
+    const inFlightRequest = client.getMe();
+
+    // Actor switches to user-b while request is in flight
+    client.setActor('user-b');
+
+    // User A's slow request finally resolves
+    resolveLateFetch!(response(mockApiResponses.me, { headers: { ETag: '"etag-late-a"' } }));
+
+    // Promise must reject with LinguaActorAbortedError
+    await expect(inFlightRequest).rejects.toThrow();
+    const rejectedError = await inFlightRequest.catch((err: unknown) => err);
+    expect(rejectedError).toBeInstanceOf(LinguaActorAbortedError);
+    expect((rejectedError as LinguaActorAbortedError).code).toBe('ABORTED');
+
+    // ETags cache must NOT have been contaminated with User A's late ETag
+    expect(client.getLastEtag('me')).toBeUndefined();
   });
 });

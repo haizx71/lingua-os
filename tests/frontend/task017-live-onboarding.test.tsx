@@ -230,8 +230,8 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     expect(api.submitStartingLevelResponse).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({ selectedOptionId: expect.any(String) }) }));
   });
 
-  it('uses a stored assessment id only as a hint and resumes authoritative server state after refresh', async () => {
-    window.localStorage.setItem('lingua:starting-level:active-assessment', 'assessment-resume');
+  it('uses an actor-scoped stored assessment id only as a hint and resumes authoritative server state after refresh (TEST-PTR-01)', async () => {
+    window.localStorage.setItem(`lingua:starting-level:active-assessment:${user.id}`, 'assessment-resume');
     const api = apiForOnboarding();
     vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
     vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
@@ -250,7 +250,59 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       expect(api.getStartingLevelAssessment).toHaveBeenCalledWith('assessment-resume');
       expect(screen.getByText(mockApiResponses.assessment.data.currentItem?.prompt ?? '')).toBeInTheDocument();
     } finally {
-      window.localStorage.removeItem('lingua:starting-level:active-assessment');
+      window.localStorage.removeItem(`lingua:starting-level:active-assessment:${user.id}`);
+    }
+  });
+
+  it('isolates foreign assessment pointers so User B does not resume User A assessment (TEST-PTR-02)', async () => {
+    const foreignUserId = '00000000-0000-4000-8000-000000000099';
+    window.localStorage.setItem(`lingua:starting-level:active-assessment:${foreignUserId}`, 'user-a-assessment');
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+    vi.spyOn(api, 'getStartingLevelAssessment');
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      expect(api.getStartingLevelAssessment).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem(`lingua:starting-level:active-assessment:${foreignUserId}`)).toBe('user-a-assessment');
+    } finally {
+      window.localStorage.removeItem(`lingua:starting-level:active-assessment:${foreignUserId}`);
+    }
+  });
+
+  it('fails open gracefully when storage throws quota error (TEST-PTR-04)', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+    vi.spyOn(api, 'startStartingLevelAssessment').mockResolvedValue(mockApiResponses.assessment);
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
+      await waitFor(() => expect(screen.getByText(/Câu hỏi hiện tại do máy chủ quyết định/i)).toBeInTheDocument());
+      expect(api.startStartingLevelAssessment).toHaveBeenCalled();
+    } finally {
+      setItemSpy.mockRestore();
     }
   });
 

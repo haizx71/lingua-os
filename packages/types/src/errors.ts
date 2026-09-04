@@ -80,6 +80,22 @@ export class LinguaNetworkError extends Error {
 
 export const ApiNetworkError = LinguaNetworkError;
 
+/** In-flight request discarded because active actor/session changed before response arrived. */
+export class LinguaActorAbortedError extends Error {
+  readonly code = 'ABORTED' as const;
+  readonly retryable = false;
+
+  constructor(message = 'Response discarded: active actor changed during in-flight request.') {
+    super(message);
+    this.name = 'LinguaActorAbortedError';
+    Object.setPrototypeOf(this, LinguaActorAbortedError.prototype);
+  }
+}
+
+export function isLinguaActorAbortedError(error: unknown): error is LinguaActorAbortedError {
+  return error instanceof LinguaActorAbortedError;
+}
+
 export function isLinguaApiError(error: unknown): error is LinguaApiError {
   return error instanceof LinguaApiError;
 }
@@ -101,6 +117,9 @@ function isErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
 
 /** Maps machine codes to local copy and deliberately ignores untrusted server/database messages. */
 export function mapApiErrorToUi(error: unknown): UiErrorState {
+  if (error instanceof LinguaActorAbortedError || (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'ABORTED')) {
+    return { code: 'NETWORK_ERROR', message: 'Yêu cầu đã bị hủy do thay đổi tài khoản.', retryable: false };
+  }
   if (error instanceof AuthTokenProviderError) {
     if (error.code === 'UNAUTHENTICATED') {
       return { code: 'UNAUTHENTICATED', message: ERROR_MESSAGE_VI_MAP.UNAUTHENTICATED, retryable: false };

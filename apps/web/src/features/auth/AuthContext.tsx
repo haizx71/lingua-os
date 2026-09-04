@@ -5,6 +5,7 @@ import type { Session, User, SupabaseClient } from '@supabase/supabase-js';
 import type { AuthStateKind, AuthUserIdentity, AuthTokenProvider } from '@lingua/types';
 import { getBrowserSupabaseClient } from '../../lib/supabase/client';
 import { createSupabaseAuthTokenProvider } from '../../lib/supabase/token-provider';
+import { getApiClient } from '../../lib/api/client';
 
 export interface AuthContextValue {
   readonly authState: AuthStateKind;
@@ -190,6 +191,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
       subscription.unsubscribe();
     };
   }, [client, updateSessionState]);
+
+  useEffect(() => {
+    const apiClient = getApiClient();
+    apiClient.setActor?.(user?.id ?? null);
+  }, [user]);
 
   const userIdentity = useMemo(() => mapSupabaseUserToIdentity(user), [user]);
 

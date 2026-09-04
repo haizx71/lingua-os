@@ -38,7 +38,6 @@ const learningGoals: readonly { value: LearningGoal; label: string }[] = [
   { value: 'academic', label: 'Học thuật' },
 ];
 const dailyMinuteChoices = [10, 20, 25, 30, 45] as const;
-const activeAssessmentStorageKey = 'lingua:starting-level:active-assessment';
 
 function makeActionKey(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
@@ -54,34 +53,39 @@ function etagFor(api: ApiClient, key: string): string | undefined {
   return getter?.call(api, key);
 }
 
+function makeAssessmentStorageKey(userId?: string | null): string {
+  return userId ? `lingua:starting-level:active-assessment:${userId}` : 'lingua:starting-level:active-assessment';
+}
+
 /** Local storage is only a non-authoritative pointer used to resume a server session. */
-function storedAssessmentId(): string | null {
+function storedAssessmentId(userId?: string | null): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    return window.localStorage.getItem(activeAssessmentStorageKey);
+    return window.localStorage.getItem(makeAssessmentStorageKey(userId));
   } catch {
     return null;
   }
 }
 
-function rememberAssessmentId(id: string): void {
+function rememberAssessmentId(id: string, userId?: string | null): void {
   try {
-    window.localStorage.setItem(activeAssessmentStorageKey, id);
+    window.localStorage.setItem(makeAssessmentStorageKey(userId), id);
   } catch {
     // A storage restriction must not prevent the server-owned assessment flow.
   }
 }
 
-function forgetAssessmentId(): void {
+function forgetAssessmentId(userId?: string | null): void {
   try {
-    window.localStorage.removeItem(activeAssessmentStorageKey);
+    window.localStorage.removeItem(makeAssessmentStorageKey(userId));
   } catch {
     // A storage restriction must not prevent the server-owned assessment flow.
   }
 }
 
 export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowProps) {
-  const { authState } = useAuth();
+  const { authState, user } = useAuth();
+  const userId = user?.id ?? null;
   const api = useMemo(() => apiClient ?? getApiClient(), [apiClient]);
   const [stage, setStage] = useState<OnboardingStage>('RESTORING_SESSION');
   const [languageProfile, setLanguageProfile] = useState<OnboardingLanguageProfileViewModel | null>(null);
@@ -126,7 +130,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       } else if (usable.startingLevelEstimate) {
         setStage('READY_FOR_TODAY');
       } else {
-        const assessmentId = storedAssessmentId();
+        const assessmentId = storedAssessmentId(userId);
         if (!assessmentId) {
           setStage('ASSESSMENT_CHOICE');
         } else {
@@ -134,7 +138,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
             const resumed = mapOnboardingAssessmentToViewModel((await api.getStartingLevelAssessment(assessmentId)).data);
             setAssessment(resumed);
             if (resumed.status === 'completed' || resumed.status === 'abandoned') {
-              forgetAssessmentId();
+              forgetAssessmentId(userId);
               setStage('ASSESSMENT_COMPLETE');
             } else {
               setStage('ASSESSMENT_IN_PROGRESS');
@@ -142,7 +146,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
           } catch (cause) {
             const mapped = mapApiErrorToUi(cause);
             if (mapped.code === 'NOT_FOUND') {
-              forgetAssessmentId();
+              forgetAssessmentId(userId);
               setStage('ASSESSMENT_CHOICE');
             } else {
               throw cause;
@@ -274,10 +278,10 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const startedAssessment = mapOnboardingAssessmentToViewModel(response.data);
       setAssessment(startedAssessment);
       if (startedAssessment.status === 'completed' || startedAssessment.status === 'abandoned') {
-        forgetAssessmentId();
+        forgetAssessmentId(userId);
         setStage('ASSESSMENT_COMPLETE');
       } else {
-        rememberAssessmentId(startedAssessment.id);
+        rememberAssessmentId(startedAssessment.id, userId);
         setStage('ASSESSMENT_IN_PROGRESS');
       }
     } catch (cause) {
@@ -304,10 +308,10 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const submittedAssessment = mapOnboardingAssessmentToViewModel(response.data);
       setAssessment(submittedAssessment);
       if (submittedAssessment.status === 'completed' || submittedAssessment.status === 'abandoned') {
-        forgetAssessmentId();
+        forgetAssessmentId(userId);
         setStage('ASSESSMENT_COMPLETE');
       } else {
-        rememberAssessmentId(submittedAssessment.id);
+        rememberAssessmentId(submittedAssessment.id, userId);
         setStage('ASSESSMENT_IN_PROGRESS');
       }
     } catch (cause) {

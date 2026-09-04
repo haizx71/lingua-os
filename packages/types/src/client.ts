@@ -35,6 +35,7 @@ import {
   createApiError,
   ERROR_HTTP_STATUS_MAP,
   isApiErrorCode,
+  LinguaActorAbortedError,
   LinguaApiError,
   LinguaNetworkError,
   type ApiErrorCode,
@@ -50,6 +51,7 @@ import { toAuthTokenProvider, AuthTokenProviderError, type AuthTokenProvider, ty
 
 export interface ApiClient {
   readonly transportKind: 'mock' | 'http';
+  setActor?(actorId: string | null): void;
   getMe(): Promise<MeResponseDto>;
   updateMe(input: { body: UpdateMeRequestDto; headers: OperationHeaders<'updateMe'> }): Promise<MeResponseDto>;
   listMyLanguageProfiles(): Promise<LanguageProfilesResponseDto>;
@@ -86,6 +88,7 @@ export interface HttpApiClientOptions {
   readonly baseUrl?: string;
   readonly authTokenProvider?: AuthTokenProvider | AuthTokenProviderFn;
   readonly fetchFn?: typeof fetch;
+  readonly actorId?: string | null;
 }
 
 type RequestHeaders = Record<string, string>;
@@ -125,6 +128,8 @@ export class HttpApiClient implements ApiClient {
   private readonly baseUrl: string;
   private readonly fetchFn: typeof fetch;
   private readonly etags = new Map<string, string>();
+  private currentActorId: string | null = null;
+  private actorGeneration = 0;
 
   constructor(options: HttpApiClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? '').trim().replace(/\/+$/, '');
@@ -132,6 +137,30 @@ export class HttpApiClient implements ApiClient {
       options.authTokenProvider ?? { getAccessToken: async () => null }
     );
     this.fetchFn = options.fetchFn ?? globalThis.fetch.bind(globalThis);
+    if (options.actorId !== undefined && options.actorId !== null) {
+      this.currentActorId = options.actorId;
+      this.actorGeneration = 1;
+    }
+  }
+
+  setActor(actorId: string | null): void {
+    if (this.currentActorId !== actorId) {
+      this.currentActorId = actorId;
+      this.actorGeneration += 1;
+      this.etags.clear();
+    }
+  }
+
+  getCurrentActorId(): string | null {
+    return this.currentActorId;
+  }
+
+  getActorGeneration(): number {
+    return this.actorGeneration;
+  }
+
+  clearEtags(): void {
+    this.etags.clear();
   }
 
   getLastEtag(resourceKey: string): string | undefined {
@@ -146,6 +175,9 @@ export class HttpApiClient implements ApiClient {
     headers?: Record<string, unknown>;
     resourceKey?: string;
   }): Promise<T> {
+    const requestGeneration = this.actorGeneration;
+    const requestActorId = this.currentActorId;
+
     let token: string | null;
     try {
       token = await this.authTokenProvider.getAccessToken();
@@ -155,6 +187,10 @@ export class HttpApiClient implements ApiClient {
     }
     if (!token) {
       throw new AuthTokenProviderError('Chưa có phiên đăng nhập.', 'UNAUTHENTICATED');
+    }
+
+    if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
+      throw new LinguaActorAbortedError();
     }
 
     const headers: RequestHeaders = {
@@ -172,10 +208,22 @@ export class HttpApiClient implements ApiClient {
     try {
       response = await this.fetchFn(joinUrl(this.baseUrl, params.path) + queryString(params.query), init);
     } catch (error) {
+      if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
+        throw new LinguaActorAbortedError();
+      }
       throw new LinguaNetworkError({ cause: error });
     }
 
+    if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
+      throw new LinguaActorAbortedError();
+    }
+
     const raw = await response.text();
+
+    if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
+      throw new LinguaActorAbortedError();
+    }
+
     let payload: unknown;
     try {
       payload = raw ? JSON.parse(raw) : undefined;
@@ -205,7 +253,9 @@ export class HttpApiClient implements ApiClient {
     }
     if (params.resourceKey) {
       const etag = response.headers.get('ETag');
-      if (etag) this.etags.set(params.resourceKey, etag);
+      if (etag && this.actorGeneration === requestGeneration && this.currentActorId === requestActorId) {
+        this.etags.set(params.resourceKey, etag);
+      }
     }
     return payload as T;
   }
@@ -263,6 +313,7 @@ export class MockApiClient implements ApiClient {
   setForceError(code: ApiErrorCode | null): this { this.forcedError = code; return this; }
   setReturnEmpty(empty: boolean): this { this.returnEmpty = empty; return this; }
   resetState(): void { this.forcedError = null; this.returnEmpty = false; }
+  setActor(_actorId: string | null): void { /* No-op for mock client */ }
 
   private async ready(): Promise<void> {
     if (this.latencyMs > 0) await new Promise((resolve) => setTimeout(resolve, this.latencyMs));
