@@ -250,6 +250,8 @@ export interface OnboardingLanguageProfileViewModel {
   readonly etag: LanguageProfileDto['etag'];
   readonly nativeLanguageCode: LanguageProfileDto['nativeLanguageCode'];
   readonly targetLanguageCode: LanguageProfileDto['targetLanguageCode'];
+  readonly goal: LanguageProfileDto['goal'];
+  readonly dailyMinutes: LanguageProfileDto['dailyMinutes'];
   readonly status: LanguageProfileDto['status'];
   readonly startingLevelEstimate: OnboardingEstimateViewModel | null;
 }
@@ -291,6 +293,8 @@ export function mapOnboardingLanguageProfileToViewModel(profile: LanguageProfile
     etag: profile.etag,
     nativeLanguageCode: profile.nativeLanguageCode,
     targetLanguageCode: profile.targetLanguageCode,
+    goal: profile.goal,
+    dailyMinutes: profile.dailyMinutes,
     status: profile.status,
     startingLevelEstimate: profile.startingLevelEstimate
       ? {

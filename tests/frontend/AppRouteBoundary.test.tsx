@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
@@ -189,5 +189,59 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/auth');
     });
+  });
+
+  it('TEST-READY-06: redirects learner with active vi->en but dailyMinutes out of range (< 5) to /onboarding', async () => {
+    currentPathname = '/today';
+    const api = new MockApiClient();
+    vi.spyOn(api, 'getMe').mockResolvedValue({
+      ...mockApiResponses.me,
+      data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
+    } as MeResponseDto);
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, nativeLanguageCode: 'vi', targetLanguageCode: 'en', status: 'active', dailyMinutes: 3 }],
+      meta: mockApiResponses.me.meta,
+    } as LanguageProfilesResponseDto);
+    setApiClient(api);
+
+    render(
+      <AuthProvider customClient={createMockSupabase(testSession)}>
+        <AppRouteBoundary router={{ replace: mockReplace, push: mockPush }} pathname={currentPathname}>
+          <div data-testid="protected-content">Protected Content</div>
+        </AppRouteBoundary>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/onboarding');
+    });
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+  });
+
+  it('TEST-READY-07: redirects learner with active vi->en but invalid goal to /onboarding', async () => {
+    currentPathname = '/today';
+    const api = new MockApiClient();
+    vi.spyOn(api, 'getMe').mockResolvedValue({
+      ...mockApiResponses.me,
+      data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
+    } as MeResponseDto);
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, nativeLanguageCode: 'vi', targetLanguageCode: 'en', status: 'active', goal: 'unknown-goal' as never }],
+      meta: mockApiResponses.me.meta,
+    } as LanguageProfilesResponseDto);
+    setApiClient(api);
+
+    render(
+      <AuthProvider customClient={createMockSupabase(testSession)}>
+        <AppRouteBoundary router={{ replace: mockReplace, push: mockPush }} pathname={currentPathname}>
+          <div data-testid="protected-content">Protected Content</div>
+        </AppRouteBoundary>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/onboarding');
+    });
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 });

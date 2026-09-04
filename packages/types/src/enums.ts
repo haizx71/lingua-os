@@ -64,6 +64,7 @@ export const isTodayReasonCode = (value: unknown): value is TodayReasonCode => i
 export const isConfidenceBand = (value: unknown): value is ConfidenceBand => includes(CONFIDENCE_BANDS, value);
 export const isAssessmentDomain = (value: unknown): value is AssessmentDomain => includes(ASSESSMENT_DOMAINS, value);
 export const isStartingLevelBand = (value: unknown): value is StartingLevelBandCode => includes(STARTING_LEVEL_BANDS, value);
+export const isLearningGoal = (value: unknown): value is LearningGoal => includes(LEARNING_GOALS, value);
 
 
 // Presentation aliases retained for component terminology; values still come from OpenAPI.

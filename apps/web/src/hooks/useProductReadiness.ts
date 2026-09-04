@@ -1,7 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { ApiClient } from '@lingua/types';
+import {
+  evaluateProductReadiness,
+  isLinguaActorAbortedError,
+  type ApiClient,
+} from '@lingua/types';
 import { useAuth } from '../features/auth/AuthContext';
 import { getApiClient } from '../lib/api/client';
 
@@ -18,12 +22,14 @@ export interface ProductReadinessResult {
 
 /**
  * Authoritative 6-point product readiness predicate:
- * 1. Active authenticated session with resolved actor ID.
- * 2. Successful GET /v1/me returning profile data.
- * 3. Valid, non-empty IANA timeZone configured on learner profile.
- * 4. Successful GET /v1/me/languages returning language profiles collection.
- * 5. Active vi->en language profile present (status === 'active').
- * 6. Starting level estimate is explicitly OPTIONAL; unestimated learners are fully product-ready.
+ * 1. Resolved authenticated actor session.
+ * 2. Valid learner bootstrap/profile with ID.
+ * 3. Confirmed valid IANA timezone configured on learner profile.
+ * 4. Active vi->en language profile present (status === 'active').
+ * 5. Valid persisted goal (must belong to canonical LearningGoal registry).
+ * 6. Valid persisted dailyMinutes numeric integer in 5..180 inclusive.
+ *
+ * Starting level estimate is explicitly OPTIONAL; unestimated learners are fully product-ready.
  */
 export function useProductReadiness(customApiClient?: ApiClient): ProductReadinessResult {
   const { authState, user, isConfigured } = useAuth();
@@ -58,31 +64,29 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
 
     try {
       const meResponse = await api.getMe();
-      const resolvedTimeZone = meResponse.data.timeZone?.trim() || null;
-      setTimeZone(resolvedTimeZone);
-
       const languagesResponse = await api.listMyLanguageProfiles();
-      const profiles = languagesResponse.data;
-      const activeViEn = profiles.find(
-        (p) => p.nativeLanguageCode === 'vi' && p.targetLanguageCode === 'en' && p.status === 'active'
-      );
 
-      if (!resolvedTimeZone || !activeViEn) {
-        setStatus('not_ready');
-        setIsReady(false);
-        setActiveLanguageProfileId(null);
-      } else {
-        setStatus('ready');
-        setIsReady(true);
-        setActiveLanguageProfileId(activeViEn.id);
-      }
+      const evaluation = evaluateProductReadiness({
+        actorId: user?.id,
+        meProfile: meResponse.data,
+        languageProfiles: languagesResponse.data,
+      });
+
+      setTimeZone(evaluation.timeZone);
+      setActiveLanguageProfileId(evaluation.activeLanguageProfileId);
+      setIsReady(evaluation.isReady);
+      setStatus(evaluation.isReady ? 'ready' : 'not_ready');
     } catch (err) {
+      if (isLinguaActorAbortedError(err)) {
+        // Silently discard obsolete response from prior actor lifecycle (DEF-03 / ACTOR-STATE-001)
+        return;
+      }
       const errObj = err instanceof Error ? err : new Error('Không thể kiểm tra trạng thái hồ sơ');
       setError(errObj);
       setStatus('error');
       setIsReady(false);
     }
-  }, [api, authState, isConfigured]);
+  }, [api, authState, isConfigured, user?.id]);
 
   useEffect(() => {
     void checkReadiness();

@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, InlineAlert, LoadingState } from '@lingua/ui';
 import {
+  isLanguageProfileReady,
+  isValidIanaTimeZone,
   mapApiErrorToUi,
   mapOnboardingAssessmentToViewModel,
   mapOnboardingLanguageProfileToViewModel,
@@ -45,7 +47,7 @@ function makeActionKey(): string {
 }
 
 function isUsableEnglishProfile(profile: OnboardingLanguageProfileViewModel): boolean {
-  return profile.nativeLanguageCode === 'vi' && profile.targetLanguageCode === 'en' && profile.status === 'active';
+  return isLanguageProfileReady(profile);
 }
 
 function etagFor(api: ApiClient, key: string): string | undefined {
@@ -202,7 +204,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
       setLanguageProfile(usable);
       setArchivedLanguageProfile(archived);
-      if (!meResponse.data.timeZone) {
+      if (!isValidIanaTimeZone(meResponse.data.timeZone)) {
         const suggested = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
         setTimeZone(suggested);
         setStage('PROFILE_REQUIRED');
