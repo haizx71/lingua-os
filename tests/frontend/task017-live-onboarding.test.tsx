@@ -641,4 +641,152 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       window.location = new URL('http://localhost/') as unknown as Location;
     }
   });
+
+  it('TEST-PAUSED-01: bootstrap with paused vi->en profile presents resume UI and no create form', async () => {
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'paused', etag: '"paused-etag-1"' }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Tạo hồ sơ tiếng Anh/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Chọn mục tiêu học tập/i)).not.toBeInTheDocument();
+  });
+
+  it('TEST-PAUSED-02: 409 CONFLICT on create reconciles to paused recovery UI without duplicate POST', async () => {
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    const listSpy = vi.spyOn(api, 'listMyLanguageProfiles')
+      .mockResolvedValueOnce({ data: [], meta: mockApiResponses.languageProfile.meta } as LanguageProfilesResponseDto)
+      .mockResolvedValueOnce({
+        data: [{ ...mockApiResponses.languageProfile.data, status: 'paused', etag: '"paused-etag-conflict"' }],
+        meta: mockApiResponses.languageProfile.meta,
+      } as LanguageProfilesResponseDto);
+
+    const createSpy = vi.spyOn(api, 'createMyLanguageProfile').mockRejectedValue(
+      new LinguaApiError({ code: 'CONFLICT', httpStatus: 409 })
+    );
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
+
+    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i })).toBeEnabled();
+    expect(listSpy).toHaveBeenCalledTimes(2);
+    expect(createSpy).toHaveBeenCalledTimes(1); // No duplicate POST after paused row is known
+  });
+
+  it('TEST-PAUSED-03: resume paused profile sends PATCH with same ID and child ETag', async () => {
+    const paused = { ...mockApiResponses.languageProfile.data, status: 'paused' as const, etag: '"paused-child-etag"' };
+    const active = { ...paused, status: 'active' as const, etag: '"active-child-etag"' };
+
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [paused],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    const updateSpy = vi.spyOn(api, 'updateMyLanguageProfile').mockResolvedValue({
+      data: active,
+      meta: mockApiResponses.languageProfile.meta,
+    });
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i }));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith({
+        languageProfileId: paused.id,
+        body: { status: 'active' },
+        headers: { 'If-Match': paused.etag },
+      });
+    });
+  });
+
+  it('TEST-PAUSED-04: 412 PRECONDITION_FAILED during paused resume refetches without automatic second PATCH', async () => {
+    const paused = { ...mockApiResponses.languageProfile.data, status: 'paused' as const, etag: '"paused-stale-etag"' };
+    const refreshed = { ...paused, etag: '"paused-fresh-etag"' };
+
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    const listSpy = vi.spyOn(api, 'listMyLanguageProfiles')
+      .mockResolvedValueOnce({ data: [paused], meta: mockApiResponses.languageProfile.meta } as LanguageProfilesResponseDto)
+      .mockResolvedValueOnce({ data: [refreshed], meta: mockApiResponses.languageProfile.meta } as LanguageProfilesResponseDto);
+
+    const updateSpy = vi.spyOn(api, 'updateMyLanguageProfile').mockRejectedValue(
+      new LinguaApiError({ code: 'PRECONDITION_FAILED', httpStatus: 412 })
+    );
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hồ sơ vừa thay đổi\. Đã tải dữ liệu mới/i)).toBeInTheDocument();
+    });
+    // Exactly 1 PATCH call: no automatic second PATCH!
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    expect(listSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('TEST-PAUSED-05: paused resume success transitions to authoritative active state', async () => {
+    const paused = { ...mockApiResponses.languageProfile.data, status: 'paused' as const, etag: '"paused-etag"', startingLevelEstimate: null };
+    const active = { ...paused, status: 'active' as const, etag: '"active-etag"' };
+
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [paused],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    vi.spyOn(api, 'updateMyLanguageProfile').mockResolvedValue({
+      data: active,
+      meta: mockApiResponses.languageProfile.meta,
+    });
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i }));
+
+    // Upon activating an unestimated active profile, advances to ASSESSMENT_CHOICE
+    await waitFor(() => {
+      expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Bỏ qua đánh giá/i })).toBeEnabled();
+  });
 });

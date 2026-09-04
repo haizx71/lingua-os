@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, InlineAlert, LoadingState } from '@lingua/ui';
 import {
   isLanguageProfileReady,
+  isLinguaActorAbortedError,
   isValidIanaTimeZone,
   mapApiErrorToUi,
   mapOnboardingAssessmentToViewModel,
@@ -173,6 +174,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   const [stage, setStage] = useState<OnboardingStage>('RESTORING_SESSION');
   const [languageProfile, setLanguageProfile] = useState<OnboardingLanguageProfileViewModel | null>(null);
   const [archivedLanguageProfile, setArchivedLanguageProfile] = useState<OnboardingLanguageProfileViewModel | null>(null);
+  const [pausedLanguageProfile, setPausedLanguageProfile] = useState<OnboardingLanguageProfileViewModel | null>(null);
   const [timeZone, setTimeZone] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [goal, setGoal] = useState<LearningGoal | null>(null);
@@ -201,13 +203,19 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const languages = await api.listMyLanguageProfiles();
       const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
       const usable = profiles.find(isUsableEnglishProfile) ?? null;
+      const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
       const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
       setLanguageProfile(usable);
+      setPausedLanguageProfile(paused);
       setArchivedLanguageProfile(archived);
       if (!isValidIanaTimeZone(meResponse.data.timeZone)) {
         const suggested = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
         setTimeZone(suggested);
         setStage('PROFILE_REQUIRED');
+      } else if (paused) {
+        setStage('LANGUAGE_PROFILE_REQUIRED');
+      } else if (archived && !usable) {
+        setStage('LANGUAGE_PROFILE_REQUIRED');
       } else if (!usable) {
         setStage('LANGUAGE_PROFILE_REQUIRED');
       } else if (usable.startingLevelEstimate) {
@@ -275,9 +283,14 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const languages = await api.listMyLanguageProfiles();
       const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
       const active = profiles.find(isUsableEnglishProfile) ?? null;
+      const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
+      const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
       setLanguageProfile(active);
-      setArchivedLanguageProfile(profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null);
-      if (!active) setStage('LANGUAGE_PROFILE_REQUIRED');
+      setPausedLanguageProfile(paused);
+      setArchivedLanguageProfile(archived);
+      if (paused) setStage('LANGUAGE_PROFILE_REQUIRED');
+      else if (archived && !active) setStage('LANGUAGE_PROFILE_REQUIRED');
+      else if (!active) setStage('LANGUAGE_PROFILE_REQUIRED');
       else if (active.startingLevelEstimate) setStage('READY_FOR_TODAY');
       else setStage('ASSESSMENT_CHOICE');
     } catch (cause) {
@@ -316,15 +329,24 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
           const languages = await api.listMyLanguageProfiles();
           const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
           const active = profiles.find(isUsableEnglishProfile) ?? null;
+          const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
           const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
           if (active) {
             setLanguageProfile(active);
+            setPausedLanguageProfile(null);
             setArchivedLanguageProfile(null);
             setStage(active.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
             return;
           }
+          if (paused) {
+            setPausedLanguageProfile(paused);
+            setArchivedLanguageProfile(null);
+            setStage('LANGUAGE_PROFILE_REQUIRED');
+            return;
+          }
           if (archived) {
             setArchivedLanguageProfile(archived);
+            setPausedLanguageProfile(null);
             setStage('LANGUAGE_PROFILE_REQUIRED');
             return;
           }
@@ -333,6 +355,43 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         }
       }
       setError(mapped.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resumePausedProfile = async () => {
+    if (!pausedLanguageProfile || busy) return;
+    const etag = pausedLanguageProfile.etag;
+    if (!etag) {
+      setError('Hồ sơ tiếng Anh đang tạm dừng nhưng phiên bản ETag để tiếp tục chưa có trong phản hồi. Không tạo hồ sơ thứ hai.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await api.updateMyLanguageProfile({
+        languageProfileId: pausedLanguageProfile.id,
+        body: { status: 'active' },
+        headers: { 'If-Match': etag },
+      });
+      const restored = mapOnboardingLanguageProfileToViewModel(response.data);
+      setLanguageProfile(restored);
+      setPausedLanguageProfile(null);
+      setArchivedLanguageProfile(null);
+      setStage(restored.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
+    } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) return;
+      const mapped = mapApiErrorToUi(cause);
+      if (mapped.code === 'PRECONDITION_FAILED') {
+        // Discard the stale child token. Refetch only; never retry the mutation.
+        setPausedLanguageProfile(null);
+        if (await loadBootstrap()) {
+          setError('Hồ sơ vừa thay đổi. Đã tải dữ liệu mới; hãy kiểm tra lại rồi tiếp tục nếu vẫn cần.');
+        }
+      } else {
+        setError(mapped.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -355,9 +414,11 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       });
       const restored = mapOnboardingLanguageProfileToViewModel(response.data);
       setLanguageProfile(restored);
+      setPausedLanguageProfile(null);
       setArchivedLanguageProfile(null);
       setStage(restored.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
     } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       if (mapped.code === 'PRECONDITION_FAILED') {
         // Discard the stale child token. Refetch only; never retry the mutation.
@@ -439,6 +500,27 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5"><header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Xác nhận hồ sơ người học</h1><p className="text-sm text-[var(--text-secondary)]">Múi giờ giúp hệ thống xác định đúng ngày học của bạn.</p></header>{error && <InlineAlert variant="danger" title="Hồ sơ vừa thay đổi">{error}</InlineAlert>}<form className="space-y-4" onSubmit={updateProfile}><div className="space-y-2"><label htmlFor="display-name" className="text-sm font-medium">Tên hiển thị (tùy chọn)</label><input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" /></div><div className="space-y-2"><label htmlFor="time-zone" className="text-sm font-medium">Múi giờ</label><input id="time-zone" required value={timeZone} onChange={(event) => setTimeZone(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" /></div><Button type="submit" variant="primary" disabled={busy}>{busy ? 'Đang lưu...' : 'Xác nhận múi giờ'}</Button></form></Card>;
   }
   if (stage === 'LANGUAGE_PROFILE_REQUIRED') {
+    if (pausedLanguageProfile) {
+      const canResume = Boolean(pausedLanguageProfile.etag);
+      return (
+        <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">
+          <header>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Hồ sơ tiếng Anh đang tạm dừng</h1>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Hồ sơ học tập của bạn đang tạm dừng. Hãy tiếp tục lộ trình học để mở lại không gian học tập.
+            </p>
+          </header>
+          {error && <InlineAlert variant="danger" title="Chưa thể tiếp tục">{error}</InlineAlert>}
+          <Button
+            variant="primary"
+            onClick={() => void resumePausedProfile()}
+            disabled={busy || !canResume}
+          >
+            {busy ? 'Đang kích hoạt lại...' : canResume ? 'Tiếp tục lộ trình tiếng Anh' : 'Chưa có phiên bản để tiếp tục'}
+          </Button>
+        </Card>
+      );
+    }
     if (archivedLanguageProfile) {
       const canReactivate = Boolean(archivedLanguageProfile.etag);
       return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5"><header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Hồ sơ tiếng Anh đã lưu trữ</h1><p className="text-sm text-[var(--text-secondary)]">Hồ sơ cũ vẫn giữ lịch sử học tập. Không tạo hồ sơ thứ hai; hãy khôi phục đúng hồ sơ này khi phiên bản đồng bộ đã sẵn sàng.</p></header>{error && <InlineAlert variant="danger" title="Chưa thể khôi phục">{error}</InlineAlert>}<Button variant="primary" onClick={() => void reactivateArchivedProfile()} disabled={busy || !canReactivate}>{busy ? 'Đang khôi phục...' : canReactivate ? 'Khôi phục hồ sơ tiếng Anh' : 'Chưa có phiên bản để khôi phục'}</Button></Card>;
