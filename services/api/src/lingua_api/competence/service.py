@@ -266,6 +266,75 @@ class CompetenceEngine:
             connection, context=context, status=derived.status, at=ingested_at
         )
 
+    def apply_concept_save(
+        self,
+        connection: Connection[tuple[object, ...]],
+        *,
+        actor: AuthenticatedActor,
+        save_intent_id: UUID,
+        user_language_id: UUID,
+        concept_id: UUID,
+        at: datetime,
+    ) -> None:
+        derivation_key = f"concept:{concept_id}"
+        payload: dict[str, object] = {"conceptId": str(concept_id)}
+        fingerprint = _fingerprint_values(
+            user_language_id=user_language_id,
+            concept_id=concept_id,
+            source_event_id=save_intent_id,
+            derivation_key=derivation_key,
+            payload=payload,
+            occurred_at=at,
+            event_type="learning.concept.saved.v1",
+            source_type="concept_save_intent",
+        )
+        existing_fingerprint = self._store.find_learning_derivation(
+            connection,
+            actor=actor,
+            source_type="concept_save_intent",
+            source_event_id=save_intent_id,
+            derivation_key=derivation_key,
+        )
+        if existing_fingerprint is not None:
+            if existing_fingerprint != fingerprint:
+                raise IdempotencyConflict("canonical concept save derivation fingerprint conflicts")
+            return
+        context = self._store.lock_projection_context(
+            connection,
+            actor=actor,
+            user_language_id=user_language_id,
+            concept_id=concept_id,
+            at=at,
+        )
+        self._store.append_learning_event(
+            connection,
+            learning_event_id=uuid4(),
+            context=context,
+            source_event_id=save_intent_id,
+            derivation_key=derivation_key,
+            request_fingerprint=fingerprint,
+            idempotency_key=str(save_intent_id),
+            payload=payload,
+            event_type="learning.concept.saved.v1",
+            source_type="concept_save_intent",
+            occurred_at=at,
+            ingested_at=at,
+        )
+        derived = derive_concept(
+            context.concept,
+            concept_type=context.concept_type,
+            history=ProjectionHistory(
+                has_passive_exposure=context.history.has_passive_exposure,
+                has_learning_intent=True,
+                has_projectable_evidence=context.history.has_projectable_evidence,
+                highest_achievement_status=context.history.highest_achievement_status,
+            ),
+            policy=context.policy,
+        )
+        self._store.update_concept_save_intent(
+            connection, context=context, status=derived.status, at=at
+        )
+
     def store_review_result(
         self,
         connection: Connection[tuple[object, ...]],

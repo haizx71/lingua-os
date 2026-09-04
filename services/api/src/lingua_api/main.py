@@ -39,6 +39,13 @@ from lingua_api.dictionary.cursor import InvalidDictionaryCursor
 from lingua_api.dictionary.domain import DictionaryNotFound, DictionaryValidationError
 from lingua_api.dictionary.routes import router as dictionary_router
 from lingua_api.dictionary.service import DictionaryApplication
+from lingua_api.library.domain import (
+    InvalidLibraryCursor,
+    LibraryNotFound,
+    LibraryValidationError,
+)
+from lingua_api.library.routes import router as library_router
+from lingua_api.library.service import LibraryApplication
 from lingua_api.memory.clock import Clock
 from lingua_api.memory.domain import (
     AuthenticatedActor,
@@ -144,6 +151,15 @@ def create_app(
     application.state.assessment_application = (
         AssessmentApplication(resolved_database_url) if resolved_database_url is not None else None
     )
+    application.state.library_application = (
+        LibraryApplication(
+            resolved_database_url,
+            cursor_secret=resolved_cursor_secret,
+            clock=clock,
+        )
+        if resolved_database_url is not None and resolved_cursor_secret is not None
+        else None
+    )
 
     @application.middleware("http")
     async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -159,6 +175,7 @@ def create_app(
     application.include_router(today_router)
     application.include_router(brain_router)
     application.include_router(assessment_router)
+    application.include_router(library_router)
 
     @application.get("/health", response_model=HealthResponse, include_in_schema=False)
     async def health() -> HealthResponse:
@@ -300,6 +317,23 @@ def _register_error_handlers(application: FastAPI) -> None:
     async def content_not_found(request: Request, error: ContentNotFound) -> JSONResponse:
         del error
         return _error(request, 404, "NOT_FOUND", "The requested content was not found.")
+
+    @application.exception_handler(LibraryNotFound)
+    async def library_not_found(request: Request, error: LibraryNotFound) -> JSONResponse:
+        del error
+        return _error(request, 404, "NOT_FOUND", "The requested library item was not found.")
+
+    @application.exception_handler(LibraryValidationError)
+    async def library_validation_error(
+        request: Request, error: LibraryValidationError
+    ) -> JSONResponse:
+        del error
+        return _error(request, 422, "VALIDATION_ERROR", "The library request is invalid.")
+
+    @application.exception_handler(InvalidLibraryCursor)
+    async def invalid_library_cursor(request: Request, error: InvalidLibraryCursor) -> JSONResponse:
+        del error
+        return _error(request, 422, "VALIDATION_ERROR", "The library cursor is invalid.")
 
     @application.exception_handler(ReaderValidationError)
     async def invalid_reader_request(

@@ -434,6 +434,39 @@ class PostgresCompetenceStore:
             raise MemoryConfigurationError("passive concept state version did not update")
 
     @staticmethod
+    def update_concept_save_intent(
+        connection: Connection[tuple[object, ...]],
+        *,
+        context: ProjectionContext,
+        status: ConceptStatus,
+        at: datetime,
+    ) -> None:
+        cursor = connection.execute(
+            """
+            UPDATE user_concept_states
+            SET has_learning_intent = true,
+                status = %s,
+                state_version = state_version + 1,
+                updated_at = %s
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+              AND state_version = %s AND competence_parameter_set_id = %s
+              AND competence_parameter_version = %s
+            """,
+            (
+                status.value,
+                at,
+                context.actor_id,
+                context.user_language_id,
+                context.concept_id,
+                context.concept_state_version,
+                context.parameter_set_id,
+                context.parameter_version,
+            ),
+        )
+        if cursor.rowcount != 1:
+            raise MemoryConfigurationError("concept save intent state version did not update")
+
+    @staticmethod
     def update_skill(
         connection: Connection[tuple[object, ...]],
         *,

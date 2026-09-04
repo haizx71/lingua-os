@@ -173,6 +173,68 @@ class PostgresMemoryStore:
         )
 
     @staticmethod
+    def ensure_lineage(
+        connection: Connection[tuple[object, ...]],
+        *,
+        actor: AuthenticatedActor,
+        user_language_id: UUID,
+        concept_id: UUID,
+        created_from: CreatedFrom,
+        activated_at: datetime,
+        parameter_set: ParameterSet,
+    ) -> tuple[UUID, bool]:
+        review_item_row = connection.execute(
+            """
+            INSERT INTO review_items
+                (user_id, user_language_id, concept_id, status, created_from,
+                 created_at, updated_at)
+            VALUES (%s, %s, %s, 'active', %s, %s, %s)
+            ON CONFLICT (user_id, concept_id) DO NOTHING
+            RETURNING id
+            """,
+            (
+                actor.id,
+                user_language_id,
+                concept_id,
+                created_from.value,
+                activated_at,
+                activated_at,
+            ),
+        ).fetchone()
+        if review_item_row is not None:
+            review_item_id = _uuid(review_item_row[0])
+            connection.execute(
+                """
+                INSERT INTO fsrs_states
+                    (review_item_id, user_id, difficulty, stability, due_at, last_review_at,
+                     state, step, parameter_set_id, params_version, state_version,
+                     created_at, updated_at)
+                VALUES (%s, %s, NULL, NULL, %s, NULL, 'new', NULL, %s, %s, 1, %s, %s)
+                ON CONFLICT (review_item_id) DO NOTHING
+                """,
+                (
+                    review_item_id,
+                    actor.id,
+                    activated_at,
+                    parameter_set.id,
+                    parameter_set.version,
+                    activated_at,
+                    activated_at,
+                ),
+            )
+            return review_item_id, True
+        existing_row = connection.execute(
+            """
+            SELECT id FROM review_items
+            WHERE user_id = %s AND concept_id = %s
+            """,
+            (actor.id, concept_id),
+        ).fetchone()
+        if existing_row is None:
+            raise MemoryConfigurationError("review item conflict occurred but row was not found")
+        return _uuid(existing_row[0]), False
+
+    @staticmethod
     def lock_memory_item(
         connection: Connection[tuple[object, ...]],
         *,

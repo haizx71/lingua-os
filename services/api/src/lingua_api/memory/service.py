@@ -87,6 +87,47 @@ class PostgresMemoryEngine:
         )
         return item
 
+    def ensure_lineage_in_transaction(
+        self,
+        connection: Connection[tuple[object, ...]],
+        *,
+        actor: AuthenticatedActor,
+        user_language_id: UUID,
+        concept_id: UUID,
+        created_from: CreatedFrom = CreatedFrom.LEARNER_SAVED,
+        activated_at: datetime | None = None,
+    ) -> tuple[UUID, bool]:
+        """Ensure review item and fsrs state exist within caller's transaction
+        without overwriting existing state.
+        """
+        at = _utc(activated_at or self._clock.now())
+        self._store.assert_activation_boundary(
+            connection,
+            actor=actor,
+            user_language_id=user_language_id,
+            concept_id=concept_id,
+        )
+        parameter_set = self._store.load_default_parameter_set(connection)
+        review_item_id, created = self._store.ensure_lineage(
+            connection,
+            actor=actor,
+            user_language_id=user_language_id,
+            concept_id=concept_id,
+            created_from=created_from,
+            activated_at=at,
+            parameter_set=parameter_set,
+        )
+        if created:
+            self._log(
+                {
+                    "event": "memory.lineage.activated",
+                    "actor": _safe_actor_id(actor),
+                    "reviewItemId": str(review_item_id),
+                    "parameterVersion": parameter_set.version,
+                }
+            )
+        return review_item_id, created
+
     def review(
         self,
         *,
