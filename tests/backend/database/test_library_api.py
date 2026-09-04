@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Final, cast
 from unittest.mock import patch
@@ -14,8 +15,11 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
+from lingua_api.competence.service import CompetenceEngine
+from lingua_api.library.store import PostgresLibraryStore
 from lingua_api.main import create_app
 from lingua_api.memory.domain import AuthenticatedActor
+from lingua_api.memory.service import PostgresMemoryEngine
 from lingua_api.memory.store import PostgresMemoryStore
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -269,6 +273,26 @@ def test_put_concept_repeated_is_idempotent_and_does_not_reset_fsrs(
 def test_put_concept_concurrent_converges_safely(
     library_api: LibraryApiFixture,
 ) -> None:
+    barrier = threading.Barrier(2)
+    original_save = PostgresLibraryStore.save_concept
+
+    def synchronized_save(
+        connection: psycopg.Connection[tuple[object, ...]],
+        *,
+        actor: AuthenticatedActor,
+        profile_id: uuid.UUID,
+        concept_id: uuid.UUID,
+        at: datetime,
+    ) -> tuple[datetime, bool, uuid.UUID]:
+        barrier.wait(timeout=5)
+        return original_save(
+            connection,
+            actor=actor,
+            profile_id=profile_id,
+            concept_id=concept_id,
+            at=at,
+        )
+
     def call_save() -> int:
         r = library_api.client.put(
             f"/v1/library/concepts/{CONCEPT_TWO}",
@@ -277,7 +301,10 @@ def test_put_concept_concurrent_converges_safely(
         )
         return r.status_code
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with (
+        patch.object(PostgresLibraryStore, "save_concept", side_effect=synchronized_save),
+        ThreadPoolExecutor(max_workers=2) as executor,
+    ):
         f1 = executor.submit(call_save)
         f2 = executor.submit(call_save)
         status1 = f1.result()
@@ -310,6 +337,20 @@ def test_put_concept_concurrent_converges_safely(
             (library_api.actor.id, CONCEPT_TWO),
         ).fetchone()
         assert review_count is not None and review_count[0] == 1
+
+        fsrs_states = conn.execute(
+            """
+            SELECT count(*), state FROM fsrs_states
+            WHERE review_item_id IN (
+                SELECT id FROM review_items WHERE user_id = %s AND concept_id = %s
+            )
+            GROUP BY state
+            """,
+            (library_api.actor.id, CONCEPT_TWO),
+        ).fetchall()
+        assert len(fsrs_states) == 1
+        assert fsrs_states[0][0] == 1
+        assert fsrs_states[0][1] == "new"
 
 
 def test_delete_concept_unsaves_but_preserves_intent_and_memory(
@@ -567,16 +608,34 @@ def test_content_save_and_unsave_does_not_activate_memory(
         assert saved is not None and saved[0] == 0
 
 
-def test_transaction_rollback_on_mid_operation_failure(
+def test_fault_injection_boundary_a_membership_saved_before_intent_or_canonical(
     library_api: LibraryApiFixture,
 ) -> None:
-    # Monkeypatch Memory store ensure_lineage to raise mid-transaction
-    def failing_ensure_lineage(*args: object, **kwargs: object) -> tuple[uuid.UUID, bool]:
-        raise RuntimeError("Simulated memory engine transient failure")
+    # Simulate Boundary A failure: user_saved_concepts is inserted,
+    # but failure happens before intent or canonical processing
+    def failing_save(
+        connection: psycopg.Connection[tuple[object, ...]],
+        *,
+        actor: AuthenticatedActor,
+        profile_id: uuid.UUID,
+        concept_id: uuid.UUID,
+        at: datetime,
+    ) -> tuple[datetime, bool, uuid.UUID]:
+        # Mutate membership first in current transaction
+        connection.execute(
+            """
+            INSERT INTO user_saved_concepts
+                (user_id, user_language_id, concept_id, language_code, saved_at)
+            VALUES (%s, %s, %s, 'en', %s)
+            """,
+            (actor.id, profile_id, concept_id, at),
+        )
+        # Raise mid-transaction before intent/canonical processing
+        raise RuntimeError("Simulated failure at Boundary A: membership inserted, intent aborted")
 
     with (
-        patch.object(PostgresMemoryStore, "ensure_lineage", side_effect=failing_ensure_lineage),
-        pytest.raises(RuntimeError, match="Simulated memory engine transient failure"),
+        patch.object(PostgresLibraryStore, "save_concept", side_effect=failing_save),
+        pytest.raises(RuntimeError, match="Simulated failure at Boundary A"),
     ):
         library_api.client.put(
             f"/v1/library/concepts/{CONCEPT_ONE}",
@@ -584,31 +643,385 @@ def test_transaction_rollback_on_mid_operation_failure(
             headers=_headers(),
         )
 
-    # Invariant: Entire transaction must have rolled back cleanly
+    # Invariant: Entire transaction must have rolled back cleanly leaving zero partial state
     with psycopg.connect(library_api.database_url) as conn:
-        saved = conn.execute(
+        assert conn.execute(
             "SELECT count(*) FROM user_saved_concepts WHERE user_id = %s AND concept_id = %s",
             (library_api.actor.id, CONCEPT_ONE),
-        ).fetchone()
-        assert saved is not None and saved[0] == 0
-
-        intents = conn.execute(
+        ).fetchone() == (0,)
+        assert conn.execute(
             "SELECT count(*) FROM concept_save_intents WHERE user_id = %s AND concept_id = %s",
             (library_api.actor.id, CONCEPT_ONE),
-        ).fetchone()
-        assert intents is not None and intents[0] == 0
-
-        events = conn.execute(
+        ).fetchone() == (0,)
+        assert conn.execute(
             "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
             (library_api.actor.id, CONCEPT_ONE),
-        ).fetchone()
-        assert events is not None and events[0] == 0
-
-        reviews = conn.execute(
+        ).fetchone() == (0,)
+        assert conn.execute(
             "SELECT count(*) FROM review_items WHERE user_id = %s AND concept_id = %s",
             (library_api.actor.id, CONCEPT_ONE),
+        ).fetchone() == (0,)
+
+    # Post-failure retry: call normal Save/Learn
+    retry_res = library_api.client.put(
+        f"/v1/library/concepts/{CONCEPT_ONE}",
+        params={"languageProfileId": str(library_api.profile_id)},
+        headers=_headers(),
+    )
+    assert retry_res.status_code == 200
+
+    # Final state after retry: exactly 1 of each entity exists
+    with psycopg.connect(library_api.database_url) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM user_saved_concepts WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, CONCEPT_ONE),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, CONCEPT_ONE),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, CONCEPT_ONE),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM review_items WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, CONCEPT_ONE),
+        ).fetchone() == (1,)
+
+
+def test_fault_injection_boundary_b_intent_persisted_before_memory(
+    library_api: LibraryApiFixture,
+) -> None:
+    # Boundary B: membership, first-save intent, and canonical learning event exist in transaction,
+    # but Memory activation fails before commit
+    concept_id = uuid.UUID("30000000-0000-4000-8000-000000000003")
+    with psycopg.connect(library_api.database_url) as conn:
+        src = conn.execute("SELECT id FROM source_records LIMIT 1").fetchone()
+        assert src is not None
+        conn.execute(
+            "INSERT INTO concepts (id, language_code, concept_type, canonical_key, "
+            "source_record_id) VALUES (%s, 'en', 'word', 'test-concept-3', %s) "
+            "ON CONFLICT (id) DO NOTHING",
+            (concept_id, src[0]),
+        )
+        conn.commit()
+
+    def failing_ensure_lineage_in_transaction(*args: object, **kwargs: object) -> None:
+        raise RuntimeError(
+            "Simulated failure at Boundary B: intent & canonical event exist, before memory"
+        )
+
+    with (
+        patch.object(
+            PostgresMemoryEngine,
+            "ensure_lineage_in_transaction",
+            side_effect=failing_ensure_lineage_in_transaction,
+        ),
+        pytest.raises(RuntimeError, match="Simulated failure at Boundary B"),
+    ):
+        library_api.client.put(
+            f"/v1/library/concepts/{concept_id}",
+            params={"languageProfileId": str(library_api.profile_id)},
+            headers=_headers(),
+        )
+
+    # Invariant: Entire transaction must have rolled back cleanly leaving zero partial state
+    with psycopg.connect(library_api.database_url) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM user_saved_concepts WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+        assert conn.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+        assert conn.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+        assert conn.execute(
+            "SELECT count(*) FROM review_items WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+
+    # Post-failure retry: call normal Save/Learn
+    retry_res = library_api.client.put(
+        f"/v1/library/concepts/{concept_id}",
+        params={"languageProfileId": str(library_api.profile_id)},
+        headers=_headers(),
+    )
+    assert retry_res.status_code == 200
+
+    # Final state after retry
+    with psycopg.connect(library_api.database_url) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM user_saved_concepts WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM review_items WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+
+
+def test_fault_injection_boundary_c_during_memory_before_commit(
+    library_api: LibraryApiFixture,
+) -> None:
+    concept_id = uuid.UUID("30000000-0000-4000-8000-000000000004")
+    with psycopg.connect(library_api.database_url) as conn:
+        src = conn.execute("SELECT id FROM source_records LIMIT 1").fetchone()
+        assert src is not None
+        conn.execute(
+            "INSERT INTO concepts (id, language_code, concept_type, canonical_key, "
+            "source_record_id) VALUES (%s, 'en', 'word', 'test-concept-4', %s) "
+            "ON CONFLICT (id) DO NOTHING",
+            (concept_id, src[0]),
+        )
+        conn.commit()
+
+    def failing_ensure_lineage(*args: object, **kwargs: object) -> tuple[uuid.UUID, bool]:
+        raise RuntimeError("Simulated failure at Boundary C: memory creation fails before commit")
+
+    with (
+        patch.object(PostgresMemoryStore, "ensure_lineage", side_effect=failing_ensure_lineage),
+        pytest.raises(RuntimeError, match="Simulated failure at Boundary C"),
+    ):
+        library_api.client.put(
+            f"/v1/library/concepts/{concept_id}",
+            params={"languageProfileId": str(library_api.profile_id)},
+            headers=_headers(),
+        )
+
+    # Invariant: Entire transaction must have rolled back cleanly leaving zero partial state
+    with psycopg.connect(library_api.database_url) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM user_saved_concepts WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+        assert conn.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+        assert conn.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+        assert conn.execute(
+            "SELECT count(*) FROM review_items WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (0,)
+
+    # Post-failure retry
+    retry_res = library_api.client.put(
+        f"/v1/library/concepts/{concept_id}",
+        params={"languageProfileId": str(library_api.profile_id)},
+        headers=_headers(),
+    )
+    assert retry_res.status_code == 200
+
+    # Final state after retry
+    with psycopg.connect(library_api.database_url) as conn:
+        assert conn.execute(
+            "SELECT count(*) FROM user_saved_concepts WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT count(*) FROM review_items WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone() == (1,)
+
+
+def test_concept_save_rebuild_profile_preserves_learning_intent_and_zero_mass(
+    library_api: LibraryApiFixture,
+) -> None:
+    concept_id = uuid.UUID("30000000-0000-4000-8000-000000000005")
+    with psycopg.connect(library_api.database_url) as conn:
+        src = conn.execute("SELECT id FROM source_records LIMIT 1").fetchone()
+        assert src is not None
+        conn.execute(
+            "INSERT INTO concepts (id, language_code, concept_type, canonical_key, "
+            "source_record_id) VALUES (%s, 'en', 'word', 'test-concept-5', %s) "
+            "ON CONFLICT (id) DO NOTHING",
+            (concept_id, src[0]),
+        )
+        conn.commit()
+
+    # 1. Fresh learner explicit Save/Learn
+    res = library_api.client.put(
+        f"/v1/library/concepts/{concept_id}",
+        params={"languageProfileId": str(library_api.profile_id)},
+        headers=_headers(),
+    )
+    assert res.status_code == 200
+
+    # 2. Check incremental projection state
+    with psycopg.connect(library_api.database_url) as conn:
+        concept_before = conn.execute(
+            """
+            SELECT status, has_learning_intent,
+                   recognition, listening, production, mastery, confidence,
+                   recognition_positive_mass, recognition_negative_mass, recognition_evidence_count,
+                   listening_positive_mass, listening_negative_mass, listening_evidence_count,
+                   production_positive_mass, production_negative_mass, production_evidence_count
+            FROM user_concept_states
+            WHERE user_id = %s AND concept_id = %s
+            """,
+            (library_api.actor.id, concept_id),
         ).fetchone()
-        assert reviews is not None and reviews[0] == 0
+        assert concept_before is not None
+        assert concept_before[0] == "learning"
+        assert concept_before[1] is True  # has_learning_intent
+        # Zero competence mass verified:
+        assert concept_before[7] == 0  # recognition_positive_mass
+        assert concept_before[8] == 0  # recognition_negative_mass
+        assert concept_before[9] == 0  # recognition_evidence_count
+        assert concept_before[10] == 0  # listening_positive_mass
+        assert concept_before[11] == 0  # listening_negative_mass
+        assert concept_before[12] == 0  # listening_evidence_count
+        assert concept_before[13] == 0  # production_positive_mass
+        assert concept_before[14] == 0  # production_negative_mass
+        assert concept_before[15] == 0  # production_evidence_count
+
+        # 3. Trigger canonical rebuild_profile
+        engine = CompetenceEngine()
+        engine.rebuild_profile(
+            conn,
+            actor=library_api.actor,
+            user_language_id=library_api.profile_id,
+            rebuilt_at=NOW + timedelta(minutes=5),
+        )
+        conn.commit()
+
+        # 4. Check rebuilt projection state
+        concept_after = conn.execute(
+            """
+            SELECT status, has_learning_intent,
+                   recognition, listening, production, mastery, confidence,
+                   recognition_positive_mass, recognition_negative_mass, recognition_evidence_count,
+                   listening_positive_mass, listening_negative_mass, listening_evidence_count,
+                   production_positive_mass, production_negative_mass, production_evidence_count
+            FROM user_concept_states
+            WHERE user_id = %s AND concept_id = %s
+            """,
+            (library_api.actor.id, concept_id),
+        ).fetchone()
+        assert concept_after is not None
+        assert concept_after[0] == "learning"  # derived status preserved
+        assert concept_after[1] is True  # has_learning_intent PRESERVED BY REBUILD!
+        assert concept_after == concept_before
+
+
+def test_concept_save_and_rebuild_preserves_established_higher_status(
+    library_api: LibraryApiFixture,
+) -> None:
+    # A concept with established familiar/active status must NOT be downgraded to 'learning'
+    concept_id = uuid.UUID("30000000-0000-4000-8000-000000000006")
+    with psycopg.connect(library_api.database_url) as conn:
+        src = conn.execute("SELECT id FROM source_records LIMIT 1").fetchone()
+        assert src is not None
+        conn.execute(
+            "INSERT INTO concepts (id, language_code, concept_type, canonical_key, "
+            "source_record_id) VALUES (%s, 'en', 'word', 'test-concept-6', %s) "
+            "ON CONFLICT (id) DO NOTHING",
+            (concept_id, src[0]),
+        )
+        # Establish familiar competence by inserting objective evidence events directly
+        engine = CompetenceEngine()
+        event_num = 0
+        for dimension in ("recognition", "listening", "production"):
+            for _ in range(3):
+                obs_at = NOW + timedelta(minutes=event_num)
+                context = engine._store.lock_projection_context(
+                    conn,
+                    actor=library_api.actor,
+                    user_language_id=library_api.profile_id,
+                    concept_id=concept_id,
+                    at=obs_at,
+                )
+                engine._store.append_learning_event(
+                    conn,
+                    learning_event_id=uuid.uuid4(),
+                    context=context,
+                    source_event_id=uuid.uuid4(),
+                    derivation_key=f"test:{event_num}",
+                    request_fingerprint=(f"{event_num}" * 32)[:64].ljust(64, "0"),
+                    idempotency_key=str(uuid.uuid4()),
+                    payload={"dimension": dimension, "outcome": "1", "weight": "1"},
+                    event_type="learning.review.completed.v1",
+                    source_type="review_event",
+                    occurred_at=obs_at,
+                    ingested_at=obs_at,
+                )
+                event_num += 1
+        # Rebuild so concept achieves familiar status based on evidence
+        engine.rebuild_profile(
+            conn,
+            actor=library_api.actor,
+            user_language_id=library_api.profile_id,
+            rebuilt_at=NOW + timedelta(minutes=10),
+        )
+        conn.commit()
+
+        status_before_save = conn.execute(
+            "SELECT status FROM user_concept_states WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone()
+        assert status_before_save is not None
+        assert status_before_save[0] == "familiar"
+
+    # Now learner saves the concept
+    res = library_api.client.put(
+        f"/v1/library/concepts/{concept_id}",
+        params={"languageProfileId": str(library_api.profile_id)},
+        headers=_headers(),
+    )
+    assert res.status_code == 200
+
+    with psycopg.connect(library_api.database_url) as conn:
+        # Saving MUST NOT downgrade familiar to learning!
+        status_after_save = conn.execute(
+            "SELECT status, has_learning_intent FROM user_concept_states "
+            "WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone()
+        assert status_after_save is not None
+        assert status_after_save[0] == "familiar"
+        assert status_after_save[1] is True
+
+        # Rebuilding again MUST STILL preserve familiar status and has_learning_intent = True
+        engine.rebuild_profile(
+            conn,
+            actor=library_api.actor,
+            user_language_id=library_api.profile_id,
+            rebuilt_at=NOW + timedelta(minutes=20),
+        )
+        conn.commit()
+
+        status_after_rebuild = conn.execute(
+            "SELECT status, has_learning_intent FROM user_concept_states "
+            "WHERE user_id = %s AND concept_id = %s",
+            (library_api.actor.id, concept_id),
+        ).fetchone()
+        assert status_after_rebuild is not None
+        assert status_after_rebuild[0] == "familiar"
+        assert status_after_rebuild[1] is True
 
 
 def test_library_authorization_and_ownership(
