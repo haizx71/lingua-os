@@ -40,6 +40,10 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/assessments",
         "/v1/assessments/{assessmentId}",
         "/v1/assessments/{assessmentId}/responses",
+        "/v1/library/items",
+        "/v1/library/concepts/{conceptId}",
+        "/v1/library/content/{contentId}",
+        "/v1/library/sentences/{sentenceId}",
     }
     assert "/health" not in published_paths
 
