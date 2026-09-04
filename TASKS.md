@@ -362,14 +362,14 @@ OpenAPI or frontend application behavior change. See
 
 ### TASK-017 — Live Auth + Onboarding Integration v1
 Owner: CODEX (temporary integration execution; frontend foundation remains Gemini-owned)
-Status: READY_FOR_REVIEW
+Status: DONE
 Dependencies: TASK-004, TASK-005, TASK-006C.2, TASK-006E, TASK-016, TASK-017A
 
 Connect Supabase email/password authentication, the shared HttpApiClient, `/v1/me`
 bootstrap, explicit profile/timezone confirmation, vi→en language-profile creation,
 and optional Starting Level start/resume/answer. End at `/today`; Today, Review,
 Reader, Brain, Progress, Library and Dictionary remain mock-driven.
-*Completed controlled hardening across all four slices (A: actor runtime isolation & actor-scoped pointer C-1/C-2; B: readiness predicate & route gating C-3/C-4; C: language profile 409 conflict reconciliation C-5; D: assessment stimulus preservation C-6), subsequent Required Fix Pass (DEF-01 complete 6-point readiness predicate; DEF-02 paused profile recovery & resumption; DEF-03 stale actor lifecycle outcome isolation), and DEF-03-R1 final actor lifecycle fix (application-level operation epoch guarding across AuthContext, LiveOnboardingFlow, and useProductReadiness). Child ETag transport dependency resolved by verified TASK-017A. Status remains READY_FOR_REVIEW pending Sol re-acceptance.*
+*Completed controlled hardening across all four slices (A: actor runtime isolation & actor-scoped pointer C-1/C-2; B: readiness predicate & route gating C-3/C-4; C: language profile 409 conflict reconciliation C-5; D: assessment stimulus preservation C-6), subsequent Required Fix Pass (DEF-01 complete 6-point readiness predicate; DEF-02 paused profile recovery & resumption; DEF-03 stale actor lifecycle outcome isolation), and DEF-03-R1 final actor lifecycle fix (application-level operation epoch guarding across AuthContext, LiveOnboardingFlow, and useProductReadiness). Child ETag transport dependency resolved by verified TASK-017A. Final Sol re-acceptance received; marked DONE.*
 
 ### TASK-017A — Language Profile child ETag transport correction
 Owner: CODEX

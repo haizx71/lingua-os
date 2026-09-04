@@ -1,11 +1,11 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017 DEF-03-R1 Final Actor Lifecycle Fix — Ready for Review; TASK-017A verified and closed
+Phase: TASK-017 Completed and Accepted by Sol; TASK-008B Library API v1 + GAP-01 in progress
 
-## In Progress / Ready for Review
+## Completed
 
-- `TASK-017`: Live Auth + Onboarding Integration Hardening (Findings C-1..C-6 + Required Fix Pass DEF-01..DEF-03 + DEF-03-R1)
+- `TASK-017`: Live Auth + Onboarding Integration Hardening (Findings C-1..C-6 + Required Fix Pass DEF-01..DEF-03 + DEF-03-R1) — ACCEPTED by Sol
   - C-1: Assessment pointer strictly actor-scoped in local storage (`lingua:starting-level:active-assessment:${userId}`); foreign pointers completely isolated.
   - C-2: `HttpApiClient` actor generation tracking (`setActor`), flushing cached ETags on actor switch and rejecting stale in-flight responses with `LinguaActorAbortedError` (`code: 'ABORTED'`).
   - C-3: Unified readiness predicate (`useProductReadiness`); unassessed learners with confirmed timezone and active profile are authoritatively ready and route to `/today` without assessment entrapment; explicit re-entry gated on `mode=assessment`.
@@ -15,9 +15,7 @@ Phase: TASK-017 DEF-03-R1 Final Actor Lifecycle Fix — Ready for Review; TASK-0
   - DEF-01: Authoritative 6-point product readiness predicate (`evaluateProductReadiness`) checking authenticated actor, learner profile ID, confirmed valid IANA timezone, active vi→en language profile, valid canonical `LearningGoal`, and persisted `dailyMinutes` 5..180; Starting Level Estimate remains optional.
   - DEF-02: Paused vi→en `LanguageProfile` recovery & resumption with explicit resume UI, PATCH with same ID and child ETag, 412 refetch without automatic second PATCH, and 409 CONFLICT collection discovery.
   - DEF-03: Stale actor `LinguaActorAbortedError` outcomes completely isolated without mutating state, corrupting stages, or showing erroneous error banners across onboarding and route readiness.
-  - DEF-03-R1: Application-level actor operation identity and generation/epoch tracking implemented across `AuthContext`, `LiveOnboardingFlow`, and `useProductReadiness`. All async mutation and bootstrap paths guarded across every await, catch block, 412 recovery, and finally block. Stale mutations cannot clear active actor busy states, commit foreign profiles, advance stages, or post recovery banners. 5 deterministic lifecycle race tests added (`TEST-ACTOR-LIFECYCLE-01..05`). DEF-03-R1: implemented, pending Sol re-acceptance.
-
-## Completed
+  - DEF-03-R1: Application-level actor operation identity and generation/epoch tracking implemented across `AuthContext`, `LiveOnboardingFlow`, and `useProductReadiness`. All async mutation and bootstrap paths guarded across every await, catch block, 412 recovery, and finally block. Stale mutations cannot clear active actor busy states, commit foreign profiles, advance stages, or post recovery banners. 5 deterministic lifecycle race tests added (`TEST-ACTOR-LIFECYCLE-01..05`). Final Sol re-acceptance received; marked DONE.
 
 - `TASK-017A`: Language Profile child ETag transport correction
   - Shared `LanguageProfile` response schema now provides required, read-only opaque `etag: string` across collection, nested `/me`, create, and update representations.
