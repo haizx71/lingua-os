@@ -362,14 +362,20 @@ OpenAPI or frontend application behavior change. See
 
 ### TASK-017 — Live Auth + Onboarding Integration v1
 Owner: CODEX (temporary integration execution; frontend foundation remains Gemini-owned)
-Status: IMPLEMENTATION COMPLETE — BLOCKED ON FROZEN CONTRACT GAP
-Dependencies: TASK-004, TASK-005, TASK-006C.2, TASK-006E, TASK-016
+Status: DOING
+Dependencies: TASK-004, TASK-005, TASK-006C.2, TASK-006E, TASK-016, TASK-017A
 
 Connect Supabase email/password authentication, the shared HttpApiClient, `/v1/me`
 bootstrap, explicit profile/timezone confirmation, vi→en language-profile creation,
 and optional Starting Level start/resume/answer. End at `/today`; Today, Review,
 Reader, Brain, Progress, Library and Dictionary remain mock-driven.
-*Note: Explicit user authorization supersedes the historical manual frontend block for
-this bounded integration. No later task is unlocked automatically. A frozen-contract
-gap prevents safe archived language-profile reactivation when the list response does
-not provide the required child ETag; the client refuses duplicate creation.*
+*Note: Controlled hardening in progress (Slices A–D for findings C-1..C-6). Child ETag
+transport dependency resolved by TASK-017A.*
+
+### TASK-017A — Language Profile child ETag transport correction
+Owner: CODEX
+Status: DONE
+Dependencies: TASK-004, TASK-006E, TASK-017
+
+Add required read-only `etag: string` to shared LanguageProfile response schema across collection, nested `/me`, create, and update representations.
+*Completed and verified: OpenAPI 3.2 contract updated and validated with Redocly; generated TypeScript fresh; child ETag exposed in Profile DTO and route mappers via `language_profile_etag`; preserved through frontend adapter/view model; same-ID archived reactivation with child ETag verified. Verification passed: 458/458 backend tests (including real PostgreSQL suite), 338/338 frontend tests across 30 files, typecheck, lint, Storybook static build, and Next.js production build. Real deployed Supabase smoke remains environment-conditional and does not block task closure.*

@@ -1,6 +1,6 @@
 # TASK-017A — Language Profile child ETag transport correction
 
-Status: DOING; user-approved narrow design, no brainstorming required.
+Status: DONE; deterministically verified (458/458 backend, 338/338 frontend). Real deployed Supabase smoke is environment-conditional.
 
 ## Objective and scope
 

@@ -1,10 +1,15 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017 Live Auth + Onboarding Integration v1 implementation complete; blocked only on frozen archived-profile ETag contract gap
+Phase: TASK-017 Controlled Hardening (Slices A–D); TASK-017A verified and closed
 
 ## Completed
 
+- `TASK-017A`: Language Profile child ETag transport correction
+  - Shared `LanguageProfile` response schema now provides required, read-only opaque `etag: string` across collection, nested `/me`, create, and update representations.
+  - FastAPI Profile route mappers project `language_profile_etag` and create replay projects the original child token from the historical snapshot without schema migrations.
+  - Frontend types regenerated; onboarding adapter and view models preserve child ETag for authoritative PATCH operations.
+  - Verification passed: 458/458 backend tests (including real PostgreSQL suite), 338/338 frontend tests across 30 files, typecheck, lint, Storybook static catalog build, and Next.js production build. Real deployed Supabase smoke remains environment-conditional and does not block task closure.
 - Product/system specification v2.0
 - UI/UX/frontend specification v2.0
 - Master project contract v4.0
@@ -434,9 +439,8 @@ Phase: TASK-017 Live Auth + Onboarding Integration v1 implementation complete; b
 ## Next
 
 - TASK-008A is DONE. Do not start another task without explicit authorization.
-- TASK-016 is DONE. Do not start another task without explicit authorization.
-- TASK-017 is implemented for the authorized new-user path; do not start TASK-011, TASK-007 or
-  TASK-008B automatically. Keep the frontend regression baseline at 328 tests across 30 files.
+- TASK-017 hardening in progress across Slices A–D (C-1 through C-6).
+- TASK-017A is DONE and verified (458/458 backend, 338/338 frontend).
 - Keep TASK-007 blocked and the Gemini-owned frontend surface outside this bounded integration frozen.
 - Reader resume position, synchronized preferences, saved-sentence notes, configurable learner
   new-concept budget, data export and account deletion remain future schema/contract decisions.
