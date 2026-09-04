@@ -241,12 +241,17 @@ ownership enforcement, opaque cursor pagination, and PostgreSQL-backed contract 
 
 ### TASK-008B — Library API v1
 Owner: CODEX
-Status: READY
+Status: READY_FOR_REVIEW
 Dependencies: TASK-004, TASK-006, TASK-006D, TASK-008, TASK-006E
 
 Implement the existing Library list and concept/content/sentence save/remove contracts with actor
 ownership, opaque cursor pagination and intrinsic idempotency. Concept save must preserve the one
 Memory lineage and canonical evidence authorities; notes remain not persisted.
+*Completed with forward migration `0009_library_concept_save_intent_v1`, atomic transaction coordination
+via `PostgresLibraryStore`, `LibraryApplication`, `PostgresCompetenceStore.apply_concept_save`, and
+`PostgresMemoryEngine.ensure_lineage_in_transaction`. Implemented immutable concept save intents, canonical
+evidence ingestion, single FSRS lineage preservation (MEM-001), 7 Library operations matching OpenAPI,
+opaque cursor pagination, fail-closed profile/ownership authorization, and 10 integration tests.*
 
 ### TASK-008C — Production content and lexical data pipeline v1
 Owner: CODEX
