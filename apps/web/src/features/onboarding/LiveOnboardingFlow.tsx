@@ -168,7 +168,8 @@ function AssessmentAudioPlayer({ src }: { readonly src: string }) {
 }
 
 export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowProps) {
-  const { authState, user } = useAuth();
+  const auth = useAuth();
+  const { authState, user, getActorEpoch, isCurrentActor } = auth;
   const userId = user?.id ?? null;
   const api = useMemo(() => apiClient ?? getApiClient(), [apiClient]);
   const [stage, setStage] = useState<OnboardingStage>('RESTORING_SESSION');
@@ -186,6 +187,16 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   const assessmentStartKey = useRef<string | null>(null);
   const assessmentAnswerKeys = useRef(new Map<string, string>());
 
+  const beginActorOperation = () => {
+    const epoch = getActorEpoch ? getActorEpoch() : 0;
+    const actorId = user?.id ?? null;
+    return {
+      isCurrent: () => (isCurrentActor ? isCurrentActor(epoch, actorId) : true),
+      epoch,
+      actorId,
+    };
+  };
+
   const goToday = () => {
     setStage('READY_FOR_TODAY');
     if (navigate) navigate('/today');
@@ -193,18 +204,21 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   };
 
   const loadBootstrap = async () => {
+    const op = beginActorOperation();
     setError(null);
     setStage('BOOTSTRAPPING_PROFILE');
     try {
       const meResponse = await api.getMe();
+      if (!op.isCurrent()) return false;
       const profile = mapOnboardingProfileToViewModel(meResponse.data);
-      setDisplayName(profile.displayName ?? '');
-      setTimeZone(profile.timeZone ?? '');
       const languages = await api.listMyLanguageProfiles();
+      if (!op.isCurrent()) return false;
       const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
       const usable = profiles.find(isUsableEnglishProfile) ?? null;
       const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
       const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
+      setDisplayName(profile.displayName ?? '');
+      setTimeZone(profile.timeZone ?? '');
       setLanguageProfile(usable);
       setPausedLanguageProfile(paused);
       setArchivedLanguageProfile(archived);
@@ -221,7 +235,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       } else if (usable.startingLevelEstimate) {
         setStage('READY_FOR_TODAY');
       } else {
-        const assessmentId = storedAssessmentId(userId);
+        const assessmentId = storedAssessmentId(op.actorId);
         const hasAssessmentIntent =
           typeof window !== 'undefined' &&
           new URLSearchParams(window.location.search).get('mode') === 'assessment';
@@ -229,18 +243,21 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
           setStage(hasAssessmentIntent ? 'ASSESSMENT_CHOICE' : 'READY_FOR_TODAY');
         } else {
           try {
-            const resumed = mapOnboardingAssessmentToViewModel((await api.getStartingLevelAssessment(assessmentId)).data);
+            const resumedRes = await api.getStartingLevelAssessment(assessmentId);
+            if (!op.isCurrent()) return false;
+            const resumed = mapOnboardingAssessmentToViewModel(resumedRes.data);
             setAssessment(resumed);
             if (resumed.status === 'completed' || resumed.status === 'abandoned') {
-              forgetAssessmentId(userId);
+              forgetAssessmentId(op.actorId);
               setStage('ASSESSMENT_COMPLETE');
             } else {
               setStage('ASSESSMENT_IN_PROGRESS');
             }
           } catch (cause) {
+            if (!op.isCurrent()) return false;
             const mapped = mapApiErrorToUi(cause);
             if (mapped.code === 'NOT_FOUND') {
-              forgetAssessmentId(userId);
+              forgetAssessmentId(op.actorId);
               setStage(hasAssessmentIntent ? 'ASSESSMENT_CHOICE' : 'READY_FOR_TODAY');
             } else {
               throw cause;
@@ -250,7 +267,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       }
       return true;
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) {
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) {
         return false;
       }
       setError(mapApiErrorToUi(cause).message);
@@ -260,12 +277,31 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   };
 
   useEffect(() => {
-    if (authState === 'authenticated') void loadBootstrap();
-    else if (authState === 'unauthenticated') setStage('RESTORING_SESSION');
+    languageProfileCreateKey.current = null;
+    assessmentStartKey.current = null;
+    assessmentAnswerKeys.current.clear();
+    if (authState === 'authenticated') {
+      setLanguageProfile(null);
+      setPausedLanguageProfile(null);
+      setArchivedLanguageProfile(null);
+      setAssessment(null);
+      setError(null);
+      setBusy(false);
+      void loadBootstrap();
+    } else if (authState === 'unauthenticated') {
+      setStage('RESTORING_SESSION');
+      setLanguageProfile(null);
+      setPausedLanguageProfile(null);
+      setArchivedLanguageProfile(null);
+      setAssessment(null);
+      setError(null);
+      setBusy(false);
+    }
   }, [authState, userId]);
 
   const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const op = beginActorOperation();
     const normalizedTimeZone = timeZone.trim();
     if (!normalizedTimeZone) {
       setError('Hãy chọn và xác nhận múi giờ để tiếp tục.');
@@ -283,7 +319,9 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         body: { timeZone: normalizedTimeZone, ...(displayName.trim() ? { displayName: displayName.trim() } : {}) },
         headers: { 'If-Match': etag },
       });
+      if (!op.isCurrent()) return;
       const languages = await api.listMyLanguageProfiles();
+      if (!op.isCurrent()) return;
       const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
       const active = profiles.find(isUsableEnglishProfile) ?? null;
       const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
@@ -297,20 +335,26 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       else if (active.startingLevelEstimate) setStage('READY_FOR_TODAY');
       else setStage('ASSESSMENT_CHOICE');
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) return;
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       setError(mapped.code === 'PRECONDITION_FAILED' ? 'Hồ sơ vừa thay đổi. Đã tải lại dữ liệu mới; hãy xác nhận lại rồi lưu.' : mapped.message);
       if (mapped.code === 'PRECONDITION_FAILED') {
-        await loadBootstrap();
-        setError('Hồ sơ vừa thay đổi. Đã tải dữ liệu mới; hãy kiểm tra lại rồi thực hiện một lần lưu có chủ ý.');
+        const refreshed = await loadBootstrap();
+        if (!op.isCurrent()) return;
+        if (refreshed) {
+          setError('Hồ sơ vừa thay đổi. Đã tải dữ liệu mới; hãy kiểm tra lại rồi thực hiện một lần lưu có chủ ý.');
+        }
       }
     } finally {
-      setBusy(false);
+      if (op.isCurrent()) {
+        setBusy(false);
+      }
     }
   };
 
   const createLanguageProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const op = beginActorOperation();
     if (!goal || dailyMinutes === null) {
       setError('Hãy chọn mục tiêu và thời lượng học trước khi tạo hồ sơ.');
       return;
@@ -322,16 +366,18 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         body: { nativeLanguageCode: 'vi', targetLanguageCode: 'en', goal, dailyMinutes },
         headers: { 'Idempotency-Key': languageProfileCreateKey.current ?? (languageProfileCreateKey.current = makeActionKey()) },
       });
+      if (!op.isCurrent()) return;
       const createdProfile = mapOnboardingLanguageProfileToViewModel(response.data);
       setLanguageProfile(createdProfile);
       setArchivedLanguageProfile(null);
       setStage(createdProfile.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) return;
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       if (mapped.code === 'CONFLICT') {
         try {
           const languages = await api.listMyLanguageProfiles();
+          if (!op.isCurrent()) return;
           const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
           const active = profiles.find(isUsableEnglishProfile) ?? null;
           const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
@@ -359,14 +405,18 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
           // If profile discovery fails, fall through to error display
         }
       }
+      if (!op.isCurrent()) return;
       setError(mapped.message);
     } finally {
-      setBusy(false);
+      if (op.isCurrent()) {
+        setBusy(false);
+      }
     }
   };
 
   const resumePausedProfile = async () => {
     if (!pausedLanguageProfile || busy) return;
+    const op = beginActorOperation();
     const etag = pausedLanguageProfile.etag;
     if (!etag) {
       setError('Hồ sơ tiếng Anh đang tạm dừng nhưng phiên bản ETag để tiếp tục chưa có trong phản hồi. Không tạo hồ sơ thứ hai.');
@@ -380,30 +430,36 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         body: { status: 'active' },
         headers: { 'If-Match': etag },
       });
+      if (!op.isCurrent()) return;
       const restored = mapOnboardingLanguageProfileToViewModel(response.data);
       setLanguageProfile(restored);
       setPausedLanguageProfile(null);
       setArchivedLanguageProfile(null);
       setStage(restored.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) return;
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       if (mapped.code === 'PRECONDITION_FAILED') {
         // Discard the stale child token. Refetch only; never retry the mutation.
         setPausedLanguageProfile(null);
-        if (await loadBootstrap()) {
+        const refreshed = await loadBootstrap();
+        if (!op.isCurrent()) return;
+        if (refreshed) {
           setError('Hồ sơ vừa thay đổi. Đã tải dữ liệu mới; hãy kiểm tra lại rồi tiếp tục nếu vẫn cần.');
         }
       } else {
         setError(mapped.message);
       }
     } finally {
-      setBusy(false);
+      if (op.isCurrent()) {
+        setBusy(false);
+      }
     }
   };
 
   const reactivateArchivedProfile = async () => {
     if (!archivedLanguageProfile || busy) return;
+    const op = beginActorOperation();
     const etag = archivedLanguageProfile.etag;
     if (!etag) {
       setError('Hồ sơ tiếng Anh đã được lưu trữ nhưng phiên bản ETag để khôi phục chưa có trong phản hồi. Không tạo hồ sơ thứ hai.');
@@ -417,30 +473,36 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         body: { status: 'active' },
         headers: { 'If-Match': etag },
       });
+      if (!op.isCurrent()) return;
       const restored = mapOnboardingLanguageProfileToViewModel(response.data);
       setLanguageProfile(restored);
       setPausedLanguageProfile(null);
       setArchivedLanguageProfile(null);
       setStage(restored.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) return;
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       if (mapped.code === 'PRECONDITION_FAILED') {
         // Discard the stale child token. Refetch only; never retry the mutation.
         setArchivedLanguageProfile(null);
-        if (await loadBootstrap()) {
+        const refreshed = await loadBootstrap();
+        if (!op.isCurrent()) return;
+        if (refreshed) {
           setError('Hồ sơ vừa thay đổi. Đã tải dữ liệu mới; hãy kiểm tra lại rồi khôi phục nếu vẫn cần.');
         }
       } else {
         setError(mapped.message);
       }
     } finally {
-      setBusy(false);
+      if (op.isCurrent()) {
+        setBusy(false);
+      }
     }
   };
 
   const startAssessment = async () => {
     if (!languageProfile) return;
+    const op = beginActorOperation();
     setBusy(true);
     setError(null);
     try {
@@ -449,25 +511,29 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         body: { languageProfileId: languageProfile.id },
         headers: { 'Idempotency-Key': key },
       });
+      if (!op.isCurrent()) return;
       const startedAssessment = mapOnboardingAssessmentToViewModel(response.data);
       setAssessment(startedAssessment);
       if (startedAssessment.status === 'completed' || startedAssessment.status === 'abandoned') {
-        forgetAssessmentId(userId);
+        forgetAssessmentId(op.actorId);
         setStage('ASSESSMENT_COMPLETE');
       } else {
-        rememberAssessmentId(startedAssessment.id, userId);
+        rememberAssessmentId(startedAssessment.id, op.actorId);
         setStage('ASSESSMENT_IN_PROGRESS');
       }
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) return;
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       setError(mapApiErrorToUi(cause).message);
     } finally {
-      setBusy(false);
+      if (op.isCurrent()) {
+        setBusy(false);
+      }
     }
   };
 
   const submitAnswer = async (selectedOptionId?: string) => {
     if (!assessment?.currentItem) return;
+    const op = beginActorOperation();
     const key = assessmentAnswerKeys.current.get(assessment.currentItem.id) ?? makeActionKey();
     assessmentAnswerKeys.current.set(assessment.currentItem.id, key);
     setBusy(true);
@@ -480,20 +546,23 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
           : { itemId: assessment.currentItem.id, skipped: true, responseTimeMs: 0 },
         headers: { 'Idempotency-Key': key },
       });
+      if (!op.isCurrent()) return;
       const submittedAssessment = mapOnboardingAssessmentToViewModel(response.data);
       setAssessment(submittedAssessment);
       if (submittedAssessment.status === 'completed' || submittedAssessment.status === 'abandoned') {
-        forgetAssessmentId(userId);
+        forgetAssessmentId(op.actorId);
         setStage('ASSESSMENT_COMPLETE');
       } else {
-        rememberAssessmentId(submittedAssessment.id, userId);
+        rememberAssessmentId(submittedAssessment.id, op.actorId);
         setStage('ASSESSMENT_IN_PROGRESS');
       }
     } catch (cause) {
-      if (isLinguaActorAbortedError(cause)) return;
+      if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       setError(mapApiErrorToUi(cause).message);
     } finally {
-      setBusy(false);
+      if (op.isCurrent()) {
+        setBusy(false);
+      }
     }
   };
 

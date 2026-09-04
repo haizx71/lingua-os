@@ -32,7 +32,8 @@ export interface ProductReadinessResult {
  * Starting level estimate is explicitly OPTIONAL; unestimated learners are fully product-ready.
  */
 export function useProductReadiness(customApiClient?: ApiClient): ProductReadinessResult {
-  const { authState, user, isConfigured } = useAuth();
+  const auth = useAuth();
+  const { authState, user, isConfigured, getActorEpoch, isCurrentActor } = auth;
   const api = customApiClient ?? getApiClient();
 
   const [status, setStatus] = useState<ReadinessStatus>(
@@ -44,6 +45,9 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
   const [error, setError] = useState<Error | null>(null);
 
   const checkReadiness = useCallback(async () => {
+    const opEpoch = getActorEpoch ? getActorEpoch() : 0;
+    const opActorId = user?.id ?? null;
+
     if (!isConfigured || authState === 'unauthenticated') {
       setStatus('unauthenticated');
       setIsReady(false);
@@ -64,7 +68,9 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
 
     try {
       const meResponse = await api.getMe();
+      if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
       const languagesResponse = await api.listMyLanguageProfiles();
+      if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
 
       const evaluation = evaluateProductReadiness({
         actorId: user?.id,
@@ -77,6 +83,7 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
       setIsReady(evaluation.isReady);
       setStatus(evaluation.isReady ? 'ready' : 'not_ready');
     } catch (err) {
+      if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
       if (isLinguaActorAbortedError(err)) {
         // Silently discard obsolete response from prior actor lifecycle (DEF-03 / ACTOR-STATE-001)
         return;
@@ -86,7 +93,7 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
       setStatus('error');
       setIsReady(false);
     }
-  }, [api, authState, isConfigured, user?.id]);
+  }, [api, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
 
   useEffect(() => {
     void checkReadiness();

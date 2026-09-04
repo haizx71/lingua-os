@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import type { Session, User, SupabaseClient } from '@supabase/supabase-js';
 import type { AuthStateKind, AuthUserIdentity, AuthTokenProvider } from '@lingua/types';
 import { getBrowserSupabaseClient } from '../../lib/supabase/client';
@@ -14,6 +14,9 @@ export interface AuthContextValue {
   readonly userIdentity: AuthUserIdentity | null;
   readonly error: Error | null;
   readonly isConfigured: boolean;
+  readonly actorEpoch: number;
+  getActorEpoch(): number;
+  isCurrentActor(epoch: number, actorId?: string | null): boolean;
   getAccessToken(): Promise<string | null>;
   signIn(email: string, password: string): Promise<{ session: Session | null; user: User | null }>;
   signUp(email: string, password: string): Promise<{ session: Session | null; user: User | null }>;
@@ -43,6 +46,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const currentActorIdRef = useRef<string | null>(null);
+  const actorEpochRef = useRef<number>(1);
+  const [actorEpoch, setActorEpoch] = useState<number>(1);
+
+  const getActorEpoch = useCallback((): number => {
+    return actorEpochRef.current;
+  }, []);
+
+  const isCurrentActor = useCallback((epoch: number, actorId?: string | null): boolean => {
+    if (epoch !== actorEpochRef.current) return false;
+    if (actorId !== undefined && actorId !== currentActorIdRef.current) return false;
+    return true;
+  }, []);
 
   const client = useMemo(() => {
     return customClient !== undefined ? customClient : getBrowserSupabaseClient();
@@ -51,8 +67,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
   const isConfigured = Boolean(client);
 
   const updateSessionState = useCallback((currentSession: Session | null, preserveError = false) => {
+    const nextActorId = currentSession?.user?.id ?? null;
+    if (currentActorIdRef.current !== nextActorId) {
+      currentActorIdRef.current = nextActorId;
+      actorEpochRef.current += 1;
+      setActorEpoch(actorEpochRef.current);
+    }
     try {
-      getApiClient().setActor?.(currentSession?.user?.id ?? null);
+      getApiClient().setActor?.(nextActorId);
     } catch {
       // client might not be initialized yet
     }
@@ -212,13 +234,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
       userIdentity,
       error,
       isConfigured,
+      actorEpoch,
+      getActorEpoch,
+      isCurrentActor,
       getAccessToken,
       signIn,
       signUp,
       signOut,
       refreshSession,
     }),
-    [authState, session, user, userIdentity, error, isConfigured, getAccessToken, signIn, signUp, signOut, refreshSession]
+    [
+      authState,
+      session,
+      user,
+      userIdentity,
+      error,
+      isConfigured,
+      actorEpoch,
+      getActorEpoch,
+      isCurrentActor,
+      getAccessToken,
+      signIn,
+      signUp,
+      signOut,
+      refreshSession,
+    ]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

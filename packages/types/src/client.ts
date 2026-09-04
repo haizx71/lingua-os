@@ -52,6 +52,8 @@ import { toAuthTokenProvider, AuthTokenProviderError, type AuthTokenProvider, ty
 export interface ApiClient {
   readonly transportKind: 'mock' | 'http';
   setActor?(actorId: string | null): void;
+  getCurrentActorId?(): string | null;
+  getActorGeneration?(): number;
   getMe(): Promise<MeResponseDto>;
   updateMe(input: { body: UpdateMeRequestDto; headers: OperationHeaders<'updateMe'> }): Promise<MeResponseDto>;
   listMyLanguageProfiles(): Promise<LanguageProfilesResponseDto>;
@@ -304,6 +306,8 @@ export class MockApiClient implements ApiClient {
   private latencyMs: number;
   private forcedError: ApiErrorCode | null = null;
   private returnEmpty = false;
+  private currentActorId: string | null = null;
+  private actorGeneration = 0;
 
   constructor(initialLatencyMs = 0) {
     this.latencyMs = Math.max(0, initialLatencyMs);
@@ -313,10 +317,28 @@ export class MockApiClient implements ApiClient {
   setForceError(code: ApiErrorCode | null): this { this.forcedError = code; return this; }
   setReturnEmpty(empty: boolean): this { this.returnEmpty = empty; return this; }
   resetState(): void { this.forcedError = null; this.returnEmpty = false; }
-  setActor(_actorId: string | null): void { /* No-op for mock client */ }
+  setActor(actorId: string | null): void {
+    if (this.currentActorId !== actorId) {
+      this.currentActorId = actorId;
+      this.actorGeneration += 1;
+    }
+  }
+
+  getCurrentActorId(): string | null {
+    return this.currentActorId;
+  }
+
+  getActorGeneration(): number {
+    return this.actorGeneration;
+  }
 
   private async ready(): Promise<void> {
+    const gen = this.actorGeneration;
+    const actorId = this.currentActorId;
     if (this.latencyMs > 0) await new Promise((resolve) => setTimeout(resolve, this.latencyMs));
+    if (this.actorGeneration !== gen || this.currentActorId !== actorId) {
+      throw new LinguaActorAbortedError();
+    }
     if (this.forcedError) throw createApiError(this.forcedError);
   }
 
