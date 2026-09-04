@@ -227,7 +227,29 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       setArchivedLanguageProfile(null);
       setStage(createdProfile.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
     } catch (cause) {
-      setError(mapApiErrorToUi(cause).message);
+      const mapped = mapApiErrorToUi(cause);
+      if (mapped.code === 'CONFLICT') {
+        try {
+          const languages = await api.listMyLanguageProfiles();
+          const profiles = languages.data.map(mapOnboardingLanguageProfileToViewModel);
+          const active = profiles.find(isUsableEnglishProfile) ?? null;
+          const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
+          if (active) {
+            setLanguageProfile(active);
+            setArchivedLanguageProfile(null);
+            setStage(active.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
+            return;
+          }
+          if (archived) {
+            setArchivedLanguageProfile(archived);
+            setStage('LANGUAGE_PROFILE_REQUIRED');
+            return;
+          }
+        } catch {
+          // If profile discovery fails, fall through to error display
+        }
+      }
+      setError(mapped.message);
     } finally {
       setBusy(false);
     }

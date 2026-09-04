@@ -10,6 +10,7 @@ import { LiveOnboardingFlow } from '../../apps/web/src/features/onboarding/LiveO
 import {
   MockApiClient,
   HttpApiClient,
+  LinguaApiError,
   mockApiResponses,
   mockCompletedAssessmentSessionResponse,
   type ApiClient,
@@ -327,5 +328,91 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đã lưu trữ/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Chưa có phiên bản để khôi phục/i })).toBeDisabled();
     expect(api.createMyLanguageProfile).not.toHaveBeenCalled();
+  });
+
+  it('reconciles 409 CONFLICT on language profile creation by adopting authoritative active profile without error banner (TEST-LANG-04)', async () => {
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    const listSpy = vi.spyOn(api, 'listMyLanguageProfiles')
+      .mockResolvedValueOnce({ data: [], meta: mockApiResponses.languageProfile.meta } as LanguageProfilesResponseDto)
+      .mockResolvedValueOnce({
+        data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+        meta: mockApiResponses.languageProfile.meta,
+      } as LanguageProfilesResponseDto);
+
+    vi.spyOn(api, 'createMyLanguageProfile').mockRejectedValue(
+      new LinguaApiError({ code: 'CONFLICT', httpStatus: 409 })
+    );
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
+
+    await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+    expect(screen.queryByText(/xung đột/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(listSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('reconciles 409 CONFLICT on language profile creation by transitioning to reactivation UI when archived profile is found (TEST-LANG-05)', async () => {
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    const listSpy = vi.spyOn(api, 'listMyLanguageProfiles')
+      .mockResolvedValueOnce({ data: [], meta: mockApiResponses.languageProfile.meta } as LanguageProfilesResponseDto)
+      .mockResolvedValueOnce({
+        data: [{ ...mockApiResponses.languageProfile.data, status: 'archived', etag: '"archived-etag-1"' }],
+        meta: mockApiResponses.languageProfile.meta,
+      } as LanguageProfilesResponseDto);
+
+    vi.spyOn(api, 'createMyLanguageProfile').mockRejectedValue(
+      new LinguaApiError({ code: 'CONFLICT', httpStatus: 409 })
+    );
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
+
+    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đã lưu trữ/i)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Khôi phục hồ sơ tiếng Anh/i })).toBeEnabled();
+    expect(listSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails closed with fatal error banner on 409 IDEMPOTENCY_KEY_REUSED without silent reconciliation (TEST-LANG-06)', async () => {
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    const listSpy = vi.spyOn(api, 'listMyLanguageProfiles')
+      .mockResolvedValueOnce({ data: [], meta: mockApiResponses.languageProfile.meta } as LanguageProfilesResponseDto);
+
+    vi.spyOn(api, 'createMyLanguageProfile').mockRejectedValue(
+      new LinguaApiError({ code: 'IDEMPOTENCY_KEY_REUSED', httpStatus: 409 })
+    );
+
+    render(
+      <AuthProvider customClient={supabaseClient(session)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
+
+    await waitFor(() => expect(screen.getByText(/Yêu cầu này đã được dùng cho một thao tác khác/i)).toBeInTheDocument());
+    expect(listSpy).toHaveBeenCalledTimes(1);
   });
 });
