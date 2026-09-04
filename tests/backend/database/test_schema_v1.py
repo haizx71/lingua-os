@@ -19,6 +19,7 @@ EXPECTED_TABLES = {
     "assessment_results",
     "competence_parameter_sets",
     "concept_competence_policies",
+    "concept_save_intents",
     "exposure_events",
     "assessment_templates",
     "concept_relations",
@@ -70,6 +71,7 @@ USER_OWNED_TABLES = {
     "assessment_attempts",
     "assessment_responses",
     "assessment_results",
+    "concept_save_intents",
     "exposure_events",
     "fsrs_states",
     "learner_profiles",
@@ -190,11 +192,12 @@ def test_empty_database_migration_is_reproducible_and_reversible(
             "0006",
             "0007",
             "0008",
+            "0009",
         ]
         assert migrate_up(isolated_url, migrations_dir) == []
 
-        assert migrate_down(isolated_url, migrations_dir, steps=1) == ["0008"]
-        assert migrate_up(isolated_url, migrations_dir) == ["0008"]
+        assert migrate_down(isolated_url, migrations_dir, steps=1) == ["0009"]
+        assert migrate_up(isolated_url, migrations_dir) == ["0009"]
 
         copied_migrations = tmp_path / "migrations"
         shutil.copytree(migrations_dir, copied_migrations)

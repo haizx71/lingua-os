@@ -539,6 +539,9 @@ def test_0006_rollback_refuses_generated_today_plans(
 
     assert migrate_down(
         isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
+    ) == ["0009"]
+    assert migrate_down(
+        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
     ) == ["0008"]
     assert migrate_down(
         isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1

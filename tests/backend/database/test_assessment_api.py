@@ -862,6 +862,7 @@ def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
     PostgresAssessmentStore(seed.database_url).start_or_resume(
         seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
     )
+    assert migrate_down(seed.database_url, MIGRATIONS, steps=1) == ["0009"]
     with pytest.raises(psycopg.errors.RaiseException, match="assessment_attempt_items"):
         migrate_down(seed.database_url, MIGRATIONS, steps=1)
 
@@ -890,10 +891,11 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
 ) -> None:
     partial = tmp_path / "migrations"
     shutil.copytree(MIGRATIONS, partial)
-    up_0008 = next(partial.glob("0008_*.up.sql"))
-    down_0008 = next(partial.glob("0008_*.down.sql"))
-    up_0008.unlink()
-    down_0008.unlink()
+    up_0008_name = next(partial.glob("0008_*.up.sql")).name
+    down_0008_name = next(partial.glob("0008_*.down.sql")).name
+    for version in ("0008", "0009"):
+        for path in partial.glob(f"{version}_*.sql"):
+            path.unlink()
 
     with _isolated_database(postgres_url) as database_url:
         assert migrate_up(database_url, partial) == [
@@ -945,8 +947,8 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
                 (source_record_id,),
             )
 
-        shutil.copy2(MIGRATIONS / up_0008.name, partial)
-        shutil.copy2(MIGRATIONS / down_0008.name, partial)
+        shutil.copy2(MIGRATIONS / up_0008_name, partial)
+        shutil.copy2(MIGRATIONS / down_0008_name, partial)
         with pytest.raises(
             psycopg.errors.RaiseException, match="explicit native-language backfill"
         ):
