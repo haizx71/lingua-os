@@ -271,6 +271,7 @@ class DerivedConceptProjection:
     aggregate_confidence: Decimal
     status: ConceptStatus
     highest_achievement_status: ConceptStatus | None
+    has_learning_intent: bool = False
 
 
 @dataclass(frozen=True)

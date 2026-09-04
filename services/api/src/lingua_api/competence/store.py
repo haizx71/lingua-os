@@ -789,12 +789,13 @@ class PostgresCompetenceStore:
                      production_positive_mass, production_negative_mass,
                      production_confidence, production_evidence_count,
                      production_last_evidence_at, recent_competence_outcomes,
+                     has_learning_intent,
                      has_projectable_evidence, highest_achievement_status,
                      competence_parameter_set_id, competence_parameter_version,
                      created_at, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, %s,
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s)
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     actor.id,
@@ -826,6 +827,7 @@ class PostgresCompetenceStore:
                     projection.production.evidence_count,
                     projection.production.last_evidence_at,
                     Jsonb(recent),
+                    derived.has_learning_intent,
                     any(
                         projection.dimension(dimension).evidence_count > 0
                         for dimension in CompetenceDimension

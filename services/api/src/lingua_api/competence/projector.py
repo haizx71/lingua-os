@@ -137,6 +137,7 @@ def derive_concept(
         aggregate_confidence=aggregate_confidence,
         status=status,
         highest_achievement_status=highest,
+        has_learning_intent=history.has_learning_intent,
     )
 
 
