@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Card,
   Button,
@@ -71,6 +71,15 @@ export function SettingsView({
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   const handleSave = () => {
     const updated: UserSettingsData = {
@@ -84,13 +93,19 @@ export function SettingsView({
       onSaveSettings(updated);
     }
     setSavedNotification('Đã lưu tùy chọn cục bộ. Các mục máy chủ chưa được đồng bộ.');
-    setTimeout(() => setSavedNotification(null), 3000);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setSavedNotification(null);
+      saveTimerRef.current = null;
+    }, 3000);
   };
 
   const handleRetry = () => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     setCurrentState('loading');
-    setTimeout(() => {
+    retryTimerRef.current = setTimeout(() => {
       setCurrentState('success');
+      retryTimerRef.current = null;
     }, 400);
   };
 

@@ -34,6 +34,8 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentPathname = '/today';
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/') as unknown as Location;
   });
 
   afterEach(() => {
@@ -96,6 +98,8 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
 
   it('TEST-READY-03: ready learner without estimate re-entering /onboarding is redirected to /today', async () => {
     currentPathname = '/onboarding';
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding') as unknown as Location;
     const api = new MockApiClient();
     vi.spyOn(api, 'getMe').mockResolvedValue({
       ...mockApiResponses.me,
