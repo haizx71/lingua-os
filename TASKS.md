@@ -362,15 +362,14 @@ OpenAPI or frontend application behavior change. See
 
 ### TASK-017 — Live Auth + Onboarding Integration v1
 Owner: CODEX (temporary integration execution; frontend foundation remains Gemini-owned)
-Status: DOING
+Status: READY_FOR_REVIEW
 Dependencies: TASK-004, TASK-005, TASK-006C.2, TASK-006E, TASK-016, TASK-017A
 
 Connect Supabase email/password authentication, the shared HttpApiClient, `/v1/me`
 bootstrap, explicit profile/timezone confirmation, vi→en language-profile creation,
 and optional Starting Level start/resume/answer. End at `/today`; Today, Review,
 Reader, Brain, Progress, Library and Dictionary remain mock-driven.
-*Note: Controlled hardening in progress (Slices A–D for findings C-1..C-6). Child ETag
-transport dependency resolved by TASK-017A.*
+*Completed controlled hardening across all four slices (A: actor runtime isolation & actor-scoped pointer C-1/C-2; B: readiness predicate & route gating C-3/C-4; C: language profile 409 conflict reconciliation C-5; D: assessment stimulus preservation C-6). Child ETag transport dependency resolved by verified TASK-017A. Implementation complete; ready for independent review.*
 
 ### TASK-017A — Language Profile child ETag transport correction
 Owner: CODEX

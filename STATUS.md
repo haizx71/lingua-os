@@ -1,10 +1,17 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017 Controlled Hardening (Slices A–D); TASK-017A verified and closed
+Phase: TASK-017 Controlled Hardening Complete — Ready for Independent Review; TASK-017A verified and closed
 
 ## Completed
 
+- `TASK-017`: Live Auth + Onboarding Integration Hardening (Findings C-1 through C-6)
+  - C-1: Assessment pointer strictly actor-scoped in local storage (`lingua:starting-level:active-assessment:${userId}`); foreign pointers completely isolated.
+  - C-2: `HttpApiClient` actor generation tracking (`setActor`), flushing cached ETags on actor switch and rejecting stale in-flight responses with `LinguaActorAbortedError` (`code: 'ABORTED'`).
+  - C-3: Unified readiness predicate (`useProductReadiness`); unassessed learners with confirmed timezone and active profile are authoritatively ready and route to `/today` without assessment entrapment; explicit re-entry gated on `mode=assessment`.
+  - C-4: `AppRouteBoundary` deterministic route gating truth table preventing unready data-leak loops and rendering accessible loading state during bootstrap.
+  - C-5: Language profile 409 `CONFLICT` reconciliation via collection discovery (`listMyLanguageProfiles`), smoothly adopting active profiles or presenting reactivation UI for archived profiles with child ETags; fails closed on `IDEMPOTENCY_KEY_REUSED`.
+  - C-6: Stimulus preservation (`textSnippet` + `audioUrl`) through adapter view models and accessible audio player with playback reset on question switch, visible focus, keyboard controls, and non-blocking error handling.
 - `TASK-017A`: Language Profile child ETag transport correction
   - Shared `LanguageProfile` response schema now provides required, read-only opaque `etag: string` across collection, nested `/me`, create, and update representations.
   - FastAPI Profile route mappers project `language_profile_etag` and create replay projects the original child token from the historical snapshot without schema migrations.
@@ -206,8 +213,7 @@ Phase: TASK-017 Controlled Hardening (Slices A–D); TASK-017A verified and clos
 
 ## In progress
 
-- `TASK-017` implementation is complete for the authorized new-user path; final gates pass. The archived-profile
-  reactivation contract gap remains explicitly blocked and must be resolved before claiming the whole task DONE.
+- None (TASK-017 Controlled Hardening implementation complete, pending independent review)
 
 ## Blockers
 
@@ -215,10 +221,6 @@ Phase: TASK-017 Controlled Hardening (Slices A–D); TASK-017A verified and clos
 - `TASK-009` and `TASK-011` have satisfied dependencies but remain manually blocked until explicit
   Gemini/frontend authorization. TASK-012 satisfies TASK-013 and the Brain portion of TASK-014,
   but TASK-014 is not the recommended next task. TASK-015 retains its stated upstream dependency.
-- TASK-017 has explicit authorization and is executing as a bounded Codex integration. The frozen
-  Profile contract currently does not expose a child Language Profile ETag on `GET /v1/me/languages`,
-  so safe archived-profile reactivation cannot be completed without weakening `If-Match`; no duplicate
-  profile is created and the gap is documented in `reviews/TASK-017-auth-onboarding-live-integration-v1.md`.
 
 ## Verification Status
 
