@@ -2,40 +2,144 @@
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { InlineAlert, LoadingState } from '@lingua/ui';
+import { Button, InlineAlert, LoadingState } from '@lingua/ui';
 import { AppShell } from '../navigation/AppShell';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useProductReadiness } from '../../hooks/useProductReadiness';
 
-const publicRoutes = new Set(['/','/auth']);
+const publicRoutes = new Set(['/', '/auth']);
 
 /**
  * Keeps the public auth entry separate from authenticated product surfaces.
- * The boundary deliberately redirects only after AuthProvider has resolved the
- * session, preventing auth/onboarding redirect loops during SSR hydration.
+ * Enforces authoritative product readiness before allowing access to product routes.
+ *
+ * Route gating truth table:
+ * - unauthenticated + protected route -> /auth
+ * - authenticated + unready + protected route (non-/onboarding) -> /onboarding
+ * - authenticated + ready + /auth -> /today
+ * - authenticated + ready + /onboarding (without explicit ?mode=assessment) -> /today
+ * - bootstrap error -> render error with retry; NEVER redirect to /onboarding (avoids loop)
  */
-export function AppRouteBoundary({ children }: { readonly children: React.ReactNode }) {
-  const pathname = usePathname() ?? '/';
-  const router = useRouter();
+export interface AppRouteBoundaryProps {
+  readonly children: React.ReactNode;
+  readonly router?: { replace: (url: string) => void; push?: (url: string) => void };
+  readonly pathname?: string;
+}
+
+export function AppRouteBoundary({
+  children,
+  router: customRouter,
+  pathname: customPathname,
+}: AppRouteBoundaryProps) {
+  let router = customRouter;
+  if (!router) {
+    try {
+      router = useRouter();
+    } catch {
+      // Invariant error outside Next.js App Router (e.g. isolated test environments)
+    }
+  }
+
+  let pathname = customPathname;
+  if (!pathname) {
+    try {
+      pathname = usePathname() ?? '/';
+    } catch {
+      pathname = '/';
+    }
+  }
+
+  const effectiveRouter = router ?? { replace: () => {}, push: () => {} };
+  const effectivePathname = pathname ?? '/';
   const { authState, isConfigured } = useAuth();
-  const isPublicRoute = publicRoutes.has(pathname);
+  const readiness = useProductReadiness();
+  const isPublicRoute = publicRoutes.has(effectivePathname);
+  const isOnboardingRoute = effectivePathname === '/onboarding';
 
   useEffect(() => {
     if (!isConfigured || authState === 'loading') return;
+
     if (authState === 'unauthenticated' && !isPublicRoute) {
-      router.replace('/auth');
+      effectiveRouter.replace('/auth');
       return;
     }
-    if (authState === 'authenticated' && pathname === '/auth') {
-      router.replace('/onboarding');
+
+    if (authState === 'authenticated') {
+      if (readiness.status === 'loading' || readiness.status === 'error') {
+        return;
+      }
+
+      if (readiness.status === 'not_ready') {
+        if (!isOnboardingRoute) {
+          effectiveRouter.replace('/onboarding');
+        }
+        return;
+      }
+
+      if (readiness.status === 'ready') {
+        if (effectivePathname === '/auth') {
+          effectiveRouter.replace('/today');
+          return;
+        }
+        if (isOnboardingRoute) {
+          const hasAssessmentIntent =
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('mode') === 'assessment';
+          if (!hasAssessmentIntent) {
+            effectiveRouter.replace('/today');
+          }
+        }
+      }
     }
-  }, [authState, isConfigured, isPublicRoute, pathname, router]);
+  }, [authState, effectivePathname, effectiveRouter, isConfigured, isOnboardingRoute, isPublicRoute, readiness.status]);
 
   if (!isPublicRoute && !isConfigured) {
-    return <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6"><InlineAlert variant="danger" title="Chưa cấu hình xác thực">Môi trường này chưa có cấu hình Supabase Auth để mở khu vực học tập.</InlineAlert></main>;
+    return (
+      <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">
+        <InlineAlert variant="danger" title="Chưa cấu hình xác thực">
+          Môi trường này chưa có cấu hình Supabase Auth để mở khu vực học tập.
+        </InlineAlert>
+      </main>
+    );
   }
 
   if (!isPublicRoute && authState !== 'authenticated') {
     return <LoadingState message="Đang kiểm tra phiên đăng nhập..." count={2} />;
+  }
+
+  if (authState === 'authenticated') {
+    if (effectivePathname === '/auth') {
+      return (
+        <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">
+          <LoadingState message="Đang chuyển hướng..." count={2} />
+        </main>
+      );
+    }
+
+    if (!isPublicRoute) {
+      if (readiness.status === 'loading') {
+        return <LoadingState message="Đang kiểm tra hồ sơ học tập..." count={2} />;
+      }
+
+      if (readiness.status === 'not_ready' && !isOnboardingRoute) {
+        return <LoadingState message="Đang chuyển hướng tới thiết lập lộ trình..." count={2} />;
+      }
+
+      if (readiness.status === 'error') {
+        return (
+          <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">
+            <div className="max-w-xl mx-auto space-y-4 pt-12">
+              <InlineAlert variant="danger" title="Không thể kết nối hồ sơ">
+                {readiness.error?.message || 'Không thể tải thông tin hồ sơ học tập. Vui lòng thử lại.'}
+              </InlineAlert>
+              <Button variant="outline" onClick={() => void readiness.refetch()}>
+                Thử lại
+              </Button>
+            </div>
+          </main>
+        );
+      }
+    }
   }
 
   if (isPublicRoute) return <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">{children}</main>;

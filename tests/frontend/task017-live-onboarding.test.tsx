@@ -85,7 +85,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     // A fresh transport has no cached header token; collection data is sufficient.
     const freshApi = new HttpApiClient({ authTokenProvider: async () => session.access_token, fetchFn });
     render(<AuthProvider customClient={supabaseClient(session)}><LiveOnboardingFlow apiClient={freshApi} navigate={navigate} /></AuthProvider>);
-    expect(await screen.findByRole('button', { name: 'Bỏ qua đánh giá' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Tới Today' })).toBeEnabled();
     expect(fetchFn.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
     expect(fetchFn.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(2);
   });
@@ -148,7 +148,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Khôi phục hồ sơ tiếng Anh' }));
     expect(await screen.findByText(/hãy kiểm tra lại rồi khôi phục/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Khôi phục hồ sơ tiếng Anh' })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: estimate ? 'Tới Today' : 'Bỏ qua đánh giá' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tới Today' }));
     expect(navigate).toHaveBeenCalledWith('/today');
     expect(fetchFn).toHaveBeenCalledTimes(5);
   });
@@ -271,7 +271,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Sẵn sàng bắt đầu/i)).toBeInTheDocument());
       expect(api.getStartingLevelAssessment).not.toHaveBeenCalled();
       expect(window.localStorage.getItem(`lingua:starting-level:active-assessment:${foreignUserId}`)).toBe('user-a-assessment');
     } finally {
@@ -280,6 +280,8 @@ describe('TASK-017 live auth and onboarding boundary', () => {
   });
 
   it('fails open gracefully when storage throws quota error (TEST-PTR-04)', async () => {
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding?mode=assessment') as unknown as Location;
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('Quota exceeded', 'QuotaExceededError');
     });
@@ -303,6 +305,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       expect(api.startStartingLevelAssessment).toHaveBeenCalled();
     } finally {
       setItemSpy.mockRestore();
+      window.location = new URL('http://localhost/') as unknown as Location;
     }
   });
 

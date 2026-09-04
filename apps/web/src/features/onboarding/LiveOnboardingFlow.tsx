@@ -131,8 +131,11 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         setStage('READY_FOR_TODAY');
       } else {
         const assessmentId = storedAssessmentId(userId);
+        const hasAssessmentIntent =
+          typeof window !== 'undefined' &&
+          new URLSearchParams(window.location.search).get('mode') === 'assessment';
         if (!assessmentId) {
-          setStage('ASSESSMENT_CHOICE');
+          setStage(hasAssessmentIntent ? 'ASSESSMENT_CHOICE' : 'READY_FOR_TODAY');
         } else {
           try {
             const resumed = mapOnboardingAssessmentToViewModel((await api.getStartingLevelAssessment(assessmentId)).data);
@@ -147,7 +150,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
             const mapped = mapApiErrorToUi(cause);
             if (mapped.code === 'NOT_FOUND') {
               forgetAssessmentId(userId);
-              setStage('ASSESSMENT_CHOICE');
+              setStage(hasAssessmentIntent ? 'ASSESSMENT_CHOICE' : 'READY_FOR_TODAY');
             } else {
               throw cause;
             }
