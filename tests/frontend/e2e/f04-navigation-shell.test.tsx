@@ -1,0 +1,84 @@
+import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import { screen } from '@testing-library/react';
+import { DesktopSidebar } from '@/components/navigation/DesktopSidebar';
+import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
+import { TabletRail } from '@/components/navigation/TabletRail';
+import { AppShell } from '@/components/navigation/AppShell';
+import { renderWithProviders } from '../harness/test-render';
+
+vi.mock('next/link', () => ({
+  default: ({ children, href, 'aria-current': ariaCurrent, ...rest }: any) => (
+    <a href={href} aria-current={ariaCurrent} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+describe('Tier 1: Feature 04 - App Shell & Responsive Navigation', () => {
+  it('test_desktop_sidebar_renders_exactly_5_primary_mvp_routes', () => {
+    renderWithProviders(<DesktopSidebar currentPath="/today" />);
+
+    const todayLink = screen.getByRole('link', { name: /Hôm nay/i });
+    const readLink = screen.getByRole('link', { name: /Đọc/i });
+    const reviewLink = screen.getByRole('link', { name: /Ôn tập/i });
+    const brainLink = screen.getByRole('link', { name: /Brain/i });
+    const progressLink = screen.getByRole('link', { name: /Tiến độ/i });
+
+    expect(todayLink).toHaveAttribute('href', '/today');
+    expect(readLink).toHaveAttribute('href', '/read');
+    expect(reviewLink).toHaveAttribute('href', '/review');
+    expect(brainLink).toHaveAttribute('href', '/brain');
+    expect(progressLink).toHaveAttribute('href', '/progress');
+  });
+
+  it('test_desktop_sidebar_renders_secondary_routes', () => {
+    renderWithProviders(<DesktopSidebar currentPath="/library" />);
+
+    expect(screen.getByRole('link', { name: /Thư viện/i })).toHaveAttribute('href', '/library');
+    expect(screen.getByRole('link', { name: /Từ điển/i })).toHaveAttribute('href', '/dictionary');
+    expect(screen.getByRole('link', { name: /Cài đặt/i })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: /Xem hồ sơ người học/i })).toHaveAttribute('href', '/profile');
+  });
+
+  it('test_active_route_is_marked_with_aria_current_page', () => {
+    renderWithProviders(<DesktopSidebar currentPath="/review" />);
+    const reviewLink = screen.getByRole('link', { name: /Ôn tập/i });
+    expect(reviewLink).toHaveAttribute('aria-current', 'page');
+
+    const todayLink = screen.getByRole('link', { name: /Hôm nay/i });
+    expect(todayLink).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  it('test_mobile_bottom_nav_renders_all_5_primary_tabs_with_accessible_labels', () => {
+    renderWithProviders(<MobileBottomNav />);
+    const navElement = screen.getByRole('navigation', { name: /Điều hướng chính di động/i });
+    expect(navElement).toBeInTheDocument();
+
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(5);
+    const hrefs = links.map((l) => l.getAttribute('href'));
+    expect(hrefs).toEqual(['/today', '/read', '/review', '/brain', '/progress']);
+  });
+
+  it('test_app_shell_focus_mode_hides_navigation_bars', () => {
+    renderWithProviders(
+      <AppShell focusMode={true}>
+        <div data-testid="focus-view">Chế độ tập trung học</div>
+      </AppShell>
+    );
+
+    expect(screen.getByTestId('focus-view')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Điều hướng chính di động')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Điều hướng màn hình lớn')).not.toBeInTheDocument();
+  });
+
+  it('test_tablet_rail_renders_compact_icon_navigation', () => {
+    renderWithProviders(<TabletRail currentPath="/brain" />);
+    const railNav = screen.getByRole('complementary', { name: /Điều hướng thanh bên thu gọn/i });
+    expect(railNav).toBeInTheDocument();
+
+    const brainLink = screen.getByRole('link', { name: /Brain/i });
+    expect(brainLink).toHaveAttribute('aria-current', 'page');
+  });
+});

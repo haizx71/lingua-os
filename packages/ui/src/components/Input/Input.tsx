@@ -1,0 +1,158 @@
+import React, { useId } from 'react';
+import { X, AlertCircle } from 'lucide-react';
+import { cn } from '../../utils';
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  helperText?: string;
+  error?: string;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  clearable?: boolean;
+  onClear?: () => void;
+  fullWidth?: boolean;
+  inputSize?: 'sm' | 'md' | 'lg';
+}
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      className,
+      id: customId,
+      label,
+      helperText,
+      error,
+      leftIcon,
+      rightIcon,
+      clearable = false,
+      onClear,
+      fullWidth = false,
+      inputSize = 'md',
+      disabled,
+      value,
+      onChange,
+      ...props
+    },
+    ref
+  ) => {
+    const generatedId = useId();
+    const inputId = customId || `lingua-input-${generatedId}`;
+    const helperId = helperText ? `${inputId}-helper` : undefined;
+    const errorId = error ? `${inputId}-error` : undefined;
+    const describedBy = [errorId, helperId].filter(Boolean).join(' ') || undefined;
+
+    const sizeStyles = {
+      sm: 'h-8 px-2.5 text-xs rounded-[var(--radius-sm,0.375rem)]',
+      md: 'h-10 px-3.5 text-sm rounded-[var(--radius-md,0.625rem)] min-h-[44px]',
+      lg: 'h-12 px-4 text-base rounded-[var(--radius-md,0.625rem)] min-h-[48px]',
+    };
+
+    const iconSizeClasses = {
+      sm: 'w-3.5 h-3.5',
+      md: 'w-4 h-4',
+      lg: 'w-5 h-5',
+    };
+
+    const hasValue = value !== undefined && value !== '' && value !== null;
+
+    return (
+      <div className={cn('flex flex-col gap-1.5', fullWidth ? 'w-full' : 'inline-flex')}>
+        {label && (
+          <label
+            htmlFor={inputId}
+            className="text-xs font-semibold text-[var(--text-primary,#0F172A)] select-none flex items-center gap-1"
+          >
+            {label}
+            {props.required && <span className="text-[var(--status-danger,#E11D48)]" aria-hidden="true">*</span>}
+          </label>
+        )}
+
+        <div className="relative flex items-center w-full">
+          {leftIcon && (
+            <div
+              className={cn(
+                'absolute left-3 flex items-center justify-center text-[var(--text-muted,#94A3B8)] pointer-events-none',
+                iconSizeClasses[inputSize]
+              )}
+              aria-hidden="true"
+            >
+              {leftIcon}
+            </div>
+          )}
+
+          <input
+            ref={ref}
+            id={inputId}
+            disabled={disabled}
+            value={value}
+            onChange={onChange}
+            aria-invalid={!!error}
+            aria-describedby={describedBy}
+            className={cn(
+              'w-full bg-[var(--surface,#FFFFFF)] border text-[var(--text-primary,#0F172A)] placeholder:text-[var(--text-muted,#94A3B8)] transition-all font-sans',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring,#6366F1)] focus-visible:border-transparent',
+              'disabled:bg-[var(--surface-subtle,#F1F5F9)] disabled:text-[var(--text-muted,#94A3B8)] disabled:cursor-not-allowed disabled:border-[var(--border-subtle,#E2E8F0)]',
+              error
+                ? 'border-[var(--status-danger,#E11D48)] focus-visible:ring-[var(--status-danger,#E11D48)]'
+                : 'border-[var(--border-default,#CBD5E1)] hover:border-[var(--border-strong,#94A3B8)]',
+              leftIcon && (inputSize === 'sm' ? 'pl-8' : inputSize === 'lg' ? 'pl-11' : 'pl-10'),
+              (rightIcon || (clearable && hasValue) || error) &&
+                (inputSize === 'sm' ? 'pr-8' : inputSize === 'lg' ? 'pr-11' : 'pr-10'),
+              sizeStyles[inputSize],
+              className
+            )}
+            {...props}
+          />
+
+          <div className="absolute right-3 flex items-center gap-1.5 text-[var(--text-muted,#94A3B8)]">
+            {clearable && hasValue && !disabled && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onClear?.();
+                  if (onChange) {
+                    const syntheticEvent = {
+                      target: { value: '' },
+                      currentTarget: { value: '' },
+                    } as React.ChangeEvent<HTMLInputElement>;
+                    onChange(syntheticEvent);
+                  }
+                }}
+                aria-label="Xóa nội dung nhập"
+                className="p-0.5 rounded-full hover:bg-[var(--surface-subtle,#F1F5F9)] text-[var(--text-muted,#94A3B8)] hover:text-[var(--text-primary,#0F172A)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring,#6366F1)]"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+            )}
+
+            {error && (
+              <AlertCircle
+                className={cn('text-[var(--status-danger,#E11D48)]', iconSizeClasses[inputSize])}
+                aria-hidden="true"
+              />
+            )}
+
+            {!error && rightIcon}
+          </div>
+        </div>
+
+        {error && (
+          <p id={errorId} role="alert" className="text-xs text-[var(--status-danger,#E11D48)] font-medium">
+            {error}
+          </p>
+        )}
+
+        {!error && helperText && (
+          <p id={helperId} className="text-xs text-[var(--text-secondary,#475569)]">
+            {helperText}
+          </p>
+        )}
+      </div>
+    );
+  }
+);
+
+Input.displayName = 'Input';
+
+export const TextField = Input;

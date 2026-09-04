@@ -1,0 +1,68 @@
+import React from 'react';
+import { Loader2 } from 'lucide-react';
+import { cn } from '../../utils';
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
+  isLoading?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      variant = 'primary',
+      size = 'md',
+      isLoading = false,
+      leftIcon,
+      rightIcon,
+      disabled,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const baseStyles =
+      'inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none';
+
+    const variants = {
+      primary:
+        'bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)] focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+      secondary:
+        'bg-[var(--action-secondary)] text-[var(--action-secondary-text)] hover:bg-[var(--action-secondary-hover)] focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+      outline:
+        'border border-[var(--border-default)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+      ghost:
+        'bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] focus-visible:ring-[var(--focus-ring)]',
+      danger:
+        'bg-[var(--status-danger)] text-white hover:opacity-90 focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+    };
+
+    const sizes = {
+      sm: 'h-8 px-3 text-xs rounded-[var(--radius-sm)] gap-1.5 min-h-[32px]',
+      md: 'h-10 px-4 text-sm rounded-[var(--radius-md)] gap-2 min-h-[44px]',
+      lg: 'h-12 px-6 text-base rounded-[var(--radius-md)] gap-2.5 min-h-[48px]',
+      icon: 'h-10 w-10 p-0 rounded-[var(--radius-md)] min-h-[44px] min-w-[44px]',
+    };
+
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || isLoading}
+        aria-busy={isLoading}
+        className={cn(baseStyles, variants[variant], sizes[size], className)}
+        {...props}
+      >
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+        {!isLoading && leftIcon}
+        <span>{children}</span>
+        {!isLoading && rightIcon}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';

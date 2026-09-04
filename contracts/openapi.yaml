@@ -1,0 +1,2237 @@
+openapi: 3.2.0
+info:
+  title: LINGUA OS API
+  version: 1.0.0
+  summary: Executable MVP product contract for English learning by Vietnamese learners.
+  description: |
+    LINGUA OS exposes product-oriented DTOs for the MVP learning loop. Browser clients obtain a
+    Supabase Auth JWT and send it to FastAPI. FastAPI validates the authenticated actor and is the
+    only product-data gateway to PostgreSQL/Supabase; browser clients never read or write product
+    tables directly. Server-side ownership checks are mandatory even where PostgreSQL RLS provides
+    defence in depth. The JWT subject maps to the same UUID identity boundary used by
+    `auth.users.id` and `public.users.id`, but storage rows and ownership keys are not public DTOs.
+
+    All IDs are UUIDs. All timestamps are RFC 3339 UTC instants. State-changing retries use either
+    an `Idempotency-Key` or an intrinsically idempotent PUT/DELETE. Profile edits use ETag and
+    `If-Match`. The public contract exposes one memory snapshot per learner/concept; recognition,
+    listening, and production competence remain separate projections, never independent schedules.
+
+    `GET /v1/me` is the only application-identity bootstrap operation. No operation other than
+    GET /v1/me creates `public.users` or `learner_profiles`; an authenticated actor without that
+    application identity receives 404 NOT_FOUND from downstream product operations and must call
+    `/v1/me`. Bootstrap never creates a Language Profile or learning state.
+  license:
+    name: LINGUA OS private API contract
+    identifier: LicenseRef-LINGUA-OS-Private
+servers:
+  - url: /api
+    description: Same-origin FastAPI gateway
+security:
+  - supabaseBearer: []
+tags:
+  - name: Profile
+    description: Authenticated learner identity, bootstrap, and persisted language preferences.
+  - name: Today
+    description: Backend-owned daily plan and activity completion.
+  - name: Review
+    description: One primary memory queue and retry-safe review evidence.
+  - name: Concepts
+    description: Dictionary search and lexical concept detail.
+  - name: Reader
+    description: Reader analysis and sentence-mining product actions.
+  - name: Content
+    description: Published, provenance-gated learner content.
+  - name: Library
+    description: Authenticated learner saved content, sentences, and concepts.
+  - name: Assessment
+    description: Evidence-based Starting Level Estimate sessions.
+  - name: Brain
+    description: Relational Language Brain summary, list, and concept projections.
+  - name: Progress
+    description: Bounded evidence-based learning progress summaries.
+paths:
+  /v1/me:
+    get:
+      tags: [Profile]
+      operationId: getMe
+      summary: Get the authenticated learner bootstrap profile
+      description: |
+        This is the only bootstrap-capable operation. For a verified JWT whose application identity
+        does not yet exist, FastAPI atomically creates only `public.users` and `learner_profiles` in
+        one transaction and returns the owned profile. PostgreSQL uniqueness makes concurrent first
+        requests converge on one identity. Bootstrap is actor-bound and idempotent and does not
+        create a Language Profile, Starting Level state, evidence, Review state, Today plans,
+        Library state, or Reader progress. Existing identities are read without bootstrap mutation.
+      responses:
+        '200':
+          description: Profile bootstrap. ETag identifies this editable representation.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Profile]
+      operationId: updateMe
+      summary: Update persisted learner profile settings
+      description: |
+        Updates only server-persisted profile fields. Theme and reduced-motion remain client
+        preferences. A missing, malformed, weak, wildcard, multiple, or stale If-Match fails with
+        412 PRECONDITION_FAILED. Missing application identity returns 404.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeRequest'
+      responses:
+        '200':
+          description: Updated profile.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/me/languages:
+    get:
+      tags: [Profile]
+      operationId: listMyLanguageProfiles
+      summary: List the authenticated learner's bounded language profiles
+      description: |
+        Returns only profiles owned by the bootstrapped actor, ordered by creation time and ID.
+        This read never bootstraps application identity or creates a Language Profile. Missing
+        application identity returns 404 NOT_FOUND.
+      responses:
+        '200':
+          description: Language profiles. The MVP activates English learning with Vietnamese support.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageProfilesResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Profile]
+      operationId: createMyLanguageProfile
+      summary: Create an owned learning-language profile
+      description: |
+        Requires an existing application identity and valid IANA timezone. MVP creation accepts
+        exactly native `vi` to target `en`, an approved LearningGoal, and dailyMinutes 5..180.
+        Starting Level is optional and not required for learning readiness. The Idempotency-Key is
+        scoped to the actor and canonical logical request. Same key and request performs an exact
+        replay of status 201, the original data snapshot, and original ETag with fresh response
+        metadata; key reuse with a different request returns IDEMPOTENCY_KEY_REUSED. A different key
+        for the actor's lifetime English profile returns CONFLICT, including after archive.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLanguageProfileRequest'
+      responses:
+        '201':
+          description: Created language profile.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageProfileResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/me/languages/{languageProfileId}:
+    parameters:
+      - $ref: '#/components/parameters/LanguageProfileId'
+    patch:
+      tags: [Profile]
+      operationId: updateMyLanguageProfile
+      summary: Update owned learning goals and persisted settings
+      description: |
+        Updates one existing owned Language Profile. Missing and not owned IDs return the same 404
+        before ETag comparison. A missing, malformed, weak, wildcard, multiple, or stale If-Match
+        fails with 412 PRECONDITION_FAILED. Archive preserves all learning history; reactivation
+        updates the same lifetime row instead of creating another target-language profile.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLanguageProfileRequest'
+      responses:
+        '200':
+          description: Updated language profile.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageProfileResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/today:
+    get:
+      tags: [Today]
+      operationId: getTodayPlan
+      summary: Get the backend-owned plan for a local learner day
+      description: |
+        Returns selected activities and human-readable reasons, never recommendation formulas or
+        score internals. Missing application identity or active Language Profile returns 404. An
+        owned learner profile without a valid IANA timezone returns 409 INVALID_STATE_TRANSITION
+        with no plan write; Today has no UTC, server-timezone, geographic, or raw-offset fallback.
+      parameters:
+        - $ref: '#/components/parameters/LanguageProfileIdQuery'
+        - name: date
+          in: query
+          description: Learner-local date. Defaults to today in the learner profile time zone.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Existing or generated Today plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayPlanResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /v1/today/{planId}/activities/{activityId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+      - $ref: '#/components/parameters/ActivityId'
+    post:
+      tags: [Today]
+      operationId: completeTodayActivity
+      summary: Complete one owned Today activity exactly once
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTodayActivityRequest'
+      responses:
+        '200':
+          description: Updated plan and completed activity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayCompletionResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/review/queue:
+    get:
+      tags: [Review]
+      operationId: listReviewQueue
+      summary: List one cursor-paginated due queue for the learner
+      description: Each concept has one primary memory item. Exercise modes are presentation variants, not separate schedules.
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/LanguageProfileIdQuery'
+      responses:
+        '200':
+          description: Review items ordered by the future Memory Engine.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewQueueResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/review/{reviewItemId}/answer:
+    parameters:
+      - $ref: '#/components/parameters/ReviewItemId'
+    post:
+      tags: [Review]
+      operationId: answerReviewItem
+      summary: Record evidence and rate one primary memory item
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewAnswerRequest'
+      responses:
+        '200':
+          description: Updated single memory snapshot and separate competence projections.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewAnswerResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/concepts/{conceptId}:
+    parameters:
+      - $ref: '#/components/parameters/ConceptId'
+    get:
+      tags: [Concepts]
+      operationId: getConcept
+      summary: Get lexical detail and the authenticated learner projection
+      responses:
+        '200':
+          description: Concept detail with optional attribution when the source or license requires it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConceptResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/dictionary/search:
+    get:
+      tags: [Concepts]
+      operationId: searchDictionary
+      summary: Search published lexical concepts
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+        - name: languageCode
+          in: query
+          schema:
+            $ref: '#/components/schemas/LanguageCode'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Matching concept summaries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DictionarySearchResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/reader/analyze:
+    post:
+      tags: [Reader]
+      operationId: analyzeReaderText
+      summary: Analyze bounded learner-provided English text
+      description: Returns concept annotations without exposing provider or analysis algorithm internals.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReaderAnalyzeRequest'
+      responses:
+        '200':
+          description: Transient Reader analysis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReaderAnalyzeResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /v1/reader/exposures:
+    post:
+      tags: [Reader]
+      operationId: recordReaderExposure
+      summary: Record one deliberate passive Reader interaction
+      description: |
+        Records one eligible logical Reader interaction; opening content, a rerender, or merely
+        entering the viewport is not exposure. A read interaction completes when the segment's
+        beginning has entered the visible document and its end is later crossed in the same visible
+        reading interaction. A listen interaction completes at natural media end or after at least
+        90 percent playback with at least 80 percent of the media range traversed; seeking directly
+        to the end is ineligible. A lookup interaction begins when the learner deliberately opens
+        dictionary detail for the exact catalog sentence span and ends when that inspector closes
+        or changes context.
+
+        The server validates the owned language profile, published English content hierarchy and
+        exact authoritative occurrences. Read/listen fan out to one passive canonical event per
+        distinct concept linked to the segment; lookup resolves exactly one concept. The client
+        never supplies concept IDs or learning projections. Repeated UI mechanics within the same
+        logical interaction reuse the same Idempotency-Key and do not count again. Refresh,
+        reconnect and timeout retries reuse that key; a deliberate later interaction uses a new
+        key.
+
+        The idempotency fingerprint contains the same actor, owned language profile, content,
+        segment, exposure type, optional sentence and offsets, and normalized occurredAt. The same
+        actor/key/fingerprint replays the exact stored response. The same key with a different
+        fingerprint returns 409 IDEMPOTENCY_KEY_REUSED. An in-flight duplicate returns 409 CONFLICT
+        and may be retried with the same key. No competence, mastery, confidence, FSRS state or
+        internal learning-event identity is returned.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReaderExposureRequest'
+      responses:
+        '200':
+          description: Exact accepted passive interaction result, including on completed replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReaderExposureResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/reader/progress/{contentId}:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    put:
+      tags: [Reader]
+      operationId: updateReaderProgress
+      summary: Update the owned segment-level Reader resume projection
+      description: |
+        Persists the currently opened segment separately from passive exposure. The first accepted
+        mutation sets startedAt and each new logical mutation sets lastOpenedAt. The server tracks a
+        monotonic furthest segment and derives progressPercent from its stable order; the furthest
+        segment never regresses when another device or an older segment is submitted. A backwards segment is a
+        valid reopening position and updates currentSegmentId only. An unknown segment or a segment
+        outside this published content item fails validation.
+
+        isCompleted=true is valid only when currentSegmentId is the final segment. First completion
+        fixes completedAt. Reopening completed content, including at an earlier segment, changes the
+        current position but preserves furthestSegmentId, isCompleted=true and completedAt. Progress
+        never emits exposure, competence, mastery or FSRS evidence.
+
+        The fingerprint contains the same actor, owned language profile, path contentId,
+        currentSegmentId and isCompleted. Same actor/key/fingerprint replays the exact stored result;
+        changed payload returns 409 IDEMPOTENCY_KEY_REUSED. An in-flight duplicate returns 409
+        CONFLICT and may be retried with the same key.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReaderProgressRequest'
+      responses:
+        '200':
+          description: Exact current Reader progress projection, including on completed replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingProgressResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/reader/save-sentence:
+    post:
+      tags: [Reader, Library]
+      operationId: saveReaderSentence
+      summary: Save one authoritative published catalog sentence
+      description: |
+        Saves only a persisted catalog sentence linked to published content in the actor's active
+        MVP language. Transient /reader/analyze sentence IDs, missing sentences, unpublished content
+        and content outside the actor's language boundary are not valid targets. The server resolves
+        catalog concept annotations; this mutation neither accepts concept IDs nor implicitly saves
+        concepts. Already saved is a successful idempotent result. Same actor/key/payload replays the
+        exact result; changed payload returns 409 IDEMPOTENCY_KEY_REUSED.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveSentenceRequest'
+      responses:
+        '200':
+          description: Saved sentence library item.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/content/recommended:
+    get:
+      tags: [Content]
+      operationId: listRecommendedContent
+      summary: List cursor-paginated content recommendations
+      description: |
+        Only published English content passing the complete dependency gate is learner-visible:
+        approved source records, allowed licenses, complete required attribution, normalization,
+        valid ordered segments and offsets, authoritative concept annotations, a curated A0-B1
+        level, current QA metrics and reviewed state. Restricted/unknown/prohibited licenses or
+        incomplete dependency provenance are excluded.
+      parameters:
+        - $ref: '#/components/parameters/LanguageProfileIdQuery'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Published content summaries with product-level fit reasons.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentRecommendationsResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/content/{contentId}:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    get:
+      tags: [Content, Reader]
+      operationId: getContent
+      summary: Get one published content item for Reader
+      description: |
+        Rejects unpublished content and enforces the complete dependency publication gate before
+        learner delivery. Every visible content, segment, sentence, translation, annotation,
+        lexical and audio dependency must have approved provenance, an allowed license and complete
+        required attribution. English language, normalization, segment integrity, offsets,
+        authoritative concept links, curated A0-B1 level, QA metrics and reviewed state are
+        required. Restricted/unknown/prohibited licenses are never learner-visible.
+      responses:
+        '200':
+          description: Reader-ready content. Attribution is present only when required by source or license.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/library/items:
+    get:
+      tags: [Library]
+      operationId: listLibraryItems
+      summary: List saved content, sentences, or concepts
+      parameters:
+        - name: itemType
+          in: query
+          schema:
+            $ref: '#/components/schemas/LibraryItemType'
+        - name: query
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated owned library items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryItemsResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/library/concepts/{conceptId}:
+    parameters:
+      - $ref: '#/components/parameters/ConceptId'
+    put:
+      tags: [Library]
+      operationId: saveConceptToLibrary
+      summary: Idempotently save a concept
+      responses:
+        '200':
+          description: Concept saved state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Library]
+      operationId: removeConceptFromLibrary
+      summary: Idempotently remove a saved concept
+      responses:
+        '200':
+          description: Concept removed state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/library/content/{contentId}:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    put:
+      tags: [Library]
+      operationId: saveContentToLibrary
+      summary: Idempotently save published content
+      responses:
+        '200':
+          description: Content saved state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Library]
+      operationId: removeContentFromLibrary
+      summary: Idempotently remove saved content
+      responses:
+        '200':
+          description: Content removed state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/library/sentences/{sentenceId}:
+    parameters:
+      - $ref: '#/components/parameters/SentenceId'
+    put:
+      tags: [Library]
+      operationId: saveSentenceToLibrary
+      summary: Idempotently save an existing sentence
+      responses:
+        '200':
+          description: Sentence saved state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Library]
+      operationId: removeSentenceFromLibrary
+      summary: Idempotently remove a saved sentence
+      responses:
+        '200':
+          description: Sentence removed state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryMutationResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/assessments:
+    post:
+      tags: [Assessment]
+      operationId: startStartingLevelAssessment
+      summary: Start or resume a bounded Starting Level Estimate
+      description: >-
+        Starts one new attempt in the in-progress state for an authenticated actor's owned, active vi-to-en
+        Language Profile (201), or returns the actor's existing in-progress or completed session
+        with no retake (200). At most one in_progress attempt may exist per learner and
+        Language Profile. An exact replay using the same Idempotency-Key returns the original
+        status and data snapshot; reuse of the key for a different logical command returns 409
+        IDEMPOTENCY_KEY_REUSED. A missing or non-owned Language Profile uses the same 404 response.
+        Paused or archived profiles reject mutation. Starting Level is optional, and failure to
+        start because the frozen question/audio bank is unavailable returns 503 rather than
+        silently changing the policy template.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAssessmentRequest'
+      responses:
+        '200':
+          description: Existing in-progress session resumed, or existing completed session returned; no retake is created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentSessionResponse'
+        '201':
+          description: New Starting Level Estimate attempt created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentSessionResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /v1/assessments/{assessmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    get:
+      tags: [Assessment]
+      operationId: getStartingLevelAssessment
+      summary: Resume owned assessment state or retrieve its estimate
+      description: >-
+        Read-only retrieval of an owned in-progress, completed, or abandoned assessment. It never
+        advances an attempt or creates learner state. A missing assessment and an assessment not
+        owned by the authenticated actor use the same 404 response. Historical assessment state
+        remains readable after the Language Profile is paused or archived.
+      responses:
+        '200':
+          description: Current session and optional completed estimate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentSessionResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/assessments/{assessmentId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    post:
+      tags: [Assessment]
+      operationId: submitStartingLevelResponse
+      summary: Submit one answer or deliberate skip
+      description: >-
+        Submits exactly one immutable response for the persisted current item. The request contains
+        either a selected option or skipped=true, never both; the server resolves correctness and
+        remains the sole authority for level and confidence. An exact Idempotency-Key replay
+        returns the original data snapshot without advancing twice. Reuse of a key for another
+        logical command returns 409 IDEMPOTENCY_KEY_REUSED. Answering a stale item, a completed or
+        abandoned attempt, or an attempt whose Language Profile is paused or archived returns 409
+        INVALID_STATE_TRANSITION. Missing and non-owned assessment IDs use the same 404 semantics.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAssessmentResponseRequest'
+      responses:
+        '200':
+          description: Next assessment state or completed evidence-based estimate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentSessionResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /v1/brain/summary:
+    get:
+      tags: [Brain]
+      operationId: getBrainSummary
+      summary: Get a bounded Language Brain summary
+      description: >-
+        Read-only relational projection for the authenticated learner. This GET does not mutate
+        learner state. When languageProfileId is supplied, a missing profile and a profile not
+        owned by the authenticated actor use the same 404 resource-not-found response.
+      parameters:
+        - $ref: '#/components/parameters/LanguageProfileIdQuery'
+      responses:
+        '200':
+          description: Counts, memory health, competence signals, and recent concepts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrainSummaryResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/brain/concepts:
+    get:
+      tags: [Brain]
+      operationId: listBrainConcepts
+      summary: List learner concepts for the MVP Brain list
+      description: >-
+        Read-only relational projection for list/filter UX, not a graph database or graph
+        visualization API. This GET does not mutate learner state. The default collection is
+        learner-anchored and never expands to the full catalog. Pagination uses an opaque,
+        server-controlled keyset cursor with deterministic canonical key then concept ID order;
+        the cursor does not expose raw internal state. When languageProfileId is supplied, a
+        missing profile and a profile not owned by the authenticated actor use the same 404
+        resource-not-found response.
+      parameters:
+        - $ref: '#/components/parameters/LanguageProfileIdQuery'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ConceptStatus'
+        - name: query
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated learner concept projections.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrainConceptListResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/brain/concepts/{conceptId}:
+    parameters:
+      - $ref: '#/components/parameters/ConceptId'
+    get:
+      tags: [Brain]
+      operationId: getBrainConcept
+      summary: Get one concept's memory, competence, and evidence projection
+      description: >-
+        Read-only bounded detail projection for the authenticated learner's active English
+        profile. This GET does not mutate learner state, including when it returns a synthetic
+        zero-evidence learner projection for an authorized catalog concept. Missing concepts and
+        unavailable owned-profile context use the 404 resource-not-found response without leaking
+        ownership existence.
+      responses:
+        '200':
+          description: Language Brain concept detail with a single memory snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrainConceptResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/progress/overview:
+    get:
+      tags: [Progress]
+      operationId: getProgressOverview
+      summary: Get evidence-based progress without XP-first metrics
+      parameters:
+        - $ref: '#/components/parameters/LanguageProfileIdQuery'
+        - name: window
+          in: query
+          schema:
+            type: string
+            enum: [week, month]
+            default: week
+      responses:
+        '200':
+          description: Bounded trends, weekly learning outcomes, memory health, and competence projections.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressOverviewResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    supabaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth access token. FastAPI validates `sub` and derives ownership server-side.
+
+  headers:
+    ETag:
+      description: Opaque strong resource version used by If-Match.
+      schema:
+        type: string
+        pattern: '^"[^"\\r\\n]+"$'
+    PrivateNoStore:
+      description: Actor-specific authenticated representation must not be stored by any cache.
+      schema:
+        type: string
+        const: private, no-store
+
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor returned by the previous page. Clients must not parse it.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 512
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID unique to one logical mutation and payload.
+      schema:
+        type: string
+        format: uuid
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag from the latest representation; stale edits fail with 412.
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 256
+    LanguageProfileId:
+      name: languageProfileId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    LanguageProfileIdQuery:
+      name: languageProfileId
+      in: query
+      description: Owned profile. Defaults to the active English profile in MVP.
+      schema: { type: string, format: uuid }
+    PlanId:
+      name: planId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ActivityId:
+      name: activityId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ReviewItemId:
+      name: reviewItemId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ConceptId:
+      name: conceptId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ContentId:
+      name: contentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SentenceId:
+      name: sentenceId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AssessmentId:
+      name: assessmentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Unauthenticated:
+      description: Missing, expired, or invalid bearer token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Authenticated actor is not allowed to access the resource.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Resource does not exist or is not visible to the actor.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Resource state or unique business key conflicts with the request.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    InvalidStateTransition:
+      description: The requested lifecycle transition is not allowed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    PreconditionFailed:
+      description: If-Match is missing or stale for this representation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ValidationError:
+      description: Request syntax or domain validation failed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: Request rate exceeded; Retry-After may be supplied.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ServiceUnavailable:
+      description: A required bounded service is temporarily unavailable.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    InternalError:
+      description: Unexpected server failure with no sensitive implementation detail.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    ErrorCode:
+      type: string
+      enum: [UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, PRECONDITION_FAILED, CONFLICT, INVALID_STATE_TRANSITION, IDEMPOTENCY_KEY_REUSED, VALIDATION_ERROR, RATE_LIMITED, SERVICE_UNAVAILABLE, INTERNAL_ERROR]
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, requestId]
+          properties:
+            code: { $ref: '#/components/schemas/ErrorCode' }
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+            requestId: { type: string, format: uuid }
+            details:
+              type: array
+              maxItems: 100
+              items:
+                $ref: '#/components/schemas/ValidationIssue'
+            retryAfterSeconds:
+              type: integer
+              minimum: 1
+    ValidationIssue:
+      type: object
+      additionalProperties: false
+      required: [field, reason]
+      properties:
+        field: { type: string, minLength: 1, maxLength: 200 }
+        reason: { type: string, minLength: 1, maxLength: 300 }
+    ResponseMeta:
+      type: object
+      additionalProperties: false
+      required: [requestId, apiVersion]
+      properties:
+        requestId: { type: string, format: uuid }
+        apiVersion: { type: string, const: '1.0' }
+    CursorResponseMeta:
+      type: object
+      additionalProperties: false
+      required: [requestId, apiVersion, nextCursor, hasMore, pageSize]
+      properties:
+        requestId: { type: string, format: uuid }
+        apiVersion: { type: string, const: '1.0' }
+        nextCursor:
+          type: [string, 'null']
+          maxLength: 512
+        hasMore: { type: boolean }
+        pageSize: { type: integer, minimum: 0, maximum: 100 }
+    LanguageCode:
+      type: string
+      pattern: '^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$'
+      examples: [en, vi]
+    ConceptStatus:
+      type: string
+      x-enum-registry: concept_status
+      enum: [unseen, discovered, learning, familiar, active, mastered, weak, forgotten]
+    LearningActivityType:
+      type: string
+      x-enum-registry: learning_activity_type
+      enum: [review, read, listen, learn]
+    ReviewRating:
+      type: string
+      x-enum-registry: review_rating
+      enum: [again, hard, good, easy]
+    ReviewExerciseMode:
+      type: string
+      x-enum-registry: review_exercise_mode
+      description: Presentation/evidence variant sharing the concept's single memory schedule.
+      enum: [self_recall, multiple_choice, typing, cloze, listening]
+    MemoryState:
+      type: string
+      x-enum-registry: memory_state
+      enum: [new, learning, review, relearning]
+    CompetenceDimension:
+      type: string
+      x-enum-registry: competence_dimension
+      enum: [recognition, listening, production]
+    LearningGoal:
+      type: string
+      x-enum-registry: learning_goal
+      enum: [communication, work, travel, basics, academic]
+    LanguageProfileStatus:
+      type: string
+      x-enum-registry: language_profile_status
+      enum: [active, paused, archived]
+    ConfidenceBand:
+      type: string
+      x-enum-registry: confidence_band
+      enum: [low, medium, high]
+    AssessmentStatus:
+      type: string
+      x-enum-registry: assessment_status
+      enum: [in_progress, completed, abandoned]
+    AssessmentDomain:
+      type: string
+      x-enum-registry: assessment_domain
+      description: Objective Starting Level question domain; no speaking, pronunciation, or free-production inference.
+      enum: [vocabulary_recognition, grammar_in_context, reading_comprehension, listening_comprehension]
+    StartingLevelBandCode:
+      type: string
+      x-enum-registry: starting_level_band
+      description: Bounded Starting Level output. A0 is LINGUA's project-defined pre-A1 starting band, not an official CEFR level.
+      enum: [A0, A1, A2, B1]
+    TodayPlanStatus:
+      type: string
+      x-enum-registry: today_plan_status
+      enum: [draft, active, completed, expired]
+    TodayActivityStatus:
+      type: string
+      x-enum-registry: today_activity_status
+      enum: [pending, completed, skipped]
+    TodayReasonCode:
+      type: string
+      x-enum-registry: today_reason_code
+      enum: [FSRS_DUE, WEAK_RECOGNITION, WEAK_LISTENING, LOW_PRODUCTION_EVIDENCE, CONTENT_FIT, RECENT_EXPOSURE, NEW_CONCEPT_BUDGET]
+    ContentType:
+      type: string
+      x-enum-registry: content_type
+      enum: [article, story, dialogue, lesson, transcript]
+    ReaderExposureType:
+      type: string
+      x-enum-registry: reader_exposure_type
+      enum: [read, listen, lookup]
+    ReaderContentLevel:
+      type: string
+      x-enum-registry: reader_content_level
+      description: Curator-selected Reader fit label; it is not a formal CEFR certification.
+      enum: [A0, A1, A2, B1]
+    ContentSegmentType:
+      type: string
+      x-enum-registry: content_segment_type
+      enum: [sentence, paragraph, dialogue_turn, caption]
+    LibraryItemType:
+      type: string
+      x-enum-registry: library_item_type
+      enum: [content, sentence, concept]
+    PartOfSpeech:
+      type: string
+      description: Source-normalized lexical category for concepts that have a lexeme; no placeholder value is used for non-lexical concepts.
+      minLength: 1
+      maxLength: 64
+    ProficiencyLevel:
+      type: object
+      additionalProperties: false
+      required: [frameworkCode, code, label]
+      properties:
+        frameworkCode: { type: string, minLength: 1, maxLength: 32, example: CEFR }
+        code: { type: string, minLength: 1, maxLength: 16, example: A2 }
+        label: { type: string, minLength: 1, maxLength: 100, example: Elementary }
+    StartingLevelBand:
+      type: object
+      additionalProperties: false
+      description: >-
+        A bounded content-starting reference. CEFR is used only as a reference vocabulary; this is
+        not a standardized certificate. A0 is the LINGUA-defined pre-A1 starting band.
+      required: [frameworkCode, code, label]
+      properties:
+        frameworkCode: { type: string, const: CEFR }
+        code: { $ref: '#/components/schemas/StartingLevelBandCode' }
+        label: { type: string, minLength: 1, maxLength: 100, example: Elementary }
+    StartingLevelEstimate:
+      type: object
+      additionalProperties: false
+      description: Evidence-based starting estimate for adaptation, not a standardized level certificate.
+      required: [level, confidence, confidenceBand, assessedSkills, evidenceCount, methodVersion, estimatedAt]
+      properties:
+        level: { $ref: '#/components/schemas/StartingLevelBand' }
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 0.85
+          multipleOf: 0.01
+          description: Reliability of this bounded estimate, not percent correct; rounded to two decimal places.
+          example: 0.79
+        confidenceBand: { $ref: '#/components/schemas/ConfidenceBand' }
+        assessedSkills:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          description: Competence dimensions actually represented by non-skipped responses; v1 never infers production.
+          items:
+            type: string
+            enum: [recognition, listening]
+        evidenceCount: { type: integer, minimum: 6, maximum: 16 }
+        methodVersion: { type: string, const: starting-level-heuristic-v1 }
+        estimatedAt: { type: string, format: date-time, example: '2026-08-22T03:00:00Z' }
+    MeProfile:
+      type: object
+      additionalProperties: false
+      required: [id, email, displayName, interfaceLanguageCode, timeZone, languageProfiles, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: [string, 'null'], format: email, maxLength: 320, readOnly: true }
+        displayName: { type: [string, 'null'], minLength: 1, maxLength: 120 }
+        interfaceLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        timeZone: { type: [string, 'null'], minLength: 1, maxLength: 64, example: Asia/Ho_Chi_Minh }
+        languageProfiles:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/LanguageProfile' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    UpdateMeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName: { type: [string, 'null'], minLength: 1, maxLength: 120 }
+        interfaceLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        timeZone: { type: string, minLength: 1, maxLength: 64, example: Asia/Ho_Chi_Minh }
+    LanguageProfile:
+      type: object
+      additionalProperties: false
+      required: [id, etag, targetLanguageCode, nativeLanguageCode, goal, dailyMinutes, targetLevel, startingLevelEstimate, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        etag:
+          type: string
+          minLength: 1
+          readOnly: true
+          description: >-
+            Opaque strong concurrency token for this language-profile resource, suitable for
+            If-Match on child mutations. Pass it unchanged; it is not the parent /v1/me ETag or
+            a collection response ETag. Create replay retains the original child token.
+        targetLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        nativeLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        goal: { $ref: '#/components/schemas/LearningGoal' }
+        dailyMinutes: { type: integer, minimum: 5, maximum: 180 }
+        targetLevel:
+          oneOf:
+            - $ref: '#/components/schemas/ProficiencyLevel'
+            - type: 'null'
+        startingLevelEstimate:
+          oneOf:
+            - $ref: '#/components/schemas/StartingLevelEstimate'
+            - type: 'null'
+        status: { $ref: '#/components/schemas/LanguageProfileStatus' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateLanguageProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [targetLanguageCode, nativeLanguageCode, goal, dailyMinutes]
+      properties:
+        targetLanguageCode:
+          allOf:
+            - $ref: '#/components/schemas/LanguageCode'
+            - type: string
+              const: en
+        nativeLanguageCode:
+          allOf:
+            - $ref: '#/components/schemas/LanguageCode'
+            - type: string
+              const: vi
+        goal: { $ref: '#/components/schemas/LearningGoal' }
+        dailyMinutes: { type: integer, minimum: 5, maximum: 180 }
+        selfEstimatedLevelCode: { type: string, minLength: 1, maxLength: 16, example: A1 }
+        targetLevelCode: { type: string, minLength: 1, maxLength: 16, example: B1 }
+    UpdateLanguageProfileRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        goal: { $ref: '#/components/schemas/LearningGoal' }
+        dailyMinutes: { type: integer, minimum: 5, maximum: 180 }
+        targetLevelCode: { type: [string, 'null'], minLength: 1, maxLength: 16 }
+        status: { $ref: '#/components/schemas/LanguageProfileStatus' }
+    MeResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/MeProfile' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    LanguageProfilesResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/LanguageProfile' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    LanguageProfileResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/LanguageProfile' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    TodayPlan:
+      type: object
+      additionalProperties: false
+      required: [id, languageProfileId, planDate, timeZone, targetMinutes, completedMinutes, status, engineVersion, activities, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        languageProfileId: { type: string, format: uuid }
+        planDate: { type: string, format: date }
+        timeZone: { type: string, minLength: 1, maxLength: 64 }
+        targetMinutes: { type: integer, minimum: 5, maximum: 180 }
+        completedMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        status: { $ref: '#/components/schemas/TodayPlanStatus' }
+        engineVersion: { type: string, minLength: 1, maxLength: 64 }
+        activities:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/TodayActivity' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TodayActivity:
+      type: object
+      additionalProperties: false
+      required: [id, position, activityType, title, description, estimatedMinutes, reasonCodes, reasonText, status, completedCount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        position: { type: integer, minimum: 0 }
+        activityType: { $ref: '#/components/schemas/LearningActivityType' }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        estimatedMinutes: { type: integer, minimum: 0, maximum: 240 }
+        reasonCodes:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/TodayReasonCode' }
+        reasonText: { type: string, minLength: 1, maxLength: 300 }
+        status: { $ref: '#/components/schemas/TodayActivityStatus' }
+        targetCount: { type: integer, minimum: 0 }
+        completedCount: { type: integer, minimum: 0 }
+        contentId: { type: string, format: uuid }
+        conceptId: { type: string, format: uuid }
+        reviewItemId: { type: string, format: uuid }
+        completedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    CompleteTodayActivityRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        durationSeconds: { type: integer, minimum: 0, maximum: 86400 }
+    TodayCompletion:
+      type: object
+      additionalProperties: false
+      required: [plan, activity]
+      properties:
+        plan: { $ref: '#/components/schemas/TodayPlan' }
+        activity: { $ref: '#/components/schemas/TodayActivity' }
+    TodayPlanResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/TodayPlan' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    TodayCompletionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/TodayCompletion' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    CompetenceScore:
+      type: object
+      additionalProperties: false
+      required: [score, confidence, evidenceCount]
+      properties:
+        score: { type: number, minimum: 0, maximum: 1 }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        evidenceCount: { type: integer, minimum: 0 }
+        updatedAt: { type: string, format: date-time }
+    CompetenceSignals:
+      type: object
+      additionalProperties: false
+      required: [recognition, listening, production]
+      properties:
+        recognition: { $ref: '#/components/schemas/CompetenceScore' }
+        listening: { $ref: '#/components/schemas/CompetenceScore' }
+        production: { $ref: '#/components/schemas/CompetenceScore' }
+    MemorySnapshot:
+      type: object
+      additionalProperties: false
+      description: Public projection of the concept's one primary memory lineage; FSRS parameters are private.
+      required: [state, dueAt, isDue]
+      properties:
+        state: { $ref: '#/components/schemas/MemoryState' }
+        dueAt: { type: string, format: date-time }
+        lastReviewedAt: { type: string, format: date-time }
+        isDue: { type: boolean }
+    ConceptSummary:
+      type: object
+      additionalProperties: false
+      required: [id, canonicalForm, status, isDue]
+      properties:
+        id: { type: string, format: uuid }
+        canonicalForm: { type: string, minLength: 1, maxLength: 300 }
+        partOfSpeech:
+          oneOf:
+            - $ref: '#/components/schemas/PartOfSpeech'
+            - type: 'null'
+        ipa: { type: string, maxLength: 200 }
+        audioUrl: { type: string, format: uri }
+        level:
+          oneOf:
+            - $ref: '#/components/schemas/ProficiencyLevel'
+            - type: 'null'
+        status: { $ref: '#/components/schemas/ConceptStatus' }
+        isDue: { type: boolean }
+    ReviewPrompt:
+      type: object
+      additionalProperties: false
+      required: [promptText]
+      properties:
+        promptText: { type: string, minLength: 1, maxLength: 2000 }
+        contextSentence: { type: string, maxLength: 3000 }
+        translation: { type: string, maxLength: 3000 }
+        audioUrl: { type: string, format: uri }
+        options:
+          type: array
+          minItems: 2
+          maxItems: 10
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, text]
+            properties:
+              id: { type: string, format: uuid }
+              text: { type: string, minLength: 1, maxLength: 500 }
+    ReviewQueueItem:
+      type: object
+      additionalProperties: false
+      required: [reviewItemId, concept, exerciseMode, prompt, memory, competence]
+      properties:
+        reviewItemId: { type: string, format: uuid }
+        concept: { $ref: '#/components/schemas/ConceptSummary' }
+        exerciseMode: { $ref: '#/components/schemas/ReviewExerciseMode' }
+        prompt: { $ref: '#/components/schemas/ReviewPrompt' }
+        memory: { $ref: '#/components/schemas/MemorySnapshot' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+    ReviewAnswerRequest:
+      type: object
+      additionalProperties: false
+      required: [rating, responseTimeMs]
+      properties:
+        rating: { $ref: '#/components/schemas/ReviewRating' }
+        correct: { type: boolean }
+        responseText: { type: string, maxLength: 5000 }
+        selectedOptionId: { type: string, format: uuid }
+        responseTimeMs: { type: integer, minimum: 0, maximum: 3600000 }
+    ReviewAnswerResult:
+      type: object
+      additionalProperties: false
+      required: [reviewItemId, memory, competence, remainingDueCount]
+      properties:
+        reviewItemId: { type: string, format: uuid }
+        memory: { $ref: '#/components/schemas/MemorySnapshot' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+        remainingDueCount: { type: integer, minimum: 0 }
+        feedback: { type: string, maxLength: 500 }
+    ReviewQueueResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ReviewQueueItem' }
+        meta: { $ref: '#/components/schemas/CursorResponseMeta' }
+    ReviewAnswerResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ReviewAnswerResult' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    Attribution:
+      type: object
+      additionalProperties: false
+      description: Product-facing source and license fields, included only when attribution is required.
+      required: [sourceName, licenseCode, attributionText]
+      properties:
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        licenseCode: { type: string, minLength: 1, maxLength: 64 }
+        attributionText: { type: string, minLength: 1, maxLength: 1000 }
+        sourceUrl: { type: string, format: uri }
+    ConceptDefinition:
+      type: object
+      additionalProperties: false
+      required: [definition, languageCode, order]
+      properties:
+        definition: { type: string, minLength: 1, maxLength: 4000 }
+        translation: { type: string, maxLength: 4000 }
+        languageCode: { $ref: '#/components/schemas/LanguageCode' }
+        order: { type: integer, minimum: 0 }
+    ConceptExample:
+      type: object
+      additionalProperties: false
+      required: [sentenceId, text]
+      properties:
+        sentenceId: { type: string, format: uuid }
+        text: { type: string, minLength: 1, maxLength: 5000 }
+        translation: { type: string, maxLength: 5000 }
+        audioUrl: { type: string, format: uri }
+    ConceptRelation:
+      type: object
+      additionalProperties: false
+      required: [conceptId, relationType, canonicalForm]
+      properties:
+        conceptId: { type: string, format: uuid }
+        relationType: { type: string, minLength: 1, maxLength: 64 }
+        canonicalForm: { type: string, minLength: 1, maxLength: 300 }
+    ConceptDetail:
+      type: object
+      additionalProperties: false
+      required: [id, languageCode, canonicalForm, definitions, examples, relations, learner]
+      properties:
+        id: { type: string, format: uuid }
+        languageCode: { $ref: '#/components/schemas/LanguageCode' }
+        canonicalForm: { type: string, minLength: 1, maxLength: 300 }
+        partOfSpeech:
+          oneOf:
+            - $ref: '#/components/schemas/PartOfSpeech'
+            - type: 'null'
+        ipa: { type: string, maxLength: 200 }
+        audioUrl: { type: string, format: uri }
+        level:
+          oneOf:
+            - $ref: '#/components/schemas/ProficiencyLevel'
+            - type: 'null'
+        definitions:
+          type: array
+          items: { $ref: '#/components/schemas/ConceptDefinition' }
+        examples:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/ConceptExample' }
+        relations:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ConceptRelation' }
+        learner: { $ref: '#/components/schemas/ConceptLearnerProjection' }
+        attribution: { $ref: '#/components/schemas/Attribution' }
+    ConceptLearnerProjection:
+      type: object
+      additionalProperties: false
+      required: [status, isDue, exposureCount, competence]
+      properties:
+        status: { $ref: '#/components/schemas/ConceptStatus' }
+        isDue: { type: boolean }
+        exposureCount: { type: integer, minimum: 0 }
+        lastSeenAt: { type: string, format: date-time }
+        memory: { $ref: '#/components/schemas/MemorySnapshot' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+    ConceptResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ConceptDetail' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    DictionarySearchResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ConceptSummary' }
+        meta: { $ref: '#/components/schemas/CursorResponseMeta' }
+    ReaderAnalyzeRequest:
+      type: object
+      additionalProperties: false
+      required: [text, targetLanguageCode, translationLanguageCode]
+      properties:
+        title: { type: string, maxLength: 300 }
+        text: { type: string, minLength: 1, maxLength: 20000 }
+        targetLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        translationLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+    SentenceConceptAnnotation:
+      type: object
+      additionalProperties: false
+      required: [conceptId, canonicalForm, startOffset, endOffset, status]
+      properties:
+        conceptId: { type: string, format: uuid }
+        canonicalForm: { type: string, minLength: 1, maxLength: 300 }
+        startOffset:
+          type: integer
+          minimum: 0
+          description: Zero-based UTF-16 code-unit index of the inclusive span start.
+        endOffset:
+          type: integer
+          minimum: 1
+          description: Zero-based UTF-16 code-unit index of the exclusive span end; must be greater than startOffset.
+        status: { $ref: '#/components/schemas/ConceptStatus' }
+    ReaderSentence:
+      type: object
+      additionalProperties: false
+      required: [id, text, order, concepts]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string, minLength: 1, maxLength: 5000 }
+        translation: { type: string, maxLength: 5000 }
+        audioUrl: { type: string, format: uri }
+        order: { type: integer, minimum: 0 }
+        concepts:
+          type: array
+          items: { $ref: '#/components/schemas/SentenceConceptAnnotation' }
+    ReaderSegment:
+      type: object
+      additionalProperties: false
+      required: [id, order, text, sentences]
+      properties:
+        id: { type: string, format: uuid }
+        order: { type: integer, minimum: 0 }
+        text: { type: string, minLength: 1, maxLength: 20000 }
+        sentences:
+          type: array
+          items: { $ref: '#/components/schemas/ReaderSentence' }
+    ReaderAnalysis:
+      type: object
+      additionalProperties: false
+      required: [analysisId, targetLanguageCode, translationLanguageCode, segments, analyzedAt]
+      properties:
+        analysisId: { type: string, format: uuid }
+        targetLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        translationLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        segments:
+          type: array
+          items: { $ref: '#/components/schemas/ReaderSegment' }
+        analyzedAt: { type: string, format: date-time }
+    ReaderAnalyzeResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ReaderAnalysis' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    ReaderReadExposureRequest:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId, contentId, segmentId, exposureType]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+        contentId: { type: string, format: uuid }
+        segmentId: { type: string, format: uuid }
+        exposureType: { type: string, const: read }
+        occurredAt: { type: string, format: date-time }
+    ReaderListenExposureRequest:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId, contentId, segmentId, exposureType]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+        contentId: { type: string, format: uuid }
+        segmentId: { type: string, format: uuid }
+        exposureType: { type: string, const: listen }
+        occurredAt: { type: string, format: date-time }
+    ReaderLookupExposureRequest:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId, contentId, segmentId, sentenceId, startOffset, endOffset, exposureType]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+        contentId: { type: string, format: uuid }
+        segmentId: { type: string, format: uuid }
+        sentenceId: { type: string, format: uuid }
+        startOffset:
+          type: integer
+          minimum: 0
+          description: Zero-based UTF-16 code-unit index of the inclusive authoritative occurrence start.
+        endOffset:
+          type: integer
+          minimum: 1
+          description: Zero-based UTF-16 code-unit index of the exclusive authoritative occurrence end; must be greater than startOffset.
+        exposureType: { type: string, const: lookup }
+        occurredAt: { type: string, format: date-time }
+    ReaderExposureRequest:
+      oneOf:
+        - $ref: '#/components/schemas/ReaderReadExposureRequest'
+        - $ref: '#/components/schemas/ReaderListenExposureRequest'
+        - $ref: '#/components/schemas/ReaderLookupExposureRequest'
+      discriminator:
+        propertyName: exposureType
+        mapping:
+          read: '#/components/schemas/ReaderReadExposureRequest'
+          listen: '#/components/schemas/ReaderListenExposureRequest'
+          lookup: '#/components/schemas/ReaderLookupExposureRequest'
+    ReaderExposureResult:
+      type: object
+      additionalProperties: false
+      required: [exposureId, contentId, segmentId, exposureType, acceptedConceptCount, occurredAt, recordedAt]
+      properties:
+        exposureId: { type: string, format: uuid }
+        contentId: { type: string, format: uuid }
+        segmentId: { type: string, format: uuid }
+        exposureType: { $ref: '#/components/schemas/ReaderExposureType' }
+        acceptedConceptCount: { type: integer, minimum: 1, maximum: 1000 }
+        occurredAt: { type: string, format: date-time }
+        recordedAt: { type: string, format: date-time }
+    ReaderExposureResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ReaderExposureResult' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    UpdateReaderProgressRequest:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId, currentSegmentId, isCompleted]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+        currentSegmentId: { type: string, format: uuid }
+        isCompleted: { type: boolean }
+    ReadingProgress:
+      type: object
+      additionalProperties: false
+      description: |
+        Owned segment-level resume projection. currentSegmentId is the most recently opened segment;
+        furthestSegmentId is monotonic. progressPercent is 100 only after completion; otherwise it
+        is floor(100 * furthest zero-based order / segment count).
+      required: [contentId, currentSegmentId, furthestSegmentId, progressPercent, isCompleted, startedAt, lastOpenedAt]
+      properties:
+        contentId: { type: string, format: uuid }
+        currentSegmentId: { type: string, format: uuid }
+        furthestSegmentId: { type: string, format: uuid }
+        progressPercent: { type: integer, minimum: 0, maximum: 100 }
+        isCompleted: { type: boolean }
+        startedAt: { type: string, format: date-time }
+        lastOpenedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+    ReadingProgressResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ReadingProgress' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    SaveSentenceRequest:
+      type: object
+      additionalProperties: false
+      required: [sentenceId]
+      properties:
+        sentenceId: { type: string, format: uuid }
+    ContentSummary:
+      type: object
+      additionalProperties: false
+      description: |
+        Learner-overlaid summary for content that passed the complete publication gate. Internal
+        publication, provenance and QA workflow fields are never exposed.
+      required: [id, contentType, title, targetLanguageCode, difficultyScore, knownConceptRatio, estimatedMinutes, isSaved]
+      properties:
+        id: { type: string, format: uuid }
+        contentType: { $ref: '#/components/schemas/ContentType' }
+        title: { type: string, minLength: 1, maxLength: 500 }
+        subtitle: { type: string, maxLength: 500 }
+        excerpt: { type: string, maxLength: 1000 }
+        targetLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        difficultyScore: { type: number, minimum: 0, maximum: 1 }
+        difficultyLabel: { $ref: '#/components/schemas/ReaderContentLevel' }
+        knownConceptRatio: { type: number, minimum: 0, maximum: 1 }
+        estimatedMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        coverImageUrl: { type: string, format: uri }
+        fitReason: { type: string, maxLength: 300 }
+        isSaved: { type: boolean }
+        readingProgress: { $ref: '#/components/schemas/ReadingProgress' }
+        attribution: { $ref: '#/components/schemas/Attribution' }
+    ContentSegment:
+      type: object
+      additionalProperties: false
+      required: [id, order, segmentType, text, sentences]
+      properties:
+        id: { type: string, format: uuid }
+        order: { type: integer, minimum: 0 }
+        segmentType: { $ref: '#/components/schemas/ContentSegmentType' }
+        speaker: { type: string, maxLength: 120 }
+        text: { type: string, minLength: 1, maxLength: 20000 }
+        startMs: { type: integer, minimum: 0 }
+        endMs: { type: integer, minimum: 0 }
+        sentences:
+          type: array
+          items: { $ref: '#/components/schemas/ReaderSentence' }
+    ContentDetail:
+      type: object
+      additionalProperties: false
+      required: [summary, segments, totalWords]
+      properties:
+        summary: { $ref: '#/components/schemas/ContentSummary' }
+        totalWords: { type: integer, minimum: 0 }
+        audioUrl: { type: string, format: uri }
+        segments:
+          type: array
+          items: { $ref: '#/components/schemas/ContentSegment' }
+    ContentRecommendationsResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ContentSummary' }
+        meta: { $ref: '#/components/schemas/CursorResponseMeta' }
+    ContentResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ContentDetail' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    SavedConceptItem:
+      type: object
+      additionalProperties: false
+      required: [itemType, savedAt, concept]
+      properties:
+        itemType: { type: string, const: concept }
+        savedAt: { type: string, format: date-time }
+        concept: { $ref: '#/components/schemas/ConceptSummary' }
+    SavedContentItem:
+      type: object
+      additionalProperties: false
+      required: [itemType, savedAt, content]
+      properties:
+        itemType: { type: string, const: content }
+        savedAt: { type: string, format: date-time }
+        content: { $ref: '#/components/schemas/ContentSummary' }
+    SavedSentenceItem:
+      type: object
+      additionalProperties: false
+      required: [itemType, savedAt, sentence]
+      properties:
+        itemType: { type: string, const: sentence }
+        savedAt: { type: string, format: date-time }
+        sentence: { $ref: '#/components/schemas/ReaderSentence' }
+    LibraryItem:
+      oneOf:
+        - $ref: '#/components/schemas/SavedConceptItem'
+        - $ref: '#/components/schemas/SavedContentItem'
+        - $ref: '#/components/schemas/SavedSentenceItem'
+    LibraryMutationResult:
+      type: object
+      additionalProperties: false
+      required: [id, itemType, isSaved]
+      properties:
+        id: { type: string, format: uuid }
+        itemType: { $ref: '#/components/schemas/LibraryItemType' }
+        isSaved: { type: boolean }
+        savedAt: { type: string, format: date-time }
+    LibraryItemsResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/LibraryItem' }
+        meta: { $ref: '#/components/schemas/CursorResponseMeta' }
+    LibraryMutationResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/LibraryMutationResult' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    StartAssessmentRequest:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+    AssessmentOption:
+      type: object
+      additionalProperties: false
+      required: [id, text]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string, minLength: 1, maxLength: 1000 }
+    AssessmentItem:
+      type: object
+      additionalProperties: false
+      description: >-
+        Safe public question payload. Listening-comprehension items require an approved audioUrl.
+        Correct options, answer keys, target-band thresholds, and scoring diagnostics are private.
+      required: [id, skill, domain, prompt, options, allowSkip]
+      properties:
+        id: { type: string, format: uuid }
+        skill: { $ref: '#/components/schemas/CompetenceDimension' }
+        domain: { $ref: '#/components/schemas/AssessmentDomain' }
+        prompt: { type: string, minLength: 1, maxLength: 3000 }
+        textSnippet: { type: string, maxLength: 5000 }
+        audioUrl: { type: string, format: uri }
+        options:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items: { $ref: '#/components/schemas/AssessmentOption' }
+        allowSkip: { type: boolean }
+      allOf:
+        - if:
+            properties:
+              domain: { const: listening_comprehension }
+            required: [domain]
+          then:
+            required: [audioUrl]
+            properties:
+              audioUrl: { type: string, format: uri }
+    AssessmentProgress:
+      type: object
+      additionalProperties: false
+      required: [answeredCount, minimumItemCount, maximumItemCount]
+      properties:
+        answeredCount: { type: integer, minimum: 0, maximum: 16 }
+        minimumItemCount: { type: integer, const: 8 }
+        maximumItemCount: { type: integer, const: 16 }
+    AssessmentSession:
+      type: object
+      additionalProperties: false
+      description: >-
+        in_progress has a currentItem and null result/completedAt; completed has null currentItem and
+        non-null immutable result/completedAt; abandoned has null currentItem, result, and completedAt.
+      required: [id, languageProfileId, status, methodVersion, progress, currentItem, result, startedAt, updatedAt, completedAt]
+      properties:
+        id: { type: string, format: uuid }
+        languageProfileId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/AssessmentStatus' }
+        methodVersion: { type: string, const: starting-level-heuristic-v1 }
+        progress: { $ref: '#/components/schemas/AssessmentProgress' }
+        currentItem:
+          oneOf:
+            - $ref: '#/components/schemas/AssessmentItem'
+            - type: 'null'
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/StartingLevelEstimate'
+            - type: 'null'
+        startedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        completedAt:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+    SubmitAssessmentResponseRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [itemId, selectedOptionId, responseTimeMs]
+          properties:
+            itemId: { type: string, format: uuid }
+            selectedOptionId: { type: string, format: uuid }
+            responseTimeMs: { type: integer, minimum: 0, maximum: 3600000 }
+        - type: object
+          additionalProperties: false
+          required: [itemId, skipped, responseTimeMs]
+          properties:
+            itemId: { type: string, format: uuid }
+            skipped: { type: boolean, const: true }
+            responseTimeMs: { type: integer, minimum: 0, maximum: 3600000 }
+    AssessmentSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/AssessmentSession' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    ConceptStatusCounts:
+      type: object
+      additionalProperties: false
+      required: [total, unseen, discovered, learning, familiar, active, mastered, weak, forgotten]
+      properties:
+        total: { type: integer, minimum: 0 }
+        unseen: { type: integer, minimum: 0 }
+        discovered: { type: integer, minimum: 0 }
+        learning: { type: integer, minimum: 0 }
+        familiar: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        mastered: { type: integer, minimum: 0 }
+        weak: { type: integer, minimum: 0 }
+        forgotten: { type: integer, minimum: 0 }
+    BrainConceptSummary:
+      type: object
+      additionalProperties: false
+      required: [concept, competence, mastery, confidence, exposureCount]
+      properties:
+        concept: { $ref: '#/components/schemas/ConceptSummary' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+        mastery:
+          description: >-
+            Authoritative nullable TASK-006D aggregate. Null means the required mastery-eligible
+            dimensions do not yet have sufficient evidence; it is never replaced by a fallback.
+          oneOf:
+            - { type: number, minimum: 0, maximum: 1 }
+            - { type: 'null' }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        memory: { $ref: '#/components/schemas/MemorySnapshot' }
+        exposureCount: { type: integer, minimum: 0 }
+        lastSeenAt: { type: string, format: date-time }
+    BrainSummary:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId, statusCounts, dueCount, memoryHealth, competence, startingLevelEstimate, recentConcepts, calculatedAt]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+        statusCounts: { $ref: '#/components/schemas/ConceptStatusCounts' }
+        dueCount: { type: integer, minimum: 0 }
+        memoryHealth:
+          description: >-
+            Null until a separate authoritative, versioned Memory Health projection is approved;
+            Brain does not derive or default this metric.
+          oneOf:
+            - { type: number, minimum: 0, maximum: 1 }
+            - { type: 'null' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+        startingLevelEstimate:
+          oneOf:
+            - $ref: '#/components/schemas/StartingLevelEstimate'
+            - type: 'null'
+        recentConcepts:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/BrainConceptSummary' }
+        calculatedAt: { type: string, format: date-time }
+    EvidenceSummary:
+      type: object
+      additionalProperties: false
+      required: [exposureCount, reviewCount]
+      properties:
+        exposureCount: { type: integer, minimum: 0 }
+        reviewCount: { type: integer, minimum: 0 }
+        lastSeenAt: { type: string, format: date-time }
+        lastReviewedAt: { type: string, format: date-time }
+    BrainConceptDetail:
+      type: object
+      additionalProperties: false
+      required: [concept, status, competence, mastery, confidence, memory, evidence]
+      properties:
+        concept: { $ref: '#/components/schemas/ConceptDetail' }
+        status: { $ref: '#/components/schemas/ConceptStatus' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+        mastery:
+          description: >-
+            Authoritative nullable TASK-006D aggregate. Null means the required mastery-eligible
+            dimensions do not yet have sufficient evidence; it is never replaced by a fallback.
+          oneOf:
+            - { type: number, minimum: 0, maximum: 1 }
+            - { type: 'null' }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        memory:
+          oneOf:
+            - $ref: '#/components/schemas/MemorySnapshot'
+            - type: 'null'
+        evidence: { $ref: '#/components/schemas/EvidenceSummary' }
+    BrainSummaryResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/BrainSummary' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    BrainConceptListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/BrainConceptSummary' }
+        meta: { $ref: '#/components/schemas/CursorResponseMeta' }
+    BrainConceptResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/BrainConceptDetail' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    ProgressDay:
+      type: object
+      additionalProperties: false
+      required: [date, minutes, activitiesCompleted, goalMet, conceptsExposed, conceptsStrengthened]
+      properties:
+        date: { type: string, format: date }
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        activitiesCompleted: { type: integer, minimum: 0 }
+        goalMet: { type: boolean }
+        conceptsExposed: { type: integer, minimum: 0 }
+        conceptsStrengthened: { type: integer, minimum: 0 }
+    RetentionPoint:
+      type: object
+      additionalProperties: false
+      required: [date, successfulReviewRatio, reviewedCount]
+      properties:
+        date: { type: string, format: date }
+        successfulReviewRatio: { type: number, minimum: 0, maximum: 1 }
+        reviewedCount: { type: integer, minimum: 0 }
+    ProgressOverview:
+      type: object
+      additionalProperties: false
+      required: [languageProfileId, windowStart, windowEnd, startingLevelEstimate, memoryHealth, competence, successfulLearningDays, targetLearningDays, conceptsExposed, conceptsStrengthened, totalMinutes, dailyActivity, retentionTrend, calculatedAt]
+      properties:
+        languageProfileId: { type: string, format: uuid }
+        windowStart: { type: string, format: date }
+        windowEnd: { type: string, format: date }
+        startingLevelEstimate:
+          oneOf:
+            - $ref: '#/components/schemas/StartingLevelEstimate'
+            - type: 'null'
+        memoryHealth: { type: number, minimum: 0, maximum: 1 }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+        successfulLearningDays: { type: integer, minimum: 0, maximum: 31 }
+        targetLearningDays: { type: integer, minimum: 0, maximum: 31 }
+        conceptsExposed: { type: integer, minimum: 0 }
+        conceptsStrengthened: { type: integer, minimum: 0 }
+        totalMinutes: { type: integer, minimum: 0 }
+        dailyActivity:
+          type: array
+          maxItems: 31
+          items: { $ref: '#/components/schemas/ProgressDay' }
+        retentionTrend:
+          type: array
+          maxItems: 31
+          items: { $ref: '#/components/schemas/RetentionPoint' }
+        calculatedAt: { type: string, format: date-time }
+    ProgressOverviewResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/ProgressOverview' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }

@@ -1,0 +1,15 @@
+-- LINGUA OS PostgreSQL schema entry point
+--
+-- The canonical executable schema is the ordered migration history under
+-- database/migrations/. Do not copy DDL into this file because that would create a second,
+-- drifting schema definition.
+--
+-- Apply from the repository root with:
+--   python database/migrate.py up
+--
+-- Roll back the most recent migration in a disposable local/test database with:
+--   python database/migrate.py down --steps 1
+--
+-- The runner records the version and combined up/down SHA-256 checksum in
+-- public.schema_migrations and serializes concurrent runners with a PostgreSQL advisory lock.
+-- See database/README.md for the platform baseline and recovery rules.

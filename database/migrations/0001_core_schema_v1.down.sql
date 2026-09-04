@@ -1,0 +1,52 @@
+-- Local/test recovery for 0001_core_schema_v1. Production data rollback requires a backup or
+-- a corrective forward migration.
+
+SET LOCAL search_path = public, pg_catalog;
+
+DROP TABLE IF EXISTS assessment_results;
+DROP TABLE IF EXISTS assessment_responses;
+DROP TABLE IF EXISTS assessment_attempts;
+DROP TABLE IF EXISTS assessment_item_concepts;
+DROP TABLE IF EXISTS assessment_items;
+DROP TABLE IF EXISTS assessment_templates;
+DROP TABLE IF EXISTS today_plan_activities;
+DROP TABLE IF EXISTS today_plans;
+DROP TABLE IF EXISTS user_saved_sentences;
+DROP TABLE IF EXISTS user_saved_content;
+DROP TABLE IF EXISTS user_saved_concepts;
+DROP TABLE IF EXISTS review_events;
+DROP TABLE IF EXISTS fsrs_states;
+DROP TABLE IF EXISTS review_items;
+DROP TABLE IF EXISTS fsrs_parameter_sets;
+DROP TABLE IF EXISTS exposure_events;
+DROP TABLE IF EXISTS learning_events;
+DROP TABLE IF EXISTS user_concept_states;
+DROP TABLE IF EXISTS user_skill_states;
+DROP TABLE IF EXISTS content_metrics;
+DROP TABLE IF EXISTS content_concepts;
+DROP TABLE IF EXISTS content_segments;
+DROP TABLE IF EXISTS content_versions;
+DROP TABLE IF EXISTS content_items;
+DROP FUNCTION IF EXISTS enforce_content_publication_gate();
+DROP TABLE IF EXISTS sentence_audio;
+DROP TABLE IF EXISTS audio_assets;
+DROP TABLE IF EXISTS sentence_concepts;
+DROP TABLE IF EXISTS sentence_translations;
+DROP TABLE IF EXISTS sentences;
+DROP TABLE IF EXISTS concept_topics;
+DROP TABLE IF EXISTS topics;
+DROP TABLE IF EXISTS framework_mappings;
+DROP TABLE IF EXISTS concept_relations;
+DROP TABLE IF EXISTS word_senses;
+DROP TABLE IF EXISTS lexeme_forms;
+DROP TABLE IF EXISTS lexemes;
+DROP TABLE IF EXISTS concepts;
+DROP TABLE IF EXISTS source_records;
+DROP TABLE IF EXISTS data_sources;
+DROP TABLE IF EXISTS licenses;
+DROP TABLE IF EXISTS user_languages;
+DROP TABLE IF EXISTS learner_profiles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS proficiency_levels;
+DROP TABLE IF EXISTS proficiency_frameworks;
+DROP TABLE IF EXISTS languages;

@@ -1,0 +1,511 @@
+/**
+ * Legacy component-scenario view models for the frozen UI suite.
+ * These are not API transport fixtures. Authoritative DTO fixtures live in
+ * packages/types/src/api/mock-fixtures.ts and satisfy generated OpenAPI types.
+ */
+
+import type {
+  Concept,
+  ReviewItem,
+  ReaderContent,
+  BrainGraphData,
+  TodayPlan,
+  ProgressSummary,
+  DictionaryEntry,
+  UserSettings,
+  UserProfile,
+  ApiErrorResponse,
+  OnboardingDiagnosticResult,
+  OnboardingDiagnosticQuestion,
+} from './types';
+
+export const mockConcepts: Concept[] = [
+  {
+    id: 'concept-001',
+    term: 'appointment',
+    lemma: 'appointment',
+    language: 'en',
+    pos: 'noun',
+    ipa: '/əˈpɔɪnt.mənt/',
+    translation_vi: 'cuộc hẹn',
+    definition: 'An arrangement to meet someone at a particular time and place.',
+    cefr_level: 'A2',
+    status: 'mastered',
+    examples: [
+      {
+        source: 'I have an appointment with Dr. Watson tomorrow.',
+        target: 'Tôi có một cuộc hẹn với bác sĩ Watson vào ngày mai.',
+      },
+    ],
+    evidence: {
+      recognition_score: 95,
+      listening_score: 88,
+      production_score: 80,
+    },
+  },
+  {
+    id: 'concept-002',
+    term: 'available',
+    lemma: 'available',
+    language: 'en',
+    pos: 'adjective',
+    ipa: '/əˈveɪ.lə.bəl/',
+    translation_vi: 'có sẵn, rảnh rỗi',
+    definition: 'Able to be used or can easily be bought or found.',
+    cefr_level: 'A2',
+    status: 'weak',
+    examples: [
+      {
+        source: 'Are you available this afternoon for a quick call?',
+        target: 'Chiều nay bạn có rảnh để gọi nhanh một cuộc không?',
+      },
+    ],
+    evidence: {
+      recognition_score: 70,
+      listening_score: 55,
+      production_score: 40,
+    },
+  },
+  {
+    id: 'concept-003',
+    term: 'schedule',
+    lemma: 'schedule',
+    language: 'en',
+    pos: 'noun',
+    ipa: '/ˈskedʒ.uːl/',
+    translation_vi: 'lịch trình, thời khóa biểu',
+    definition: 'A plan of what someone is going to do and when they are going to do each thing.',
+    cefr_level: 'A2',
+    status: 'learning',
+    examples: [
+      {
+        source: 'Let me check my schedule for next Monday.',
+        target: 'Để tôi kiểm tra lại lịch trình vào thứ Hai tới.',
+      },
+    ],
+  },
+  {
+    id: 'concept-004',
+    term: 'convenient',
+    lemma: 'convenient',
+    language: 'en',
+    pos: 'adjective',
+    ipa: '/kənˈviː.ni.ənt/',
+    translation_vi: 'tiện lợi, thuận tiện',
+    definition: 'Suitable for your purposes and needs and causing the least difficulty.',
+    cefr_level: 'B1',
+    status: 'learning',
+    examples: [
+      {
+        source: 'Would 3 PM be convenient for you?',
+        target: '3 giờ chiều có tiện cho bạn không?',
+      },
+    ],
+  },
+  {
+    id: 'concept-005',
+    term: 'obscure',
+    lemma: 'obscure',
+    language: 'en',
+    pos: 'adjective',
+    ipa: '/əbˈskjʊər/',
+    translation_vi: 'ít người biết, tối nghĩa',
+    definition: 'Not known to many people or difficult to understand.',
+    cefr_level: 'B2',
+    status: 'unseen',
+  },
+  {
+    id: 'concept-006',
+    term: 'serendipity',
+    lemma: 'serendipity',
+    language: 'en',
+    pos: 'noun',
+    ipa: '/ˌser.ənˈdɪp.ə.ti/',
+    translation_vi: 'sự tình cờ may mắn',
+    definition: 'The occurrence and development of events by chance in a happy or beneficial way.',
+    cefr_level: 'C1',
+    status: 'discovered',
+  },
+  {
+    id: 'concept-007',
+    term: 'hesitate',
+    lemma: 'hesitate',
+    language: 'en',
+    pos: 'verb',
+    ipa: '/ˈhez.ɪ.teɪt/',
+    translation_vi: 'ngập ngừng, do dự',
+    definition: 'To pause before saying or doing something.',
+    cefr_level: 'B1',
+    status: 'familiar',
+  },
+  {
+    id: 'concept-008',
+    term: 'collaborate',
+    lemma: 'collaborate',
+    language: 'en',
+    pos: 'verb',
+    ipa: '/kəˈlæb.ə.reɪt/',
+    translation_vi: 'hợp tác, phối hợp',
+    definition: 'To work with another person or group in order to achieve something.',
+    cefr_level: 'B2',
+    status: 'active',
+  },
+  {
+    id: 'concept-009',
+    term: 'reluctant',
+    lemma: 'reluctant',
+    language: 'en',
+    pos: 'adjective',
+    ipa: '/rɪˈlʌk.tənt/',
+    translation_vi: 'miễn cưỡng, không sẵn lòng',
+    definition: 'Unwilling and hesitant; disinclined.',
+    cefr_level: 'B2',
+    status: 'forgotten',
+  },
+];
+
+export const mockReviewQueue: ReviewItem[] = [
+  {
+    id: 'rev-001',
+    concept_id: 'concept-001',
+    term: 'appointment',
+    prompt: 'Một cuộc hẹn chính thức với bác sĩ hoặc đối tác.',
+    answer: 'appointment',
+    ipa: '/əˈpɔɪnt.mənt/',
+    context_sentence: 'I would like to make an appointment with Dr. Watson.',
+    context_translation_vi: 'Tôi muốn đặt một cuộc hẹn với bác sĩ Watson.',
+    state: 'mastered',
+  },
+  {
+    id: 'rev-002',
+    concept_id: 'concept-002',
+    term: 'available',
+    prompt: 'Có sẵn để sử dụng hoặc đang rảnh rỗi không bận việc.',
+    answer: 'available',
+    ipa: '/əˈveɪ.lə.bəl/',
+    context_sentence: 'The doctor is not available until tomorrow afternoon.',
+    context_translation_vi: 'Bác sĩ không rảnh cho đến tận chiều mai.',
+    state: 'weak',
+  },
+  {
+    id: 'rev-003',
+    concept_id: 'concept-004',
+    term: 'convenient',
+    prompt: 'Thuận tiện, phù hợp về mặt thời gian hoặc địa điểm.',
+    answer: 'convenient',
+    ipa: '/kənˈviː.ni.ənt/',
+    context_sentence: 'Please let me know if Monday morning is convenient for you.',
+    context_translation_vi: 'Vui lòng cho tôi biết nếu sáng thứ Hai thuận tiện cho bạn.',
+    state: 'learning',
+  },
+];
+
+export const mockReaderContent: ReaderContent = {
+  id: 'reader-001',
+  title: 'Making an Appointment',
+  level: 'A2',
+  word_count: 180,
+  familiarity_rate: 0.95,
+  target_new_concepts_count: 4,
+  sentences: [
+    {
+      id: 'sent-001',
+      text: 'I would like to make an appointment with Dr. Watson for tomorrow morning if he is available.',
+      translation_vi: 'Tôi muốn đặt một cuộc hẹn với bác sĩ Watson vào sáng mai nếu ông ấy có thời gian.',
+      audio_url: '/audio/sentence-001.mp3',
+      tokens: [
+        { raw: 'I', lemma: 'I' },
+        { raw: 'would', lemma: 'would' },
+        { raw: 'like', lemma: 'like' },
+        { raw: 'to', lemma: 'to' },
+        { raw: 'make', lemma: 'make' },
+        { raw: 'an', lemma: 'an' },
+        {
+          raw: 'appointment',
+          lemma: 'appointment',
+          concept_id: 'concept-001',
+          status: 'mastered',
+          ipa: '/əˈpɔɪnt.mənt/',
+          translation_vi: 'cuộc hẹn',
+        },
+        { raw: 'with', lemma: 'with' },
+        { raw: 'Dr.', lemma: 'Dr.' },
+        { raw: 'Watson', lemma: 'Watson' },
+        { raw: 'for', lemma: 'for' },
+        { raw: 'tomorrow', lemma: 'tomorrow' },
+        { raw: 'morning', lemma: 'morning' },
+        { raw: 'if', lemma: 'if' },
+        { raw: 'he', lemma: 'he' },
+        { raw: 'is', lemma: 'be' },
+        {
+          raw: 'available',
+          lemma: 'available',
+          concept_id: 'concept-002',
+          status: 'weak',
+          ipa: '/əˈveɪ.lə.bəl/',
+          translation_vi: 'có sẵn, rảnh rỗi',
+        },
+        { raw: '.', lemma: '.' },
+      ],
+    },
+    {
+      id: 'sent-002',
+      text: 'Please check the schedule to see if that time is convenient.',
+      translation_vi: 'Vui lòng kiểm tra lịch trình xem thời gian đó có thuận tiện không.',
+      audio_url: '/audio/sentence-002.mp3',
+      tokens: [
+        { raw: 'Please', lemma: 'please' },
+        { raw: 'check', lemma: 'check' },
+        { raw: 'the', lemma: 'the' },
+        {
+          raw: 'schedule',
+          lemma: 'schedule',
+          concept_id: 'concept-003',
+          status: 'learning',
+          ipa: '/ˈskedʒ.uːl/',
+          translation_vi: 'lịch trình',
+        },
+        { raw: 'to', lemma: 'to' },
+        { raw: 'see', lemma: 'see' },
+        { raw: 'if', lemma: 'if' },
+        { raw: 'that', lemma: 'that' },
+        { raw: 'time', lemma: 'time' },
+        { raw: 'is', lemma: 'be' },
+        {
+          raw: 'convenient',
+          lemma: 'convenient',
+          concept_id: 'concept-004',
+          status: 'learning',
+          ipa: '/kənˈviː.ni.ənt/',
+          translation_vi: 'tiện lợi',
+        },
+        { raw: '.', lemma: '.' },
+      ],
+    },
+  ],
+};
+
+export const mockBrainGraphData: BrainGraphData = {
+  nodes: [
+    { id: 'concept-001', label: 'appointment', cefr: 'A2', status: 'mastered', groupLabel: 'Work & Daily Planning' },
+    { id: 'concept-002', label: 'available', cefr: 'A2', status: 'weak', groupLabel: 'Work & Daily Planning' },
+    { id: 'concept-003', label: 'schedule', cefr: 'A2', status: 'learning', groupLabel: 'Work & Daily Planning' },
+    { id: 'concept-004', label: 'convenient', cefr: 'B1', status: 'learning', groupLabel: 'Work & Daily Planning' },
+    { id: 'concept-007', label: 'hesitate', cefr: 'B1', status: 'familiar', groupLabel: 'Emotions & Actions' },
+    { id: 'concept-008', label: 'collaborate', cefr: 'B2', status: 'active', groupLabel: 'Work & Collaboration' },
+  ],
+  edges: [
+    { source: 'concept-001', target: 'concept-003', relationship: 'collocation' },
+    { source: 'concept-001', target: 'concept-002', relationship: 'collocation' },
+    { source: 'concept-003', target: 'concept-004', relationship: 'collocation' },
+    { source: 'concept-008', target: 'concept-001', relationship: 'topic' },
+  ],
+  summary: {
+    total_tracked: 582,
+    mastered: 483,
+    learning: 71,
+    weak: 28,
+    memory_health_score: 87,
+  },
+};
+
+export const mockTodayPlan: TodayPlan = {
+  date: '2026-08-22T00:00:00Z',
+  user_name: 'Learner',
+  target_minutes: 25,
+  minutes_spent: 0,
+  due_reviews_count: 23,
+  completed_activities_count: 0,
+  total_activities_count: 4,
+  streak_days: 5,
+  recommended_activities: [
+    {
+      id: 'act-01',
+      type: 'review',
+      title: '1. Ôn tập thông minh (FSRS)',
+      estimated_minutes: 8,
+      item_count: 23,
+      reason: 'Thuật toán FSRS phát hiện 23 từ sắp rơi khỏi vùng ghi nhớ dài hạn.',
+      badge_label: '23 từ đến hạn',
+      badge_variant: 'warning',
+      target_url: '/review',
+    },
+    {
+      id: 'act-02',
+      type: 'read',
+      title: '2. Đọc bài: An Unexpected Morning',
+      estimated_minutes: 10,
+      item_count: 1,
+      reason: '95% từ vựng quen thuộc, chứa 4 từ mới thuộc ngân sách học hôm nay.',
+      badge_label: 'Độ phù hợp 95%',
+      badge_variant: 'neutral',
+      target_url: '/read',
+    },
+    {
+      id: 'act-03',
+      type: 'listen',
+      title: '3. Luyện phản xạ nghe câu',
+      estimated_minutes: 4,
+      item_count: 5,
+      reason: 'Các từ đã nhận diện tốt khi đọc nhưng tín hiệu nghe còn yếu.',
+      badge_label: 'Củng cố nghe',
+      badge_variant: 'info',
+      target_url: '/read',
+    },
+    {
+      id: 'act-04',
+      type: 'learn',
+      title: '4. Khám phá 4 từ mới',
+      estimated_minutes: 3,
+      item_count: 4,
+      reason: 'Mở rộng vốn từ vựng mục tiêu theo lộ trình CEFR A2.',
+      badge_label: '4 từ mới',
+      badge_variant: 'primary',
+      target_url: '/dictionary',
+    },
+  ],
+  brain_snapshot: {
+    memory_health_score: 87,
+    recent_concepts: [
+      { term: 'appointment', status: 'mastered' },
+      { term: 'schedule', status: 'learning' },
+      { term: 'available', status: 'weak' },
+      { term: 'convenient', status: 'learning' },
+    ],
+  },
+};
+
+export const mockProgressSummary: ProgressSummary = {
+  current_level_estimate: 'A2',
+  level_estimate_label: 'A2 Elementary',
+  confidence: 'medium',
+  confidence_label_vi: 'Độ tin cậy: Vừa',
+  retention_rate: 87,
+  total_mastered: 483,
+  total_learning: 71,
+  total_weak: 28,
+  time_spent_by_activity: {
+    review: 45,
+    read: 60,
+    listen: 30,
+    learn: 25,
+  },
+  weekly_evidence: {
+    new_concepts_acquired: 43,
+    concepts_solidified: 18,
+    active_days: 5,
+    total_days: 7,
+  },
+  skill_dimensions: {
+    recognition_evidence: 72,
+    listening_evidence: 54,
+    production_evidence: 38,
+  },
+};
+
+export const mockDictionaryEntry: DictionaryEntry = {
+  term: 'appointment',
+  lemma: 'appointment',
+  pos: 'noun',
+  ipa: '/əˈpɔɪnt.mənt/',
+  status: 'mastered',
+  cefr_level: 'A2',
+  definitions: [
+    {
+      meaning_vi: 'Cuộc hẹn chính thức (với bác sĩ, đối tác, khách hàng).',
+      explanation_en: 'An arrangement to meet someone at a particular time and place.',
+      examples: [
+        {
+          source: 'I made an appointment to see the dentist on Friday.',
+          target: 'Tôi đã đặt hẹn khám nha sĩ vào thứ Sáu.',
+        },
+      ],
+    },
+  ],
+};
+
+export const mockUserSettings: UserSettings = {
+  daily_target_minutes: 25,
+  new_words_budget_per_day: 4,
+  theme: 'light',
+  reduced_motion: false,
+  haptic_feedback: true,
+  audio_playback_speed: 1.0,
+  target_language: 'en',
+  native_language: 'vi',
+};
+
+export const mockUserProfile: UserProfile = {
+  id: 'user-001',
+  name: 'Learner Account',
+  email: 'learner@lingua-os.dev',
+  starting_level_estimate: 'A2',
+  starting_level_confidence: 'medium',
+  target_goal: 'Giao tiếp công việc & Đọc tài liệu',
+  total_concepts_encountered: 582,
+  total_concepts_mastered: 483,
+  streak_days: 5,
+  member_since: '2026-08-01T00:00:00Z',
+};
+
+export const mockDiagnosticQuestions: OnboardingDiagnosticQuestion[] = [
+  {
+    id: 'diag-01',
+    type: 'vocab_recognition',
+    prompt: 'Từ nào có nghĩa là "cuộc hẹn chính thức"?',
+    options: ['appointment', 'disappointment', 'apartment', 'approach'],
+  },
+  {
+    id: 'diag-02',
+    type: 'sentence_comprehension',
+    prompt: 'Chọn từ phù hợp vào chỗ trống: "The doctor is not _______ today; please come back tomorrow."',
+    options: ['convenient', 'available', 'reluctant', 'obscure'],
+  },
+  {
+    id: 'diag-03',
+    type: 'collocation',
+    prompt: 'Cụm từ nào mang nghĩa "giữ đúng lịch trình"?',
+    options: ['on schedule', 'at schedule', 'in schedule', 'by schedule'],
+  },
+];
+
+export const mockDiagnosticResult: OnboardingDiagnosticResult = {
+  estimated_level: 'A2',
+  confidence: 'medium',
+  evidence_count: 3,
+  assessed_skills: ['reading', 'vocabulary'],
+  method_version: 'static-contract-fixture-v1',
+};
+
+export const mockSemanticErrors: Record<string, ApiErrorResponse> = {
+  UNAUTHENTICATED: {
+    code: 'UNAUTHENTICATED',
+    message: 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.',
+    request_id: 'req-err-401',
+  },
+  FORBIDDEN: {
+    code: 'FORBIDDEN',
+    message: 'Bạn không có quyền truy cập tài nguyên này.',
+    request_id: 'req-err-403',
+  },
+  NOT_FOUND: {
+    code: 'NOT_FOUND',
+    message: 'Không tìm thấy nội dung hoặc từ vựng yêu cầu.',
+    request_id: 'req-err-404',
+  },
+  VALIDATION_ERROR: {
+    code: 'VALIDATION_ERROR',
+    message: 'Dữ liệu gửi lên không đúng định dạng hoặc thiếu trường bắt buộc.',
+    request_id: 'req-err-422',
+  },
+  CONFLICT: {
+    code: 'CONFLICT',
+    message: 'Trạng thái dữ liệu bị xung đột trên hệ thống.',
+    request_id: 'req-err-409',
+  },
+  INTERNAL_ERROR: {
+    code: 'INTERNAL_ERROR',
+    message: 'Lỗi hệ thống máy chủ nội bộ. Vui lòng thử lại sau giây lát.',
+    request_id: 'req-err-500',
+  },
+};

@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "note": "Stable public error codes. Messages are localized client-side; clients branch on code and HTTP status only.",
+  "errors": [
+    {"code": "UNAUTHENTICATED", "http_status": 401},
+    {"code": "FORBIDDEN", "http_status": 403},
+    {"code": "NOT_FOUND", "http_status": 404},
+    {"code": "PRECONDITION_FAILED", "http_status": 412},
+    {"code": "CONFLICT", "http_status": 409},
+    {"code": "INVALID_STATE_TRANSITION", "http_status": 409},
+    {"code": "IDEMPOTENCY_KEY_REUSED", "http_status": 409},
+    {"code": "VALIDATION_ERROR", "http_status": 422},
+    {"code": "RATE_LIMITED", "http_status": 429},
+    {"code": "SERVICE_UNAVAILABLE", "http_status": 503},
+    {"code": "INTERNAL_ERROR", "http_status": 500}
+  ]
+}
