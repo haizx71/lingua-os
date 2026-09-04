@@ -5,13 +5,16 @@ Phase: TASK-017 Controlled Hardening Complete — Ready for Independent Review; 
 
 ## Completed
 
-- `TASK-017`: Live Auth + Onboarding Integration Hardening (Findings C-1 through C-6)
+- `TASK-017`: Live Auth + Onboarding Integration Hardening (Findings C-1..C-6 + Required Fix Pass DEF-01..DEF-03)
   - C-1: Assessment pointer strictly actor-scoped in local storage (`lingua:starting-level:active-assessment:${userId}`); foreign pointers completely isolated.
   - C-2: `HttpApiClient` actor generation tracking (`setActor`), flushing cached ETags on actor switch and rejecting stale in-flight responses with `LinguaActorAbortedError` (`code: 'ABORTED'`).
   - C-3: Unified readiness predicate (`useProductReadiness`); unassessed learners with confirmed timezone and active profile are authoritatively ready and route to `/today` without assessment entrapment; explicit re-entry gated on `mode=assessment`.
   - C-4: `AppRouteBoundary` deterministic route gating truth table preventing unready data-leak loops and rendering accessible loading state during bootstrap.
   - C-5: Language profile 409 `CONFLICT` reconciliation via collection discovery (`listMyLanguageProfiles`), smoothly adopting active profiles or presenting reactivation UI for archived profiles with child ETags; fails closed on `IDEMPOTENCY_KEY_REUSED`.
   - C-6: Stimulus preservation (`textSnippet` + `audioUrl`) through adapter view models and accessible audio player with playback reset on question switch, visible focus, keyboard controls, and non-blocking error handling.
+  - DEF-01: Authoritative 6-point product readiness predicate (`evaluateProductReadiness`) checking authenticated actor, learner profile ID, confirmed valid IANA timezone, active vi→en language profile, valid canonical `LearningGoal`, and persisted `dailyMinutes` 5..180; Starting Level Estimate remains optional.
+  - DEF-02: Paused vi→en `LanguageProfile` recovery & resumption with explicit resume UI, PATCH with same ID and child ETag, 412 refetch without automatic second PATCH, and 409 CONFLICT collection discovery.
+  - DEF-03: Stale actor `LinguaActorAbortedError` outcomes completely isolated without mutating state, corrupting stages, or showing erroneous error banners across onboarding and route readiness.
 - `TASK-017A`: Language Profile child ETag transport correction
   - Shared `LanguageProfile` response schema now provides required, read-only opaque `etag: string` across collection, nested `/me`, create, and update representations.
   - FastAPI Profile route mappers project `language_profile_etag` and create replay projects the original child token from the historical snapshot without schema migrations.
