@@ -58,4 +58,27 @@ describe('TASK-017 frontend boundary invariants', () => {
     expect(onboardingSource).toContain('archivedLanguageProfile.etag');
     expect(onboardingSource).not.toContain('setLanguageProfile(response.data)');
   });
+
+  it('preserves stimulus fields (textSnippet, audioUrl) in onboarding assessment item view models', () => {
+    const readingDto = {
+      ...mockApiResponses.assessment.data,
+      currentItem: {
+        ...mockApiResponses.assessment.data.currentItem!,
+        textSnippet: 'Sample passage text for reading stimulus',
+      },
+    };
+    const listeningDto = {
+      ...mockApiResponses.assessment.data,
+      currentItem: {
+        ...mockApiResponses.assessment.data.currentItem!,
+        audioUrl: 'https://assets.lingua-os.dev/audio/sample.mp3',
+      },
+    };
+
+    const readingVm = mapOnboardingAssessmentToViewModel(readingDto);
+    const listeningVm = mapOnboardingAssessmentToViewModel(listeningDto);
+
+    expect(readingVm.currentItem?.textSnippet).toBe('Sample passage text for reading stimulus');
+    expect(listeningVm.currentItem?.audioUrl).toBe('https://assets.lingua-os.dev/audio/sample.mp3');
+  });
 });

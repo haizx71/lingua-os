@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import {
@@ -58,6 +58,9 @@ function apiForOnboarding(): ApiClient {
 }
 
 describe('TASK-017 live auth and onboarding boundary', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
   it('reactivates a collection-discovered child through HTTP after timezone confirmation, then remains safe on refresh', async () => {
     const child = { ...mockApiResponses.languageProfile.data, status: 'archived' as const, etag: '"opaque-child/E1"', startingLevelEstimate: null };
     const active = { ...child, status: 'active' as const, etag: '"opaque-child/E2"' };
@@ -414,5 +417,228 @@ describe('TASK-017 live auth and onboarding boundary', () => {
 
     await waitFor(() => expect(screen.getByText(/Yêu cầu này đã được dùng cho một thao tác khác/i)).toBeInTheDocument());
     expect(listSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders styled textSnippet stimulus for reading questions (TEST-STIM-01)', async () => {
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding?mode=assessment') as unknown as Location;
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    const assessmentWithReading = {
+      ...mockApiResponses.assessment,
+      data: {
+        ...mockApiResponses.assessment.data,
+        currentItem: {
+          ...mockApiResponses.assessment.data.currentItem!,
+          textSnippet: 'Đây là đoạn văn mẫu đọc hiểu cho người học.',
+        },
+      },
+    };
+    vi.spyOn(api, 'startStartingLevelAssessment').mockResolvedValue(assessmentWithReading);
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
+      await waitFor(() => expect(screen.getByTestId('assessment-text-snippet')).toBeInTheDocument());
+      expect(screen.getByText('Đây là đoạn văn mẫu đọc hiểu cho người học.')).toBeInTheDocument();
+    } finally {
+      window.location = new URL('http://localhost/') as unknown as Location;
+    }
+  });
+
+  it('renders accessible audio player with audioUrl for listening questions (TEST-STIM-02)', async () => {
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding?mode=assessment') as unknown as Location;
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    const assessmentWithListening = {
+      ...mockApiResponses.assessment,
+      data: {
+        ...mockApiResponses.assessment.data,
+        currentItem: {
+          ...mockApiResponses.assessment.data.currentItem!,
+          audioUrl: 'https://assets.lingua-os.dev/audio/diag-listening-01.mp3',
+        },
+      },
+    };
+    vi.spyOn(api, 'startStartingLevelAssessment').mockResolvedValue(assessmentWithListening);
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
+      await waitFor(() => expect(screen.getByTestId('assessment-audio-player')).toBeInTheDocument());
+      const playBtn = screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' });
+      expect(playBtn).toBeInTheDocument();
+      const audioElement = screen.getByTestId('assessment-audio-player').querySelector('audio');
+      expect(audioElement).toHaveAttribute('src', 'https://assets.lingua-os.dev/audio/diag-listening-01.mp3');
+    } finally {
+      window.location = new URL('http://localhost/') as unknown as Location;
+    }
+  });
+
+  it('resets audio playback on question transition (TEST-STIM-03)', async () => {
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding?mode=assessment') as unknown as Location;
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    const q1 = {
+      ...mockApiResponses.assessment,
+      data: {
+        ...mockApiResponses.assessment.data,
+        currentItem: {
+          ...mockApiResponses.assessment.data.currentItem!,
+          id: 'item-q1',
+          audioUrl: 'https://assets.lingua-os.dev/audio/q1.mp3',
+        },
+      },
+    };
+    const q2 = {
+      ...mockApiResponses.assessment,
+      data: {
+        ...mockApiResponses.assessment.data,
+        currentItem: {
+          ...mockApiResponses.assessment.data.currentItem!,
+          id: 'item-q2',
+          audioUrl: 'https://assets.lingua-os.dev/audio/q2.mp3',
+        },
+      },
+    };
+    vi.spyOn(api, 'startStartingLevelAssessment').mockResolvedValue(q1);
+    vi.spyOn(api, 'submitStartingLevelResponse').mockResolvedValue(q2);
+
+    const pauseSpy = vi.fn();
+    window.HTMLMediaElement.prototype.pause = pauseSpy;
+    window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
+      await waitFor(() => expect(screen.getByTestId('assessment-audio-player')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' }));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Tạm dừng đoạn âm thanh bài nghe' })).toBeInTheDocument());
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Cuộc hẹn/i })[0]);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' })).toBeInTheDocument());
+      expect(pauseSpy).toHaveBeenCalled();
+    } finally {
+      window.location = new URL('http://localhost/') as unknown as Location;
+    }
+  });
+
+  it('supports keyboard interaction for audio player controls (TEST-STIM-04)', async () => {
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding?mode=assessment') as unknown as Location;
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    const assessmentWithListening = {
+      ...mockApiResponses.assessment,
+      data: {
+        ...mockApiResponses.assessment.data,
+        currentItem: {
+          ...mockApiResponses.assessment.data.currentItem!,
+          audioUrl: 'https://assets.lingua-os.dev/audio/diag-listening-01.mp3',
+        },
+      },
+    };
+    vi.spyOn(api, 'startStartingLevelAssessment').mockResolvedValue(assessmentWithListening);
+    window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined);
+    window.HTMLMediaElement.prototype.pause = vi.fn();
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' })).toBeInTheDocument());
+
+      const playBtn = screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' });
+      playBtn.focus();
+      expect(document.activeElement).toBe(playBtn);
+      fireEvent.click(playBtn);
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Tạm dừng đoạn âm thanh bài nghe' })).toBeInTheDocument());
+    } finally {
+      window.location = new URL('http://localhost/') as unknown as Location;
+    }
+  });
+
+  it('displays non-blocking error alert when audio fails to play (TEST-STIM-05)', async () => {
+    delete (window as unknown as { location: unknown }).location;
+    window.location = new URL('http://localhost/onboarding?mode=assessment') as unknown as Location;
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [{ ...mockApiResponses.languageProfile.data, status: 'active', startingLevelEstimate: null }],
+      meta: mockApiResponses.languageProfile.meta,
+    } as LanguageProfilesResponseDto);
+
+    const assessmentWithListening = {
+      ...mockApiResponses.assessment,
+      data: {
+        ...mockApiResponses.assessment.data,
+        currentItem: {
+          ...mockApiResponses.assessment.data.currentItem!,
+          audioUrl: 'https://assets.lingua-os.dev/audio/diag-listening-01.mp3',
+        },
+      },
+    };
+    vi.spyOn(api, 'startStartingLevelAssessment').mockResolvedValue(assessmentWithListening);
+    window.HTMLMediaElement.prototype.play = vi.fn().mockRejectedValue(new Error('Audio playback error'));
+
+    try {
+      render(
+        <AuthProvider customClient={supabaseClient(session)}>
+          <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+        </AuthProvider>
+      );
+      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' })).toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' }));
+      await waitFor(() => expect(screen.getByText(/Không thể phát âm thanh/i)).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: /Cuộc hẹn/i })).toBeEnabled();
+    } finally {
+      window.location = new URL('http://localhost/') as unknown as Location;
+    }
   });
 });

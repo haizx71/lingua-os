@@ -268,6 +268,8 @@ export interface OnboardingAssessmentItemViewModel {
   readonly prompt: string;
   readonly options: readonly OnboardingAssessmentOptionViewModel[];
   readonly allowSkip: boolean;
+  readonly textSnippet?: string;
+  readonly audioUrl?: string;
 }
 
 export interface OnboardingAssessmentViewModel {
@@ -311,6 +313,8 @@ export function mapOnboardingAssessmentToViewModel(session: AssessmentSessionDto
           prompt: session.currentItem.prompt,
           options: session.currentItem.options.map((option) => ({ id: option.id, text: option.text })),
           allowSkip: session.currentItem.allowSkip,
+          ...(session.currentItem.textSnippet ? { textSnippet: session.currentItem.textSnippet } : {}),
+          ...(session.currentItem.audioUrl ? { audioUrl: session.currentItem.audioUrl } : {}),
         }
       : null,
     result: session.result

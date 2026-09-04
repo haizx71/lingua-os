@@ -83,6 +83,87 @@ function forgetAssessmentId(userId?: string | null): void {
   }
 }
 
+function AssessmentAudioPlayer({ src }: { readonly src: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    setAudioError(null);
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause?.();
+      } catch {
+        // Safe for test environments without HTMLMediaElement implementation
+      }
+      try {
+        audioRef.current.currentTime = 0;
+      } catch {
+        // Safe for test environments
+      }
+    }
+  }, [src]);
+
+  const togglePlay = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (isPlaying) {
+      try {
+        el.pause?.();
+      } catch {
+        // Safe for test environments
+      }
+      setIsPlaying(false);
+    } else {
+      try {
+        const result = el.play?.();
+        if (result !== undefined && typeof result.then === 'function') {
+          result
+            .then(() => setIsPlaying(true))
+            .catch(() => {
+              setAudioError('Không thể phát âm thanh. Vui lòng kiểm tra kết nối mạng.');
+              setIsPlaying(false);
+            });
+        } else {
+          setIsPlaying(true);
+        }
+      } catch {
+        setAudioError('Không thể phát âm thanh. Vui lòng kiểm tra kết nối mạng.');
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-2" data-testid="assessment-audio-player">
+      <audio
+        ref={audioRef}
+        src={src}
+        onEnded={() => setIsPlaying(false)}
+        onError={() => setAudioError('Không thể tải đoạn âm thanh.')}
+        preload="metadata"
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={isPlaying ? 'Tạm dừng đoạn âm thanh bài nghe' : 'Phát đoạn âm thanh bài nghe'}
+          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+        >
+          <span aria-hidden="true">{isPlaying ? '⏸' : '▶'}</span>
+          <span>{isPlaying ? 'Tạm dừng âm thanh' : 'Phát âm thanh bài nghe'}</span>
+        </button>
+      </div>
+      {audioError && (
+        <InlineAlert variant="warning" title="Âm thanh chưa sẵn sàng">
+          {audioError}
+        </InlineAlert>
+      )}
+    </div>
+  );
+}
+
 export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowProps) {
   const { authState, user } = useAuth();
   const userId = user?.id ?? null;
@@ -364,7 +445,49 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   }
   if (stage === 'ASSESSMENT_CHOICE') return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Đánh giá trình độ khởi điểm</h1><p className="text-sm text-[var(--text-secondary)]">Bài đánh giá là tùy chọn. Bạn có thể bắt đầu hoặc tiếp tục mà không bị gán mức A0 khi bỏ qua.</p></header><div className="flex flex-wrap gap-3"><Button variant="primary" onClick={() => void startAssessment()} disabled={busy}>{busy ? 'Đang chuẩn bị...' : 'Bắt đầu đánh giá'}</Button><Button variant="outline" onClick={goToday}>Bỏ qua đánh giá</Button></div></Card>;
   if (stage === 'ASSESSMENT_IN_PROGRESS' && assessment?.currentItem) {
-    return <Card variant="elevated" padding="lg" className="max-w-2xl mx-auto space-y-5">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Đánh giá trình độ khởi điểm</h1><p className="text-sm text-[var(--text-secondary)]">Câu hỏi hiện tại do máy chủ quyết định.</p></header><h2 className="text-lg font-semibold">{assessment.currentItem.prompt}</h2><div className="grid gap-3">{assessment.currentItem.options.map((option) => <button key={option.id} type="button" onClick={() => void submitAnswer(option.id)} disabled={busy} className="rounded-xl border border-[var(--border-subtle)] px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]">{option.text}</button>)}</div>{assessment.currentItem.allowSkip && <Button variant="outline" onClick={() => void submitAnswer()} disabled={busy}>Bỏ qua câu này</Button>}</Card>;
+    const item = assessment.currentItem;
+    return (
+      <Card variant="elevated" padding="lg" className="max-w-2xl mx-auto space-y-5">
+        {error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}
+        <header>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Đánh giá trình độ khởi điểm</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Câu hỏi hiện tại do máy chủ quyết định.</p>
+        </header>
+
+        {item.textSnippet && (
+          <div
+            data-testid="assessment-text-snippet"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-4 text-sm leading-relaxed text-[var(--text-secondary)] italic whitespace-pre-wrap"
+          >
+            {item.textSnippet}
+          </div>
+        )}
+
+        {item.audioUrl && (
+          <AssessmentAudioPlayer src={item.audioUrl} />
+        )}
+
+        <h2 className="text-lg font-semibold">{item.prompt}</h2>
+        <div className="grid gap-3">
+          {item.options.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => void submitAnswer(option.id)}
+              disabled={busy}
+              className="rounded-xl border border-[var(--border-subtle)] px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+            >
+              {option.text}
+            </button>
+          ))}
+        </div>
+        {item.allowSkip && (
+          <Button variant="outline" onClick={() => void submitAnswer()} disabled={busy}>
+            Bỏ qua câu này
+          </Button>
+        )}
+      </Card>
+    );
   }
   if (stage === 'ASSESSMENT_COMPLETE') {
     const estimate = assessment?.result;
