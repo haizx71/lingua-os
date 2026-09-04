@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import {
   AuthProvider,
   AuthEntry,
+  useAuth,
 } from '../../apps/web/src/features/auth';
 import { LiveOnboardingFlow } from '../../apps/web/src/features/onboarding/LiveOnboardingFlow';
 import {
@@ -844,5 +845,387 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
     expect(screen.queryByText(/Yêu cầu đã bị hủy do thay đổi tài khoản/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Chưa thể tiếp tục/i)).not.toBeInTheDocument();
+  });
+
+  function controllableSupabaseClient(initialSession: Session | null) {
+    let currentSession = initialSession;
+    const listeners: Array<(event: string, session: Session | null) => void> = [];
+    const client = {
+      auth: {
+        getSession: vi.fn(async () => ({ data: { session: currentSession }, error: null })),
+        onAuthStateChange: vi.fn((callback) => {
+          listeners.push(callback);
+          return {
+            data: {
+              subscription: {
+                unsubscribe: () => {
+                  const idx = listeners.indexOf(callback);
+                  if (idx >= 0) listeners.splice(idx, 1);
+                },
+              },
+            },
+          };
+        }),
+        signInWithPassword: vi.fn(async () => ({ data: { session: currentSession, user: currentSession?.user ?? null }, error: null })),
+        signUp: vi.fn(async () => ({ data: { session: currentSession, user: currentSession?.user ?? null }, error: null })),
+        signOut: vi.fn(async () => {
+          currentSession = null;
+          listeners.forEach((cb) => cb('SIGNED_OUT', null));
+          return { error: null };
+        }),
+      },
+    } as unknown as SupabaseClient;
+    return {
+      client,
+      emit: (event: string, s: Session | null) => {
+        currentSession = s;
+        listeners.forEach((cb) => cb(event, s));
+      },
+    };
+  }
+
+  it('TEST-ACTOR-LIFECYCLE-01: stale Actor A mutation finally block does not prematurely clear Actor B busy state', async () => {
+    let resolveMutationA: (val: unknown) => void;
+    const mutationPromiseA = new Promise((resolve) => {
+      resolveMutationA = resolve;
+    });
+
+    let resolveMutationB: (val: unknown) => void;
+    const mutationPromiseB = new Promise((resolve) => {
+      resolveMutationB = resolve;
+    });
+
+    const api = apiForOnboarding();
+    let currentActor = 'user-a';
+
+    vi.spyOn(api, 'updateMe').mockImplementation(async () => {
+      if (currentActor === 'user-a') {
+        return mutationPromiseA as ReturnType<ApiClient['updateMe']>;
+      }
+      return mutationPromiseB as ReturnType<ApiClient['updateMe']>;
+    });
+
+    const sessionA = {
+      ...session,
+      user: { ...session.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionB = {
+      ...session,
+      user: { ...session.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+
+    const mockAuth = controllableSupabaseClient(sessionA);
+
+    render(
+      <AuthProvider customClient={mockAuth.client}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    // User A boots to PROFILE_REQUIRED
+    const confirmBtnA = await screen.findByRole('button', { name: 'Xác nhận múi giờ' });
+    expect(confirmBtnA).toBeInTheDocument();
+
+    // User A clicks submit -> updateMe mutation A starts, busy becomes true
+    fireEvent.click(confirmBtnA);
+    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+
+    // While mutation A is in flight, active actor switches to User B
+    currentActor = 'user-b';
+    await act(async () => {
+      mockAuth.emit('SIGNED_IN', sessionB);
+    });
+
+    // User B boots to PROFILE_REQUIRED
+    const confirmBtnB = await screen.findByRole('button', { name: 'Xác nhận múi giờ' });
+    expect(confirmBtnB).toBeEnabled();
+
+    // User B clicks submit -> updateMe mutation B starts, busy becomes true
+    fireEvent.click(confirmBtnB);
+    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+
+    // Now Actor A's stale mutation finally settles
+    resolveMutationA!(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    // CRITICAL (DEF-03-R1): Actor B must STILL be busy! Actor A's finally block must NOT have cleared busy
+    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+
+    // Now Actor B's mutation settles
+    resolveMutationB!(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    await waitFor(() => {
+      expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
+    });
+  });
+
+  it('TEST-ACTOR-LIFECYCLE-02: stale Actor A mutation error does not commit error banner or mutate Actor B state', async () => {
+    let rejectMutationA: (err: unknown) => void;
+    const mutationPromiseA = new Promise((_, reject) => {
+      rejectMutationA = reject;
+    });
+    mutationPromiseA.catch(() => {});
+
+    const api = apiForOnboarding();
+    let currentActor = 'user-a';
+
+    vi.spyOn(api, 'updateMe').mockImplementation(async () => {
+      if (currentActor === 'user-a') {
+        return mutationPromiseA as ReturnType<ApiClient['updateMe']>;
+      }
+      return me({ timeZone: 'Asia/Ho_Chi_Minh' });
+    });
+
+    const sessionA = {
+      ...session,
+      user: { ...session.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionB = {
+      ...session,
+      user: { ...session.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+
+    const mockAuth = controllableSupabaseClient(sessionA);
+
+    render(
+      <AuthProvider customClient={mockAuth.client}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    const confirmBtnA = await screen.findByRole('button', { name: 'Xác nhận múi giờ' });
+    fireEvent.click(confirmBtnA);
+    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+
+    // Switch to Actor B
+    currentActor = 'user-b';
+    await act(async () => {
+      mockAuth.emit('SIGNED_IN', sessionB);
+    });
+
+    // Actor B boots to PROFILE_REQUIRED
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeEnabled();
+    });
+
+    // Now Actor A's stale mutation fails with a server error
+    rejectMutationA!(new LinguaApiError({ code: 'INTERNAL_ERROR', httpStatus: 500 }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Assert: No error banner on Actor B's UI
+    expect(screen.queryByText(/Chưa thể tiếp tục/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Hồ sơ vừa thay đổi/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeEnabled();
+  });
+
+  it('TEST-ACTOR-LIFECYCLE-03: stale Actor A mutation success does not commit Actor A profile or advance Actor B stage', async () => {
+    let resolveCreateA: (val: unknown) => void;
+    const createPromiseA = new Promise((resolve) => {
+      resolveCreateA = resolve;
+    });
+
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'createMyLanguageProfile').mockImplementation(async () => {
+      return createPromiseA as ReturnType<ApiClient['createMyLanguageProfile']>;
+    });
+
+    // Configure user A to have timezone so it reaches LANGUAGE_PROFILE_REQUIRED
+    vi.spyOn(api, 'getMe').mockImplementation(async () => {
+      return me({ timeZone: 'Asia/Ho_Chi_Minh' });
+    });
+
+    const sessionA = {
+      ...session,
+      user: { ...session.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionB = {
+      ...session,
+      user: { ...session.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+
+    const mockAuth = controllableSupabaseClient(sessionA);
+
+    render(
+      <AuthProvider customClient={mockAuth.client}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    // User A is on LANGUAGE_PROFILE_REQUIRED
+    await screen.findByText(/Chọn mục tiêu học tập/i);
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' }));
+
+    expect(screen.getByRole('button', { name: 'Đang tạo...' })).toBeDisabled();
+
+    // Now switch to Actor B; for Actor B, getMe has timeZone: null, so Actor B needs PROFILE_REQUIRED
+    vi.spyOn(api, 'getMe').mockImplementation(async () => {
+      return me({ timeZone: null });
+    });
+    await act(async () => {
+      mockAuth.emit('SIGNED_IN', sessionB);
+    });
+
+    // Actor B boots to PROFILE_REQUIRED
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeInTheDocument();
+    });
+
+    // Now Actor A's stale creation resolves HTTP 200 with an estimated profile
+    resolveCreateA!({
+      ...mockApiResponses.languageProfile,
+      data: {
+        ...mockApiResponses.languageProfile.data,
+        id: 'profile-user-a',
+        startingLevelEstimate: 'b1',
+      },
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Assert: Actor B is STILL on PROFILE_REQUIRED! Not jumped to READY_FOR_TODAY or ASSESSMENT_CHOICE
+    expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeInTheDocument();
+    expect(screen.queryByText(/Chào mừng bạn trở lại/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Bắt đầu đánh giá/i })).not.toBeInTheDocument();
+  });
+
+  it('TEST-ACTOR-LIFECYCLE-04: stale Actor A 412 Precondition Failed does not trigger recovery bootstrap or banners for Actor B', async () => {
+    let rejectResumeA: (err: unknown) => void;
+    const resumePromiseA = new Promise((_, reject) => {
+      rejectResumeA = reject;
+    });
+    resumePromiseA.catch(() => {});
+
+    const pausedProfileA = {
+      ...mockApiResponses.languageProfile.data,
+      id: 'profile-a-paused',
+      status: 'paused' as const,
+      etag: '"etag-paused-a"',
+      startingLevelEstimate: null,
+    };
+
+    const api = apiForOnboarding();
+    vi.spyOn(api, 'getMe').mockResolvedValue(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
+    const listProfilesSpy = vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
+      data: [pausedProfileA],
+      meta: mockApiResponses.me.meta,
+    } as LanguageProfilesResponseDto);
+
+    vi.spyOn(api, 'updateMyLanguageProfile').mockImplementation(async () => {
+      return resumePromiseA as ReturnType<ApiClient['updateMyLanguageProfile']>;
+    });
+
+    const sessionA = {
+      ...session,
+      user: { ...session.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionB = {
+      ...session,
+      user: { ...session.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+
+    const mockAuth = controllableSupabaseClient(sessionA);
+
+    render(
+      <AuthProvider customClient={mockAuth.client}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    const resumeBtnA = await screen.findByRole('button', { name: 'Tiếp tục lộ trình tiếng Anh' });
+    fireEvent.click(resumeBtnA);
+    expect(screen.getByRole('button', { name: 'Đang kích hoạt lại...' })).toBeDisabled();
+
+    // Now switch to Actor B; for Actor B, listMyLanguageProfiles returns empty (so LANGUAGE_PROFILE_REQUIRED with no paused profile)
+    listProfilesSpy.mockResolvedValue({
+      data: [],
+      meta: mockApiResponses.me.meta,
+    } as LanguageProfilesResponseDto);
+
+    const getMeSpy = vi.spyOn(api, 'getMe');
+
+    await act(async () => {
+      mockAuth.emit('SIGNED_IN', sessionB);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
+    });
+    const getMeCallsAfterBSync = getMeSpy.mock.calls.length;
+
+    // Stale Actor A mutation rejects with 412 PRECONDITION_FAILED
+    rejectResumeA!(new LinguaApiError({ code: 'PRECONDITION_FAILED', httpStatus: 412 }));
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Assert: No recovery banner on Actor B
+    expect(screen.queryByText(/Hồ sơ vừa thay đổi/i)).not.toBeInTheDocument();
+    // Assert: getMe was NOT called again as part of Actor A's 412 recovery
+    expect(getMeSpy.mock.calls.length).toBe(getMeCallsAfterBSync);
+  });
+
+  it('TEST-ACTOR-LIFECYCLE-05: same-actor session refresh preserves actorEpoch, ETag cache, and in-flight operation validity', async () => {
+    let capturedEpochInitial = 0;
+    let capturedEpochAfterRefresh = 0;
+    let isInitialOpValidAfterRefresh: boolean | null = null;
+
+    function TestProbe({ onMount }: { onMount: (auth: ReturnType<typeof useAuth>) => void }) {
+      const auth = useAuth();
+      useEffect(() => {
+        onMount(auth);
+      }, [auth, onMount]);
+      return <div data-testid="probe">epoch: {auth.actorEpoch}</div>;
+    }
+
+    const sessionA = {
+      ...session,
+      user: { ...session.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionARefreshed = {
+      ...sessionA,
+      access_token: 'new-token-same-user',
+    };
+
+    const mockAuth = controllableSupabaseClient(sessionA);
+    let latestAuth: ReturnType<typeof useAuth> | null = null;
+
+    render(
+      <AuthProvider customClient={mockAuth.client}>
+        <TestProbe onMount={(a) => { latestAuth = a; }} />
+      </AuthProvider>
+    );
+
+    await screen.findByTestId('probe');
+    capturedEpochInitial = latestAuth!.getActorEpoch();
+    const opInitial = {
+      epoch: capturedEpochInitial,
+      actorId: 'user-a',
+    };
+
+    // Trigger same-actor token refresh
+    await act(async () => {
+      mockAuth.emit('TOKEN_REFRESHED', sessionARefreshed);
+    });
+    await waitFor(() => {
+      capturedEpochAfterRefresh = latestAuth!.getActorEpoch();
+    });
+
+    // Epoch must be UNCHANGED
+    expect(capturedEpochAfterRefresh).toBe(capturedEpochInitial);
+
+    // Initial operation must STILL be considered current/valid
+    isInitialOpValidAfterRefresh = latestAuth!.isCurrentActor(opInitial.epoch, opInitial.actorId);
+    expect(isInitialOpValidAfterRefresh).toBe(true);
+
+    // Now switch to actor B and confirm epoch DOES advance and initial op is invalidated
+    const sessionB = {
+      ...session,
+      user: { ...session.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+    await act(async () => {
+      mockAuth.emit('SIGNED_IN', sessionB);
+    });
+    await waitFor(() => {
+      expect(latestAuth!.getActorEpoch()).toBeGreaterThan(capturedEpochInitial);
+    });
+    expect(latestAuth!.isCurrentActor(opInitial.epoch, opInitial.actorId)).toBe(false);
   });
 });
