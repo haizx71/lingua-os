@@ -204,4 +204,18 @@ describe('HttpApiClient', () => {
     // ETags cache must NOT have been contaminated with User A's late ETag
     expect(client.getLastEtag('me')).toBeUndefined();
   });
+
+  it('TEST-AUTH-08: same actor token refresh or setActor with identical ID preserves ETag state and generation', async () => {
+    const fetchFn = vi.fn(async () => response(mockApiResponses.me, { headers: { ETag: '"etag-same-actor"' } }));
+    const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn, actorId: 'user-same' });
+
+    await client.getMe();
+    expect(client.getLastEtag('me')).toBe('"etag-same-actor"');
+    const initialGen = client.getActorGeneration();
+
+    // Re-asserting the same actor ID (e.g. on session/token refresh) must be a no-op
+    client.setActor('user-same');
+    expect(client.getActorGeneration()).toBe(initialGen);
+    expect(client.getLastEtag('me')).toBe('"etag-same-actor"');
+  });
 });

@@ -93,7 +93,10 @@ export class LinguaActorAbortedError extends Error {
 }
 
 export function isLinguaActorAbortedError(error: unknown): error is LinguaActorAbortedError {
-  return error instanceof LinguaActorAbortedError;
+  return (
+    error instanceof LinguaActorAbortedError ||
+    (typeof error === 'object' && error !== null && (error as { name?: unknown; code?: unknown }).code === 'ABORTED')
+  );
 }
 
 export function isLinguaApiError(error: unknown): error is LinguaApiError {

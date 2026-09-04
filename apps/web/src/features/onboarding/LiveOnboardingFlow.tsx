@@ -250,6 +250,9 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       }
       return true;
     } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) {
+        return false;
+      }
       setError(mapApiErrorToUi(cause).message);
       setStage('BOOTSTRAPPING_PROFILE');
       return false;
@@ -259,7 +262,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   useEffect(() => {
     if (authState === 'authenticated') void loadBootstrap();
     else if (authState === 'unauthenticated') setStage('RESTORING_SESSION');
-  }, [authState]);
+  }, [authState, userId]);
 
   const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -294,6 +297,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       else if (active.startingLevelEstimate) setStage('READY_FOR_TODAY');
       else setStage('ASSESSMENT_CHOICE');
     } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       setError(mapped.code === 'PRECONDITION_FAILED' ? 'Hồ sơ vừa thay đổi. Đã tải lại dữ liệu mới; hãy xác nhận lại rồi lưu.' : mapped.message);
       if (mapped.code === 'PRECONDITION_FAILED') {
@@ -323,6 +327,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       setArchivedLanguageProfile(null);
       setStage(createdProfile.startingLevelEstimate ? 'READY_FOR_TODAY' : 'ASSESSMENT_CHOICE');
     } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
       if (mapped.code === 'CONFLICT') {
         try {
@@ -454,6 +459,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         setStage('ASSESSMENT_IN_PROGRESS');
       }
     } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) return;
       setError(mapApiErrorToUi(cause).message);
     } finally {
       setBusy(false);
@@ -484,6 +490,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
         setStage('ASSESSMENT_IN_PROGRESS');
       }
     } catch (cause) {
+      if (isLinguaActorAbortedError(cause)) return;
       setError(mapApiErrorToUi(cause).message);
     } finally {
       setBusy(false);

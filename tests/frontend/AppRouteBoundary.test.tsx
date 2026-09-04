@@ -1,12 +1,13 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { AuthProvider } from '../../apps/web/src/features/auth/AuthContext';
 import { AppRouteBoundary } from '../../apps/web/src/components/auth/AppRouteBoundary';
 import { setApiClient } from '../../apps/web/src/lib/api/client';
 import {
   MockApiClient,
+  HttpApiClient,
   mockApiResponses,
   type MeResponseDto,
   type LanguageProfilesResponseDto,
@@ -243,5 +244,99 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
       expect(mockReplace).toHaveBeenCalledWith('/onboarding');
     });
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+  });
+
+  it('TEST-READY-08: actor race safety: stale Actor A response settling after Actor B bootstrap does not mutate B state', async () => {
+    currentPathname = '/today';
+    let authCallback: (event: string, session: unknown) => void = () => {};
+    let resolveLateFetchA: (resp: Response) => void;
+    const latePromiseA = new Promise<Response>((resolve) => {
+      resolveLateFetchA = resolve;
+    });
+
+    const sessionA = {
+      ...testSession,
+      user: { ...testSession.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionB = {
+      ...testSession,
+      user: { ...testSession.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+
+    const mockSupabase = {
+      auth: {
+        getSession: vi.fn(async () => ({ data: { session: sessionA }, error: null })),
+        onAuthStateChange: vi.fn((cb: (event: string, session: unknown) => void) => {
+          authCallback = cb;
+          return { data: { subscription: { unsubscribe: vi.fn() } } };
+        }),
+        signOut: vi.fn(async () => ({ error: null })),
+      },
+    } as unknown as SupabaseClient;
+
+    let activeActor = 'user-a';
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (activeActor === 'user-a') {
+        return latePromiseA;
+      }
+      if (url.includes('/v1/me/languages')) {
+        return new Response(JSON.stringify({
+          data: [{
+            ...mockApiResponses.languageProfile.data,
+            nativeLanguageCode: 'vi',
+            targetLanguageCode: 'en',
+            status: 'active',
+            goal: 'communication',
+            dailyMinutes: 25,
+          }],
+          meta: mockApiResponses.me.meta,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({
+        ...mockApiResponses.me,
+        data: { ...mockApiResponses.me.data, id: 'user-b', timeZone: 'Asia/Ho_Chi_Minh' },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    });
+
+    const client = new HttpApiClient({
+      baseUrl: 'https://api.example.test',
+      authTokenProvider: { getAccessToken: async () => 'test-token' },
+      fetchFn,
+      actorId: 'user-a',
+    });
+    setApiClient(client);
+
+    render(
+      <AuthProvider customClient={mockSupabase}>
+        <AppRouteBoundary router={{ replace: mockReplace, push: mockPush }} pathname={currentPathname}>
+          <div data-testid="today-dashboard">Today Dashboard</div>
+        </AppRouteBoundary>
+      </AuthProvider>
+    );
+
+    // Initial render initiates Actor A request (which hangs in latePromiseA)
+    // Now simulate user login as User B
+    activeActor = 'user-b';
+    await act(async () => {
+      authCallback('SIGNED_IN', sessionB);
+    });
+
+    // User B's bootstrap completes and renders protected dashboard
+    await waitFor(() => {
+      expect(screen.getByTestId('today-dashboard')).toBeInTheDocument();
+    });
+
+    // Now Actor A's stale response finally resolves
+    resolveLateFetchA!(new Response(JSON.stringify({
+      ...mockApiResponses.me,
+      data: { ...mockApiResponses.me.data, id: 'user-a', timeZone: null },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+    // Wait a tick to prove User B's state remains intact and LinguaActorAbortedError was silently discarded
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByTestId('today-dashboard')).toBeInTheDocument();
+    expect(screen.queryByText(/Không thể kết nối hồ sơ/i)).not.toBeInTheDocument();
+    expect(mockReplace).not.toHaveBeenCalledWith('/onboarding');
   });
 });

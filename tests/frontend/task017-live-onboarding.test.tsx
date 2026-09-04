@@ -11,6 +11,7 @@ import {
   MockApiClient,
   HttpApiClient,
   LinguaApiError,
+  LinguaActorAbortedError,
   mockApiResponses,
   mockCompletedAssessmentSessionResponse,
   type ApiClient,
@@ -788,5 +789,60 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /Bỏ qua đánh giá/i })).toBeEnabled();
+  });
+
+  it('TEST-ACTOR-RACE-01: late Actor A bootstrap response discarding via LinguaActorAbortedError does not overwrite Actor B state', async () => {
+    let rejectLateRequestA: (err: Error) => void;
+    const pendingPromiseA = new Promise<never>((_, reject) => {
+      rejectLateRequestA = reject;
+    });
+    pendingPromiseA.catch(() => {});
+
+    const api = apiForOnboarding();
+    let currentActor = 'user-a';
+    vi.spyOn(api, 'getMe').mockImplementation(async () => {
+      if (currentActor === 'user-b') {
+        return me({ timeZone: 'Asia/Ho_Chi_Minh' });
+      }
+      return pendingPromiseA;
+    });
+
+    const sessionA = {
+      ...session,
+      user: { ...session.user, id: 'user-a', email: 'user-a@example.test' },
+    };
+    const sessionB = {
+      ...session,
+      user: { ...session.user, id: 'user-b', email: 'user-b@example.test' },
+    };
+
+    const { rerender } = render(
+      <AuthProvider customClient={supabaseClient(sessionA)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    // Switch actor to B
+    currentActor = 'user-b';
+    api.setActor?.('user-b');
+    rerender(
+      <AuthProvider customClient={supabaseClient(sessionB)}>
+        <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
+      </AuthProvider>
+    );
+
+    // User B's bootstrap completes and shows language profile creation
+    await waitFor(() => {
+      expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
+    });
+
+    // Stale in-flight request under Actor A now rejects with LinguaActorAbortedError
+    rejectLateRequestA!(new LinguaActorAbortedError());
+
+    // Wait a tick to prove B's stage and UI are not corrupted
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Yêu cầu đã bị hủy do thay đổi tài khoản/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Chưa thể tiếp tục/i)).not.toBeInTheDocument();
   });
 });

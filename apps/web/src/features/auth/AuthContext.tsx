@@ -51,6 +51,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
   const isConfigured = Boolean(client);
 
   const updateSessionState = useCallback((currentSession: Session | null, preserveError = false) => {
+    try {
+      getApiClient().setActor?.(currentSession?.user?.id ?? null);
+    } catch {
+      // client might not be initialized yet
+    }
     setSession(currentSession);
     setUser(currentSession?.user ?? null);
     setAuthState(currentSession ? 'authenticated' : 'unauthenticated');
