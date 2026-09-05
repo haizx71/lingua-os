@@ -32,6 +32,25 @@ describe('HttpApiClient', () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
+  it('TEST-011-R2-05: serializes Today request without timeZone parameter across empty and populated queries', async () => {
+    const urls: string[] = [];
+    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+      urls.push(String(input));
+      return response(mockApiResponses.today);
+    });
+    const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn });
+
+    // 1. Empty query -> /v1/today (no timeZone parameter)
+    await client.getTodayPlan();
+    expect(urls[0]).toBe('https://api.example.test/v1/today');
+    expect(urls[0]).not.toContain('timeZone');
+
+    // 2. Query with contract-valid fields -> /v1/today?date=2026-09-05&languageProfileId=... (no timeZone parameter)
+    await client.getTodayPlan({ date: '2026-09-05', languageProfileId: '00000000-0000-4000-8000-000000000001' });
+    expect(urls[1]).toBe('https://api.example.test/v1/today?date=2026-09-05&languageProfileId=00000000-0000-4000-8000-000000000001');
+    expect(urls[1]).not.toContain('timeZone');
+  });
+
   it('distinguishes missing session from token-provider infrastructure failure', async () => {
     const fetchFn = vi.fn();
     const unauthenticated = new HttpApiClient({

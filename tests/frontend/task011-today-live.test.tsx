@@ -23,10 +23,12 @@ import {
   mapTodayPlanToViewModel,
 } from '../../apps/web/src/features/today/adapters';
 import {
+  HttpApiClient,
   MockApiClient,
   mockApiResponses,
   mockTodayPlanResponse,
   type ApiClient,
+  type MeResponseDto,
   type TodayActivityDto,
   type TodayCompletionResponseDto,
   type TodayPlanDto,
@@ -640,11 +642,12 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       expect(getSpy).toHaveBeenCalled();
       const calledQuery = getSpy.mock.calls[0][0];
 
-      // Query must NOT synthesize a local day boundary or fake date parameter
+      // Query must NOT synthesize a local day boundary or fake date parameter or non-contract timeZone
       expect(calledQuery?.date).toBeUndefined();
+      expect((calledQuery as Record<string, unknown> | undefined)?.timeZone).toBeUndefined();
     });
 
-    it('TEST-011-TZ-01: Authoritative stored timezone Asia/Ho_Chi_Minh passed to getTodayPlan', async () => {
+    it('TEST-011-R2-01: Authoritative stored timezone Asia/Ho_Chi_Minh triggers getTodayPlan without timeZone query (empty or contract fields only)', async () => {
       vi.spyOn(api, 'getMe').mockResolvedValue({
         data: {
           ...mockApiResponses.me.data,
@@ -654,14 +657,41 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       });
       const getSpy = vi.spyOn(api, 'getTodayPlan');
 
+      // 1. Dashboard load with no query -> getTodayPlan called with undefined (no timeZone)
       await renderToday();
 
-      expect(getSpy).toHaveBeenCalled();
+      expect(getSpy).toHaveBeenCalledTimes(1);
       const query = getSpy.mock.calls[0][0];
-      expect(query?.timeZone).toBe('Asia/Ho_Chi_Minh');
+      expect(query).toBeUndefined();
+      expect((query as Record<string, unknown> | undefined)?.timeZone).toBeUndefined();
+
+      // 2. Direct hook load with contract query (date, languageProfileId) -> preserves contract fields, no timeZone
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>
+      );
+      renderHook(
+        () =>
+          useTodayPlan({
+            apiClient: api,
+            query: {
+              date: '2026-09-05',
+              languageProfileId: '22222222-2222-4000-8000-222222222222',
+            },
+          }),
+        { wrapper }
+      );
+      await act(async () => {});
+
+      expect(getSpy).toHaveBeenCalledTimes(2);
+      const queryWithArgs = getSpy.mock.calls[1][0];
+      expect(queryWithArgs).toEqual({
+        date: '2026-09-05',
+        languageProfileId: '22222222-2222-4000-8000-222222222222',
+      });
+      expect((queryWithArgs as Record<string, unknown> | undefined)?.timeZone).toBeUndefined();
     });
 
-    it('TEST-011-TZ-02: Profile timezone missing and browser timezone mocked as America/New_York -> getTodayPlan is NOT called', async () => {
+    it('TEST-011-R2-02: Profile timezone missing and browser timezone mocked as America/New_York -> getTodayPlan is NOT called', async () => {
       // Mock browser timezone as America/New_York
       const dtf = new Intl.DateTimeFormat();
       const baseOptions = dtf.resolvedOptions();
@@ -685,41 +715,37 @@ describe('TASK-011: Today Live Frontend Integration', () => {
 
         // getTodayPlan must NOT be called; browser timezone MUST NOT become planning input
         expect(getSpy).not.toHaveBeenCalled();
+        expect(await screen.findByText('Cần thiết lập múi giờ học tập')).toBeInTheDocument();
       } finally {
         spyIntl.mockRestore();
       }
     });
 
-    it('TEST-011-TZ-03: Profile timezone missing -> Today renders canonical setup-required UI without fake Today plan', async () => {
+    it('TEST-011-R2-03: Profile timezone invalid/unrecognized -> getTodayPlan is NOT called and setup-required state rendered', async () => {
+      // Profile timezone is invalid string
       vi.spyOn(api, 'getMe').mockResolvedValue({
         data: {
           ...mockApiResponses.me.data,
-          timeZone: null,
+          timeZone: 'Invalid/Non_Existent_Zone',
         },
-        meta: { requestId: 'req-me-notz', apiVersion: '1.0' },
+        meta: { requestId: 'req-me-invalid-tz', apiVersion: '1.0' },
       });
       const getSpy = vi.spyOn(api, 'getTodayPlan');
 
       await renderToday();
 
+      // getTodayPlan must NOT be called
       expect(getSpy).not.toHaveBeenCalled();
-      // Canonical setup-required UI rendered
       expect(await screen.findByText('Cần thiết lập múi giờ học tập')).toBeInTheDocument();
-      expect(screen.getByText(/Hồ sơ học tập của bạn chưa có múi giờ hợp lệ/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Thiết lập lộ trình học/i })).toBeInTheDocument();
-
-      // No fake plan items rendered
       expect(screen.queryByText('Kế hoạch hôm nay')).not.toBeInTheDocument();
-      expect(screen.queryByText('Bài đọc khoa học vũ trụ')).not.toBeInTheDocument();
     });
 
-    it('TEST-011-TZ-04: Actor A has timezone & pending request -> switch Actor B with missing timezone -> A resolves late (A cannot populate B, B issues no request)', async () => {
-      let resolvePlanA!: (value: TodayPlanResponseDto) => void;
-      const planAPromise = new Promise<TodayPlanResponseDto>((resolve) => {
-        resolvePlanA = resolve;
+    it('TEST-011-R2-04: Actor A getMe pending -> switch Actor B with missing timezone -> A resolves late (stale A never dispatches getTodayPlan)', async () => {
+      let resolveMeA!: (value: MeResponseDto) => void;
+      const meAPromise = new Promise<MeResponseDto>((resolve) => {
+        resolveMeA = resolve;
       });
 
-      // Actor A has timezone Asia/Ho_Chi_Minh, Actor B has missing timezone
       vi.spyOn(api, 'getMe').mockImplementation(async () => {
         const currentActor = api.getCurrentActorId?.();
         if (currentActor === userB.id) {
@@ -728,21 +754,15 @@ describe('TASK-011: Today Live Frontend Integration', () => {
             meta: { requestId: 'req-me-b', apiVersion: '1.0' },
           };
         }
-        return {
-          data: { ...mockApiResponses.me.data, id: userA.id, timeZone: 'Asia/Ho_Chi_Minh' },
-          meta: { requestId: 'req-me-a', apiVersion: '1.0' },
-        };
+        return meAPromise;
       });
 
-      const getSpy = vi.spyOn(api, 'getTodayPlan').mockImplementation(async () => {
-        return planAPromise;
-      });
+      const getSpy = vi.spyOn(api, 'getTodayPlan');
 
       await renderToday();
 
-      // Actor A request is initiated with Asia/Ho_Chi_Minh
-      expect(getSpy).toHaveBeenCalledTimes(1);
-      expect(getSpy.mock.calls[0][0]?.timeZone).toBe('Asia/Ho_Chi_Minh');
+      // Actor A getMe is pending, no getTodayPlan yet
+      expect(getSpy).not.toHaveBeenCalled();
 
       // Switch to Actor B (missing timezone)
       await act(async () => {
@@ -752,22 +772,55 @@ describe('TASK-011: Today Live Frontend Integration', () => {
 
       // Actor B should render setup-required state, and NOT issue a getTodayPlan request
       expect(await screen.findByText('Cần thiết lập múi giờ học tập')).toBeInTheDocument();
-      expect(getSpy).toHaveBeenCalledTimes(1); // STILL 1, Actor B never called it!
+      expect(getSpy).not.toHaveBeenCalled();
 
-      // Actor A resolves late
+      // Actor A getMe resolves late with valid timezone
       await act(async () => {
-        resolvePlanA({
-          data: customServerPlan,
-          meta: { requestId: 'req-a', apiVersion: '1.0' },
+        resolveMeA({
+          data: { ...mockApiResponses.me.data, id: userA.id, timeZone: 'Asia/Ho_Chi_Minh' },
+          meta: { requestId: 'req-me-a', apiVersion: '1.0' },
         });
       });
 
-      // Actor A must not populate Actor B
-      expect(screen.queryByText('Bài đọc khoa học vũ trụ')).not.toBeInTheDocument();
+      // Stale Actor A must NOT call getTodayPlan or mutate Actor B
+      expect(getSpy).not.toHaveBeenCalled();
       expect(screen.getByText('Cần thiết lập múi giờ học tập')).toBeInTheDocument();
+      expect(screen.queryByText('Kế hoạch hôm nay')).not.toBeInTheDocument();
     });
 
-    it('TEST-011-TZ-05: Same actor starts without timezone -> authoritative profile obtains timezone -> subsequent Today request uses exact stored timezone', async () => {
+    it('TEST-011-R2-05: HttpApiClient transport serialization verifies no timeZone query parameter exists in actual HTTP request', async () => {
+      const urls: string[] = [];
+      const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
+        urls.push(String(input));
+        return new Response(JSON.stringify(mockApiResponses.today), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      });
+
+      const httpClient = new HttpApiClient({
+        baseUrl: 'https://api.lingua.test',
+        authTokenProvider: async () => 'test-token',
+        fetchFn,
+      });
+
+      // Call without query
+      await httpClient.getTodayPlan();
+      expect(urls[0]).toBe('https://api.lingua.test/v1/today');
+      expect(urls[0]).not.toContain('timeZone');
+
+      // Call with contract-valid query fields
+      await httpClient.getTodayPlan({
+        date: '2026-09-05',
+        languageProfileId: '22222222-2222-4000-8000-222222222222',
+      });
+      expect(urls[1]).toBe(
+        'https://api.lingua.test/v1/today?date=2026-09-05&languageProfileId=22222222-2222-4000-8000-222222222222'
+      );
+      expect(urls[1]).not.toContain('timeZone');
+    });
+
+    it('TEST-011-R2-06: Same actor starts without timezone -> profile obtains timezone -> refetch calls getTodayPlan without timeZone', async () => {
       let currentTimeZone: string | null = null;
 
       vi.spyOn(api, 'getMe').mockImplementation(async () => ({
@@ -783,7 +836,7 @@ describe('TASK-011: Today Live Frontend Integration', () => {
         meta: { requestId: 'req-plan', apiVersion: '1.0' },
       });
 
-      const { rerender } = await renderToday();
+      await renderToday();
 
       // Initially missing timezone -> setup required, no getTodayPlan call
       expect(await screen.findByText('Cần thiết lập múi giờ học tập')).toBeInTheDocument();
@@ -792,19 +845,19 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       // Profile now authoritatively obtains timezone
       currentTimeZone = 'Asia/Ho_Chi_Minh';
 
-      // Re-render / update with new timezone
+      // Refetch after profile timezone configured
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>
+      );
+      const { result } = renderHook(() => useTodayPlan({ apiClient: api }), { wrapper });
       await act(async () => {
-        rerender(
-          <AuthProvider customClient={mockSupabase}>
-            <TodayDashboard apiClient={api} timeZone="Asia/Ho_Chi_Minh" />
-          </AuthProvider>
-        );
+        await result.current.refetch();
       });
 
-      // Subsequent Today request uses exact stored timezone
+      // Subsequent Today request uses exact stored timezone as gate and calls getTodayPlan without timeZone
       expect(getSpy).toHaveBeenCalledTimes(1);
-      expect(getSpy.mock.calls[0][0]?.timeZone).toBe('Asia/Ho_Chi_Minh');
-      expect(await screen.findByText('Bài đọc khoa học vũ trụ')).toBeInTheDocument();
+      expect(getSpy.mock.calls[0][0]).toBeUndefined();
+      expect(result.current.plan?.activities[0].title).toBe('Bài đọc khoa học vũ trụ');
     });
   });
 
