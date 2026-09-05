@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -18,20 +18,21 @@ import {
   usePrefersReducedMotion,
 } from '@lingua/ui';
 import {
-  RotateCcw,
   Volume2,
-  Sparkles,
   Maximize2,
   Minimize2,
   CheckCircle2,
-  HelpCircle,
-  Clock,
-  ArrowRight,
-  BookOpen,
 } from 'lucide-react';
-import { type ReviewRating, type ConceptStatus, type ApiErrorCode } from '@lingua/types';
-import { defaultReviewQueue, type ReviewCardItem } from '../../fixtures/reviewFixture';
-
+import {
+  isApiErrorCode,
+  mapApiErrorToUi,
+  type ApiClient,
+  type ReviewRating,
+  type ApiErrorCode,
+} from '@lingua/types';
+import type { ReviewCardItem } from '../../fixtures/reviewFixture';
+import { useOptionalAuth } from '../auth/AuthContext';
+import { useReviewSession } from './useReviewSession';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(useGSAP);
@@ -41,34 +42,90 @@ export interface ReviewSessionProps {
   initialQueue?: ReviewCardItem[];
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
+  apiClient?: ApiClient;
+  languageProfileId?: string;
   onRatingSubmit?: (cardId: string, rating: ReviewRating) => void;
   onSessionComplete?: () => void;
 }
 
 export function ReviewSession({
-  initialQueue = defaultReviewQueue,
-  forcedState = 'success',
-  forcedErrorCode = 'INTERNAL_ERROR',
+  initialQueue,
+  forcedState,
+  forcedErrorCode,
+  apiClient,
+  languageProfileId,
   onRatingSubmit,
   onSessionComplete,
 }: ReviewSessionProps) {
-  const [queue, setQueue] = useState<ReviewCardItem[]>(initialQueue);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
-  const [reviewedCount, setReviewedCount] = useState(0);
-  const [totalQueueCount] = useState(23); // Standard batch size for FSRS
   const [focusMode, setFocusMode] = useState(false);
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
-  const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [lastFeedback, setLastFeedback] = useState<string | null>(null);
+  const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
+
+  useEffect(() => {
+    setLocalForcedState(forcedState);
+  }, [forcedState]);
+
+  const {
+    queue,
+    currentIndex,
+    currentCard,
+    isFinished,
+    isLoading,
+    error,
+    isSubmitting,
+    actionError,
+    lastFeedback,
+    remainingDueCount,
+    reviewedCount,
+    isAnswerRevealed,
+    setIsAnswerRevealed,
+    submitRating,
+    retryLastAnswer,
+    pendingRetryOperation,
+    refetch,
+  } = useReviewSession({
+    apiClient,
+    initialQueue,
+    query: languageProfileId ? { languageProfileId } : undefined,
+    onRatingSubmit,
+    onSessionComplete,
+  });
 
   const sessionCardRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const authContext = useOptionalAuth();
+  const getAudioEpoch = authContext?.getActorEpoch;
+  const isAudioActorCurrent = authContext?.isCurrentActor;
+  const audioActorId = authContext?.user?.id ?? null;
 
-  const currentCard = queue[currentIndex];
-  const isFinished = currentIndex >= queue.length;
+  useEffect(() => {
+    setIsAudioPlaying(false);
+    if (!currentCard?.audioUrl) return;
+    const audio = new Audio(currentCard.audioUrl);
+    audio.preload = 'none';
+    audioRef.current = audio;
+    const epoch = getAudioEpoch?.();
+    const current = () => audioRef.current === audio &&
+      (!isAudioActorCurrent || isAudioActorCurrent(epoch ?? 0, audioActorId));
+    audio.onended = audio.onerror = () => { if (current()) setIsAudioPlaying(false); };
+    return () => {
+      audioRef.current = null;
+      audio.onended = audio.onerror = null;
+      audio.pause();
+    };
+  }, [currentCard?.id, currentCard?.audioUrl, authContext?.actorEpoch, audioActorId,
+    getAudioEpoch, isAudioActorCurrent]);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Lateral slide progression between queue cards (150ms slide distance, opacity: 0 -> 1)
   useGSAP(
@@ -101,83 +158,88 @@ export function ReviewSession({
     { dependencies: [currentIndex, prefersReducedMotion], scope: sessionCardRef }
   );
 
-  const handleRating = useCallback(
-    (rating: ReviewRating) => {
-      if (!currentCard) return;
-
-      const ratingLabels: Record<ReviewRating, string> = {
-        again: 'Quên (Again) — Sẽ lặp lại sớm',
-        hard: 'Khó (Hard) — Cần củng cố',
-        good: 'Tốt (Good) — Đã ghi nhớ',
-        easy: 'Dễ (Easy) — Tăng khoảng cách ôn',
-      };
-
-      setLastFeedback(`Đã ghi nhận: ${ratingLabels[rating]}`);
-      onRatingSubmit?.(currentCard.id, rating);
-
-      // Advance card synchronously - DOM and ARIA update immediately
-      setIsAnswerRevealed(false);
-      const nextIdx = currentIndex + 1;
-      setCurrentIndex(nextIdx);
-      setReviewedCount((prev) => prev + 1);
-
-      if (nextIdx >= queue.length) {
-        onSessionComplete?.();
-      }
-    },
-    [currentCard, currentIndex, queue.length, onRatingSubmit, onSessionComplete]
-  );
-
   // Keyboard shortcut listener (1: Again, 2: Hard, 3: Good, 4: Easy, Space: Reveal)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (isSubmitting || isLoading || error || pendingRetryOperation || localForcedState === 'error' || localForcedState === 'loading') return;
 
       if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         setIsAnswerRevealed((prev) => !prev);
       } else if (e.key === '1') {
         e.preventDefault();
-        handleRating('again');
+        void submitRating('again');
       } else if (e.key === '2') {
         e.preventDefault();
-        handleRating('hard');
+        void submitRating('hard');
       } else if (e.key === '3') {
         e.preventDefault();
-        handleRating('good');
+        void submitRating('good');
       } else if (e.key === '4') {
         e.preventDefault();
-        handleRating('easy');
+        void submitRating('easy');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleRating]);
+  }, [isSubmitting, isLoading, error, pendingRetryOperation, localForcedState, setIsAnswerRevealed, submitRating]);
 
   const handleAudioPlay = () => {
-    setIsAudioPlaying(true);
-    setTimeout(() => setIsAudioPlaying(false), 800);
+    const audio = audioRef.current;
+    if (!audio) return;
+    const epoch = authContext?.getActorEpoch();
+    const actorId = authContext?.user?.id ?? null;
+    void audio.play().then(() => {
+      if (audioRef.current === audio && (!authContext?.isCurrentActor || authContext.isCurrentActor(epoch ?? 0, actorId))) {
+        setIsAudioPlaying(!audio.paused);
+      }
+    }).catch(() => { /* Playback failure does not create learner evidence. */ });
   };
+
+  const isConfiguredMode = Boolean(apiClient || (authContext?.isConfigured && authContext?.authState === 'authenticated'));
 
   const handleRetry = () => {
-    setCurrentState('loading');
-    setTimeout(() => {
-      setCurrentState('success');
-      setQueue(defaultReviewQueue);
-      setCurrentIndex(0);
-    }, 400);
+    if (localForcedState === 'error') {
+      setLocalForcedState('loading');
+    }
+    if (isConfiguredMode) {
+      setLocalForcedState(undefined);
+      void refetch();
+    } else {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = setTimeout(() => {
+        setLocalForcedState('success');
+      }, 300);
+    }
   };
 
-  if (currentState === 'loading') {
+  if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
     return <LoadingState message="Đang tải hàng đợi thẻ ôn tập FSRS..." count={3} />;
   }
 
-  if (currentState === 'error') {
-    return <ErrorState code={errorCode} onRetry={handleRetry} />;
+  if (localForcedState === 'error' || (error && !localForcedState)) {
+    const code: ApiErrorCode =
+      forcedErrorCode ??
+      (error && 'code' in error && isApiErrorCode(error.code) ? error.code : 'INTERNAL_ERROR');
+    return <ErrorState code={code} onRetry={handleRetry} />;
   }
 
-  if (currentState === 'empty' || isFinished) {
+  const recoveryAlert = (actionError || (pendingRetryOperation && !isSubmitting)) && (
+    <InlineAlert variant="danger" title="Lỗi gửi kết quả ôn tập">
+      <p>{actionError ? mapApiErrorToUi(actionError).message : 'Kết quả đang chờ xác nhận.'}</p>
+      <p>Câu trả lời được giữ trên thiết bị này để xác nhận lại, không gửi câu trả lời mới.</p>
+      <Button variant="outline" size="sm" disabled={isSubmitting || isLoading}
+        onClick={() => void retryLastAnswer()}>Thử lại</Button>
+    </InlineAlert>
+  );
+
+  if (!currentCard && pendingRetryOperation) {
+    return <div aria-busy={isSubmitting}>{recoveryAlert}</div>;
+  }
+
+  if (localForcedState === 'empty' || isFinished || (!isLoading && queue.length === 0)) {
     return (
       <div className="space-y-6 max-w-2xl mx-auto py-8">
         <EmptyState
@@ -200,10 +262,16 @@ export function ReviewSession({
     );
   }
 
-  const progressValue = reviewedCount === 3 ? 15 : Math.min(100, Math.round((reviewedCount / totalQueueCount) * 100));
+  if (!currentCard) {
+    return null;
+  }
+
+  const displayDueCount = remainingDueCount !== null ? remainingDueCount : 23;
+  const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : 23;
+  const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
 
   return (
-    <div className={`space-y-6 max-w-2xl mx-auto ${focusMode ? 'py-4' : ''}`}>
+    <div aria-busy={isSubmitting} className={`space-y-6 max-w-2xl mx-auto ${focusMode ? 'py-4' : ''}`}>
       {/* Session Header */}
       <header className="flex items-center justify-between">
         <div>
@@ -216,7 +284,7 @@ export function ReviewSession({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="warning" size="md">
-            23 từ đến hạn
+            {displayDueCount} từ đến hạn
           </Badge>
           <Button
             variant="ghost"
@@ -235,14 +303,17 @@ export function ReviewSession({
         <Progress
           value={progressValue}
           max={100}
-          label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalQueueCount} thẻ`}
+          label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`}
           showValueText
           size="sm"
         />
       </Card>
 
+      {/* Action Error / Ambiguous failure banner with retry */}
+      {recoveryAlert}
+
       {/* Inline Rating Feedback */}
-      {lastFeedback && (
+      {!actionError && lastFeedback && (
         <InlineAlert variant="info" title="Hệ thống FSRS">
           {lastFeedback}
         </InlineAlert>
@@ -284,11 +355,12 @@ export function ReviewSession({
                 size="icon"
                 className="min-h-[44px] min-w-[44px] rounded-full hover:bg-[var(--surface-subtle)]"
                 aria-label="Phát âm từ"
+                disabled={!currentCard.audioUrl}
                 onClick={handleAudioPlay}
               >
                 <Volume2
                   className={`w-5 h-5 text-[var(--action-primary)] ${
-                    isAudioPlaying ? 'animate-bounce' : ''
+                    isAudioPlaying && !prefersReducedMotion ? 'animate-bounce' : ''
                   }`}
                 />
               </Button>
@@ -335,32 +407,36 @@ export function ReviewSession({
               <Button
                 variant="outline"
                 size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
                 className="border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)] min-h-[44px]"
-                onClick={() => handleRating('again')}
+                onClick={() => void submitRating('again')}
               >
                 Quên (Again)
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
                 className="border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] min-h-[44px]"
-                onClick={() => handleRating('hard')}
+                onClick={() => void submitRating('hard')}
               >
                 Khó (Hard)
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
                 className="border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-subtle)] min-h-[44px]"
-                onClick={() => handleRating('good')}
+                onClick={() => void submitRating('good')}
               >
                 Tốt (Good)
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
                 className="border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)] min-h-[44px]"
-                onClick={() => handleRating('easy')}
+                onClick={() => void submitRating('easy')}
               >
                 Dễ (Easy)
               </Button>

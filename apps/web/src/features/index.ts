@@ -3,7 +3,7 @@
  */
 
 export * from './today/TodayDashboard';
-export * from './review/ReviewSession';
+export * from './review';
 export * from './read/InteractiveReader';
 export * from './brain/LanguageBrainCanvas';
 export * from './progress/ProgressAnalytics';

@@ -237,4 +237,80 @@ describe('HttpApiClient', () => {
     expect(client.getActorGeneration()).toBe(initialGen);
     expect(client.getLastEtag('me')).toBe('"etag-same-actor"');
   });
+
+  it('TEST-007-TRANSPORT-01: listReviewQueue calls GET /v1/review/queue with auth and query params without leaking userId', async () => {
+    let capturedUrl = '';
+    let capturedInit: RequestInit | undefined;
+    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(input);
+      capturedInit = init;
+      return response(mockApiResponses.reviewQueue);
+    });
+    const client = new HttpApiClient({
+      baseUrl: 'https://api.example.test',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+      actorId: 'user-review-1',
+    });
+
+    const result = await client.listReviewQueue({
+      limit: 10,
+      languageProfileId: '00000000-0000-4000-8000-000000000001',
+    });
+
+    expect(capturedUrl).toBe(
+      'https://api.example.test/v1/review/queue?limit=10&languageProfileId=00000000-0000-4000-8000-000000000001'
+    );
+    expect(capturedInit?.method).toBe('GET');
+    expect(capturedInit?.headers).toMatchObject({
+      Authorization: 'Bearer access-token',
+    });
+    expect(capturedUrl).not.toContain('user-review-1');
+    expect(capturedUrl).not.toContain('userId');
+    expect(result.data).toHaveLength(mockApiResponses.reviewQueue.data.length);
+  });
+
+  it('TEST-007-TRANSPORT-02: answerReviewItem calls POST /v1/review/{reviewItemId}/answer with Idempotency-Key and body', async () => {
+    let capturedUrl = '';
+    let capturedInit: RequestInit | undefined;
+    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(input);
+      capturedInit = init;
+      return response(mockApiResponses.reviewAnswer);
+    });
+    const client = new HttpApiClient({
+      baseUrl: 'https://api.example.test',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+      actorId: 'user-review-1',
+    });
+
+    const idempotencyKey = '11111111-2222-4333-8444-555555555555';
+    const result = await client.answerReviewItem({
+      reviewItemId: '00000000-0000-4000-8000-000000000010',
+      body: {
+        rating: 'good',
+        responseTimeMs: 1850,
+      },
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+    });
+
+    expect(capturedUrl).toBe(
+      'https://api.example.test/v1/review/00000000-0000-4000-8000-000000000010/answer'
+    );
+    expect(capturedInit?.method).toBe('POST');
+    expect(capturedInit?.headers).toMatchObject({
+      Authorization: 'Bearer access-token',
+      'Idempotency-Key': idempotencyKey,
+      'Content-Type': 'application/json',
+    });
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      rating: 'good',
+      responseTimeMs: 1850,
+    });
+    expect(capturedUrl).not.toContain('userId');
+    expect(result.data.reviewItemId).toBe(mockApiResponses.reviewAnswer.data.reviewItemId);
+  });
 });
