@@ -248,11 +248,12 @@ Implement the existing Library list and concept/content/sentence save/remove con
 ownership, opaque cursor pagination and intrinsic idempotency. Concept save must preserve the one
 Memory lineage and canonical evidence authorities; notes remain not persisted.
 *Completed with forward migration `0009_library_concept_save_intent_v1`, atomic transaction coordination
-via `PostgresLibraryStore`, `LibraryApplication`, `PostgresCompetenceStore.apply_concept_save`, and
-`PostgresMemoryEngine.ensure_lineage_in_transaction`. Implemented immutable concept save intents, canonical
-evidence ingestion, single FSRS lineage preservation (MEM-001), 7 Library operations matching OpenAPI,
-opaque cursor pagination, fail-closed profile/ownership authorization, and 14 integration tests
-covering REPLAY-01 rebuild invariance, GATE-01 endpoint authorization, concurrency barriers, and 3-boundary transactional rollbacks.*
+via `PostgresLibraryStore`, `LibraryApplication`, `CompetenceEngine.apply_concept_save` (calling
+`PostgresCompetenceStore.update_concept_save_intent`), and `PostgresMemoryEngine.ensure_lineage_in_transaction`.
+Implemented immutable concept save intents, canonical evidence ingestion, single FSRS lineage
+preservation (MEM-001), 7 Library operations matching OpenAPI, opaque cursor pagination, fail-closed
+profile/ownership authorization, and 14 integration tests covering REPLAY-01 rebuild invariance,
+GATE-01 endpoint authorization, concurrency barriers, and 3-boundary transactional rollbacks.*
 
 ### TASK-008C — Production content and lexical data pipeline v1
 Owner: CODEX

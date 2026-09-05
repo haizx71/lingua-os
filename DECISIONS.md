@@ -225,3 +225,57 @@ Frontend preserves the token through its adapter/view model; stale writes refetc
 authoritative profiles and require another intentional action, never a guessed token,
 automatic write retry, or duplicate-create fallback. This entry corrects the original
 contract and does not erase the recorded TASK-017 blocker history.
+
+## ADR-022 — Explicit Concept Save/Learn Activates Memory (TASK-008B / GAP-01)
+Status: ACCEPTED
+
+### Context
+GAP-01 identified an architectural disconnection in the system: while the FSRS Memory Engine and scheduler initialization were implemented and tested, they lacked a production caller or trigger boundary. Catalog concepts remained passive or synthetic unless explicitly activated.
+
+### Decision
+The sole MVP active-learning activation boundary is `PUT /v1/library/concepts/{conceptId}`, explicitly invoked by the learner as Save/Learn.
+
+### Transaction Coordination
+An application-level PostgreSQL transaction (`LibraryApplication.save_concept`) coordinates the transition atomically:
+1. Actor and active language profile validation with fail-closed authorization.
+2. Library membership recording in `user_saved_concepts` with `ON CONFLICT (user_id, concept_id) DO NOTHING`.
+3. First-save intent recorded in `concept_save_intents` with `ON CONFLICT (user_id, concept_id) DO NOTHING`.
+4. If this is the concept's first save, ingestion of a canonical `learning.concept.saved.v1` event (`source_type = 'concept_save_intent'`) and incremental projection update setting `has_learning_intent = true`.
+5. Memory lineage initialization via `PostgresMemoryEngine.ensure_lineage_in_transaction`.
+
+### Memory Authority
+The Memory Engine is the sole authority for FSRS card initialization and scheduling. Exactly one primary review scheduler lineage exists per learner × concept (`review_items` with `UNIQUE (user_id, concept_id)` and corresponding `fsrs_states`). Repeated or concurrent saves/learns never reset existing review items, FSRS stability, difficulty, review count, or due dates (MEM-001 invariant).
+
+### First-Save Intent
+`concept_save_intents` is a dedicated, immutable table:
+- Durable and historical.
+- Enforced immutable at the database layer via `enforce_concept_save_intent_immutability` trigger on UPDATE/DELETE.
+- Unique per learner × concept (`UNIQUE (user_id, concept_id)`).
+- Preserved across Library unsave and resave cycles.
+
+### Competence Projection
+Save/Learn expresses learning intent only. It sets `has_learning_intent = true` (`ConceptStatus.LEARNING` when unevidenced). It contributes zero recognition competence mass, zero listening competence mass, zero production competence mass, and zero correctness evidence. Saving an already-familiar or active concept never downgrades its established status.
+
+### Non-Activation Boundaries
+Memory is strictly NOT activated by:
+- Passive Reader exposure (`POST /v1/reader/progress/exposures`)
+- Reader reading progress (`PUT /v1/reader/progress/{contentId}`)
+- Saved sentences (`PUT /v1/library/sentences/{sentenceId}`)
+- Saved content (`PUT /v1/library/content/{contentId}`)
+- Starting Level Assessments (`POST /v1/assessments/...`)
+- Today planning/orchestration (`POST /v1/today/plans`)
+- Dictionary lexical lookup (`GET /v1/dictionary/lookup`)
+- Mere concept discovery or catalog browsing
+
+### Unsave and Resave Semantics
+Unsaving a concept (`DELETE /v1/library/concepts/{conceptId}`) removes Library membership (`user_saved_concepts`) only. It does not erase the immutable first-save intent (`concept_save_intents`), the canonical learning event (`learning_events`), the Memory lineage (`review_items`/`fsrs_states`), review history (`review_events`), or competence history. Resaving a previously unsaved concept restores Library membership without creating a duplicate lineage or a duplicate first-save intent.
+
+### Consequences
+- Active spaced-repetition scheduling begins only after explicit learner intent, preventing review queues from flooding with passively exposed concepts.
+- Historical learning progress survives Library collection curation; removing a concept from the Library does not destroy memory stability or review history.
+- Memory remains an isolated scheduling authority, decoupled from Library presentation state.
+- Cross-module save requires an atomic PostgreSQL transaction across Library, Competence, and Memory stores.
+- Canonical competence replay must reproduce `has_learning_intent` identically from historical `learning.concept.saved.v1` events.
+
+References: TASK-008B, GAP-01, MEM-001, EVID-001.
+
