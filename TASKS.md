@@ -268,11 +268,11 @@ speech scoring, CJK or unapproved datasets.
 
 ### TASK-009 — Reader UI
 Owner: GEMINI
-Status: READY_FOR_REVIEW
+Status: DONE
 Dependencies: TASK-005, TASK-008, TASK-008B, TASK-017
 
 Implement Reader, concept tap/detail and save-to-learning interactions.
-*Note: Completed TASK-009 Mini slice connecting authenticated, product-ready learner to real concept
+*Completed and accepted after independent review: TASK-009 Mini slice connecting authenticated, product-ready learner to real concept
 discovery (`GET /v1/dictionary/search`), concept inspection (`GET /v1/concepts/{conceptId}`), explicit
 Save/Learn invocation (`PUT /v1/library/concepts/{conceptId}`), authoritative saved state reconciliation
 (`GET /v1/library/items?itemType=concept`), search sequence out-of-order race drop, and TASK-017 actor
@@ -282,7 +282,7 @@ ensuring saved concept authority is complete across all cursor pages before comm
 while strictly suppressing the active "Lưu để học" CTA for unconfirmed concepts; accessible retry mechanism
 (`retryReconciliation`); and actor lifecycle isolation (`TEST-009-PAGE-08`). Verified with 21 invariant tests in
 `tests/frontend/task009-concept-discovery-save.test.tsx` (402/402 frontend tests passing). Zero backend or contract changes.
-Full Reader UI integration remains pending subsequent slices. Ready for fresh review.*
+Full Reader UI integration remains pending subsequent slices.*
 
 ### TASK-010 — Today Engine heuristic v1
 Owner: CODEX

@@ -1,11 +1,11 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017 & TASK-008B Completed and Accepted by Sol; GAP-01 Closed; TASK-009 Mini Live Concept Discovery + Save/Learn Ready for Review
+Phase: TASK-017, TASK-008B & TASK-009 Mini Completed and Accepted; GAP-01 Closed; TASK-011 Today Live Integration in Progress
 
-## Ready for Review
+## Completed
 
-- `TASK-009 Mini`: Live Concept Discovery + Explicit Save/Learn UI (READY_FOR_REVIEW)
+- `TASK-009 Mini`: Live Concept Discovery + Explicit Save/Learn UI — ACCEPTED after fresh independent review
   - Live Concept Discovery: Real debounced search (`GET /v1/dictionary/search`) with sequence counter tracking (`searchSequenceRef`) dropping stale out-of-order responses.
   - Concept Inspection: Lazy concept detail retrieval (`GET /v1/concepts/{conceptId}`) expanding definition, English explanation, and example sentences.
   - Explicit Save/Learn: Button communicates learner intent ("Lưu để học" / "Đã lưu vào kho học", never "Đã thành thạo"), invoking authoritative Library mutation (`PUT /v1/library/concepts/{conceptId}`). Disabled pending state ("Đang lưu...") prevents duplicate submissions.
@@ -13,9 +13,7 @@ Phase: TASK-017 & TASK-008B Completed and Accepted by Sol; GAP-01 Closed; TASK-0
   - Saved-State Authority Tri-State (PAGINATION-009-R1): `SAVED` (positively known IDs preserved even on traversal failure), `NOT SAVED` (valid ONLY upon complete, successful cursor exhaustion), and `UNKNOWN / INCOMPLETE AUTHORITY` (during in-flight traversal or following error). Concepts with unknown status render an accessible retry action ("Thử đồng bộ lại") or checking indicator, strictly suppressing the active "Lưu để học" CTA. Explicit clean retry mechanism (`retryReconciliation`) resets traversal state and initiates a fresh sequence from page 1.
   - Actor Lifecycle Isolation: Guarded across all async boundaries via `isCurrentActor` and `LinguaActorAbortedError`, preventing stale Actor A search, reconciliation, failure, or save operations from mutating Actor B UI state (`TEST-009-PAGE-08`).
   - Zero Backend / Contract Diff: Zero modifications to `contracts/`, `services/`, or `database/`.
-  - Verification: 402/402 frontend tests passing across 33 test files (21 invariant tests in `tests/frontend/task009-concept-discovery-save.test.tsx` covering `TEST-009-PAGE-01..08`), 0 typecheck errors, 0 lint warnings, clean Storybook static catalog build, and Next.js 15 production build. Ready for fresh review.
-
-## Completed
+  - Verification: 402/402 frontend tests passing across 33 test files (21 invariant tests in `tests/frontend/task009-concept-discovery-save.test.tsx` covering `TEST-009-PAGE-01..08`), 0 typecheck errors, 0 lint warnings, clean Storybook static catalog build, and Next.js 15 production build. Accepted after fresh independent review.
 
 - `TASK-008B`: Library API v1 + GAP-01 Memory Activation — ACCEPTED by Sol (GAP-01 CLOSED)
   - Forward migration `0009_library_concept_save_intent_v1`: created `concept_save_intents` with database-level immutability trigger (`enforce_concept_save_intent_immutability`), expanded `learning_events_source_type_check` to permit `'concept_save_intent'`, and created covering index `ix_saved_concepts_user_saved_at`.
