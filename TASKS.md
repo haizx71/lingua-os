@@ -276,9 +276,12 @@ Implement Reader, concept tap/detail and save-to-learning interactions.
 discovery (`GET /v1/dictionary/search`), concept inspection (`GET /v1/concepts/{conceptId}`), explicit
 Save/Learn invocation (`PUT /v1/library/concepts/{conceptId}`), authoritative saved state reconciliation
 (`GET /v1/library/items?itemType=concept`), search sequence out-of-order race drop, and TASK-017 actor
-lifecycle transition isolation. Verified with 13 new invariant tests in `tests/frontend/task009-concept-discovery-save.test.tsx`
-(394/394 frontend tests passing). Zero backend or contract changes. Full Reader UI integration remains
-pending subsequent slices.*
+lifecycle transition isolation. PAGINATION-009 fixed: Full multi-page cursor traversal ensuring saved concept
+authority is complete across all cursor pages before committing UI state; cycle loop detection (`seenCursors`)
+with controlled fail-closed error handling; guarded in-flight state (`isSavedStateReady`) preventing premature
+unsaved conclusions; and sequence/epoch tracking isolating stale background page merges. Verified with 19
+invariant tests in `tests/frontend/task009-concept-discovery-save.test.tsx` (400/400 frontend tests passing).
+Zero backend or contract changes. Full Reader UI integration remains pending subsequent slices. Pending independent correction review.*
 
 ### TASK-010 — Today Engine heuristic v1
 Owner: CODEX

@@ -27,20 +27,23 @@ Implement the smallest complete real frontend slice connecting an authenticated,
 
 ### B. Live Concept Discovery Hook (`apps/web/src/features/dictionary/useConceptDiscovery.ts`)
 - Manages search input, debounced query dispatch, and sequence counter.
-- Reconciles saved state on mount/actor ready via `apiClient.listLibraryItems({ itemType: 'concept' })`.
-- Implements `saveConcept(conceptId)` calling `apiClient.saveConceptToLibrary(conceptId)`.
+- Reconciles saved state across all cursor pages via multi-page `apiClient.listLibraryItems({ itemType: 'concept', cursor })`.
+- Cycle loop protection: tracks `seenCursors` and terminates traversal with fail-closed error if server repeats a cursor.
+- Full cursor exhaustion: commits authoritative `savedConceptIds` and sets `isSavedStateReady = true` only after traversal completes.
+- In-flight checking state: while `!isSavedStateReady`, concept cards render disabled "Đang kiểm tra..." button, preventing false unsaved conclusions.
+- Implements `saveConcept(conceptId)` calling `apiClient.saveConceptToLibrary(conceptId)`, disabled during in-flight reconciliation.
 - Implements `inspectConcept(conceptId)` lazily calling `apiClient.getConcept(conceptId)`.
-- Guards all async mutations with `isCurrentActor(epoch, actorId)` and catches `LinguaActorAbortedError`.
+- Guards all async operations with `seq === reconcileSequenceRef.current`, `isCurrentActor(epoch, actorId)`, and catches `LinguaActorAbortedError`.
 
 ### C. Live Dictionary View Component (`apps/web/src/features/dictionary/DictionaryView.tsx`)
 - Integrates `useConceptDiscovery`.
 - Backwards compatible with `initialConcepts`, `forcedState`, and `forcedErrorCode`.
 - Accessible search input (`aria-label`, clear button, search indicator).
 - Result cards with pronunciation audio, status chips, expandable inspection details, and explicit Save/Learn button.
-- Comprehensive states: loading, empty results, search error, inline save error, and saved feedback.
+- Comprehensive states: loading, empty results, search error, inline save error, reconciliation error, checking state, and saved feedback.
 
 ### D. Automated Test Suite (`tests/frontend/task009-concept-discovery-save.test.tsx`)
-13 rigorous invariant tests:
+19 rigorous invariant tests:
 - `TEST-009-01`: authenticated ready learner searches and renders backend concepts.
 - `TEST-009-02`: concept IDs preserved through adapter/view model.
 - `TEST-009-03`: empty/no-result state handled cleanly.
@@ -54,11 +57,18 @@ Implement the smallest complete real frontend slice connecting an authenticated,
 - `TEST-009-11`: save failure does not mark concept as saved and exposes actionable error.
 - `TEST-009-12`: stale Actor A save result cannot mutate Actor B UI.
 - `TEST-009-13`: re-entry / initial load reconciles with library saved concepts.
+- `TEST-009-PAGE-01`: multi-page traversal discovers concepts on later pages without PUT.
+- `TEST-009-PAGE-02`: second request passes exact opaque cursor and itemType=concept.
+- `TEST-009-PAGE-03`: three-page traversal merges all saved IDs without overwriting.
+- `TEST-009-PAGE-04`: stale Actor A page resolution cannot mutate Actor B saved state.
+- `TEST-009-PAGE-05`: repeated server next cursor / loop anomaly terminates and fails closed.
+- `TEST-009-PAGE-06`: concept not present after full cursor exhaustion is treated as unsaved.
 
 ## 4. Verification Plan
-- `pnpm test` (all existing 381 tests + new TASK-009 tests passing)
+- `pnpm test` (400/400 frontend tests passing across 33 test files)
 - `pnpm typecheck` (0 errors)
 - `pnpm lint` (0 warnings/errors)
 - `pnpm build-storybook`
 - `pnpm build`
 - `git diff dd22bb1 -- contracts services database` strictly empty
+
