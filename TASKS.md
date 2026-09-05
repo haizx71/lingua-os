@@ -298,12 +298,11 @@ diagnostics, and the two frozen FastAPI Today operations. Goal relevance is neut
 
 ### TASK-011 — Today UI
 Owner: GEMINI
-Status: BLOCKED
+Status: READY_FOR_REVIEW
 Dependencies: TASK-005, TASK-010
 
-Implement Today as the default landing surface and explain adaptive choices with concise reasons.
-*Note: dependency TASK-010 is satisfied; UI remains BLOCKED until explicitly authorized because
-the frontend is frozen for this backend phase.*
+Implement Today live frontend integration connecting the authenticated product-ready learner to the authoritative Today backend (GET /v1/today and POST /v1/today/{planId}/activities/{activityId}/complete).
+*Implementation complete: live hook with actor lifecycle isolation (epoch / sequenceRef / isCurrentActor / LinguaActorAbortedError), presentation adapters preserving server order with zero client heuristics/sorting, optimistic completion suppression and authoritative rollback, 20/20 live integration tests, 422/422 full frontend suite passing, zero backend/contract changes. Marked READY_FOR_REVIEW.*
 
 ### TASK-012 — Language Brain projection API
 Owner: CODEX

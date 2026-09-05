@@ -1,9 +1,17 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017, TASK-008B & TASK-009 Mini Completed and Accepted; GAP-01 Closed; TASK-011 Today Live Integration in Progress
+Phase: TASK-017, TASK-008B & TASK-009 Mini Completed and Accepted; GAP-01 Closed; TASK-011 Today Live Integration Ready for Review
 
 ## Completed
+
+- `TASK-011`: Today Live Frontend Integration — READY FOR REVIEW
+  - Live Plan Fetching: Authoritative `GET /v1/today?timeZone=...` integration via `useTodayPlan`, passing learner's active timezone with graceful fallback to browser IANA timezone.
+  - Adapter Layer & Server Authority: Pure DTO-to-ViewModel mapping in `adapters.ts` preserving exact server plan ID, item IDs, and array order without any client-side sorting, ranking, or heuristic calculations.
+  - Authoritative Activity Completion: `POST /v1/today/{planId}/activities/{activityId}/complete` integration with in-flight duplicate suppression, optimistic in-progress state, rollback on failure, and server-authoritative state reconciliation.
+  - Actor Lifecycle Isolation: Enforced across all async boundaries via `isCurrentActor`, `getActorEpoch`, and `LinguaActorAbortedError`; same-actor race protection via `sequenceRef`.
+  - Zero Backend / Contract Diff: Zero changes to `contracts/`, `services/`, or `database/`.
+  - Full Quality Gate Verification: 20/20 tests in `tests/frontend/task011-today-live.test.tsx`, 422/422 tests passing across all 34 test files, 0 typecheck errors, 0 lint warnings, clean Storybook build, clean Next.js 15 production build.
 
 - `TASK-009 Mini`: Live Concept Discovery + Explicit Save/Learn UI — ACCEPTED after fresh independent review
   - Live Concept Discovery: Real debounced search (`GET /v1/dictionary/search`) with sequence counter tracking (`searchSequenceRef`) dropping stale out-of-order responses.
