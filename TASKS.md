@@ -204,18 +204,11 @@ remains 313/313 across 27 files. OpenAPI and frontend application behavior are u
 
 ### TASK-007 — Review UI / Review Live Frontend Integration
 Owner: GEMINI; CODEX explicitly authorized for bounded interrupted-worktree completion
-Status: READY_FOR_REVIEW
+Status: DONE
 Dependencies: TASK-005, TASK-006, TASK-006A, TASK-006B, TASK-006C, TASK-006C.1, TASK-006C.2
 
 Implement Review flow and all specified states using the API contract.
-*Resumed from `c6bebbf` and the existing uncommitted implementation by explicit user authorization.
-TASK-009 Mini and TASK-011 Today Live are accepted prerequisites for this integration. The hook,
-adapters, explicit answer submission, stable-key recovery receipt, opaque queue pagination and
-actor/request lifecycle protection are implemented. Verified 2026-09-06: 35 Review tests + 13 HTTP
-tests pass; all 466 frontend tests across 35 files pass; generated freshness, typecheck, lint,
-Storybook and production build pass. No contracts/services/database changes. Independent acceptance
-is pending: NOT DONE. Do not start First Real Learning Loop. See
-`plans/TASK-007-review-ui-integration.md` and `docs/TASK-007_IMPLEMENTATION_REVIEW.md`.*
+*Accepted: Final review verdict "TASK-007 INDEPENDENT REVIEW: PASS". Resumed from `c6bebbf` and the existing uncommitted implementation by explicit user authorization. TASK-009 Mini and TASK-011 Today Live are accepted prerequisites for this integration. The hook, adapters, explicit answer submission, stable-key recovery receipt, opaque queue pagination, and actor/request lifecycle protection are implemented and accepted. Verified 2026-09-06: 35 Review tests + 13 HTTP tests pass; all 466 frontend tests across 35 files pass; generated freshness, typecheck, lint, Storybook, and production build pass. Zero contracts/services/database changes. See `plans/TASK-007-review-ui-integration.md` and `docs/TASK-007_IMPLEMENTATION_REVIEW.md`.*
 
 
 

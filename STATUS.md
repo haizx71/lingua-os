@@ -1,9 +1,18 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Accepted; GAP-01 Closed; TASK-007 Review Live READY_FOR_REVIEW
+Phase: TASK-017, TASK-008B, TASK-009 Mini, TASK-011 Today Live & TASK-007 Review Live Completed and Accepted; GAP-01 Closed
 
 ## Completed
+
+- `TASK-007`: Review UI / Review Live Frontend Integration — ACCEPTED
+  - Final Review Verdict: `TASK-007 INDEPENDENT REVIEW: PASS`
+  - Server Authority & Presentation Adapter: Pure DTO-to-ViewModel mapping in `adapters.ts` preserving exact server item IDs, prompt, context translations, and array order without any client-side FSRS, scheduling, due-date calculations, or competence math.
+  - Authoritative Answers & User Interactions: Explicit rating submission only (`POST /v1/review/{reviewItemId}/answer`) with immediate button/keyboard disabling, non-optimistic advancement, and server-authoritative remaining due count and feedback reconciliation.
+  - Local Pending-Answer Recovery & Idempotency: Local `sessionStorage` receipt scoped by actor ID and language profile (`lingua.review.pending.v1:${actorId}:${languageProfileId}`); reuses identical UUID `Idempotency-Key` and payload across ambiguous network failures and page reload/re-entry without automatic unconfirmed dispatch; fresh UUID generated on advance to next card.
+  - Cursor Pagination & Queue Traversal: Strict multi-page cursor traversal for `GET /v1/review/queue` preserving server order; detects and fails closed on repeated/cyclic cursors and duplicate items.
+  - Actor Lifecycle Isolation: Multi-boundary protection via `captureGuard` (`isCurrentActor`, `getActorEpoch`, and `sequenceRef`); stale Actor A responses, errors, or cleanup cannot mutate Actor B state or clear active busy locks; same-actor token refresh preserves in-flight work.
+  - Quality Gates & Zero Drift: 48/48 focused tests (35 Review + 13 HTTP transport), 466/466 full frontend tests across 35 files, 0 typecheck errors, 0 lint warnings, clean Storybook static catalog build, and clean Next.js 15 production build. Zero changes to `contracts/`, `services/`, or `database/`. Accepted.
 
 - `TASK-011`: Today Live Frontend Integration — ACCEPTED
   - Final Review Verdict: `TASK-011 TODAY CONTRACT R2 FINAL REVIEW: PASS — MARK TASK-011 DONE AND PROCEED TO TASK-007 REVIEW LIVE`
@@ -246,23 +255,12 @@ Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Ac
 
 ## In progress
 
-- `TASK-007`: Review Live implementation complete, **READY_FOR_REVIEW**, not DONE.
-  - Resumed existing uncommitted work from `c6bebbf`; no reset/revert or backend/contract changes.
-  - OpenAPI DTO → ApiClient → Review adapter → view model → React. Explicit ratings only;
-    server-authoritative responses, no frontend FSRS/competence or synthetic learning events.
-  - LOCAL_ONLY actor/profile-scoped pending receipt supports same-key/payload retry after same-tab
-    reload. Replay is followed by a fresh queue read; cursor traversal preserves server order.
-  - Actor epoch, request sequence, mount guard and token-owned busy cleanup isolate stale requests.
-  - Verification: 48/48 focused (35 Review + 13 HTTP); **466/466 frontend tests / 35 files**,
-    zero skipped/todo in the full run; freshness, typecheck, lint, Storybook and build PASS.
-  - See `docs/TASK-007_IMPLEMENTATION_REVIEW.md` for failures, fixes, limitations and review evidence.
+None.
 
 ## Blockers
 
-- `TASK-007` awaits independent review, not implementation authorization. First Real Learning Loop
-  has not started and is not authorized by this task.
-- `TASK-009 Mini` and `TASK-011` are accepted (see Completed). TASK-012 satisfies TASK-013 and the Brain portion of TASK-014,
-  but TASK-014 is not the recommended next task. TASK-015 retains its stated upstream dependency.
+- `TASK-009 Mini`, `TASK-011`, and `TASK-007` are accepted (see Completed). First Real Learning Loop has not started and is not authorized by this task.
+- TASK-012 satisfies TASK-013 and the Brain portion of TASK-014, but TASK-014 is not the recommended next task. TASK-015 retains its stated upstream dependency.
 
 ## Verification Status
 
@@ -485,6 +483,6 @@ Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Ac
 - TASK-008A is DONE. Do not start another task without explicit authorization.
 - TASK-017 hardening in progress across Slices A–D (C-1 through C-6).
 - TASK-017A is DONE and verified (458/458 backend, 338/338 frontend).
-- TASK-007 is READY_FOR_REVIEW; keep frontend surfaces outside this bounded integration frozen.
+- TASK-007 is ACCEPTED and DONE; First Real Learning Loop has not started and requires explicit authorization.
 - Reader resume position, synchronized preferences, saved-sentence notes, configurable learner
   new-concept budget, data export and account deletion remain future schema/contract decisions.
