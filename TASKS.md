@@ -252,8 +252,9 @@ via `PostgresLibraryStore`, `LibraryApplication`, `CompetenceEngine.apply_concep
 `PostgresCompetenceStore.update_concept_save_intent`), and `PostgresMemoryEngine.ensure_lineage_in_transaction`.
 Implemented immutable concept save intents, canonical evidence ingestion, single FSRS lineage
 preservation (MEM-001), 7 Library operations matching OpenAPI, opaque cursor pagination, fail-closed
-profile/ownership authorization, and 14 integration tests covering REPLAY-01 rebuild invariance,
-GATE-01 endpoint authorization, concurrency barriers, and 3-boundary transactional rollbacks.*
+profile/ownership authorization, and 15 tests covering RLS-GATE-01 behavioral verification,
+REPLAY-01 rebuild invariance, GATE-01 endpoint authorization, concurrency barriers, and 3-boundary
+transactional rollbacks. Recorded ADR-022 with frozen contract alignment (ADR-PATH-01).*
 
 ### TASK-008C — Production content and lexical data pipeline v1
 Owner: CODEX

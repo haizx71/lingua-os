@@ -11,7 +11,7 @@ Phase: TASK-017 Completed and Accepted by Sol; TASK-008B Library API v1 + GAP-01
   - Canonical Learning Event & Competence Projection: First save intent creates a canonical learning event (`learning.concept.saved.v1`, `source_type = 'concept_save_intent'`) and updates `user_concept_states` to set `has_learning_intent = true` (`ConceptStatus.LEARNING`) with 0 competence mass.
   - Library API Operations: Implemented 7 FastAPI endpoints (`GET /v1/library/items`, `PUT /v1/library/concepts/{id}`, `DELETE /v1/library/concepts/{id}`, `PUT /v1/library/sentences/{id}`, `DELETE /v1/library/sentences/{id}`, `PUT /v1/library/content/{id}`, `DELETE /v1/library/content/{id}`).
   - Opaque Cursor Pagination & Security: Tamper-proof HMAC SHA-256 cursors with timestamp-keyed pagination, actor ownership, fail-closed active profile checks, and exact contract conformity.
-  - Verification: 477/477 backend tests passed (including 14 library integration tests covering REPLAY-01 rebuild invariance, GATE-01 authorized endpoint whitelist, concurrency barrier overlap, and 3-boundary transactional rollback & retry), Ruff format/lint clean across 108 files, Mypy strict clean across 108 files, Redocly OpenAPI lint valid, contract generation fresh.
+  - Verification: 478/478 backend tests passed (including RLS-GATE-01 behavioral verification across owner/other/anon and 14 library integration tests covering REPLAY-01 rebuild invariance, GATE-01 authorized endpoint whitelist, concurrency barrier overlap, and 3-boundary transactional rollback & retry), ADR-022 recorded with contract paths verified (ADR-PATH-01), Ruff format/lint clean across 108 files, Mypy strict clean across 108 files, Redocly OpenAPI lint valid, contract generation fresh.
 
 ## Completed
 

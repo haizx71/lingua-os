@@ -258,13 +258,13 @@ Save/Learn expresses learning intent only. It sets `has_learning_intent = true` 
 
 ### Non-Activation Boundaries
 Memory is strictly NOT activated by:
-- Passive Reader exposure (`POST /v1/reader/progress/exposures`)
+- Passive Reader exposure (`POST /v1/reader/exposures`)
 - Reader reading progress (`PUT /v1/reader/progress/{contentId}`)
 - Saved sentences (`PUT /v1/library/sentences/{sentenceId}`)
 - Saved content (`PUT /v1/library/content/{contentId}`)
-- Starting Level Assessments (`POST /v1/assessments/...`)
-- Today planning/orchestration (`POST /v1/today/plans`)
-- Dictionary lexical lookup (`GET /v1/dictionary/lookup`)
+- Starting Level Assessments (`POST /v1/assessments`)
+- Today planning/orchestration (`GET /v1/today`)
+- Dictionary lexical lookup (`GET /v1/dictionary/search`)
 - Mere concept discovery or catalog browsing
 
 ### Unsave and Resave Semantics
@@ -278,4 +278,3 @@ Unsaving a concept (`DELETE /v1/library/concepts/{conceptId}`) removes Library m
 - Canonical competence replay must reproduce `has_learning_intent` identically from historical `learning.concept.saved.v1` events.
 
 References: TASK-008B, GAP-01, MEM-001, EVID-001.
-
