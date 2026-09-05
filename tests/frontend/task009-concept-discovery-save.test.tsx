@@ -626,24 +626,54 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
       expect(screen.queryByLabelText(`Đã lưu từ ${cA2.canonicalForm} vào kho học`)).not.toBeInTheDocument();
     });
 
-    it('TEST-009-PAGE-05: repeated server next cursor / loop anomaly terminates and fails closed', async () => {
+    it('TEST-009-PAGE-05: repeated server next cursor anomaly terminates, fails closed, and does not treat absent concepts as unsaved', async () => {
       let callCount = 0;
+      const conceptA: ConceptSummaryDto = {
+        ...mockConceptSummary,
+        id: '00000000-0000-4000-8000-000000000001',
+        canonicalForm: 'concept-a',
+      };
+      const conceptTarget: ConceptSummaryDto = {
+        ...mockSecondConceptSummary,
+        id: '00000000-0000-4000-8000-000000000002',
+        canonicalForm: 'concept-target',
+      };
+
       vi.spyOn(api, 'listLibraryItems').mockImplementation(async () => {
         callCount++;
-        // Always returns nextCursor: 'LOOP-CURSOR'
+        // Page 1: returns conceptA with nextCursor C1
+        // Page 2: repeats nextCursor C1
         return {
-          data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: mockConceptSummary }],
-          meta: { requestId: `req-${callCount}`, apiVersion: '1.0', nextCursor: 'LOOP-CURSOR', hasMore: true, pageSize: 1 },
+          data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: conceptA }],
+          meta: { requestId: `req-${callCount}`, apiVersion: '1.0', nextCursor: 'C1', hasMore: true, pageSize: 1 },
         };
+      });
+
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [conceptA, conceptTarget],
+        meta: { requestId: 'req-search', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 2 },
       });
 
       await renderDictionary();
 
-      // Loop was caught on second call when 'LOOP-CURSOR' was repeated
+      // Loop was caught on second call when 'C1' was repeated
       expect(callCount).toBe(2);
       // Fails closed with standard InlineAlert
       expect(await screen.findByText('Lỗi đồng bộ kho từ vựng')).toBeInTheDocument();
       expect(screen.getByText(/Pagination loop detected/i)).toBeInTheDocument();
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'concept' } });
+
+      // 1. Saved A was positively confirmed on page 1 before loop failure: remains positively known as saved
+      expect(await screen.findByLabelText(`Đã lưu từ ${conceptA.canonicalForm} vào kho học`)).toBeInTheDocument();
+
+      // 2. TARGET was absent from incomplete traversal: MUST NOT be treated as definitively unsaved!
+      // Active "Lưu để học" must NOT appear for TARGET
+      expect(screen.queryByRole('button', { name: `Lưu từ ${conceptTarget.canonicalForm} để học` })).not.toBeInTheDocument();
+
+      // 3. TARGET displays safe non-authoritative retry CTA instead of false unsaved button
+      expect(await screen.findByRole('button', { name: `Thử đồng bộ lại trạng thái lưu của từ ${conceptTarget.canonicalForm}` })).toBeInTheDocument();
     });
 
     it('TEST-009-PAGE-06: concept not present after full cursor exhaustion is treated as unsaved', async () => {
@@ -705,6 +735,138 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
       });
 
       // Only NOW after full cursor exhaustion is the concept authoritatively treated as unsaved
+      expect(await screen.findByRole('button', { name: `Lưu từ ${cUnsaved.canonicalForm} để học` })).toBeInTheDocument();
+    });
+
+    it('TEST-009-PAGE-07: clean retry after reconciliation failure reaches cursor exhaustion and discovers TARGET without PUT', async () => {
+      const conceptA: ConceptSummaryDto = {
+        ...mockConceptSummary,
+        id: '00000000-0000-4000-8000-000000000001',
+        canonicalForm: 'concept-a',
+      };
+      const conceptTarget: ConceptSummaryDto = {
+        ...mockSecondConceptSummary,
+        id: '00000000-0000-4000-8000-000000000002',
+        canonicalForm: 'concept-target',
+      };
+
+      let attempt = 1;
+      let firstRunCalls = 0;
+      const listSpy = vi.spyOn(api, 'listLibraryItems').mockImplementation(async (query) => {
+        if (attempt === 1) {
+          firstRunCalls++;
+          // First reconciliation: repeated cursor loop error
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: conceptA }],
+            meta: { requestId: `req-1-${firstRunCalls}`, apiVersion: '1.0', nextCursor: 'C1', hasMore: true, pageSize: 1 },
+          };
+        }
+        // Second reconciliation: clean multi-page traversal
+        if (!query?.cursor) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: conceptA }],
+            meta: { requestId: 'req-2-1', apiVersion: '1.0', nextCursor: 'C2', hasMore: true, pageSize: 1 },
+          };
+        }
+        if (query.cursor === 'C2') {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: conceptTarget }],
+            meta: { requestId: 'req-2-2', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+          };
+        }
+        throw new Error(`Unexpected cursor: ${query.cursor}`);
+      });
+
+      const saveSpy = vi.spyOn(api, 'saveConceptToLibrary');
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [conceptTarget],
+        meta: { requestId: 'req-search', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+      });
+
+      await renderDictionary();
+
+      // First run failed with loop error
+      expect(firstRunCalls).toBe(2);
+      expect(await screen.findByText('Lỗi đồng bộ kho từ vựng')).toBeInTheDocument();
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'target' } });
+
+      // Before retry: TARGET shows retry action, NOT authoritative unsaved
+      expect(screen.queryByRole('button', { name: `Lưu từ ${conceptTarget.canonicalForm} để học` })).not.toBeInTheDocument();
+      const retryCardBtn = await screen.findByRole('button', { name: `Thử đồng bộ lại trạng thái lưu của từ ${conceptTarget.canonicalForm}` });
+
+      // Learner retries
+      attempt = 2;
+      fireEvent.click(retryCardBtn);
+
+      // Second reconciliation succeeds with full cursor exhaustion:
+      // TARGET becomes "Đã lưu vào kho học"
+      expect(await screen.findByLabelText(`Đã lưu từ ${conceptTarget.canonicalForm} vào kho học`)).toBeInTheDocument();
+      expect(screen.queryByText('Lỗi đồng bộ kho từ vựng')).not.toBeInTheDocument();
+
+      // No PUT Save/Learn is issued
+      expect(saveSpy).not.toHaveBeenCalled();
+    });
+
+    it('TEST-009-PAGE-08: Actor A reconciliation failure cannot contaminate Actor B state', async () => {
+      const cA1: ConceptSummaryDto = { ...mockConceptSummary, id: 'actor-a-concept-1', canonicalForm: 'a1-term' };
+      const cB1: ConceptSummaryDto = { ...mockConceptSummary, id: 'actor-b-concept-1', canonicalForm: 'b1-term' };
+      const cUnsaved: ConceptSummaryDto = { ...mockSecondConceptSummary, id: 'b-unsaved-1', canonicalForm: 'b2-term-unsaved' };
+
+      let rejectPageA2: (err: Error) => void;
+      const pageA2Promise = new Promise<LibraryItemsResponseDto>((_, reject) => {
+        rejectPageA2 = reject;
+      });
+
+      let pageCount = 0;
+      vi.spyOn(api, 'listLibraryItems').mockImplementation(async () => {
+        pageCount++;
+        // First call: Actor A page 1
+        if (pageCount === 1) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: cA1 }],
+            meta: { requestId: 'req-a1', apiVersion: '1.0', nextCursor: 'cursor-a1', hasMore: true, pageSize: 1 },
+          };
+        }
+        // Second call: Actor A page 2 (delayed failure)
+        if (pageCount === 2) {
+          return pageA2Promise;
+        }
+        // Third call: Actor B page 1 (successful exhaustion)
+        return {
+          data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: cB1 }],
+          meta: { requestId: 'req-b1', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+        };
+      });
+
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [cB1, cUnsaved],
+        meta: { requestId: 'req-s', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 2 },
+      });
+
+      await renderDictionary();
+
+      // Actor A has page 2 pending. Switch to Actor B
+      await act(async () => {
+        mockSupabase.switchUser(sessionB);
+      });
+
+      // Now Actor A's page 2 fails with error
+      await act(async () => {
+        rejectPageA2(new Error('Pagination loop detected for cursor: cursor-a1'));
+      });
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'term' } });
+
+      // Actor B must NOT receive Actor A's error
+      expect(screen.queryByText('Lỗi đồng bộ kho từ vựng')).not.toBeInTheDocument();
+
+      // Actor B sees cB1 as saved
+      expect(await screen.findByLabelText(`Đã lưu từ ${cB1.canonicalForm} vào kho học`)).toBeInTheDocument();
+
+      // Actor B reached full cursor exhaustion, so cUnsaved is authoritatively treated as unsaved with active Save CTA
       expect(await screen.findByRole('button', { name: `Lưu từ ${cUnsaved.canonicalForm} để học` })).toBeInTheDocument();
     });
   });
