@@ -1,19 +1,21 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017 Completed and Accepted by Sol; TASK-008B Library API v1 + GAP-01 Ready for Review
+Phase: TASK-017 & TASK-008B Completed and Accepted by Sol; GAP-01 Closed; TASK-009 Mini Live Concept Discovery + Save/Learn In Progress
 
 ## Ready for Review
 
-- `TASK-008B`: Library API v1 + GAP-01 Memory Activation
+- None (TASK-009 Mini in progress)
+
+## Completed
+
+- `TASK-008B`: Library API v1 + GAP-01 Memory Activation — ACCEPTED by Sol (GAP-01 CLOSED)
   - Forward migration `0009_library_concept_save_intent_v1`: created `concept_save_intents` with database-level immutability trigger (`enforce_concept_save_intent_immutability`), expanded `learning_events_source_type_check` to permit `'concept_save_intent'`, and created covering index `ix_saved_concepts_user_saved_at`.
   - GAP-01 Memory Activation & MEM-001 Invariant: Only `PUT /v1/library/concepts/{conceptId}` activates Memory via `PostgresMemoryEngine.ensure_lineage_in_transaction()`. Exactly one FSRS review item (`UNIQUE (user_id, concept_id)`) per learner/concept. Subsequent saves/learns never reset existing review items or FSRS state. Reader exposures, reading progress, sentence saves, content saves, assessments, and Dictionary lookups strictly do NOT activate Memory.
   - Canonical Learning Event & Competence Projection: First save intent creates a canonical learning event (`learning.concept.saved.v1`, `source_type = 'concept_save_intent'`) and updates `user_concept_states` to set `has_learning_intent = true` (`ConceptStatus.LEARNING`) with 0 competence mass.
   - Library API Operations: Implemented 7 FastAPI endpoints (`GET /v1/library/items`, `PUT /v1/library/concepts/{id}`, `DELETE /v1/library/concepts/{id}`, `PUT /v1/library/sentences/{id}`, `DELETE /v1/library/sentences/{id}`, `PUT /v1/library/content/{id}`, `DELETE /v1/library/content/{id}`).
   - Opaque Cursor Pagination & Security: Tamper-proof HMAC SHA-256 cursors with timestamp-keyed pagination, actor ownership, fail-closed active profile checks, and exact contract conformity.
-  - Verification: 478/478 backend tests passed (including RLS-GATE-01 behavioral verification across owner/other/anon and 14 library integration tests covering REPLAY-01 rebuild invariance, GATE-01 authorized endpoint whitelist, concurrency barrier overlap, and 3-boundary transactional rollback & retry), ADR-022 recorded with contract paths verified (ADR-PATH-01), Ruff format/lint clean across 108 files, Mypy strict clean across 108 files, Redocly OpenAPI lint valid, contract generation fresh.
-
-## Completed
+  - Standards Gates & Verification: 478/478 backend tests passed (including RLS-GATE-01 behavioral verification across owner/other/anon and 14 library integration tests covering REPLAY-01 rebuild invariance, GATE-01 authorized endpoint whitelist, concurrency barrier overlap, and 3-boundary transactional rollback & retry), ADR-022 recorded with contract paths verified (ADR-PATH-01), Ruff format/lint clean across 108 files, Mypy strict clean across 108 files, Redocly OpenAPI lint valid, contract generation fresh. Accepted implementation HEAD: 6d7c803.
 
 - `TASK-017`: Live Auth + Onboarding Integration Hardening (Findings C-1..C-6 + Required Fix Pass DEF-01..DEF-03 + DEF-03-R1) — ACCEPTED by Sol
   - C-1: Assessment pointer strictly actor-scoped in local storage (`lingua:starting-level:active-assessment:${userId}`); foreign pointers completely isolated.
