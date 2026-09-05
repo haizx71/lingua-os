@@ -202,16 +202,20 @@ lifetime vi→en lifecycle, IANA timezone, downstream no-bootstrap and ownership
 PostgreSQL 17.11 reports 188/188 database tests and 321/321 full backend tests; frozen frontend
 remains 313/313 across 27 files. OpenAPI and frontend application behavior are unchanged.*
 
-### TASK-007 — Review UI
-Owner: GEMINI
-Status: BLOCKED
+### TASK-007 — Review UI / Review Live Frontend Integration
+Owner: GEMINI; CODEX explicitly authorized for bounded interrupted-worktree completion
+Status: READY_FOR_REVIEW
 Dependencies: TASK-005, TASK-006, TASK-006A, TASK-006B, TASK-006C, TASK-006C.1, TASK-006C.2
 
 Implement Review flow and all specified states using the API contract.
-*Note: Authorization to start was received on 2026-08-23, but the mandatory auth gate stopped
-implementation. TASK-006C, TASK-006C.1, and TASK-006C.2 have established, hardened, and aligned the canonical
-Supabase Auth session and `AuthTokenProvider` foundation. TASK-007 remains BLOCKED awaiting explicit user
-authorization to begin Review UI real-transport integration. Do not resume TASK-007 automatically.*
+*Resumed from `c6bebbf` and the existing uncommitted implementation by explicit user authorization.
+TASK-009 Mini and TASK-011 Today Live are accepted prerequisites for this integration. The hook,
+adapters, explicit answer submission, stable-key recovery receipt, opaque queue pagination and
+actor/request lifecycle protection are implemented. Verified 2026-09-06: 35 Review tests + 13 HTTP
+tests pass; all 466 frontend tests across 35 files pass; generated freshness, typecheck, lint,
+Storybook and production build pass. No contracts/services/database changes. Independent acceptance
+is pending: NOT DONE. Do not start First Real Learning Loop. See
+`plans/TASK-007-review-ui-integration.md` and `docs/TASK-007_IMPLEMENTATION_REVIEW.md`.*
 
 
 

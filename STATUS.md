@@ -1,7 +1,7 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Accepted; GAP-01 Closed; TASK-007 Review Live Integration in Progress
+Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Accepted; GAP-01 Closed; TASK-007 Review Live READY_FOR_REVIEW
 
 ## Completed
 
@@ -246,13 +246,22 @@ Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Ac
 
 ## In progress
 
-- None (TASK-017 Controlled Hardening implementation complete, pending independent review)
+- `TASK-007`: Review Live implementation complete, **READY_FOR_REVIEW**, not DONE.
+  - Resumed existing uncommitted work from `c6bebbf`; no reset/revert or backend/contract changes.
+  - OpenAPI DTO → ApiClient → Review adapter → view model → React. Explicit ratings only;
+    server-authoritative responses, no frontend FSRS/competence or synthetic learning events.
+  - LOCAL_ONLY actor/profile-scoped pending receipt supports same-key/payload retry after same-tab
+    reload. Replay is followed by a fresh queue read; cursor traversal preserves server order.
+  - Actor epoch, request sequence, mount guard and token-owned busy cleanup isolate stale requests.
+  - Verification: 48/48 focused (35 Review + 13 HTTP); **466/466 frontend tests / 35 files**,
+    zero skipped/todo in the full run; freshness, typecheck, lint, Storybook and build PASS.
+  - See `docs/TASK-007_IMPLEMENTATION_REVIEW.md` for failures, fixes, limitations and review evidence.
 
 ## Blockers
 
-- `TASK-007` remains **BLOCKED** awaiting explicit user authorization to begin Review UI real-transport integration. The canonical frontend authentication and hardened token provider foundation (TASK-006C, TASK-006C.1, TASK-006C.2) are established, but execution must not resume automatically.
-- `TASK-009` and `TASK-011` have satisfied dependencies but remain manually blocked until explicit
-  Gemini/frontend authorization. TASK-012 satisfies TASK-013 and the Brain portion of TASK-014,
+- `TASK-007` awaits independent review, not implementation authorization. First Real Learning Loop
+  has not started and is not authorized by this task.
+- `TASK-009 Mini` and `TASK-011` are accepted (see Completed). TASK-012 satisfies TASK-013 and the Brain portion of TASK-014,
   but TASK-014 is not the recommended next task. TASK-015 retains its stated upstream dependency.
 
 ## Verification Status
@@ -476,6 +485,6 @@ Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Ac
 - TASK-008A is DONE. Do not start another task without explicit authorization.
 - TASK-017 hardening in progress across Slices A–D (C-1 through C-6).
 - TASK-017A is DONE and verified (458/458 backend, 338/338 frontend).
-- Keep TASK-007 blocked and the Gemini-owned frontend surface outside this bounded integration frozen.
+- TASK-007 is READY_FOR_REVIEW; keep frontend surfaces outside this bounded integration frozen.
 - Reader resume position, synchronized preferences, saved-sentence notes, configurable learner
   new-concept budget, data export and account deletion remain future schema/contract decisions.
