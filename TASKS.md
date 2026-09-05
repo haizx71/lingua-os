@@ -302,7 +302,7 @@ Status: READY_FOR_REVIEW
 Dependencies: TASK-005, TASK-010
 
 Implement Today live frontend integration connecting the authenticated product-ready learner to the authoritative Today backend (GET /v1/today and POST /v1/today/{planId}/activities/{activityId}/complete).
-*Implementation complete: live hook with actor lifecycle isolation (epoch / sequenceRef / isCurrentActor / LinguaActorAbortedError), presentation adapters preserving server order with zero client heuristics/sorting, optimistic completion suppression and authoritative rollback, 20/20 live integration tests, 422/422 full frontend suite passing, zero backend/contract changes. Marked READY_FOR_REVIEW.*
+*Implementation complete: live hook with actor lifecycle isolation (epoch / sequenceRef / isCurrentActor / LinguaActorAbortedError), presentation adapters preserving server order with zero client heuristics/sorting, optimistic completion suppression and authoritative rollback, fail-closed timezone authority requiring stored valid IANA timezone (TIMEZONE-011-R1 fixed), 25/25 live integration tests (including TEST-011-TZ-01..05), 427/427 full frontend suite passing, zero backend/contract changes. Marked READY_FOR_REVIEW pending independent review.*
 
 ### TASK-012 — Language Brain projection API
 Owner: CODEX

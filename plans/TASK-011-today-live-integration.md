@@ -60,23 +60,24 @@ Implement live Today frontend integration connecting an authenticated, product-r
 - `TEST-011-01` .. `TEST-011-06`: Plan loading, adapter fidelity, loading authority, error handling, retry, persisted re-entry.
 - `TEST-011-07` .. `TEST-011-10`: Actor lifecycle isolation (A cannot mutate B, A error cannot contaminate B, stale request #1 cannot overwrite #2, stale finally cannot clear loading state).
 - `TEST-011-11` .. `TEST-011-14`: Authority invariants (exact item order, zero local sorting, zero fake evidence, timezone authority).
+- `TEST-011-TZ-01` .. `TEST-011-TZ-05` (TIMEZONE-011-R1): Timezone authority (stored timezone parameter, browser timezone suppression, setup-required fail-closed UI, actor switch isolation, reactive profile update).
 - `TEST-011-COMP-01` .. `TEST-011-COMP-06`: Completion semantics (exact parameters, duplicate suppression, authoritative update, failure rollback, actor isolation, idempotent replay).
 
 ## 4. Verification Plan
-- `pnpm test` (full suite passes, 420+ tests)
+- `pnpm test` (full suite passes, 427+ tests)
 - `pnpm typecheck` (0 errors)
 - `pnpm lint` (0 warnings/errors)
 - `pnpm build-storybook`
 - `pnpm build`
-- `git diff 138b9fa..HEAD -- contracts services database` strictly empty
+- `git diff f679425..HEAD -- contracts services database` strictly empty
 
 ## 5. Verification Results
-- `vitest run tests/frontend/task011-today-live.test.tsx`: 20/20 passed
+- `vitest run tests/frontend/task011-today-live.test.tsx`: 25/25 passed (including TEST-011-TZ-01..05)
 - `vitest run tests/frontend/contracts.test.ts`: 41/41 passed
 - `vitest run tests/frontend/e2e/tier5-adversarial-hardening.test.tsx`: 20/20 passed
-- `pnpm test`: 422/422 passed across all 34 test files
+- `pnpm test`: 427/427 passed across all 34 test files
 - `pnpm typecheck`: 0 errors across 4 workspace packages
 - `pnpm lint`: 0 errors, 0 warnings
 - `pnpm build-storybook`: clean build in 12s
 - `pnpm build`: clean Next.js 15 production build
-- `git diff 138b9fa..HEAD -- contracts services database`: strictly empty (0 lines modified)
+- `git diff f679425..HEAD -- contracts services database`: strictly empty (0 lines modified)
