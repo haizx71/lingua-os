@@ -1,18 +1,19 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017, TASK-008B & TASK-009 Mini Completed and Accepted; GAP-01 Closed; TASK-011 Today Live Integration Ready for Review
+Phase: TASK-017, TASK-008B, TASK-009 Mini & TASK-011 Today Live Completed and Accepted; GAP-01 Closed; TASK-007 Review Live Integration in Progress
 
 ## Completed
 
-- `TASK-011`: Today Live Frontend Integration — READY FOR REVIEW (TODAY-CONTRACT-011-R2 fixed, pending final bounded verification)
+- `TASK-011`: Today Live Frontend Integration — ACCEPTED
+  - Final Review Verdict: `TASK-011 TODAY CONTRACT R2 FINAL REVIEW: PASS — MARK TASK-011 DONE AND PROCEED TO TASK-007 REVIEW LIVE`
   - Contract Authority Correction (TODAY-CONTRACT-011-R2): Reverted manual query widening `& { timeZone?: string }` across `ApiClient`, `HttpApiClient`, and `MockApiClient`. Restored strict OpenAPI conformance: `GET /v1/today` is invoked without non-contract query parameters; timezone authority belongs strictly to the persisted profile (`api.getMe()`), acting as a fail-closed readiness gate rather than an endpoint query input.
   - Live Plan Fetching & Timezone Authority (TIMEZONE-011-R1): Strictly requires authoritative learner profile timezone (`isValidIanaTimeZone`) before calling `GET /v1/today`. Fails closed if timezone is missing/unconfigured without silently promoting device/browser timezone into backend planning authority; renders canonical setup-required EmptyState directing learner to `/onboarding`.
   - Adapter Layer & Server Authority: Pure DTO-to-ViewModel mapping in `adapters.ts` preserving exact server plan ID, item IDs, and array order without any client-side sorting, ranking, or heuristic calculations.
   - Authoritative Activity Completion: `POST /v1/today/{planId}/activities/{activityId}/complete` integration with in-flight duplicate suppression, optimistic in-progress state, rollback on failure, and server-authoritative state reconciliation.
   - Actor Lifecycle Isolation: Enforced across all async boundaries via `isCurrentActor`, `getActorEpoch`, and `LinguaActorAbortedError`; same-actor race protection via `sequenceRef`. Stale Actor A completions/fetches cannot contaminate Actor B.
   - Zero Backend / Contract Diff: Zero changes to `contracts/`, `services/`, or `database/`.
-  - Full Quality Gate Verification: 26/26 tests in `tests/frontend/task011-today-live.test.tsx` (covering `TEST-011-R2-01..06`), 11/11 tests in `tests/frontend/http-client.test.ts` (including serialized URL verification `TEST-011-R2-05`), 429/429 tests passing across all 34 test files, 0 typecheck errors, 0 lint warnings, clean Storybook build, clean Next.js 15 production build.
+  - Full Quality Gate Verification: 26/26 tests in `tests/frontend/task011-today-live.test.tsx` (covering `TEST-011-R2-01..06`), 11/11 tests in `tests/frontend/http-client.test.ts` (including serialized URL verification `TEST-011-R2-05`), 429/429 tests passing across all 34 test files, 0 typecheck errors, 0 lint warnings, clean Storybook build, clean Next.js 15 production build. Accepted.
 
 - `TASK-009 Mini`: Live Concept Discovery + Explicit Save/Learn UI — ACCEPTED after fresh independent review
   - Live Concept Discovery: Real debounced search (`GET /v1/dictionary/search`) with sequence counter tracking (`searchSequenceRef`) dropping stale out-of-order responses.
