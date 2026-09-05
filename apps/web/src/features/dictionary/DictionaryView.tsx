@@ -18,6 +18,7 @@ import {
   Check,
   X,
   ChevronDown,
+  RotateCcw,
 } from 'lucide-react';
 import { type ApiErrorCode, type ApiClient } from '@lingua/types';
 import { defaultDictionaryConcepts, type DictionaryConceptItem } from '../../fixtures/dictionaryFixture';
@@ -121,10 +122,19 @@ export function DictionaryView({
 
       {/* Reconciliation Error Alert */}
       {discovery.reconciliationError && (
-        <div className="max-w-xl">
+        <div className="max-w-xl space-y-2">
           <InlineAlert variant="danger" title="Lỗi đồng bộ kho từ vựng">
             {discovery.reconciliationError.message}
           </InlineAlert>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void discovery.retryReconciliation()}
+            aria-label="Thử đồng bộ lại kho từ vựng"
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+            Thử đồng bộ lại
+          </Button>
         </div>
       )}
 
@@ -249,6 +259,16 @@ export function DictionaryView({
                       aria-label={`Đang lưu từ ${concept.term}`}
                     >
                       Đang lưu...
+                    </Button>
+                  ) : discovery.reconciliationError ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void discovery.retryReconciliation()}
+                      aria-label={`Thử đồng bộ lại trạng thái lưu của từ ${concept.term}`}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      Thử đồng bộ lại
                     </Button>
                   ) : !discovery.isSavedStateReady ? (
                     <Button

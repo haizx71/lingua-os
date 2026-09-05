@@ -46,6 +46,7 @@ export interface ConceptDiscoveryState {
   readonly isSavedStateReady: boolean;
   readonly isReconciling: boolean;
   readonly reconciliationError: Error | null;
+  readonly retryReconciliation: () => Promise<void>;
 }
 
 export function useConceptDiscovery({
@@ -175,8 +176,18 @@ export function useConceptDiscovery({
       if (isLinguaActorAbortedError(err)) return;
 
       const error = err instanceof Error ? err : new Error(String(err));
+      // Positive evidence is authoritative: preserve any concept IDs already confirmed as saved
+      if (accumulatedIds.size > 0) {
+        setSavedConceptIds((prev) => {
+          const merged = new Set(prev);
+          for (const id of accumulatedIds) {
+            merged.add(id);
+          }
+          return merged;
+        });
+      }
       setReconciliationError(error);
-      setIsSavedStateReady(true);
+      setIsSavedStateReady(false);
       setIsReconciling(false);
     }
   }, [api, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
@@ -338,7 +349,7 @@ export function useConceptDiscovery({
   // Explicit Save/Learn invocation via PUT /v1/library/concepts/{conceptId}
   const saveConcept = useCallback(
     async (conceptId: string) => {
-      if (!isSavedStateReady || savingConceptIds.has(conceptId) || savedConceptIds.has(conceptId)) return;
+      if (!isSavedStateReady || reconciliationError !== null || savingConceptIds.has(conceptId) || savedConceptIds.has(conceptId)) return;
 
       const opEpoch = getActorEpoch ? getActorEpoch() : 0;
       const opActorId = user?.id ?? null;
@@ -375,7 +386,7 @@ export function useConceptDiscovery({
         });
       }
     },
-    [api, savingConceptIds, savedConceptIds, isSavedStateReady, user?.id, getActorEpoch, isCurrentActor]
+    [api, savingConceptIds, savedConceptIds, isSavedStateReady, reconciliationError, user?.id, getActorEpoch, isCurrentActor]
   );
 
   // Compute effective results:
@@ -424,5 +435,6 @@ export function useConceptDiscovery({
     isSavedStateReady,
     isReconciling,
     reconciliationError,
+    retryReconciliation: reconcileSavedConcepts,
   };
 }
