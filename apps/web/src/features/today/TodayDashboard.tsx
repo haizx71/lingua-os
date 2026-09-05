@@ -47,7 +47,6 @@ export interface TodayDashboardProps {
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
   apiClient?: ApiClient;
-  timeZone?: string | null;
   onActivityStart?: (activityId: string) => void;
 }
 
@@ -120,7 +119,6 @@ export function TodayDashboard({
   forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
   apiClient,
-  timeZone,
   onActivityStart,
 }: TodayDashboardProps) {
   const authContext = useOptionalAuth();
@@ -139,7 +137,6 @@ export function TodayDashboard({
   } = useTodayPlan({
     apiClient,
     initialPlan,
-    timeZone,
   });
 
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);

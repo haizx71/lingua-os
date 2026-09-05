@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   isLinguaActorAbortedError,
   isValidIanaTimeZone,
   type ApiClient,
+  type OperationQuery,
   type TodayPlanDto,
 } from '@lingua/types';
 import { useOptionalAuth } from '../auth/AuthContext';
@@ -17,12 +18,7 @@ import {
 export interface UseTodayPlanOptions {
   readonly apiClient?: ApiClient;
   readonly initialPlan?: TodayPlanViewModel | TodayPlanDto;
-  readonly query?: {
-    readonly languageProfileId?: string;
-    readonly date?: string;
-    readonly timeZone?: string;
-  };
-  readonly timeZone?: string | null;
+  readonly query?: OperationQuery<'getTodayPlan'>;
   readonly skipInitialFetch?: boolean;
 }
 
@@ -46,7 +42,6 @@ export function useTodayPlan({
   apiClient: customApiClient,
   initialPlan,
   query,
-  timeZone: timeZoneProp,
   skipInitialFetch = false,
 }: UseTodayPlanOptions = {}): TodayPlanState {
   const authContext = useOptionalAuth();
@@ -78,7 +73,6 @@ export function useTodayPlan({
 
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [activeTimeZone, setActiveTimeZone] = useState<string | null>(() => {
-    if (timeZoneProp && isValidIanaTimeZone(timeZoneProp)) return timeZoneProp;
     if (initialPlan && 'timeZone' in initialPlan && isValidIanaTimeZone(initialPlan.timeZone)) {
       return initialPlan.timeZone;
     }
@@ -87,6 +81,16 @@ export function useTodayPlan({
 
   const sequenceRef = useRef(0);
   const prevActorIdRef = useRef<string | null>(null);
+
+  const queryLanguageProfileId = query?.languageProfileId;
+  const queryDate = query?.date;
+  const normalizedQuery = useMemo<OperationQuery<'getTodayPlan'> | undefined>(() => {
+    if (!queryLanguageProfileId && !queryDate) return undefined;
+    return {
+      ...(queryLanguageProfileId ? { languageProfileId: queryLanguageProfileId } : {}),
+      ...(queryDate ? { date: queryDate } : {}),
+    };
+  }, [queryLanguageProfileId, queryDate]);
 
   // ACTOR LIFECYCLE: Reset state cleanly only when a genuine actor transition occurs
   useEffect(() => {
@@ -126,33 +130,22 @@ export function useTodayPlan({
     setError(null);
 
     try {
-      // 1. Authoritative timezone resolution
+      // 1. Authoritative timezone resolution from persisted profile
       let effectiveTz: string | null = null;
-      const explicitTz = timeZoneProp ?? query?.timeZone;
 
-      if (explicitTz !== undefined) {
-        if (explicitTz && isValidIanaTimeZone(explicitTz)) {
-          effectiveTz = explicitTz;
-        } else {
-          effectiveTz = null;
-        }
-      } else {
-        // Retrieve authoritative learner profile from backend
-        const meResponse = await api.getMe();
-        if (seq !== sequenceRef.current) return;
-        if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
+      // Retrieve authoritative learner profile from backend
+      const meResponse = await api.getMe();
+      if (seq !== sequenceRef.current) return;
+      if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
 
-        const storedTz = meResponse.data?.timeZone?.trim() || null;
-        if (storedTz && isValidIanaTimeZone(storedTz)) {
-          effectiveTz = storedTz;
-        } else {
-          effectiveTz = null;
-        }
+      const storedTz = meResponse.data?.timeZone?.trim() || null;
+      if (storedTz && isValidIanaTimeZone(storedTz)) {
+        effectiveTz = storedTz;
       }
 
       // 2. Missing timezone guard: FAIL CLOSED
       // Today planning day boundaries belong to backend + persisted learner timezone semantics.
-      // MUST NOT silently promote browser/device timezone into backend planning authority.
+      // MUST NOT call getTodayPlan without a valid persisted profile timezone.
       if (!effectiveTz) {
         if (seq !== sequenceRef.current) return;
         if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
@@ -169,10 +162,9 @@ export function useTodayPlan({
       setIsSetupRequired(false);
       setActiveTimeZone(effectiveTz);
 
-      const response = await api.getTodayPlan({
-        ...query,
-        timeZone: effectiveTz,
-      });
+      // Backend reads persisted profile timezone according to frozen contract.
+      // Query contains only contract-valid fields (languageProfileId?, date?).
+      const response = await api.getTodayPlan(normalizedQuery);
 
       // Guard: Stale same-actor requests must not overwrite newer requests
       if (seq !== sequenceRef.current) return;
@@ -201,9 +193,8 @@ export function useTodayPlan({
     user?.id,
     getActorEpoch,
     isCurrentActor,
-    query,
+    normalizedQuery,
     customApiClient,
-    timeZoneProp,
   ]);
 
   useEffect(() => {
