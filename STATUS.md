@@ -1,11 +1,18 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017 & TASK-008B Completed and Accepted by Sol; GAP-01 Closed; TASK-009 Mini Live Concept Discovery + Save/Learn In Progress
+Phase: TASK-017 & TASK-008B Completed and Accepted by Sol; GAP-01 Closed; TASK-009 Mini Live Concept Discovery + Save/Learn Ready for Review
 
 ## Ready for Review
 
-- None (TASK-009 Mini in progress)
+- `TASK-009 Mini`: Live Concept Discovery + Explicit Save/Learn UI (READY_FOR_REVIEW)
+  - Live Concept Discovery: Real debounced search (`GET /v1/dictionary/search`) with sequence counter tracking (`searchSequenceRef`) dropping stale out-of-order responses.
+  - Concept Inspection: Lazy concept detail retrieval (`GET /v1/concepts/{conceptId}`) expanding definition, English explanation, and example sentences.
+  - Explicit Save/Learn: Button communicates learner intent ("Lưu để học" / "Đã lưu vào kho học", never "Đã thành thạo"), invoking authoritative Library mutation (`PUT /v1/library/concepts/{conceptId}`). Disabled pending state ("Đang lưu...") prevents duplicate submissions.
+  - Authoritative Saved State Reconciliation: Initial and re-entry synchronization with existing saved concepts via `GET /v1/library/items?itemType=concept`.
+  - Actor Lifecycle Isolation: Guarded across all async boundaries via `isCurrentActor` and `LinguaActorAbortedError`, preventing stale Actor A search or save operations from mutating Actor B UI state.
+  - Zero Backend / Contract Diff: Zero modifications to `contracts/`, `services/`, or `database/`.
+  - Verification: 394/394 frontend tests passing across 33 test files (13 new invariant tests in `tests/frontend/task009-concept-discovery-save.test.tsx`), 0 typecheck errors, 0 lint warnings, clean Storybook static catalog build, and Next.js 15 production build.
 
 ## Completed
 
