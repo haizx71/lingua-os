@@ -43,6 +43,9 @@ export interface ConceptDiscoveryState {
   readonly isInspecting: (conceptId: string) => boolean;
   readonly inspectConcept: (conceptId: string) => Promise<void>;
   readonly inspectedDetails: ReadonlyMap<string, ConceptDetailDto>;
+  readonly isSavedStateReady: boolean;
+  readonly isReconciling: boolean;
+  readonly reconciliationError: Error | null;
 }
 
 export function useConceptDiscovery({
@@ -69,8 +72,16 @@ export function useConceptDiscovery({
   const [inspectedDetails, setInspectedDetails] = useState<ReadonlyMap<string, ConceptDetailDto>>(
     () => new Map()
   );
+  const [isSavedStateReady, setIsSavedStateReady] = useState(() => {
+    if (!isConfigured) return true;
+    if (authState !== 'authenticated') return true;
+    return false;
+  });
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconciliationError, setReconciliationError] = useState<Error | null>(null);
 
   const searchSequenceRef = useRef(0);
+  const reconcileSequenceRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevActorIdRef = useRef<string | null>(null);
 
@@ -86,33 +97,87 @@ export function useConceptDiscovery({
       setSaveError(null);
       setInspectingConceptIds(new Set());
       setInspectedDetails(new Map());
+      setIsSavedStateReady(false);
+      setIsReconciling(false);
+      setReconciliationError(null);
+      reconcileSequenceRef.current++;
       searchSequenceRef.current = 0;
     }
     prevActorIdRef.current = currentActorId;
   }, [user?.id]);
 
-  // Reconcile saved concepts from authoritative Library API
+  // Reconcile saved concepts from authoritative Library API across all cursor pages
   const reconcileSavedConcepts = useCallback(async () => {
-    if (!isConfigured || authState !== 'authenticated') return;
+    const isAuth = isConfigured && authState === 'authenticated';
+    if (!isAuth) {
+      setIsSavedStateReady(true);
+      setIsReconciling(false);
+      return;
+    }
 
     const opEpoch = getActorEpoch ? getActorEpoch() : 0;
     const opActorId = user?.id ?? null;
+    const seq = ++reconcileSequenceRef.current;
+
+    setIsSavedStateReady(false);
+    setIsReconciling(true);
+    setReconciliationError(null);
+
+    const accumulatedIds = new Set<string>();
+    const seenCursors = new Set<string>();
+    let currentCursor: string | undefined = undefined;
+    let hasMore = true;
 
     try {
-      const response = await api.listLibraryItems({ itemType: 'concept' });
-      if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
+      while (hasMore) {
+        if (seq !== reconcileSequenceRef.current) return;
+        if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
 
-      const ids = new Set<string>();
-      for (const item of response.data) {
-        if (item.itemType === 'concept' && item.concept?.id) {
-          ids.add(item.concept.id);
+        const query: { itemType: 'concept'; cursor?: string } = { itemType: 'concept' };
+        if (currentCursor !== undefined) {
+          query.cursor = currentCursor;
+        }
+
+        const response = await api.listLibraryItems(query);
+
+        if (seq !== reconcileSequenceRef.current) return;
+        if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
+
+        for (const item of response.data) {
+          if (item.itemType === 'concept' && item.concept?.id) {
+            accumulatedIds.add(item.concept.id);
+          }
+        }
+
+        const nextCursor = response.meta?.nextCursor ?? null;
+        const responseHasMore = response.meta?.hasMore ?? Boolean(nextCursor);
+
+        if (!nextCursor || !responseHasMore) {
+          hasMore = false;
+        } else {
+          if (seenCursors.has(nextCursor)) {
+            throw new Error(`Pagination loop detected for cursor: ${nextCursor}`);
+          }
+          seenCursors.add(nextCursor);
+          currentCursor = nextCursor;
         }
       }
-      setSavedConceptIds(ids);
+
+      if (seq !== reconcileSequenceRef.current) return;
+      if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
+
+      setSavedConceptIds(accumulatedIds);
+      setIsSavedStateReady(true);
+      setIsReconciling(false);
     } catch (err) {
+      if (seq !== reconcileSequenceRef.current) return;
       if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
       if (isLinguaActorAbortedError(err)) return;
-      // Non-fatal; initial discovery continues with un-reconciled set
+
+      const error = err instanceof Error ? err : new Error(String(err));
+      setReconciliationError(error);
+      setIsSavedStateReady(true);
+      setIsReconciling(false);
     }
   }, [api, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
 
@@ -273,7 +338,7 @@ export function useConceptDiscovery({
   // Explicit Save/Learn invocation via PUT /v1/library/concepts/{conceptId}
   const saveConcept = useCallback(
     async (conceptId: string) => {
-      if (savingConceptIds.has(conceptId) || savedConceptIds.has(conceptId)) return;
+      if (!isSavedStateReady || savingConceptIds.has(conceptId) || savedConceptIds.has(conceptId)) return;
 
       const opEpoch = getActorEpoch ? getActorEpoch() : 0;
       const opActorId = user?.id ?? null;
@@ -310,7 +375,7 @@ export function useConceptDiscovery({
         });
       }
     },
-    [api, savingConceptIds, savedConceptIds, user?.id, getActorEpoch, isCurrentActor]
+    [api, savingConceptIds, savedConceptIds, isSavedStateReady, user?.id, getActorEpoch, isCurrentActor]
   );
 
   // Compute effective results:
@@ -356,5 +421,8 @@ export function useConceptDiscovery({
     isInspecting: (id: string) => inspectingConceptIds.has(id),
     inspectConcept,
     inspectedDetails,
+    isSavedStateReady,
+    isReconciling,
+    reconciliationError,
   };
 }

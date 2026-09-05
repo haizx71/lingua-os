@@ -119,6 +119,15 @@ export function DictionaryView({
         </div>
       )}
 
+      {/* Reconciliation Error Alert */}
+      {discovery.reconciliationError && (
+        <div className="max-w-xl">
+          <InlineAlert variant="danger" title="Lỗi đồng bộ kho từ vựng">
+            {discovery.reconciliationError.message}
+          </InlineAlert>
+        </div>
+      )}
+
       {/* Search Error Alert */}
       {discovery.searchError && (
         <div className="max-w-xl space-y-2">
@@ -240,6 +249,16 @@ export function DictionaryView({
                       aria-label={`Đang lưu từ ${concept.term}`}
                     >
                       Đang lưu...
+                    </Button>
+                  ) : !discovery.isSavedStateReady ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      aria-busy="true"
+                      aria-label={`Đang kiểm tra trạng thái lưu của từ ${concept.term}`}
+                    >
+                      Đang kiểm tra...
                     </Button>
                   ) : (
                     <Button
