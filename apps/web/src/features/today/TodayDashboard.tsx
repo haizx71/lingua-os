@@ -47,6 +47,7 @@ export interface TodayDashboardProps {
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
   apiClient?: ApiClient;
+  timeZone?: string | null;
   onActivityStart?: (activityId: string) => void;
 }
 
@@ -119,6 +120,7 @@ export function TodayDashboard({
   forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
   apiClient,
+  timeZone,
   onActivityStart,
 }: TodayDashboardProps) {
   const authContext = useOptionalAuth();
@@ -128,6 +130,7 @@ export function TodayDashboard({
     plan: livePlan,
     isLoading,
     error,
+    isSetupRequired,
     isCompleting,
     completeActivity,
     actionError,
@@ -136,6 +139,7 @@ export function TodayDashboard({
   } = useTodayPlan({
     apiClient,
     initialPlan,
+    timeZone,
   });
 
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
@@ -176,6 +180,19 @@ export function TodayDashboard({
         title="Không thể tải kế hoạch học tập"
         description="Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại sau giây lát."
         onRetry={handleRetry}
+      />
+    );
+  }
+
+  if (isSetupRequired && !localForcedState) {
+    return (
+      <EmptyState
+        title="Cần thiết lập múi giờ học tập"
+        description="Hồ sơ học tập của bạn chưa có múi giờ hợp lệ để hệ thống xây dựng kế hoạch hôm nay."
+        actionLabel="Thiết lập lộ trình học"
+        onAction={() => {
+          window.location.href = '/onboarding';
+        }}
       />
     );
   }

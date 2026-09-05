@@ -59,7 +59,7 @@ export interface ApiClient {
   listMyLanguageProfiles(): Promise<LanguageProfilesResponseDto>;
   createMyLanguageProfile(input: { body: CreateLanguageProfileRequestDto; headers: OperationHeaders<'createMyLanguageProfile'> }): Promise<LanguageProfileResponseDto>;
   updateMyLanguageProfile(input: { languageProfileId: string; body: UpdateLanguageProfileRequestDto; headers: OperationHeaders<'updateMyLanguageProfile'> }): Promise<LanguageProfileResponseDto>;
-  getTodayPlan(query?: OperationQuery<'getTodayPlan'>): Promise<TodayPlanResponseDto>;
+  getTodayPlan(query?: OperationQuery<'getTodayPlan'> & { timeZone?: string }): Promise<TodayPlanResponseDto>;
   completeTodayActivity(input: { planId: string; activityId: string; body: CompleteTodayActivityRequestDto; headers: OperationHeaders<'completeTodayActivity'> }): Promise<TodayCompletionResponseDto>;
   listReviewQueue(query?: OperationQuery<'listReviewQueue'>): Promise<ReviewQueueResponseDto>;
   answerReviewItem(input: { reviewItemId: string; body: ReviewAnswerRequestDto; headers: OperationHeaders<'answerReviewItem'> }): Promise<ReviewAnswerResponseDto>;
@@ -267,7 +267,7 @@ export class HttpApiClient implements ApiClient {
   listMyLanguageProfiles() { return this.request<LanguageProfilesResponseDto>({ method: 'GET', path: '/v1/me/languages' }); }
   createMyLanguageProfile(input: Parameters<ApiClient['createMyLanguageProfile']>[0]) { return this.request<LanguageProfileResponseDto>({ method: 'POST', path: '/v1/me/languages', body: input.body, headers: input.headers, resourceKey: 'language-profile' }); }
   updateMyLanguageProfile(input: Parameters<ApiClient['updateMyLanguageProfile']>[0]) { return this.request<LanguageProfileResponseDto>({ method: 'PATCH', path: `/v1/me/languages/${encodeURIComponent(input.languageProfileId)}`, body: input.body, headers: input.headers, resourceKey: `language-profile:${input.languageProfileId}` }); }
-  getTodayPlan(query?: OperationQuery<'getTodayPlan'>) { return this.request<TodayPlanResponseDto>({ method: 'GET', path: '/v1/today', query: query as Record<string, QueryValue> | undefined }); }
+  getTodayPlan(query?: OperationQuery<'getTodayPlan'> & { timeZone?: string }) { return this.request<TodayPlanResponseDto>({ method: 'GET', path: '/v1/today', query: query as Record<string, QueryValue> | undefined }); }
   completeTodayActivity(input: Parameters<ApiClient['completeTodayActivity']>[0]) { return this.request<TodayCompletionResponseDto>({ method: 'POST', path: `/v1/today/${encodeURIComponent(input.planId)}/activities/${encodeURIComponent(input.activityId)}/complete`, body: input.body, headers: input.headers }); }
   listReviewQueue(query?: OperationQuery<'listReviewQueue'>) { return this.request<ReviewQueueResponseDto>({ method: 'GET', path: '/v1/review/queue', query: query as Record<string, QueryValue> | undefined }); }
   answerReviewItem(input: Parameters<ApiClient['answerReviewItem']>[0]) { return this.request<ReviewAnswerResponseDto>({ method: 'POST', path: `/v1/review/${encodeURIComponent(input.reviewItemId)}/answer`, body: input.body, headers: input.headers }); }
@@ -349,7 +349,7 @@ export class MockApiClient implements ApiClient {
   listMyLanguageProfiles() { return this.fixture(this.returnEmpty ? { data: [], meta: mockResponseMeta } : mockApiResponses.languageProfiles); }
   createMyLanguageProfile(_input: Parameters<ApiClient['createMyLanguageProfile']>[0]) { return this.fixture(mockApiResponses.languageProfile); }
   updateMyLanguageProfile(_input: Parameters<ApiClient['updateMyLanguageProfile']>[0]) { return this.fixture(mockApiResponses.languageProfile); }
-  getTodayPlan(_query?: OperationQuery<'getTodayPlan'>) { return this.fixture(mockApiResponses.today); }
+  getTodayPlan(_query?: OperationQuery<'getTodayPlan'> & { timeZone?: string }) { return this.fixture(mockApiResponses.today); }
   completeTodayActivity(_input: Parameters<ApiClient['completeTodayActivity']>[0]) { return this.fixture(mockApiResponses.todayCompletion); }
   listReviewQueue(_query?: OperationQuery<'listReviewQueue'>) { return this.fixture(this.returnEmpty ? emptyCursorResponse<ReviewQueueResponseDto['data']>() : mockApiResponses.reviewQueue); }
   answerReviewItem(_input: Parameters<ApiClient['answerReviewItem']>[0]) { return this.fixture(mockApiResponses.reviewAnswer); }

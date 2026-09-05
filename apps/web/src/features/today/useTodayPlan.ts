@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   isLinguaActorAbortedError,
+  isValidIanaTimeZone,
   type ApiClient,
   type TodayPlanDto,
 } from '@lingua/types';
@@ -19,7 +20,9 @@ export interface UseTodayPlanOptions {
   readonly query?: {
     readonly languageProfileId?: string;
     readonly date?: string;
+    readonly timeZone?: string;
   };
+  readonly timeZone?: string | null;
   readonly skipInitialFetch?: boolean;
 }
 
@@ -27,6 +30,8 @@ export interface TodayPlanState {
   readonly plan: TodayPlanViewModel | null;
   readonly isLoading: boolean;
   readonly error: Error | null;
+  readonly isSetupRequired: boolean;
+  readonly timeZone: string | null;
   readonly completingActivityIds: ReadonlySet<string>;
   readonly isCompleting: (activityId: string) => boolean;
   readonly completeActivity: (activityId: string, durationSeconds?: number) => Promise<void>;
@@ -41,6 +46,7 @@ export function useTodayPlan({
   apiClient: customApiClient,
   initialPlan,
   query,
+  timeZone: timeZoneProp,
   skipInitialFetch = false,
 }: UseTodayPlanOptions = {}): TodayPlanState {
   const authContext = useOptionalAuth();
@@ -70,6 +76,15 @@ export function useTodayPlan({
   const [actionError, setActionError] = useState<Error | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
+  const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
+  const [activeTimeZone, setActiveTimeZone] = useState<string | null>(() => {
+    if (timeZoneProp && isValidIanaTimeZone(timeZoneProp)) return timeZoneProp;
+    if (initialPlan && 'timeZone' in initialPlan && isValidIanaTimeZone(initialPlan.timeZone)) {
+      return initialPlan.timeZone;
+    }
+    return null;
+  });
+
   const sequenceRef = useRef(0);
   const prevActorIdRef = useRef<string | null>(null);
 
@@ -81,6 +96,8 @@ export function useTodayPlan({
       setError(null);
       setActionError(null);
       setAlertMessage(null);
+      setIsSetupRequired(false);
+      setActiveTimeZone(null);
       setCompletingActivityIds(new Set());
       // Invalidate all pending in-flight requests from prior actor
       sequenceRef.current++;
@@ -109,7 +126,53 @@ export function useTodayPlan({
     setError(null);
 
     try {
-      const response = await api.getTodayPlan(query);
+      // 1. Authoritative timezone resolution
+      let effectiveTz: string | null = null;
+      const explicitTz = timeZoneProp ?? query?.timeZone;
+
+      if (explicitTz !== undefined) {
+        if (explicitTz && isValidIanaTimeZone(explicitTz)) {
+          effectiveTz = explicitTz;
+        } else {
+          effectiveTz = null;
+        }
+      } else {
+        // Retrieve authoritative learner profile from backend
+        const meResponse = await api.getMe();
+        if (seq !== sequenceRef.current) return;
+        if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
+
+        const storedTz = meResponse.data?.timeZone?.trim() || null;
+        if (storedTz && isValidIanaTimeZone(storedTz)) {
+          effectiveTz = storedTz;
+        } else {
+          effectiveTz = null;
+        }
+      }
+
+      // 2. Missing timezone guard: FAIL CLOSED
+      // Today planning day boundaries belong to backend + persisted learner timezone semantics.
+      // MUST NOT silently promote browser/device timezone into backend planning authority.
+      if (!effectiveTz) {
+        if (seq !== sequenceRef.current) return;
+        if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
+
+        setIsLoading(false);
+        setIsSetupRequired(true);
+        setActiveTimeZone(null);
+        setPlan(null);
+        setError(null);
+        return;
+      }
+
+      // 3. Stored authoritative timezone confirmed
+      setIsSetupRequired(false);
+      setActiveTimeZone(effectiveTz);
+
+      const response = await api.getTodayPlan({
+        ...query,
+        timeZone: effectiveTz,
+      });
 
       // Guard: Stale same-actor requests must not overwrite newer requests
       if (seq !== sequenceRef.current) return;
@@ -131,7 +194,17 @@ export function useTodayPlan({
       setError(errorObj);
       setIsLoading(false);
     }
-  }, [api, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor, query, customApiClient]);
+  }, [
+    api,
+    authState,
+    isConfigured,
+    user?.id,
+    getActorEpoch,
+    isCurrentActor,
+    query,
+    customApiClient,
+    timeZoneProp,
+  ]);
 
   useEffect(() => {
     if (!skipInitialFetch) {
@@ -210,6 +283,8 @@ export function useTodayPlan({
     plan,
     isLoading,
     error,
+    isSetupRequired,
+    timeZone: activeTimeZone,
     completingActivityIds,
     isCompleting,
     completeActivity,
