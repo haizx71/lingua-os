@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Button,
@@ -22,75 +22,181 @@ import {
   Volume2,
   CheckCircle2,
   Flame,
-  Search,
 } from 'lucide-react';
-import { type ApiErrorCode } from '@lingua/types';
-import { defaultTodayActivities, type TodayActivityItem } from '../../fixtures/todayFixture';
+import {
+  isApiErrorCode,
+  mockTodayPlanResponse,
+  type ApiClient,
+  type ApiErrorCode,
+  type LearningActivityType,
+} from '@lingua/types';
+import { useOptionalAuth } from '../auth/AuthContext';
+import {
+  mapTodayPlanToViewModel,
+  type TodayActivityViewModel,
+  type TodayPlanViewModel,
+} from './adapters';
+import { useTodayPlan } from './useTodayPlan';
 
 export interface TodayDashboardProps {
+  initialPlan?: TodayPlanViewModel;
   initialTargetMinutes?: number;
   initialCompletedMinutes?: number;
   initialStreakDays?: number;
   initialMemoryHealth?: number;
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
+  apiClient?: ApiClient;
   onActivityStart?: (activityId: string) => void;
 }
 
+function getPendingActionLabel(type: LearningActivityType): string {
+  switch (type) {
+    case 'review':
+      return 'Bắt đầu';
+    case 'read':
+      return 'Xem bài';
+    case 'listen':
+      return 'Luyện nghe';
+    case 'learn':
+      return 'Khám phá';
+    default:
+      return 'Bắt đầu';
+  }
+}
+
+function getCompletedActionLabel(type: LearningActivityType): string {
+  switch (type) {
+    case 'review':
+      return 'Ôn lại';
+    case 'read':
+      return 'Đọc lại';
+    case 'listen':
+      return 'Luyện lại';
+    case 'learn':
+      return 'Xem lại';
+    default:
+      return 'Làm lại';
+  }
+}
+
+function renderActivityIcon(type: LearningActivityType) {
+  switch (type) {
+    case 'review':
+      return (
+        <div className="w-10 h-10 rounded-xl bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <RotateCcw className="w-5 h-5" />
+        </div>
+      );
+    case 'read':
+      return (
+        <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <BookOpen className="w-5 h-5" />
+        </div>
+      );
+    case 'listen':
+      return (
+        <div className="w-10 h-10 rounded-xl bg-[var(--status-info-bg)] text-[var(--status-info)] border border-[var(--status-info-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Volume2 className="w-5 h-5" />
+        </div>
+      );
+    case 'learn':
+    default:
+      return (
+        <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] text-[var(--action-primary)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Sparkles className="w-5 h-5" />
+        </div>
+      );
+  }
+}
+
 export function TodayDashboard({
-  initialTargetMinutes = 25,
-  initialCompletedMinutes = 0,
+  initialPlan,
+  initialTargetMinutes,
+  initialCompletedMinutes,
   initialStreakDays = 5,
   initialMemoryHealth = 87,
   forcedState,
-  forcedErrorCode,
+  forcedErrorCode = 'INTERNAL_ERROR',
+  apiClient,
   onActivityStart,
 }: TodayDashboardProps) {
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success' | 'ready'>(
-    forcedState || 'ready'
-  );
-  const [activities, setActivities] = useState<TodayActivityItem[]>(defaultTodayActivities);
-  const [completedMinutes, setCompletedMinutes] = useState(initialCompletedMinutes);
-  const [targetMinutes] = useState(initialTargetMinutes);
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const authContext = useOptionalAuth();
+  const isAuthOrConfigured = Boolean(authContext?.isConfigured || apiClient);
 
-  const completedActivitiesCount = activities.filter((a) => a.completed).length;
-  const progressPercent = Math.min(100, Math.round((completedMinutes / targetMinutes) * 100));
+  const {
+    plan: livePlan,
+    isLoading,
+    error,
+    isCompleting,
+    completeActivity,
+    actionError,
+    alertMessage,
+    refetch,
+  } = useTodayPlan({
+    apiClient,
+    initialPlan,
+  });
 
-  const handleCompleteActivity = (id: string, duration: number) => {
-    setActivities((prev) =>
-      prev.map((act) => (act.id === id ? { ...act, completed: true } : act))
-    );
-    setCompletedMinutes((prev) => Math.min(targetMinutes, prev + duration));
-    setAlertMessage(`Đã hoàn thành hoạt động. Tiến độ hôm nay: +${duration} phút!`);
-    onActivityStart?.(id);
+  const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
+
+  useEffect(() => {
+    setLocalForcedState(forcedState);
+  }, [forcedState]);
+
+  const handleRetry = () => {
+    if (localForcedState === 'error') {
+      setLocalForcedState('success');
+    }
+    void refetch();
   };
 
-  if (currentState === 'loading') {
+  // Backward-compatible fallback for unconfigured test harnesses (e.g. tier 1 synchronous render)
+  const effectivePlan = useMemo(() => {
+    if (livePlan) return livePlan;
+    if (localForcedState === 'success') {
+      return mapTodayPlanToViewModel(mockTodayPlanResponse.data);
+    }
+    if (!isAuthOrConfigured && !localForcedState) {
+      return mapTodayPlanToViewModel(mockTodayPlanResponse.data);
+    }
+    return null;
+  }, [livePlan, localForcedState, isAuthOrConfigured]);
+
+  // Handle forcedStates or error/loading states
+  if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
     return <LoadingState message="Đang tải kế hoạch học tập hôm nay..." />;
   }
 
-  if (currentState === 'error') {
+  if (localForcedState === 'error' || (error && !localForcedState)) {
+    const code: ApiErrorCode = forcedErrorCode || (error && isApiErrorCode(error.message) ? error.message : 'INTERNAL_ERROR');
     return (
       <ErrorState
-        code={forcedErrorCode || 'INTERNAL_ERROR'}
+        code={code}
         title="Không thể tải kế hoạch học tập"
         description="Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại sau giây lát."
-        onRetry={() => setCurrentState('ready')}
+        onRetry={handleRetry}
       />
     );
   }
 
-  if (currentState === 'empty' || activities.length === 0) {
+  if (localForcedState === 'empty' || !effectivePlan || effectivePlan.activities.length === 0) {
     return (
       <EmptyState
         title="Không có bài học nào cần ôn hôm nay"
         description="Bạn đã hoàn thành tất cả các mục tiêu học tập hôm nay hoặc chưa cấu hình lộ trình."
         actionLabel="Khám phá bài đọc mới"
-        onAction={() => setCurrentState('success')}
       />
     );
   }
+
+  // Authoritative server-provided numbers
+  const targetMinutes = initialTargetMinutes ?? effectivePlan.targetMinutes;
+  const completedMinutes = initialCompletedMinutes ?? effectivePlan.completedMinutes;
+  const progressPercent =
+    targetMinutes > 0 ? Math.min(100, Math.round((completedMinutes / targetMinutes) * 100)) : 0;
+  const completedActivitiesCount = effectivePlan.completedActivitiesCount;
+  const totalActivitiesCount = effectivePlan.totalActivitiesCount;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -113,7 +219,7 @@ export function TodayDashboard({
             Chào buổi sáng, Learner!
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
-            LINGUA OS đã chọn 4 hoạt động tối ưu nhất dựa trên trí nhớ và mục tiêu của bạn.
+            LINGUA OS đã chọn {effectivePlan.activities.length} hoạt động tối ưu nhất dựa trên trí nhớ và mục tiêu của bạn.
           </p>
         </div>
         <Link href="/review" className="w-full sm:w-auto">
@@ -127,6 +233,13 @@ export function TodayDashboard({
           </Button>
         </Link>
       </header>
+
+      {/* Action Error Alert */}
+      {actionError && (
+        <InlineAlert variant="danger" title="Lỗi hoàn thành hoạt động">
+          {actionError.message}
+        </InlineAlert>
+      )}
 
       {/* Inline Feedback Alert */}
       {alertMessage && (
@@ -145,7 +258,9 @@ export function TodayDashboard({
             </span>
           </span>
           <span className="text-xs text-[var(--text-muted)]">
-            {completedActivitiesCount > 0 ? `${completedActivitiesCount} / 4 hoàn thành` : '4 bài tập'}
+            {completedActivitiesCount > 0
+              ? `${completedActivitiesCount} / ${totalActivitiesCount} hoàn thành`
+              : `${totalActivitiesCount} bài tập`}
           </span>
         </div>
         <Progress
@@ -157,179 +272,73 @@ export function TodayDashboard({
         />
       </Card>
 
-      {/* Primary Activities Timeline */}
+      {/* Primary Activities Timeline — SERVER ORDER STRICTLY PRESERVED */}
       <section aria-labelledby="timeline-heading" className="space-y-4">
         <h2 id="timeline-heading" className="text-lg font-semibold text-[var(--text-primary)]">
           Danh sách hoạt động
         </h2>
 
-        {/* Activity 1: Review */}
-        <Card
-          variant="interactive"
-          padding="md"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        >
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <RotateCcw className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-base text-[var(--text-primary)]">
-                  {activities[0].title}
-                </h3>
-                <Badge variant="warning" size="sm">
-                  {activities[0].badgeLabel}
-                </Badge>
-                {activities[0].completed && (
-                  <Badge variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
-                    Đã xong
-                  </Badge>
-                )}
+        {effectivePlan.activities.map((activity: TodayActivityViewModel) => (
+          <Card
+            key={activity.id}
+            variant="interactive"
+            padding="md"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div className="flex items-start gap-3.5">
+              {renderActivityIcon(activity.type)}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-base text-[var(--text-primary)]">
+                    {activity.title}
+                  </h3>
+                  {activity.completed ? (
+                    <Badge variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
+                      Đã xong
+                    </Badge>
+                  ) : (
+                    <Badge variant={activity.badgeVariant} size="sm">
+                      {activity.badgeLabel}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  {activity.reasonText}
+                </p>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
-                {activities[0].reasonText}
-              </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center">
-            <Link href="/review">
-              <Button
-                variant={activities[0].completed ? 'secondary' : 'primary'}
-                size="sm"
-                onClick={() => handleCompleteActivity(activities[0].id, activities[0].durationMinutes)}
-              >
-                {activities[0].completed ? 'Ôn lại' : 'Bắt đầu'}
-              </Button>
-            </Link>
-          </div>
-        </Card>
-
-        {/* Activity 2: Reading */}
-        <Card
-          variant="interactive"
-          padding="md"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        >
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <BookOpen className="w-5 h-5" />
+            <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+              <Link href={activity.targetUrl}>
+                <Button
+                  variant={
+                    activity.completed
+                      ? 'secondary'
+                      : activity.type === 'review'
+                        ? 'primary'
+                        : 'outline'
+                  }
+                  size="sm"
+                  onClick={() => onActivityStart?.(activity.id)}
+                >
+                  {activity.completed
+                    ? getCompletedActionLabel(activity.type)
+                    : getPendingActionLabel(activity.type)}
+                </Button>
+              </Link>
+              {!activity.completed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isCompleting(activity.id)}
+                  onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)}
+                  aria-label={`Hoàn thành hoạt động ${activity.title}`}
+                >
+                  {isCompleting(activity.id) ? 'Đang hoàn thành...' : 'Hoàn thành'}
+                </Button>
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-base text-[var(--text-primary)]">
-                  {activities[1].title}
-                </h3>
-                <Badge variant="neutral" size="sm">
-                  {activities[1].badgeLabel}
-                </Badge>
-                {activities[1].completed && (
-                  <Badge variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
-                    Đã xong
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
-                {activities[1].reasonText}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center">
-            <Link href="/read">
-              <Button
-                variant={activities[1].completed ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={() => handleCompleteActivity(activities[1].id, activities[1].durationMinutes)}
-              >
-                {activities[1].completed ? 'Đọc lại' : 'Xem bài'}
-              </Button>
-            </Link>
-          </div>
-        </Card>
-
-        {/* Activity 3: Listening */}
-        <Card
-          variant="interactive"
-          padding="md"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        >
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[var(--status-info-bg)] text-[var(--status-info)] border border-[var(--status-info-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Volume2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-base text-[var(--text-primary)]">
-                  {activities[2].title}
-                </h3>
-                <Badge variant="info" size="sm">
-                  {activities[2].badgeLabel}
-                </Badge>
-                {activities[2].completed && (
-                  <Badge variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
-                    Đã xong
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
-                {activities[2].reasonText}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center">
-            <Link href="/read">
-              <Button
-                variant={activities[2].completed ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={() => handleCompleteActivity(activities[2].id, activities[2].durationMinutes)}
-              >
-                {activities[2].completed ? 'Luyện lại' : 'Luyện nghe'}
-              </Button>
-            </Link>
-          </div>
-        </Card>
-
-        {/* Activity 4: New Words Discovery */}
-        <Card
-          variant="interactive"
-          padding="md"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        >
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] text-[var(--action-primary)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-base text-[var(--text-primary)]">
-                  {activities[3].title}
-                </h3>
-                <Badge variant="primary" size="sm">
-                  {activities[3].badgeLabel}
-                </Badge>
-                {activities[3].completed && (
-                  <Badge variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
-                    Đã xong
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
-                {activities[3].reasonText}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center">
-            <Link href="/dictionary">
-              <Button
-                variant={activities[3].completed ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={() => handleCompleteActivity(activities[3].id, activities[3].durationMinutes)}
-              >
-                {activities[3].completed ? 'Xem lại' : 'Khám phá'}
-              </Button>
-            </Link>
-          </div>
-        </Card>
+          </Card>
+        ))}
       </section>
 
       {/* Language Brain Preview Snapshot */}
