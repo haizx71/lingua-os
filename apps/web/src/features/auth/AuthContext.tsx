@@ -264,6 +264,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
+}
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
