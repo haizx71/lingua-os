@@ -29,9 +29,15 @@ Implement the smallest complete real frontend slice connecting an authenticated,
 - Manages search input, debounced query dispatch, and sequence counter.
 - Reconciles saved state across all cursor pages via multi-page `apiClient.listLibraryItems({ itemType: 'concept', cursor })`.
 - Cycle loop protection: tracks `seenCursors` and terminates traversal with fail-closed error if server repeats a cursor.
-- Full cursor exhaustion: commits authoritative `savedConceptIds` and sets `isSavedStateReady = true` only after traversal completes.
+- Fail-closed error handling (PAGINATION-009-R1): on traversal failure or loop anomaly, positive evidence (already seen saved IDs) is preserved, `reconciliationError` is surfaced, but `isSavedStateReady` remains `false`.
+- Saved-state authority tri-state:
+  1. `SAVED`: concept ID positively known (preserved even on partial failure).
+  2. `NOT SAVED`: valid ONLY after successful, complete cursor exhaustion (`isSavedStateReady === true && reconciliationError === null`).
+  3. `UNKNOWN / INCOMPLETE AUTHORITY`: during in-flight reconciliation or after failure. Concepts not known as saved display accessible retry action ("Thử đồng bộ lại") or checking indicator, strictly suppressing active "Lưu để học" CTA.
+- Retry mechanism (`retryReconciliation`): resets traversal state and initiates a fresh sequence from page 1.
+- Full cursor exhaustion: commits authoritative `savedConceptIds` and sets `isSavedStateReady = true` only after complete traversal.
 - In-flight checking state: while `!isSavedStateReady`, concept cards render disabled "Đang kiểm tra..." button, preventing false unsaved conclusions.
-- Implements `saveConcept(conceptId)` calling `apiClient.saveConceptToLibrary(conceptId)`, disabled during in-flight reconciliation.
+- Implements `saveConcept(conceptId)` calling `apiClient.saveConceptToLibrary(conceptId)`, disabled during in-flight reconciliation or when authority is incomplete (`!isSavedStateReady || reconciliationError !== null`).
 - Implements `inspectConcept(conceptId)` lazily calling `apiClient.getConcept(conceptId)`.
 - Guards all async operations with `seq === reconcileSequenceRef.current`, `isCurrentActor(epoch, actorId)`, and catches `LinguaActorAbortedError`.
 
@@ -40,10 +46,10 @@ Implement the smallest complete real frontend slice connecting an authenticated,
 - Backwards compatible with `initialConcepts`, `forcedState`, and `forcedErrorCode`.
 - Accessible search input (`aria-label`, clear button, search indicator).
 - Result cards with pronunciation audio, status chips, expandable inspection details, and explicit Save/Learn button.
-- Comprehensive states: loading, empty results, search error, inline save error, reconciliation error, checking state, and saved feedback.
+- Comprehensive states: loading, empty results, search error, inline save error, reconciliation error with retry ("Thử đồng bộ lại"), checking state, and saved feedback.
 
 ### D. Automated Test Suite (`tests/frontend/task009-concept-discovery-save.test.tsx`)
-19 rigorous invariant tests:
+21 rigorous invariant tests:
 - `TEST-009-01`: authenticated ready learner searches and renders backend concepts.
 - `TEST-009-02`: concept IDs preserved through adapter/view model.
 - `TEST-009-03`: empty/no-result state handled cleanly.
@@ -61,14 +67,15 @@ Implement the smallest complete real frontend slice connecting an authenticated,
 - `TEST-009-PAGE-02`: second request passes exact opaque cursor and itemType=concept.
 - `TEST-009-PAGE-03`: three-page traversal merges all saved IDs without overwriting.
 - `TEST-009-PAGE-04`: stale Actor A page resolution cannot mutate Actor B saved state.
-- `TEST-009-PAGE-05`: repeated server next cursor / loop anomaly terminates and fails closed.
+- `TEST-009-PAGE-05`: repeated server next cursor / loop anomaly terminates fail-closed, preserves known positive saved concepts, and displays safe retry CTA for absent concepts without active "Lưu để học".
 - `TEST-009-PAGE-06`: concept not present after full cursor exhaustion is treated as unsaved.
+- `TEST-009-PAGE-07`: clean retry after reconciliation failure reaches cursor exhaustion and discovers TARGET without PUT.
+- `TEST-009-PAGE-08`: Actor A reconciliation failure cannot contaminate Actor B state.
 
 ## 4. Verification Plan
-- `pnpm test` (400/400 frontend tests passing across 33 test files)
+- `pnpm test` (402/402 frontend tests passing across 33 test files)
 - `pnpm typecheck` (0 errors)
 - `pnpm lint` (0 warnings/errors)
 - `pnpm build-storybook`
 - `pnpm build`
-- `git diff dd22bb1 -- contracts services database` strictly empty
-
+- `git diff 6fc8fe6 -- contracts services database` strictly empty

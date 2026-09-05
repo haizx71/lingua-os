@@ -276,12 +276,13 @@ Implement Reader, concept tap/detail and save-to-learning interactions.
 discovery (`GET /v1/dictionary/search`), concept inspection (`GET /v1/concepts/{conceptId}`), explicit
 Save/Learn invocation (`PUT /v1/library/concepts/{conceptId}`), authoritative saved state reconciliation
 (`GET /v1/library/items?itemType=concept`), search sequence out-of-order race drop, and TASK-017 actor
-lifecycle transition isolation. PAGINATION-009 fixed: Full multi-page cursor traversal ensuring saved concept
-authority is complete across all cursor pages before committing UI state; cycle loop detection (`seenCursors`)
-with controlled fail-closed error handling; guarded in-flight state (`isSavedStateReady`) preventing premature
-unsaved conclusions; and sequence/epoch tracking isolating stale background page merges. Verified with 19
-invariant tests in `tests/frontend/task009-concept-discovery-save.test.tsx` (400/400 frontend tests passing).
-Zero backend or contract changes. Full Reader UI integration remains pending subsequent slices. Pending independent correction review.*
+lifecycle transition isolation. PAGINATION-009 fixed and PAGINATION-009-R1 corrected: Full multi-page cursor traversal
+ensuring saved concept authority is complete across all cursor pages before committing UI state; cycle loop detection
+(`seenCursors`) with fail-closed termination; saved-state authority tri-state preserving positive evidence on failure
+while strictly suppressing the active "Lưu để học" CTA for unconfirmed concepts; accessible retry mechanism
+(`retryReconciliation`); and actor lifecycle isolation (`TEST-009-PAGE-08`). Verified with 21 invariant tests in
+`tests/frontend/task009-concept-discovery-save.test.tsx` (402/402 frontend tests passing). Zero backend or contract changes.
+Full Reader UI integration remains pending subsequent slices. Ready for fresh review.*
 
 ### TASK-010 — Today Engine heuristic v1
 Owner: CODEX
