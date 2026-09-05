@@ -440,4 +440,272 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
     // Concept "appointment" was in default initial concepts and saved in library
     expect(await screen.findByLabelText(`Đã lưu từ ${mockConceptSummary.canonicalForm} vào kho học`)).toBeInTheDocument();
   });
+
+  describe('PAGINATION-009: Paginated Saved-State Authority', () => {
+    it('TEST-009-PAGE-01: multi-page traversal discovers concepts on later pages without PUT', async () => {
+      const conceptA: ConceptSummaryDto = {
+        id: '00000000-0000-4000-8000-000000000091',
+        term: 'apple',
+        canonicalForm: 'apple',
+        partOfSpeech: 'noun',
+        ipa: '/ˈæp.əl/',
+        cefrLevel: 'A1',
+        status: 'learning',
+        isDue: false,
+      };
+      const conceptTarget: ConceptSummaryDto = {
+        id: '00000000-0000-4000-8000-000000000092',
+        term: 'target-concept',
+        canonicalForm: 'target-concept',
+        partOfSpeech: 'noun',
+        ipa: '/ˈtɑː.ɡɪt/',
+        cefrLevel: 'B1',
+        status: 'learning',
+        isDue: false,
+      };
+
+      const listSpy = vi.spyOn(api, 'listLibraryItems').mockImplementation(async (query) => {
+        if (!query?.cursor) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: conceptA }],
+            meta: { requestId: 'req-p1', apiVersion: '1.0', nextCursor: 'C1', hasMore: true, pageSize: 1 },
+          };
+        }
+        if (query.cursor === 'C1') {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: conceptTarget }],
+            meta: { requestId: 'req-p2', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+          };
+        }
+        throw new Error(`Unexpected cursor: ${query.cursor}`);
+      });
+
+      const saveSpy = vi.spyOn(api, 'saveConceptToLibrary');
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [conceptTarget],
+        meta: { requestId: 'req-s', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+      });
+
+      await renderDictionary();
+
+      // Ensure both pages were fetched
+      expect(listSpy).toHaveBeenCalledTimes(2);
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'target-concept' } });
+
+      // ConceptTarget renders as already saved
+      expect(await screen.findByLabelText(`Đã lưu từ ${conceptTarget.canonicalForm} vào kho học`)).toBeInTheDocument();
+      // No PUT was required
+      expect(saveSpy).not.toHaveBeenCalled();
+    });
+
+    it('TEST-009-PAGE-02: second request passes exact opaque cursor and itemType=concept', async () => {
+      const opaqueCursor = 'opaque-cursor-xyz-789==';
+      const listSpy = vi.spyOn(api, 'listLibraryItems').mockImplementation(async (query) => {
+        if (!query?.cursor) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: mockConceptSummary }],
+            meta: { requestId: 'req-1', apiVersion: '1.0', nextCursor: opaqueCursor, hasMore: true, pageSize: 1 },
+          };
+        }
+        return {
+          data: [],
+          meta: { requestId: 'req-2', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 0 },
+        };
+      });
+
+      await renderDictionary();
+
+      expect(listSpy).toHaveBeenCalledTimes(2);
+      expect(listSpy).toHaveBeenNthCalledWith(1, { itemType: 'concept' });
+      expect(listSpy).toHaveBeenNthCalledWith(2, { itemType: 'concept', cursor: opaqueCursor });
+    });
+
+    it('TEST-009-PAGE-03: three-page traversal merges all saved IDs without overwriting', async () => {
+      const c1: ConceptSummaryDto = { ...mockConceptSummary, id: '00000000-0000-4000-8000-000000000001', canonicalForm: 'term-one' };
+      const c2: ConceptSummaryDto = { ...mockConceptSummary, id: '00000000-0000-4000-8000-000000000002', canonicalForm: 'term-two' };
+      const c3: ConceptSummaryDto = { ...mockConceptSummary, id: '00000000-0000-4000-8000-000000000003', canonicalForm: 'term-three' };
+
+      vi.spyOn(api, 'listLibraryItems').mockImplementation(async (query) => {
+        if (!query?.cursor) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: c1 }],
+            meta: { requestId: 'req-1', apiVersion: '1.0', nextCursor: 'C1', hasMore: true, pageSize: 1 },
+          };
+        }
+        if (query.cursor === 'C1') {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: c2 }],
+            meta: { requestId: 'req-2', apiVersion: '1.0', nextCursor: 'C2', hasMore: true, pageSize: 1 },
+          };
+        }
+        if (query.cursor === 'C2') {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: c3 }],
+            meta: { requestId: 'req-3', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+          };
+        }
+        throw new Error(`Unexpected cursor: ${query.cursor}`);
+      });
+
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [c1, c2, c3],
+        meta: { requestId: 'req-all', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 3 },
+      });
+
+      await renderDictionary();
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'term' } });
+
+      // All 3 concepts are rendered as saved, proving all 3 pages merged into authoritative state
+      expect(await screen.findByLabelText(`Đã lưu từ ${c1.canonicalForm} vào kho học`)).toBeInTheDocument();
+      expect(await screen.findByLabelText(`Đã lưu từ ${c2.canonicalForm} vào kho học`)).toBeInTheDocument();
+      expect(await screen.findByLabelText(`Đã lưu từ ${c3.canonicalForm} vào kho học`)).toBeInTheDocument();
+    });
+
+    it('TEST-009-PAGE-04: stale Actor A page resolution cannot mutate Actor B saved state', async () => {
+      const cA1: ConceptSummaryDto = { ...mockConceptSummary, id: 'actor-a-concept-1', canonicalForm: 'a1-term' };
+      const cA2: ConceptSummaryDto = { ...mockConceptSummary, id: 'actor-a-concept-2', canonicalForm: 'a2-term' };
+      const cB1: ConceptSummaryDto = { ...mockConceptSummary, id: 'actor-b-concept-1', canonicalForm: 'b1-term' };
+
+      let resolvePageA2: (val: LibraryItemsResponseDto) => void;
+      const pageA2Promise = new Promise<LibraryItemsResponseDto>((resolve) => {
+        resolvePageA2 = resolve;
+      });
+
+      let pageCount = 0;
+      vi.spyOn(api, 'listLibraryItems').mockImplementation(async (query) => {
+        pageCount++;
+        // First call: Actor A page 1
+        if (pageCount === 1) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: cA1 }],
+            meta: { requestId: 'req-a1', apiVersion: '1.0', nextCursor: 'cursor-a1', hasMore: true, pageSize: 1 },
+          };
+        }
+        // Second call: Actor A page 2 (delayed)
+        if (pageCount === 2) {
+          return pageA2Promise;
+        }
+        // Third call: Actor B page 1
+        return {
+          data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: cB1 }],
+          meta: { requestId: 'req-b1', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+        };
+      });
+
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [cA1, cA2, cB1],
+        meta: { requestId: 'req-s', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 3 },
+      });
+
+      await renderDictionary();
+
+      // Actor A has page 2 pending. Now switch to Actor B
+      await act(async () => {
+        mockSupabase.switchUser(sessionB);
+      });
+
+      // Now Actor A's page 2 resolves with concept cA2
+      await act(async () => {
+        resolvePageA2({
+          data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: cA2 }],
+          meta: { requestId: 'req-a2', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+        });
+      });
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'term' } });
+
+      // Actor B sees cB1 as saved
+      expect(await screen.findByLabelText(`Đã lưu từ ${cB1.canonicalForm} vào kho học`)).toBeInTheDocument();
+      // Actor B must NOT have cA1 or cA2 saved!
+      expect(screen.queryByLabelText(`Đã lưu từ ${cA1.canonicalForm} vào kho học`)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(`Đã lưu từ ${cA2.canonicalForm} vào kho học`)).not.toBeInTheDocument();
+    });
+
+    it('TEST-009-PAGE-05: repeated server next cursor / loop anomaly terminates and fails closed', async () => {
+      let callCount = 0;
+      vi.spyOn(api, 'listLibraryItems').mockImplementation(async () => {
+        callCount++;
+        // Always returns nextCursor: 'LOOP-CURSOR'
+        return {
+          data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: mockConceptSummary }],
+          meta: { requestId: `req-${callCount}`, apiVersion: '1.0', nextCursor: 'LOOP-CURSOR', hasMore: true, pageSize: 1 },
+        };
+      });
+
+      await renderDictionary();
+
+      // Loop was caught on second call when 'LOOP-CURSOR' was repeated
+      expect(callCount).toBe(2);
+      // Fails closed with standard InlineAlert
+      expect(await screen.findByText('Lỗi đồng bộ kho từ vựng')).toBeInTheDocument();
+      expect(screen.getByText(/Pagination loop detected/i)).toBeInTheDocument();
+    });
+
+    it('TEST-009-PAGE-06: concept not present after full cursor exhaustion is treated as unsaved', async () => {
+      let resolvePage2: (val: LibraryItemsResponseDto) => void;
+      const page2Promise = new Promise<LibraryItemsResponseDto>((resolve) => {
+        resolvePage2 = resolve;
+      });
+
+      const cUnsaved: ConceptSummaryDto = {
+        id: 'unsaved-concept-99',
+        term: 'ephemeral',
+        canonicalForm: 'ephemeral',
+        partOfSpeech: 'adjective',
+        ipa: '/ɪˈfem.ər.əl/',
+        cefrLevel: 'C1',
+        status: 'unseen',
+        isDue: false,
+      };
+
+      vi.spyOn(api, 'listLibraryItems').mockImplementation(async (query) => {
+        if (!query?.cursor) {
+          return {
+            data: [{ itemType: 'concept', savedAt: '2026-08-20T00:00:00Z', concept: mockConceptSummary }],
+            meta: { requestId: 'req-1', apiVersion: '1.0', nextCursor: 'cursor-2', hasMore: true, pageSize: 1 },
+          };
+        }
+        return page2Promise;
+      });
+
+      vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+        data: [cUnsaved],
+        meta: { requestId: 'req-s', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+      });
+
+      // Render dictionary while page 2 is in-flight
+      render(
+        <AuthProvider customClient={mockSupabase}>
+          <DictionaryView apiClient={api} />
+        </AuthProvider>
+      );
+      // Settle initial user bootstrap so reconciliation starts and fetches page 1
+      await act(async () => {});
+
+      const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+      fireEvent.change(searchInput, { target: { value: 'ephemeral' } });
+
+      // Before full cursor exhaustion: NOT treated as unsaved yet!
+      // Must NOT display active "Lưu để học" button
+      expect(screen.queryByRole('button', { name: `Lưu từ ${cUnsaved.canonicalForm} để học` })).not.toBeInTheDocument();
+      // Displays checking indicator
+      expect(await screen.findByRole('button', { name: `Đang kiểm tra trạng thái lưu của từ ${cUnsaved.canonicalForm}` })).toBeDisabled();
+
+      // Now resolve page 2 with empty items and no further cursor (full exhaustion)
+      await act(async () => {
+        resolvePage2({
+          data: [],
+          meta: { requestId: 'req-2', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 0 },
+        });
+      });
+
+      // Only NOW after full cursor exhaustion is the concept authoritatively treated as unsaved
+      expect(await screen.findByRole('button', { name: `Lưu từ ${cUnsaved.canonicalForm} để học` })).toBeInTheDocument();
+    });
+  });
 });
