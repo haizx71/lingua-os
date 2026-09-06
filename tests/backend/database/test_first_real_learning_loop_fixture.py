@@ -141,14 +141,18 @@ def test_frll_fixture_database_execution(
 
         # Check FRLL-03: Zero learner rows
         for table in LEARNER_DERIVED_TABLES:
-            count = conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+            table_row = conn.execute(f"SELECT count(*) FROM {table}").fetchone()
+            assert table_row is not None
+            count = table_row[0]
             assert count == 0, f"FRLL-03 violation: table '{table}' has {count} rows"
 
         # Run seed second time to verify idempotence
         conn.execute(sql_text)
         conn.commit()
 
-        concept_count = conn.execute(
+        concept_count_row = conn.execute(
             "SELECT count(*) FROM concepts WHERE id = %s", (CONCEPT_ID,)
-        ).fetchone()[0]
+        ).fetchone()
+        assert concept_count_row is not None
+        concept_count = concept_count_row[0]
         assert concept_count == 1, "Concept count must remain exactly 1 after second seed run"
