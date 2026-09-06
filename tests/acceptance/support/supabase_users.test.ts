@@ -4,6 +4,8 @@ import {
   createDisposableSupabaseUser,
   deleteDisposableSupabaseUser,
   createSupabaseAdminClient,
+  createSupabaseLearnerClient,
+  authenticateDisposableLearner,
 } from './supabase_users';
 
 describe('FRLL Supabase User Provisioner Seam', () => {
@@ -131,5 +133,61 @@ describe('FRLL Supabase User Provisioner Seam', () => {
     await expect(
       createDisposableSupabaseUser({ client: mockClient })
     ).rejects.toThrow('Failed to provision disposable Supabase test user: Database connection failed');
+  });
+
+  it('configures learner client with publishable key and no session persistence', () => {
+    const client = createSupabaseLearnerClient('https://test.supabase.co', 'sb_publishable_key_123');
+    expect(client.supabaseUrl).toBe('https://test.supabase.co');
+    expect(client.supabaseKey).toBe('sb_publishable_key_123');
+    expect((client.auth as unknown as { persistSession?: boolean }).persistSession).toBe(false);
+  });
+
+  it('authenticates disposable learner via standard signInWithPassword flow', async () => {
+    const mockSignIn = vi.fn().mockResolvedValue({
+      data: {
+        session: { access_token: 'valid.mock.jwt.token' },
+        user: { id: '00000000-0000-4000-8000-000000000001', email: 'learner@example.invalid' },
+      },
+      error: null,
+    });
+
+    const mockClient = {
+      auth: {
+        signInWithPassword: mockSignIn,
+      },
+    } as unknown as SupabaseClient;
+
+    const session = await authenticateDisposableLearner(
+      { email: 'learner@example.invalid', password: 'TestPassword#123' },
+      { client: mockClient }
+    );
+
+    expect(mockSignIn).toHaveBeenCalledWith({
+      email: 'learner@example.invalid',
+      password: 'TestPassword#123',
+    });
+    expect(session.userId).toBe('00000000-0000-4000-8000-000000000001');
+    expect(session.accessToken).toBe('valid.mock.jwt.token');
+    expect(session.email).toBe('learner@example.invalid');
+  });
+
+  it('learner auth fails closed when credentials return error', async () => {
+    const mockSignIn = vi.fn().mockResolvedValue({
+      data: { session: null, user: null },
+      error: { message: 'Invalid login credentials' },
+    });
+
+    const mockClient = {
+      auth: {
+        signInWithPassword: mockSignIn,
+      },
+    } as unknown as SupabaseClient;
+
+    await expect(
+      authenticateDisposableLearner(
+        { email: 'bad@example.invalid', password: 'WrongPassword#1' },
+        { client: mockClient }
+      )
+    ).rejects.toThrow('Failed to authenticate disposable Supabase learner: Invalid login credentials');
   });
 });

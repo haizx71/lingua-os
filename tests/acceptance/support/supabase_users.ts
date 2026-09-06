@@ -72,6 +72,83 @@ export function createSupabaseAdminClient(
   });
 }
 
+export interface AuthenticatedLearnerSession {
+  readonly accessToken: string;
+  readonly userId: string;
+  readonly email: string;
+}
+
+export interface SupabaseLearnerConfig {
+  readonly supabaseUrl?: string;
+  readonly publishableKey?: string;
+  readonly client?: SupabaseClient;
+}
+
+export function createSupabaseLearnerClient(
+  supabaseUrl: string,
+  publishableKey: string
+): SupabaseClient {
+  return createClient(supabaseUrl, publishableKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+/**
+ * Authenticates a disposable learner user via normal Supabase Auth client using publishableKey.
+ * Strictly forbidden from using secretKey/admin client for learner auth.
+ * Never logs passwords or returned access tokens.
+ */
+export async function authenticateDisposableLearner(
+  credentials: { readonly email: string; readonly password: string },
+  config: SupabaseLearnerConfig = {}
+): Promise<AuthenticatedLearnerSession> {
+  const supabaseUrl =
+    config.supabaseUrl ??
+    process.env.SUPABASE_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  const publishableKey =
+    config.publishableKey ??
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY;
+
+  if (!config.client) {
+    if (!supabaseUrl || supabaseUrl.trim() === '') {
+      throw new Error('Supabase learner auth failed: SUPABASE_URL is missing or empty.');
+    }
+    if (!publishableKey || publishableKey.trim() === '') {
+      throw new Error(
+        'Supabase learner auth failed: SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) is missing or empty.'
+      );
+    }
+  }
+
+  const client =
+    config.client ??
+    createSupabaseLearnerClient(supabaseUrl!.replace(/\/+$/, ''), publishableKey!.trim());
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email: credentials.email,
+    password: credentials.password,
+  });
+
+  if (error || !data.session?.access_token || !data.user?.id) {
+    const errorMsg = error?.message ?? 'Sign-in returned no valid session access token';
+    throw new Error(`Failed to authenticate disposable Supabase learner: ${errorMsg}`);
+  }
+
+  return {
+    accessToken: data.session.access_token,
+    userId: data.user.id,
+    email: credentials.email,
+  };
+}
+
 export function generateDisposableCredentials(tag?: string): {
   readonly email: string;
   readonly password: string;

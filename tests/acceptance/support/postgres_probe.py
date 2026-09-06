@@ -7,6 +7,7 @@ Enforces read-only transaction semantics.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -213,15 +214,26 @@ class PostgresLearnerProbe:
 
 
 def main() -> None:
-    if len(sys.argv) < 4:
+    if len(sys.argv) == 3:
+        db_url = os.environ.get("DATABASE_URL")
+        if not db_url or not db_url.strip():
+            print(
+                "ERROR: DATABASE_URL is missing or empty in environment",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        user_id = UUID(sys.argv[1])
+        concept_id = UUID(sys.argv[2])
+    elif len(sys.argv) >= 4:
+        db_url = sys.argv[1]
+        user_id = UUID(sys.argv[2])
+        concept_id = UUID(sys.argv[3])
+    else:
         print(
-            "Usage: python -m postgres_probe <database_url> <user_id> <concept_id>", file=sys.stderr
+            "Usage: python -m postgres_probe [<database_url>] <user_id> <concept_id>",
+            file=sys.stderr,
         )
         sys.exit(1)
-
-    db_url = sys.argv[1]
-    user_id = UUID(sys.argv[2])
-    concept_id = UUID(sys.argv[3])
 
     probe = PostgresLearnerProbe(db_url)
     digest = probe.capture_digest(user_id, concept_id)

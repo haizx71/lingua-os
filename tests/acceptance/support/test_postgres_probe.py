@@ -57,3 +57,14 @@ def test_probe_enforces_read_only_transaction() -> None:
             "INSERT INTO users (id) VALUES (%s)",
             (uuid.uuid4(),),
         )
+
+
+def test_probe_cli_fails_closed_when_arguments_missing() -> None:
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parent / "postgres_probe.py"
+    proc = subprocess.run([sys.executable, str(script)], capture_output=True, text=True)
+    assert proc.returncode == 1
+    assert "Usage: python -m postgres_probe" in proc.stderr
