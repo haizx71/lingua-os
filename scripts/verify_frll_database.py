@@ -13,6 +13,7 @@ Enforces strictly read-only transactions. Never outputs credentials or connectio
 from __future__ import annotations
 
 import os
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -36,45 +37,27 @@ EXPECTED_MIGRATIONS = (
     "0009_library_concept_save_intent_v1",
 )
 
-EXPECTED_APPLICATION_TABLES = (
-    "schema_migrations",
-    "languages",
-    "proficiency_frameworks",
-    "proficiency_levels",
-    "users",
-    "learner_profiles",
-    "user_languages",
-    "user_skill_states",
-    "user_concept_states",
-    "user_saved_concepts",
-    "user_saved_content",
-    "user_saved_sentences",
-    "concept_save_intents",
-    "user_language_projection_heads",
-    "learning_events",
-    "exposure_events",
-    "review_items",
-    "fsrs_states",
-    "review_events",
-    "today_plans",
-    "today_plan_activities",
-    "today_activity_review_items",
-    "profile_mutation_results",
-    "assessment_attempts",
-    "assessment_responses",
-    "assessment_results",
-    "licenses",
-    "data_sources",
-    "source_records",
-    "concepts",
-    "lexemes",
-    "lexeme_forms",
-    "word_senses",
-    "content_items",
-    "content_sentences",
-    "sentence_concepts",
-    "content_segments",
-)
+
+def discover_expected_tables(migrations_dir: Path = MIGRATIONS_DIR) -> tuple[str, ...]:
+    """Discover all expected base table names from canonical migrations and migrate.py.
+
+    Matches top-level 'CREATE TABLE [IF NOT EXISTS] [public.]<table_name>' statements
+    across all *.up.sql migration files, and includes 'schema_migrations' managed by
+    database/migrate.py.
+    """
+    pattern = re.compile(
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-zA-Z0-9_]+)",
+        re.IGNORECASE,
+    )
+    tables: set[str] = {"schema_migrations"}
+    for path in sorted(migrations_dir.glob("*.up.sql")):
+        content = path.read_text(encoding="utf-8")
+        for match in pattern.finditer(content):
+            tables.add(match.group(1).lower())
+    return tuple(sorted(tables))
+
+
+EXPECTED_APPLICATION_TABLES: tuple[str, ...] = discover_expected_tables(MIGRATIONS_DIR)
 
 LEARNER_DERIVED_TABLES = (
     "users",
@@ -136,7 +119,10 @@ def verify_database(database_url: str) -> None:
         missing_tables = [t for t in EXPECTED_APPLICATION_TABLES if t not in existing_tables]
         if missing_tables:
             raise RuntimeError(f"Missing expected application tables: {', '.join(missing_tables)}")
-        print(f"  [OK] Schema tables verified: {len(existing_tables)} application tables present.")
+        print(
+            f"  [OK] Schema tables verified: {len(EXPECTED_APPLICATION_TABLES)} "
+            f"required application tables present."
+        )
 
         # 3. Verify FRLL catalog fixture anchor concept
         print("Checking deterministic FRLL catalog fixture...")
