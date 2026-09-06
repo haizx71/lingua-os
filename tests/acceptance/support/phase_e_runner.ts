@@ -61,16 +61,18 @@ import {
  * confidences, and mastery derive from fractional Bayesian updates (e.g. 1/30 = 0.033333333...)
  * and are persisted in PostgreSQL columns typed as `numeric(10,8)`.
  *
- * The canonical database scale is 8 decimal places (`numeric(10,8)`).
- * Transport serialization (Pydantic / JSON / IEEE 754 float) and PostgreSQL numeric
- * representation can exhibit rounding at the 8th/9th decimal place (e.g. 3e-9 difference).
+ * The canonical database scale is 8 decimal places (`numeric(10,8)`), where 1/30 is
+ * persisted as `0.03333333`. However, when 1/30 is evaluated with 8 significant digits
+ * (precision 8), it yields `0.033333333` (9 fractional digits). The difference between
+ * the two representations is exactly 3e-9 (0.000000003).
  *
- * This validator enforces:
- * - Both values must be finite numbers (rejects NaN, Infinity, -Infinity).
- * - Values must match within PROJECTION_NUMERIC_TOLERANCE (1e-6).
- * - Materially divergent values (e.g. 0.0333 vs 0.04) fail closed.
+ * Setting the tolerance to the canonical column scale bound (1e-8 = 0.00000001):
+ * - Accepts legitimate sub-scale representation differences (3e-9 <= 1e-8).
+ * - Rejects any divergence at or beyond the database's scale-8 quantum (diff > 1e-8).
+ * - Rejects non-finite values (NaN, Infinity, -Infinity).
+ * - Fails closed on materially divergent values (e.g. 0.04 vs 0.03333333).
  */
-export const PROJECTION_NUMERIC_TOLERANCE = 1e-6;
+export const PROJECTION_NUMERIC_TOLERANCE = 1e-8;
 
 export function isProjectionNumberEquivalent(
   actual: number | string | null | undefined,

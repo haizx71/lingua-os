@@ -729,6 +729,14 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
       ).not.toThrow();
     });
 
+    it('fails closed on a difference just beyond the accepted scale-8 precision bound (1.1e-8)', () => {
+      const beyondTolerance = 0.03333333 + 1.1e-8;
+      expect(isProjectionNumberEquivalent(0.03333333, beyondTolerance)).toBe(false);
+      expect(() =>
+        expectProjectionNumberEquivalent(0.03333333, beyondTolerance, 'Brain confidence')
+      ).toThrow(/FRLL-12 failure: Brain confidence .* > tolerance 1e-8/);
+    });
+
     it('accepts exact equal numeric values and strings', () => {
       expect(isProjectionNumberEquivalent(0.5, 0.5)).toBe(true);
       expect(isProjectionNumberEquivalent('0.5', 0.5)).toBe(true);
