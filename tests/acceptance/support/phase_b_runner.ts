@@ -29,6 +29,55 @@ import {
 export const FRLL_ANCHOR_CONCEPT_ID = '7f110000-0000-4000-8000-000000000004';
 export const FRLL_ANCHOR_LEMMA = 'frll-anchor';
 
+export interface ParsedMeResponse {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  interfaceLanguageCode: string;
+  timeZone: string | null;
+  languageProfiles: Array<{ id: string }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function parseMeResponse(json: unknown): ParsedMeResponse {
+  if (!json || typeof json !== 'object' || !('data' in json)) {
+    throw new Error('Invalid /v1/me response: missing data envelope');
+  }
+  const data = (json as { data: unknown }).data;
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid /v1/me response: data is not an object');
+  }
+  const d = data as Record<string, unknown>;
+  if (typeof d.id !== 'string') {
+    throw new Error('Invalid /v1/me response: missing or invalid data.id');
+  }
+  return {
+    id: d.id,
+    email: typeof d.email === 'string' ? d.email : null,
+    displayName: typeof d.displayName === 'string' ? d.displayName : null,
+    interfaceLanguageCode: typeof d.interfaceLanguageCode === 'string' ? d.interfaceLanguageCode : 'en',
+    timeZone: typeof d.timeZone === 'string' ? d.timeZone : null,
+    languageProfiles: Array.isArray(d.languageProfiles) ? (d.languageProfiles as Array<{ id: string }>) : [],
+    createdAt: typeof d.createdAt === 'string' ? d.createdAt : '',
+    updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : '',
+  };
+}
+
+export function parseDictionarySearchResponse(json: unknown): Array<{ id: string; lemma: string }> {
+  if (!json || typeof json !== 'object' || !('data' in json)) {
+    throw new Error('Invalid /v1/dictionary/search response: missing data envelope');
+  }
+  const data = (json as { data: unknown }).data;
+  if (Array.isArray(data)) {
+    return data as Array<{ id: string; lemma: string }>;
+  }
+  if (data && typeof data === 'object' && 'items' in data && Array.isArray((data as Record<string, unknown>).items)) {
+    return (data as { items: Array<{ id: string; lemma: string }> }).items;
+  }
+  throw new Error('Invalid /v1/dictionary/search response: data is neither an array nor an object with items');
+}
+
 export interface PhaseBOptions {
   readonly apiBaseUrl?: string;
   readonly conceptId?: string;
@@ -119,27 +168,23 @@ export async function runPhaseBLearningLoop(
       );
     }
 
-    const meData = (await meRes.json()) as {
-      data: {
-        user: { id: string; email?: string };
-        profile: { timeZone?: string | null };
-      };
-    };
+    const rawMeJson = await meRes.json();
+    const me = parseMeResponse(rawMeJson);
 
-    if (meData.data.user.id !== user.id) {
+    if (me.id !== user.id) {
       throw new Error(
-        `FRLL-02 identity parity failure: /v1/me user.id (${meData.data.user.id}) != JWT subject (${user.id}).`
+        `FRLL-02 identity parity failure: /v1/me data.id (${me.id}) != JWT subject (${user.id}).`
       );
     }
 
     let currentEtag = meRes.headers.get('etag');
-    console.log(`  [OK] Identity parity verified. FastApi resolved subject: ${meData.data.user.id}`);
+    console.log(`  [OK] Identity parity verified. FastApi resolved subject: ${me.id}`);
 
     // -------------------------------------------------------------------------
     // B5. Create/update required vi->en profile + timezone using existing API
     // -------------------------------------------------------------------------
     console.log(`[Phase B][4/10] Ensuring persisted timezone is '${timeZone}'...`);
-    if (meData.data.profile?.timeZone !== timeZone) {
+    if (me.timeZone !== timeZone) {
       const patchHeaders: Record<string, string> = { ...authHeaders };
       if (currentEtag) {
         patchHeaders['If-Match'] = currentEtag;
@@ -248,12 +293,9 @@ export async function runPhaseBLearningLoop(
       const searchErr = await searchRes.text();
       throw new Error(`Dictionary search failed with HTTP ${searchRes.status}. Body: ${searchErr}`);
     }
-    const searchData = (await searchRes.json()) as {
-      data: {
-        items: Array<{ id: string; lemma: string }>;
-      };
-    };
-    const foundConcept = searchData.data.items.find((item) => item.id === conceptId);
+    const rawSearchJson = await searchRes.json();
+    const searchItems = parseDictionarySearchResponse(rawSearchJson);
+    const foundConcept = searchItems.find((item) => item.id === conceptId);
     if (!foundConcept) {
       throw new Error(
         `FRLL-04 failure: Anchor concept ${conceptId} not found in dictionary search results.`
