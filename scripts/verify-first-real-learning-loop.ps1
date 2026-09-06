@@ -16,6 +16,7 @@ param (
     [switch]$PhaseB,
     [switch]$PhaseC,
     [switch]$PhaseD,
+    [switch]$PhaseE,
     [string]$RecoverOrphan = ""
 )
 
@@ -320,6 +321,69 @@ if ($PhaseD) {
         }
     }
 }
+
+if ($PhaseE) {
+    Write-Host ""
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "EXECUTING FRLL PHASE E: REAL REVIEW COMPETENCE -> BRAIN READ-ONLY PROJECTION (FRLL-12)" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
+
+    # 1. Ensure FastAPI backend is running on port 8000
+    $apiRunning = $false
+    try {
+        $healthRes = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get -TimeoutSec 2 -ErrorAction SilentlyContinue
+        if ($healthRes.status -eq "ok") {
+            $apiRunning = $true
+        }
+    } catch {}
+
+    $apiProcess = $null
+    if (-not $apiRunning) {
+        Write-Host "Starting FastAPI backend server on port 8000..." -ForegroundColor Cyan
+        $apiProcess = Start-Process -FilePath "python" -ArgumentList "-m", "uvicorn", "--app-dir", "services/api/src", "lingua_api.main:app", "--port", "8000" -PassThru
+        $retries = 30
+        while ($retries -gt 0) {
+            Start-Sleep -Milliseconds 500
+            try {
+                $healthRes = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get -TimeoutSec 2 -ErrorAction SilentlyContinue
+                if ($healthRes.status -eq "ok") {
+                    $apiRunning = $true
+                    break
+                }
+            } catch {}
+            $retries--
+        }
+        if (-not $apiRunning) {
+            Write-Host "[FAIL] FastAPI server failed to start on port 8000 within timeout." -ForegroundColor Red
+            if ($apiProcess) { Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue }
+            exit 1
+        }
+        Write-Host "[OK] FastAPI server started and healthy on port 8000." -ForegroundColor Green
+    } else {
+        Write-Host "[OK] Existing FastAPI server detected on port 8000." -ForegroundColor Green
+    }
+
+    try {
+        Write-Host "Running Phase E end-to-end acceptance scenario..." -ForegroundColor Cyan
+        pnpm test tests/acceptance/phase_e.test.ts
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[FAIL] Phase E acceptance test failed." -ForegroundColor Red
+            exit $LASTEXITCODE
+        }
+
+        Write-Host ""
+        Write-Host "========================================================" -ForegroundColor Green
+        Write-Host "FRLL PHASE E: PASS" -ForegroundColor Green
+        Write-Host "========================================================" -ForegroundColor Green
+        exit 0
+    } finally {
+        if ($apiProcess) {
+            Write-Host "Stopping background FastAPI server..." -ForegroundColor Cyan
+            Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 
 # 3. Static fixture & acceptance tests
 Write-Host "Running deterministic catalog fixture tests..." -ForegroundColor Cyan
