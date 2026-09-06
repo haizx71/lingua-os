@@ -214,3 +214,56 @@ export async function verifyLearnerCleanupFromPostgres(
   }
 }
 
+export interface PostgresOrphanRecoveryResult {
+  readonly user_id: string;
+  readonly status: string;
+  readonly clean: boolean;
+  readonly counts: {
+    readonly users: number;
+    readonly learner_profiles: number;
+    readonly user_languages: number;
+    readonly review_items: number;
+    readonly fsrs_states: number;
+    readonly learning_events: number;
+    readonly concept_save_intents: number;
+    readonly profile_mutation_results: number;
+    readonly user_concept_states: number;
+    readonly user_saved_concepts: number;
+  };
+}
+
+export async function recoverOrphanedLearnerPostgres(
+  userId: string,
+  options: { readonly databaseUrl?: string } = {}
+): Promise<PostgresOrphanRecoveryResult> {
+  const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+  const probeScript = path.resolve(__dirname, 'postgres_probe.py');
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (options.databaseUrl) {
+    env.DATABASE_URL = options.databaseUrl;
+  }
+  if (!env.DATABASE_URL || env.DATABASE_URL.trim() === '') {
+    throw new Error('recoverOrphanedLearnerPostgres failed: DATABASE_URL is missing or empty.');
+  }
+
+  const { stdout, stderr } = await execFileAsync(
+    pythonBin,
+    [probeScript, '--recover-orphan', userId],
+    { env }
+  );
+
+  if (stderr && stderr.trim() !== '') {
+    if (stderr.toLowerCase().includes('error')) {
+      throw new Error(`Postgres orphan recovery error: ${stderr.trim()}`);
+    }
+  }
+
+  try {
+    return JSON.parse(stdout) as PostgresOrphanRecoveryResult;
+  } catch (err) {
+    throw new Error(
+      `Failed to parse postgres orphan recovery JSON output: ${(err as Error).message}\nRaw stdout: ${stdout}`
+    );
+  }
+}
+

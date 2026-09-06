@@ -282,18 +282,21 @@ def test_normalize_scalar_for_json_fails_closed_on_unsupported_types() -> None:
 
 
 def test_teardown_and_verify_cleanup_fail_closed_on_invalid_uuid() -> None:
-    """Ensure teardown and verify_cleanup reject non-UUID identifiers immediately."""
+    """Ensure teardown, orphan recovery, and verify_cleanup reject non-UUID identifiers."""
     probe = PostgresLearnerProbe("postgresql://localhost:5432/fake")
 
     with pytest.raises(ValueError, match="Invalid user_id for teardown"):
         probe.teardown_disposable_user("not-a-uuid")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Invalid user_id for orphan recovery"):
+        probe.recover_orphaned_learner_state("not-a-uuid")  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="Invalid user_id for verification"):
         probe.verify_cleanup("not-a-uuid")  # type: ignore[arg-type]
 
 
 def test_probe_cli_flags_fail_closed() -> None:
-    """Ensure CLI fails closed when --teardown or --verify-cleanup args are missing."""
+    """Ensure CLI fails closed when teardown, recovery, or verify args are missing."""
     import subprocess
     import sys
     from pathlib import Path
@@ -309,7 +312,16 @@ def test_probe_cli_flags_fail_closed() -> None:
     assert proc_td.returncode == 1
     assert "Usage: python -m postgres_probe" in proc_td.stderr
 
-    # 2. --verify-cleanup without user_id
+    # 2. --recover-orphan without user_id
+    proc_ro = subprocess.run(
+        [sys.executable, str(script), "--recover-orphan"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_ro.returncode == 1
+    assert "Usage: python -m postgres_probe" in proc_ro.stderr
+
+    # 3. --verify-cleanup without user_id
     proc_vc = subprocess.run(
         [sys.executable, str(script), "--verify-cleanup"],
         capture_output=True,
@@ -359,3 +371,55 @@ def test_teardown_source_enforces_safety_invariants() -> None:
 
     # 4. Verification must check catalog anchor concept intact
     assert "FROM concepts WHERE id = %s" in verify_source
+
+
+def test_teardown_preserves_fk_cascades_and_bans_blanket_trigger_suppression() -> None:
+    """Verify teardown and orphan recovery preserve FK cascades and ban blanket suppression."""
+    import inspect
+    import re
+    from pathlib import Path
+
+    from tests.acceptance.support import postgres_probe
+
+    probe_source = Path(postgres_probe.__file__).read_text(encoding="utf-8")
+
+    # 1. HARD RULE: No session_replication_role in postgres_probe.py
+    assert "session_replication_role" not in probe_source
+
+    # 2. HARD RULE: No DISABLE TRIGGER ALL or ENABLE TRIGGER ALL
+    assert "DISABLE TRIGGER ALL" not in probe_source
+    assert "ENABLE TRIGGER ALL" not in probe_source
+
+    # 3. Only explicit named triggers are allowed to be disabled
+    # In teardown: profile_mutation_results_append_only, concept_save_intents_immutable_history
+    # In orphan recovery: plus learning_events_append_only (since pg_trigger_depth() is 1)
+    allowed_disabled_triggers = {
+        "profile_mutation_results_append_only",
+        "concept_save_intents_immutable_history",
+        "learning_events_append_only",
+    }
+    assert "DISABLE TRIGGER {trigger}" in probe_source
+    named_trigger_literals = set(re.findall(r'\("[a-z_]+",\s*"([a-z_]+)"\)', probe_source))
+    assert named_trigger_literals == allowed_disabled_triggers
+
+    # 4. In teardown_disposable_user, triggers MUST be re-enabled BEFORE DELETE FROM users
+    teardown_src = inspect.getsource(postgres_probe.PostgresLearnerProbe.teardown_disposable_user)
+    enable_pos = teardown_src.find("ENABLE TRIGGER")
+    delete_users_pos = teardown_src.find("DELETE FROM users WHERE id = %s")
+    assert enable_pos != -1, "ENABLE TRIGGER must exist in teardown"
+    assert delete_users_pos != -1, "DELETE FROM users must exist in teardown"
+    assert enable_pos < delete_users_pos, (
+        "Triggers must be re-enabled BEFORE deleting users so FK cascades are active"
+    )
+
+    # 5. finally: block must guarantee triggers are re-enabled even on failure
+    assert "finally:" in teardown_src
+    finally_src = teardown_src.split("finally:")[1]
+    assert "ENABLE TRIGGER" in finally_src
+
+    orphan_src = inspect.getsource(
+        postgres_probe.PostgresLearnerProbe.recover_orphaned_learner_state
+    )
+    assert "finally:" in orphan_src
+    orphan_finally = orphan_src.split("finally:")[1]
+    assert "ENABLE TRIGGER" in orphan_finally

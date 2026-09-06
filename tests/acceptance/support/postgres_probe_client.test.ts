@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   captureLearnerDigestFromPostgres,
+  recoverOrphanedLearnerPostgres,
   teardownDisposableLearnerPostgres,
   verifyLearnerCleanupFromPostgres,
 } from './postgres_probe_client';
@@ -20,6 +21,13 @@ describe('Postgres Probe Client', () => {
 
       await expect(
         teardownDisposableLearnerPostgres(
+          '00000000-0000-4000-8000-000000000001',
+          { databaseUrl: '' }
+        )
+      ).rejects.toThrow('DATABASE_URL is missing or empty');
+
+      await expect(
+        recoverOrphanedLearnerPostgres(
           '00000000-0000-4000-8000-000000000001',
           { databaseUrl: '' }
         )

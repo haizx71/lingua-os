@@ -13,7 +13,8 @@
 [CmdletBinding()]
 param (
     [switch]$PreflightOnly,
-    [switch]$PhaseB
+    [switch]$PhaseB,
+    [string]$RecoverOrphan = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -103,6 +104,32 @@ Write-Host "[OK] Preflight environment checks passed." -ForegroundColor Green
 
 if ($PreflightOnly) {
     Write-Host "Preflight only requested. Exiting."
+    exit 0
+}
+
+if (-not [string]::IsNullOrWhiteSpace($RecoverOrphan)) {
+    Write-Host ""
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "RECOVERING ORPHANED LEARNER STATE: $RecoverOrphan" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
+
+    python tests/acceptance/support/postgres_probe.py --recover-orphan $RecoverOrphan
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[FAIL] Orphan recovery failed." -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
+
+    Write-Host "Verifying cleanup of recovered learner..." -ForegroundColor Cyan
+    python tests/acceptance/support/postgres_probe.py --verify-cleanup $RecoverOrphan
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[FAIL] Cleanup verification after orphan recovery failed." -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
+
+    Write-Host ""
+    Write-Host "========================================================" -ForegroundColor Green
+    Write-Host "[OK] Orphaned learner state purged and verified." -ForegroundColor Green
+    Write-Host "========================================================" -ForegroundColor Green
     exit 0
 }
 

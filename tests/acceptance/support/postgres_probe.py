@@ -277,8 +277,11 @@ class PostgresLearnerProbe:
     def teardown_disposable_user(self, user_id: UUID) -> dict[str, Any]:
         """Scoped teardown of a disposable test user's application-owned state.
 
-        Strictly scoped to user_id. Never touches catalog tables or other actors.
-        Handles immutable/append-only triggers and RESTRICT foreign keys safely.
+        Strictly scoped to user_id. Preserves all foreign key constraint triggers so
+        DELETE FROM users performs normal canonical ON DELETE CASCADE.
+        Disables ONLY the exact named user triggers that block deletion:
+        - profile_mutation_results_append_only (on profile_mutation_results)
+        - concept_save_intents_immutable_history (on concept_save_intents)
         """
         if not isinstance(user_id, UUID):
             raise ValueError(f"Invalid user_id for teardown: {user_id!r}")
@@ -287,41 +290,23 @@ class PostgresLearnerProbe:
             existing_user = conn.execute(
                 "SELECT id FROM users WHERE id = %s", (user_id,)
             ).fetchone()
-            if not existing_user:
-                return {
-                    "user_id": str(user_id),
-                    "status": "already_clean",
-                    "deleted_users": 0,
-                    "deleted_intents": 0,
-                    "deleted_profile_mutations": 0,
-                }
 
-            candidate_triggers = [
+            # If users parent row is already gone, purge any existing orphaned child rows
+            if not existing_user:
+                return self.recover_orphaned_learner_state(user_id)
+
+            named_triggers = [
                 ("profile_mutation_results", "profile_mutation_results_append_only"),
                 ("concept_save_intents", "concept_save_intents_immutable_history"),
-                ("learning_events", "learning_events_append_only"),
-                ("reader_mutation_results", "reader_mutation_results_append_only"),
-                ("reader_exposure_concepts", "reader_exposure_concepts_append_only"),
             ]
 
-            used_replica_role = False
-            try:
-                conn.execute("SAVEPOINT replica_probe")
-                conn.execute("SET LOCAL session_replication_role = 'replica'")
-                conn.execute("RELEASE SAVEPOINT replica_probe")
-                used_replica_role = True
-            except Exception:
-                conn.execute("ROLLBACK TO SAVEPOINT replica_probe")
-                used_replica_role = False
-
             disabled_triggers: list[tuple[str, str]] = []
-            if not used_replica_role:
-                for table, trigger in candidate_triggers:
-                    try:
-                        conn.execute(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}")
-                        disabled_triggers.append((table, trigger))
-                    except Exception:
-                        pass
+            for table, trigger in named_triggers:
+                try:
+                    conn.execute(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}")
+                    disabled_triggers.append((table, trigger))
+                except Exception:
+                    pass
 
             try:
                 # 1. Delete rows from profile_mutation_results (resolves RESTRICT FK)
@@ -336,34 +321,106 @@ class PostgresLearnerProbe:
                 )
                 deleted_intents = res_intents.rowcount
 
-                # 3. If replica role was not available, also delete from learning_events explicitly
-                deleted_learning_events = 0
-                if not used_replica_role:
-                    res_events = conn.execute(
-                        "DELETE FROM learning_events WHERE user_id = %s", (user_id,)
-                    )
-                    deleted_learning_events = res_events.rowcount
+                # 3. RE-ENABLE triggers BEFORE deleting users so FK cascade triggers are 100% active
+                for table, trigger in reversed(disabled_triggers):
+                    conn.execute(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
+                disabled_triggers.clear()
 
-                # 4. Delete root user from users (cascades via ON DELETE CASCADE to child tables)
+                # 4. Delete root user from users with normal canonical ON DELETE CASCADE.
+                # All foreign key cascade triggers (RI_FKey_cascade_del) are active!
+                # Downstream tables (learner_profiles, user_languages, review_items, fsrs_states,
+                # user_concept_states, user_saved_concepts, learning_events) cascade delete.
                 res_users = conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
                 deleted_users = res_users.rowcount
 
-                # Re-enable triggers within the same transaction before committing
-                if disabled_triggers:
-                    for table, trigger in reversed(disabled_triggers):
-                        conn.execute(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
-                    disabled_triggers.clear()
-
                 conn.commit()
+
+                # Verify cleanup to ensure no orphan rows were left behind
+                cleanup_check = self.verify_cleanup(user_id)
+                if not cleanup_check["clean"]:
+                    # If any child rows somehow remained, purge them via orphan recovery
+                    return self.recover_orphaned_learner_state(user_id)
 
                 return {
                     "user_id": str(user_id),
                     "status": "success",
-                    "used_replica_role": used_replica_role,
                     "deleted_users": deleted_users,
                     "deleted_intents": deleted_intents,
                     "deleted_profile_mutations": deleted_profile_mutations,
-                    "deleted_learning_events": deleted_learning_events,
+                    "clean": True,
+                }
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                if disabled_triggers:
+                    try:
+                        for table, trigger in reversed(disabled_triggers):
+                            conn.execute(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
+                        conn.commit()
+                    except Exception:
+                        pass
+
+    def recover_orphaned_learner_state(self, user_id: UUID) -> dict[str, Any]:
+        """Scoped recovery to purge orphaned learner rows when users parent row was deleted.
+
+        Strictly scoped to user_id. Never deletes catalog or unrelated users.
+        """
+        if not isinstance(user_id, UUID):
+            raise ValueError(f"Invalid user_id for orphan recovery: {user_id!r}")
+
+        with psycopg.connect(self.database_url, autocommit=False) as conn:
+            named_triggers = [
+                ("profile_mutation_results", "profile_mutation_results_append_only"),
+                ("concept_save_intents", "concept_save_intents_immutable_history"),
+                ("learning_events", "learning_events_append_only"),
+            ]
+
+            disabled_triggers: list[tuple[str, str]] = []
+            for table, trigger in named_triggers:
+                try:
+                    conn.execute(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}")
+                    disabled_triggers.append((table, trigger))
+                except Exception:
+                    pass
+
+            try:
+                conn.execute("DELETE FROM profile_mutation_results WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM concept_save_intents WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM learning_events WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM fsrs_states WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM review_events WHERE user_id = %s", (user_id,))
+                conn.execute(
+                    """
+                    DELETE FROM today_activity_review_items
+                    WHERE review_item_id IN (
+                        SELECT id FROM review_items WHERE user_id = %s
+                    )
+                    """,
+                    (user_id,),
+                )
+                conn.execute("DELETE FROM review_items WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM user_concept_states WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM user_skill_states WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM user_saved_concepts WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM today_plans WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM user_languages WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM learner_profiles WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
+
+                # Re-enable triggers within the same transaction before commit
+                for table, trigger in reversed(disabled_triggers):
+                    conn.execute(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
+                disabled_triggers.clear()
+
+                conn.commit()
+
+                cleanup_check = self.verify_cleanup(user_id)
+                return {
+                    "user_id": str(user_id),
+                    "status": "recovered",
+                    "clean": cleanup_check["clean"],
+                    "counts": cleanup_check["counts"],
                 }
             except Exception:
                 conn.rollback()
@@ -385,42 +442,45 @@ class PostgresLearnerProbe:
             raise ValueError(f"Invalid user_id for verification: {user_id!r}")
 
         with self._open_read_only_connection() as conn:
-            user_count = conn.execute(
-                "SELECT count(*) AS c FROM users WHERE id = %s", (user_id,)
-            ).fetchone()["c"]
-            profile_count = conn.execute(
+
+            def get_count(query: str, params: tuple[Any, ...]) -> int:
+                row = conn.execute(query, params).fetchone()
+                return int(row["c"]) if row is not None else 0
+
+            user_count = get_count("SELECT count(*) AS c FROM users WHERE id = %s", (user_id,))
+            profile_count = get_count(
                 "SELECT count(*) AS c FROM learner_profiles WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            lang_count = conn.execute(
+            )
+            lang_count = get_count(
                 "SELECT count(*) AS c FROM user_languages WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            review_item_count = conn.execute(
+            )
+            review_item_count = get_count(
                 "SELECT count(*) AS c FROM review_items WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            fsrs_count = conn.execute(
+            )
+            fsrs_count = get_count(
                 "SELECT count(*) AS c FROM fsrs_states WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            learning_event_count = conn.execute(
+            )
+            learning_event_count = get_count(
                 "SELECT count(*) AS c FROM learning_events WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            save_intent_count = conn.execute(
+            )
+            save_intent_count = get_count(
                 "SELECT count(*) AS c FROM concept_save_intents WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            profile_mutation_count = conn.execute(
+            )
+            profile_mutation_count = get_count(
                 "SELECT count(*) AS c FROM profile_mutation_results WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            concept_state_count = conn.execute(
+            )
+            concept_state_count = get_count(
                 "SELECT count(*) AS c FROM user_concept_states WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
-            saved_concept_count = conn.execute(
+            )
+            saved_concept_count = get_count(
                 "SELECT count(*) AS c FROM user_saved_concepts WHERE user_id = %s", (user_id,)
-            ).fetchone()["c"]
+            )
 
             anchor_count = 1
             if anchor_concept_id is not None:
-                anchor_count = conn.execute(
+                anchor_count = get_count(
                     "SELECT count(*) AS c FROM concepts WHERE id = %s", (anchor_concept_id,)
-                ).fetchone()["c"]
+                )
 
             is_clean = (
                 user_count == 0
@@ -462,6 +522,7 @@ def main() -> None:
     usage_msg = (
         "Usage: python -m postgres_probe [<database_url>] <user_id> <concept_id>\n"
         "       python -m postgres_probe [<database_url>] --teardown <user_id>\n"
+        "       python -m postgres_probe [<database_url>] --recover-orphan <user_id>\n"
         "       python -m postgres_probe [<database_url>] --verify-cleanup <user_id> [anchor_id]"
     )
     if not args:
@@ -477,7 +538,7 @@ def main() -> None:
         print(usage_msg, file=sys.stderr)
         sys.exit(1)
 
-    if args[0] == "--teardown":
+    if args[0] in ("--teardown", "--recover-orphan"):
         if len(args) != 2:
             print(usage_msg, file=sys.stderr)
             sys.exit(1)
@@ -485,6 +546,7 @@ def main() -> None:
         if not (2 <= len(args) <= 3):
             print(usage_msg, file=sys.stderr)
             sys.exit(1)
+
     elif len(args) != 2:
         print(usage_msg, file=sys.stderr)
         sys.exit(1)
@@ -500,6 +562,13 @@ def main() -> None:
         user_id = UUID(args[1])
         probe = PostgresLearnerProbe(db_url)
         res = probe.teardown_disposable_user(user_id)
+        print(json.dumps(res, indent=2))
+        return
+
+    if len(args) == 2 and args[0] == "--recover-orphan":
+        user_id = UUID(args[1])
+        probe = PostgresLearnerProbe(db_url)
+        res = probe.recover_orphaned_learner_state(user_id)
         print(json.dumps(res, indent=2))
         return
 
