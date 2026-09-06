@@ -108,6 +108,9 @@ Write-Host "Running Playwright acceptance suite..." -ForegroundColor Cyan
 pnpm exec playwright test --config tests/acceptance/playwright.frll.config.ts
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[FAIL] Playwright acceptance tests failed." -ForegroundColor Red
+    Write-Host "Note: If Playwright browser binaries are missing on this machine, run canonical installer:" -ForegroundColor Yellow
+    Write-Host "      pnpm test:frll:browser-install" -ForegroundColor Yellow
+    Write-Host "      (or: pnpm exec playwright install chromium)" -ForegroundColor Yellow
     exit $LASTEXITCODE
 }
 

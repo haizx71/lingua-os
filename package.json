@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:all": "pnpm test && pnpm backend:test",
     "test:frll": "powershell -File scripts/verify-first-real-learning-loop.ps1",
+    "test:frll:browser-install": "playwright install chromium",
     "typecheck": "pnpm contracts:check-generated && pnpm -r typecheck",
     "lint": "eslint . --max-warnings=0",
     "storybook": "pnpm --filter @lingua/ui storybook",
