@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   createDisposableSupabaseUser,
   deleteDisposableSupabaseUser,
+  verifyDisposableUserDeletedFromAuth,
   createSupabaseAdminClient,
   createSupabaseLearnerClient,
   authenticateDisposableLearner,
@@ -189,5 +190,58 @@ describe('FRLL Supabase User Provisioner Seam', () => {
         { client: mockClient }
       )
     ).rejects.toThrow('Failed to authenticate disposable Supabase learner: Invalid login credentials');
+  });
+
+  describe('verifyDisposableUserDeletedFromAuth', () => {
+    it('returns true when getUserById returns 404 or user not found', async () => {
+      const mockGetUser = vi.fn().mockResolvedValue({
+        data: { user: null },
+        error: { message: 'User not found', status: 404 },
+      });
+
+      const mockClient = {
+        auth: {
+          admin: {
+            getUserById: mockGetUser,
+          },
+        },
+      } as unknown as SupabaseClient;
+
+      const deleted = await verifyDisposableUserDeletedFromAuth({
+        userId: '00000000-0000-4000-8000-000000000001',
+        client: mockClient,
+      });
+
+      expect(deleted).toBe(true);
+      expect(mockGetUser).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001');
+    });
+
+    it('returns false when getUserById returns an existing user entity', async () => {
+      const mockGetUser = vi.fn().mockResolvedValue({
+        data: { user: { id: '00000000-0000-4000-8000-000000000001' } },
+        error: null,
+      });
+
+      const mockClient = {
+        auth: {
+          admin: {
+            getUserById: mockGetUser,
+          },
+        },
+      } as unknown as SupabaseClient;
+
+      const deleted = await verifyDisposableUserDeletedFromAuth({
+        userId: '00000000-0000-4000-8000-000000000001',
+        client: mockClient,
+      });
+
+      expect(deleted).toBe(false);
+    });
+
+    it('fails closed when userId is empty', async () => {
+      await expect(
+        verifyDisposableUserDeletedFromAuth({ userId: '' })
+      ).rejects.toThrow('Cannot verify Supabase test user: userId is missing or empty');
+    });
   });
 });

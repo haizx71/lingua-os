@@ -69,7 +69,6 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
           {
             id: '7f110000-0000-4000-8000-000000000004',
             canonicalForm: 'frll-anchor',
-            lemma: 'frll-anchor',
             pos: 'noun',
             cefrLevel: 'A1',
             frequencyRank: 1,
@@ -88,6 +87,23 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
       const items = parseDictionarySearchResponse(canonicalSearchResponse);
       expect(items).toHaveLength(1);
       expect(items[0].id).toBe('7f110000-0000-4000-8000-000000000004');
+      expect(items[0].canonicalForm).toBe('frll-anchor');
+      expect(items[0].lemma).toBe('frll-anchor');
+    });
+
+    it('correctly handles legacy mock with lemma property', () => {
+      const legacySearchResponse = {
+        data: [
+          {
+            id: '7f110000-0000-4000-8000-000000000004',
+            lemma: 'frll-anchor',
+          },
+        ],
+      };
+
+      const items = parseDictionarySearchResponse(legacySearchResponse);
+      expect(items).toHaveLength(1);
+      expect(items[0].canonicalForm).toBe('frll-anchor');
       expect(items[0].lemma).toBe('frll-anchor');
     });
   });

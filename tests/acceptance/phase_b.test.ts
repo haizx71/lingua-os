@@ -63,6 +63,22 @@ describe('FRLL Phase B: Real Auth + Profile + Save/Learn + First Memory Lineage'
       expect(fsrsPostResave.due_at).toBe(fsrsPostSave.due_at);
       expect(report.postResaveDigest.learning_event_count).toBe(1);
       expect(report.postResaveDigest.review_event_count).toBe(0);
+
+      // Cleanup & isolation verification: prove disposable actor & derived state removed completely
+      expect(report.cleanupVerified).toBe(true);
+      expect(report.cleanupReport?.authDeleted).toBe(true);
+      expect(report.cleanupReport?.postgresClean).toBe(true);
+      expect(report.cleanupReport?.postgresDetails.counts.users).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.learner_profiles).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.user_languages).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.review_items).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.fsrs_states).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.learning_events).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.concept_save_intents).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.profile_mutation_results).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.user_concept_states).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.user_saved_concepts).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.anchor_concept_intact).toBe(true);
     },
     120000
   );

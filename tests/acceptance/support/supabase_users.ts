@@ -225,3 +225,33 @@ export async function deleteDisposableSupabaseUser(
     }
   }
 }
+
+/**
+ * Verifies observationally that a disposable user is no longer present in Supabase Auth.
+ * Returns true if the user does not exist (HTTP 404 or user null).
+ */
+export async function verifyDisposableUserDeletedFromAuth(
+  config: SupabaseAdminConfig & { readonly userId: string }
+): Promise<boolean> {
+  if (!config.userId || config.userId.trim() === '') {
+    throw new Error('Cannot verify Supabase test user: userId is missing or empty.');
+  }
+
+  const adminConfig = getValidatedAdminConfig(config);
+  const client =
+    adminConfig.client ??
+    createSupabaseAdminClient(adminConfig.supabaseUrl, adminConfig.secretKey);
+
+  const { data, error } = await client.auth.admin.getUserById(config.userId);
+
+  if (error) {
+    const msg = error.message ?? '';
+    const status = (error as { status?: number }).status;
+    if (status === 404 || msg.toLowerCase().includes('not found')) {
+      return true;
+    }
+  }
+
+  return !data?.user;
+}
+

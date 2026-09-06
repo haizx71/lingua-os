@@ -274,32 +274,253 @@ class PostgresLearnerProbe:
                 today_activity_review_item_ids=today_review_item_ids,
             )
 
+    def teardown_disposable_user(self, user_id: UUID) -> dict[str, Any]:
+        """Scoped teardown of a disposable test user's application-owned state.
+
+        Strictly scoped to user_id. Never touches catalog tables or other actors.
+        Handles immutable/append-only triggers and RESTRICT foreign keys safely.
+        """
+        if not isinstance(user_id, UUID):
+            raise ValueError(f"Invalid user_id for teardown: {user_id!r}")
+
+        with psycopg.connect(self.database_url, autocommit=False) as conn:
+            existing_user = conn.execute(
+                "SELECT id FROM users WHERE id = %s", (user_id,)
+            ).fetchone()
+            if not existing_user:
+                return {
+                    "user_id": str(user_id),
+                    "status": "already_clean",
+                    "deleted_users": 0,
+                    "deleted_intents": 0,
+                    "deleted_profile_mutations": 0,
+                }
+
+            candidate_triggers = [
+                ("profile_mutation_results", "profile_mutation_results_append_only"),
+                ("concept_save_intents", "concept_save_intents_immutable_history"),
+                ("learning_events", "learning_events_append_only"),
+                ("reader_mutation_results", "reader_mutation_results_append_only"),
+                ("reader_exposure_concepts", "reader_exposure_concepts_append_only"),
+            ]
+
+            used_replica_role = False
+            try:
+                conn.execute("SAVEPOINT replica_probe")
+                conn.execute("SET LOCAL session_replication_role = 'replica'")
+                conn.execute("RELEASE SAVEPOINT replica_probe")
+                used_replica_role = True
+            except Exception:
+                conn.execute("ROLLBACK TO SAVEPOINT replica_probe")
+                used_replica_role = False
+
+            disabled_triggers: list[tuple[str, str]] = []
+            if not used_replica_role:
+                for table, trigger in candidate_triggers:
+                    try:
+                        conn.execute(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}")
+                        disabled_triggers.append((table, trigger))
+                    except Exception:
+                        pass
+
+            try:
+                # 1. Delete rows from profile_mutation_results (resolves RESTRICT FK)
+                res_profile_mut = conn.execute(
+                    "DELETE FROM profile_mutation_results WHERE user_id = %s", (user_id,)
+                )
+                deleted_profile_mutations = res_profile_mut.rowcount
+
+                # 2. Delete rows from concept_save_intents (resolves immutable history trigger)
+                res_intents = conn.execute(
+                    "DELETE FROM concept_save_intents WHERE user_id = %s", (user_id,)
+                )
+                deleted_intents = res_intents.rowcount
+
+                # 3. If replica role was not available, also delete from learning_events explicitly
+                deleted_learning_events = 0
+                if not used_replica_role:
+                    res_events = conn.execute(
+                        "DELETE FROM learning_events WHERE user_id = %s", (user_id,)
+                    )
+                    deleted_learning_events = res_events.rowcount
+
+                # 4. Delete root user from users (cascades via ON DELETE CASCADE to child tables)
+                res_users = conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
+                deleted_users = res_users.rowcount
+
+                # Re-enable triggers within the same transaction before committing
+                if disabled_triggers:
+                    for table, trigger in reversed(disabled_triggers):
+                        conn.execute(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
+                    disabled_triggers.clear()
+
+                conn.commit()
+
+                return {
+                    "user_id": str(user_id),
+                    "status": "success",
+                    "used_replica_role": used_replica_role,
+                    "deleted_users": deleted_users,
+                    "deleted_intents": deleted_intents,
+                    "deleted_profile_mutations": deleted_profile_mutations,
+                    "deleted_learning_events": deleted_learning_events,
+                }
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                if disabled_triggers:
+                    try:
+                        for table, trigger in reversed(disabled_triggers):
+                            conn.execute(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
+                        conn.commit()
+                    except Exception:
+                        pass
+
+    def verify_cleanup(
+        self, user_id: UUID, anchor_concept_id: UUID | None = None
+    ) -> dict[str, Any]:
+        """Observational read-only verification proving complete isolation and cleanup."""
+        if not isinstance(user_id, UUID):
+            raise ValueError(f"Invalid user_id for verification: {user_id!r}")
+
+        with self._open_read_only_connection() as conn:
+            user_count = conn.execute(
+                "SELECT count(*) AS c FROM users WHERE id = %s", (user_id,)
+            ).fetchone()["c"]
+            profile_count = conn.execute(
+                "SELECT count(*) AS c FROM learner_profiles WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            lang_count = conn.execute(
+                "SELECT count(*) AS c FROM user_languages WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            review_item_count = conn.execute(
+                "SELECT count(*) AS c FROM review_items WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            fsrs_count = conn.execute(
+                "SELECT count(*) AS c FROM fsrs_states WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            learning_event_count = conn.execute(
+                "SELECT count(*) AS c FROM learning_events WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            save_intent_count = conn.execute(
+                "SELECT count(*) AS c FROM concept_save_intents WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            profile_mutation_count = conn.execute(
+                "SELECT count(*) AS c FROM profile_mutation_results WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            concept_state_count = conn.execute(
+                "SELECT count(*) AS c FROM user_concept_states WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+            saved_concept_count = conn.execute(
+                "SELECT count(*) AS c FROM user_saved_concepts WHERE user_id = %s", (user_id,)
+            ).fetchone()["c"]
+
+            anchor_count = 1
+            if anchor_concept_id is not None:
+                anchor_count = conn.execute(
+                    "SELECT count(*) AS c FROM concepts WHERE id = %s", (anchor_concept_id,)
+                ).fetchone()["c"]
+
+            is_clean = (
+                user_count == 0
+                and profile_count == 0
+                and lang_count == 0
+                and review_item_count == 0
+                and fsrs_count == 0
+                and learning_event_count == 0
+                and save_intent_count == 0
+                and profile_mutation_count == 0
+                and concept_state_count == 0
+                and saved_concept_count == 0
+                and (anchor_count >= 1 if anchor_concept_id is not None else True)
+            )
+
+            return {
+                "user_id": str(user_id),
+                "clean": is_clean,
+                "counts": {
+                    "users": user_count,
+                    "learner_profiles": profile_count,
+                    "user_languages": lang_count,
+                    "review_items": review_item_count,
+                    "fsrs_states": fsrs_count,
+                    "learning_events": learning_event_count,
+                    "concept_save_intents": save_intent_count,
+                    "profile_mutation_results": profile_mutation_count,
+                    "user_concept_states": concept_state_count,
+                    "user_saved_concepts": saved_concept_count,
+                },
+                "anchor_concept_intact": (
+                    anchor_count >= 1 if anchor_concept_id is not None else True
+                ),
+            }
+
 
 def main() -> None:
-    if len(sys.argv) == 3:
-        db_url = os.environ.get("DATABASE_URL")
-        if not db_url or not db_url.strip():
-            print(
-                "ERROR: DATABASE_URL is missing or empty in environment",
-                file=sys.stderr,
-            )
+    args = sys.argv[1:]
+    usage_msg = (
+        "Usage: python -m postgres_probe [<database_url>] <user_id> <concept_id>\n"
+        "       python -m postgres_probe [<database_url>] --teardown <user_id>\n"
+        "       python -m postgres_probe [<database_url>] --verify-cleanup <user_id> [anchor_id]"
+    )
+    if not args:
+        print(usage_msg, file=sys.stderr)
+        sys.exit(1)
+
+    db_url = os.environ.get("DATABASE_URL")
+    if "://" in args[0]:
+        db_url = args[0]
+        args = args[1:]
+
+    if not args:
+        print(usage_msg, file=sys.stderr)
+        sys.exit(1)
+
+    if args[0] == "--teardown":
+        if len(args) != 2:
+            print(usage_msg, file=sys.stderr)
             sys.exit(1)
-        user_id = UUID(sys.argv[1])
-        concept_id = UUID(sys.argv[2])
-    elif len(sys.argv) >= 4:
-        db_url = sys.argv[1]
-        user_id = UUID(sys.argv[2])
-        concept_id = UUID(sys.argv[3])
-    else:
+    elif args[0] == "--verify-cleanup":
+        if not (2 <= len(args) <= 3):
+            print(usage_msg, file=sys.stderr)
+            sys.exit(1)
+    elif len(args) != 2:
+        print(usage_msg, file=sys.stderr)
+        sys.exit(1)
+
+    if not db_url or not db_url.strip():
         print(
-            "Usage: python -m postgres_probe [<database_url>] <user_id> <concept_id>",
+            "ERROR: DATABASE_URL is missing or empty in environment",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    probe = PostgresLearnerProbe(db_url)
-    digest = probe.capture_digest(user_id, concept_id)
-    print(serialize_digest_to_json(digest, indent=2))
+    if len(args) == 2 and args[0] == "--teardown":
+        user_id = UUID(args[1])
+        probe = PostgresLearnerProbe(db_url)
+        res = probe.teardown_disposable_user(user_id)
+        print(json.dumps(res, indent=2))
+        return
+
+    if (len(args) == 2 or len(args) == 3) and args[0] == "--verify-cleanup":
+        user_id = UUID(args[1])
+        anchor_id = UUID(args[2]) if len(args) == 3 else None
+        probe = PostgresLearnerProbe(db_url)
+        res = probe.verify_cleanup(user_id, anchor_id)
+        print(json.dumps(res, indent=2))
+        return
+
+    if len(args) == 2:
+        user_id = UUID(args[0])
+        concept_id = UUID(args[1])
+        probe = PostgresLearnerProbe(db_url)
+        digest = probe.capture_digest(user_id, concept_id)
+        print(serialize_digest_to_json(digest, indent=2))
+        return
+
+    print(usage_msg, file=sys.stderr)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

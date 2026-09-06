@@ -279,3 +279,83 @@ def test_normalize_scalar_for_json_fails_closed_on_unsupported_types() -> None:
 
     with pytest.raises(TypeError, match="Unsupported type for canonical JSON serialization"):
         normalize_scalar_for_json({1, 2, 3})
+
+
+def test_teardown_and_verify_cleanup_fail_closed_on_invalid_uuid() -> None:
+    """Ensure teardown and verify_cleanup reject non-UUID identifiers immediately."""
+    probe = PostgresLearnerProbe("postgresql://localhost:5432/fake")
+
+    with pytest.raises(ValueError, match="Invalid user_id for teardown"):
+        probe.teardown_disposable_user("not-a-uuid")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Invalid user_id for verification"):
+        probe.verify_cleanup("not-a-uuid")  # type: ignore[arg-type]
+
+
+def test_probe_cli_flags_fail_closed() -> None:
+    """Ensure CLI fails closed when --teardown or --verify-cleanup args are missing."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parent / "postgres_probe.py"
+
+    # 1. --teardown without user_id
+    proc_td = subprocess.run(
+        [sys.executable, str(script), "--teardown"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_td.returncode == 1
+    assert "Usage: python -m postgres_probe" in proc_td.stderr
+
+    # 2. --verify-cleanup without user_id
+    proc_vc = subprocess.run(
+        [sys.executable, str(script), "--verify-cleanup"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_vc.returncode == 1
+    assert "Usage: python -m postgres_probe" in proc_vc.stderr
+
+
+def test_teardown_source_enforces_safety_invariants() -> None:
+    """Verify teardown_disposable_user enforces scoped deletes and table safety."""
+    import inspect
+
+    from tests.acceptance.support.postgres_probe import PostgresLearnerProbe
+
+    teardown_source = inspect.getsource(PostgresLearnerProbe.teardown_disposable_user)
+    verify_source = inspect.getsource(PostgresLearnerProbe.verify_cleanup)
+
+    # 1. Teardown must be strictly scoped to user_id parameter
+    assert "WHERE user_id = %s" in teardown_source
+    assert "WHERE id = %s" in teardown_source
+    # Must never delete from catalog concepts or static lexemes
+    assert "DELETE FROM concepts" not in teardown_source
+    assert "DELETE FROM lexemes" not in teardown_source
+    assert "TRUNCATE" not in teardown_source
+
+    # 2. Teardown must handle append-only triggers and RESTRICT FKs
+    assert "profile_mutation_results" in teardown_source
+    assert "concept_save_intents" in teardown_source
+    assert "learning_events" in teardown_source
+    assert "ENABLE TRIGGER" in teardown_source
+
+    # 3. Verification must inspect all learner-associated tables
+    for tbl in [
+        "users",
+        "learner_profiles",
+        "user_languages",
+        "review_items",
+        "fsrs_states",
+        "learning_events",
+        "concept_save_intents",
+        "profile_mutation_results",
+        "user_concept_states",
+        "user_saved_concepts",
+    ]:
+        assert f"FROM {tbl} WHERE" in verify_source
+
+    # 4. Verification must check catalog anchor concept intact
+    assert "FROM concepts WHERE id = %s" in verify_source

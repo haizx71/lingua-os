@@ -20,10 +20,14 @@ import {
   createDisposableSupabaseUser,
   authenticateDisposableLearner,
   deleteDisposableSupabaseUser,
+  verifyDisposableUserDeletedFromAuth,
 } from './supabase_users';
 import {
   captureLearnerDigestFromPostgres,
+  teardownDisposableLearnerPostgres,
+  verifyLearnerCleanupFromPostgres,
   type LearnerStateDigest,
+  type PostgresCleanupVerificationResult,
 } from './postgres_probe_client';
 
 export const FRLL_ANCHOR_CONCEPT_ID = '7f110000-0000-4000-8000-000000000004';
@@ -64,18 +68,48 @@ export function parseMeResponse(json: unknown): ParsedMeResponse {
   };
 }
 
-export function parseDictionarySearchResponse(json: unknown): Array<{ id: string; lemma: string }> {
+export interface ParsedConceptSummary {
+  readonly id: string;
+  readonly canonicalForm: string;
+  readonly lemma?: string;
+}
+
+export function parseDictionarySearchResponse(json: unknown): ParsedConceptSummary[] {
   if (!json || typeof json !== 'object' || !('data' in json)) {
     throw new Error('Invalid /v1/dictionary/search response: missing data envelope');
   }
   const data = (json as { data: unknown }).data;
+  let rawItems: unknown[] | null = null;
   if (Array.isArray(data)) {
-    return data as Array<{ id: string; lemma: string }>;
+    rawItems = data;
+  } else if (
+    data &&
+    typeof data === 'object' &&
+    'items' in data &&
+    Array.isArray((data as Record<string, unknown>).items)
+  ) {
+    rawItems = (data as { items: unknown[] }).items;
   }
-  if (data && typeof data === 'object' && 'items' in data && Array.isArray((data as Record<string, unknown>).items)) {
-    return (data as { items: Array<{ id: string; lemma: string }> }).items;
+  if (!rawItems) {
+    throw new Error('Invalid /v1/dictionary/search response: data is neither an array nor an object with items');
   }
-  throw new Error('Invalid /v1/dictionary/search response: data is neither an array nor an object with items');
+  return rawItems.map((raw) => {
+    const it = (raw ?? {}) as Record<string, unknown>;
+    const id = typeof it.id === 'string' ? it.id : '';
+    const canonicalForm =
+      typeof it.canonicalForm === 'string'
+        ? it.canonicalForm
+        : typeof it.lemma === 'string'
+          ? it.lemma
+          : '';
+    const lemma =
+      typeof it.lemma === 'string'
+        ? it.lemma
+        : typeof it.canonicalForm === 'string'
+          ? it.canonicalForm
+          : undefined;
+    return { id, canonicalForm, lemma };
+  });
 }
 
 export interface PhaseBOptions {
@@ -86,6 +120,12 @@ export interface PhaseBOptions {
   readonly timeZone?: string;
   readonly goal?: string;
   readonly dailyMinutes?: number;
+}
+
+export interface PhaseBCleanupReport {
+  readonly authDeleted: boolean;
+  readonly postgresClean: boolean;
+  readonly postgresDetails: PostgresCleanupVerificationResult;
 }
 
 export interface PhaseBReport {
@@ -99,6 +139,8 @@ export interface PhaseBReport {
   readonly firstSaveTimestamp: string;
   readonly secondSaveTimestamp: string;
   readonly durationMs: number;
+  readonly cleanupVerified: boolean;
+  readonly cleanupReport?: PhaseBCleanupReport;
 }
 
 export async function runPhaseBLearningLoop(
@@ -118,6 +160,7 @@ export async function runPhaseBLearningLoop(
   const dailyMinutes = options.dailyMinutes ?? 15;
 
   let provisionedUserId: string | null = null;
+  let resultReport: PhaseBReport | null = null;
 
   try {
     // -------------------------------------------------------------------------
@@ -301,7 +344,9 @@ export async function runPhaseBLearningLoop(
         `FRLL-04 failure: Anchor concept ${conceptId} not found in dictionary search results.`
       );
     }
-    console.log(`  [OK] Found anchor concept '${foundConcept.lemma}' (${foundConcept.id}).`);
+    console.log(
+      `  [OK] Found anchor concept '${foundConcept.canonicalForm || foundConcept.lemma || foundConcept.id}' (${foundConcept.id}).`
+    );
 
     // Observational check BEFORE Save: zero evidence created by discovery
     console.log('  Running pre-Save PostgreSQL observational probe (FRLL-03 & FRLL-05)...');
@@ -478,7 +523,7 @@ export async function runPhaseBLearningLoop(
     console.log('  [OK] Idempotence verified: Zero duplicate rows, zero state reset, stable Memory lineage preserved.');
 
     const durationMs = Date.now() - startTime;
-    return {
+    resultReport = {
       success: true,
       userId: user.id,
       languageProfileId,
@@ -489,21 +534,67 @@ export async function runPhaseBLearningLoop(
       firstSaveTimestamp,
       secondSaveTimestamp,
       durationMs,
+      cleanupVerified: false,
     };
   } finally {
     // -------------------------------------------------------------------------
-    // Cleanup: Delete disposable Supabase Auth user (cascading all learner state)
+    // Cleanup: Scoped teardown of disposable actor state & verification
     // -------------------------------------------------------------------------
     if (provisionedUserId) {
       try {
-        console.log(`[Phase B][Cleanup] Deleting disposable Supabase user: ${provisionedUserId}...`);
+        console.log(
+          `[Phase B][Cleanup] Tearing down application state for disposable user ${provisionedUserId}...`
+        );
+        const pgTeardown = await teardownDisposableLearnerPostgres(provisionedUserId);
+        console.log(
+          `  [OK] PostgreSQL application state torn down (deleted: ${pgTeardown.deleted_users ?? 0} user, ${pgTeardown.deleted_intents ?? 0} intents, ${pgTeardown.deleted_profile_mutations ?? 0} profile mutations).`
+        );
+
+        console.log(`[Phase B][Cleanup] Deleting disposable Supabase Auth user: ${provisionedUserId}...`);
         await deleteDisposableSupabaseUser({ userId: provisionedUserId });
         console.log('  [OK] Disposable test user safely deleted from Supabase Auth.');
+
+        console.log('[Phase B][Cleanup] Verifying complete post-cleanup isolation...');
+        const authDeleted = await verifyDisposableUserDeletedFromAuth({ userId: provisionedUserId });
+        if (!authDeleted) {
+          throw new Error(
+            `Cleanup verification failed: Supabase Auth user ${provisionedUserId} still exists after delete.`
+          );
+        }
+
+        const pgVerification = await verifyLearnerCleanupFromPostgres(provisionedUserId, conceptId);
+        if (!pgVerification.clean) {
+          throw new Error(
+            `Cleanup verification failed: PostgreSQL rows still exist for actor ${provisionedUserId}: ${JSON.stringify(pgVerification.counts)}`
+          );
+        }
+        if (!pgVerification.anchor_concept_intact) {
+          throw new Error('Cleanup safety violation: catalog anchor concept was affected during cleanup.');
+        }
+
+        console.log('  [OK] Post-cleanup observational verification passed: 0 auth rows, 0 app rows, catalog intact.');
+
+        if (resultReport) {
+          resultReport = {
+            ...resultReport,
+            cleanupVerified: true,
+            cleanupReport: {
+              authDeleted,
+              postgresClean: pgVerification.clean,
+              postgresDetails: pgVerification,
+            },
+          };
+        }
       } catch (cleanupErr) {
-        console.warn(
-          `  [WARN] Failed to delete disposable test user ${provisionedUserId}: ${(cleanupErr as Error).message}`
+        console.error(
+          `  [FAIL] Post-scenario cleanup failed for ${provisionedUserId}: ${(cleanupErr as Error).message}`
         );
+        if (resultReport) {
+          throw new Error(`FRLL Phase B cleanup failure: ${(cleanupErr as Error).message}`);
+        }
       }
     }
   }
+
+  return resultReport!;
 }

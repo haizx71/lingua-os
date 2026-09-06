@@ -110,3 +110,107 @@ export async function captureLearnerDigestFromPostgres(
     );
   }
 }
+
+export interface PostgresTeardownResult {
+  readonly user_id: string;
+  readonly status: string;
+  readonly used_replica_role?: boolean;
+  readonly deleted_users?: number;
+  readonly deleted_intents?: number;
+  readonly deleted_profile_mutations?: number;
+  readonly deleted_learning_events?: number;
+}
+
+export interface PostgresCleanupVerificationResult {
+  readonly user_id: string;
+  readonly clean: boolean;
+  readonly counts: {
+    readonly users: number;
+    readonly learner_profiles: number;
+    readonly user_languages: number;
+    readonly review_items: number;
+    readonly fsrs_states: number;
+    readonly learning_events: number;
+    readonly concept_save_intents: number;
+    readonly profile_mutation_results: number;
+    readonly user_concept_states: number;
+    readonly user_saved_concepts: number;
+  };
+  readonly anchor_concept_intact: boolean;
+}
+
+export async function teardownDisposableLearnerPostgres(
+  userId: string,
+  options: { readonly databaseUrl?: string } = {}
+): Promise<PostgresTeardownResult> {
+  const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+  const probeScript = path.resolve(__dirname, 'postgres_probe.py');
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (options.databaseUrl) {
+    env.DATABASE_URL = options.databaseUrl;
+  }
+  if (!env.DATABASE_URL || env.DATABASE_URL.trim() === '') {
+    throw new Error('teardownDisposableLearnerPostgres failed: DATABASE_URL is missing or empty.');
+  }
+
+  const { stdout, stderr } = await execFileAsync(
+    pythonBin,
+    [probeScript, '--teardown', userId],
+    { env }
+  );
+
+  if (stderr && stderr.trim() !== '') {
+    if (stderr.toLowerCase().includes('error')) {
+      throw new Error(`Postgres teardown error: ${stderr.trim()}`);
+    }
+  }
+
+  try {
+    return JSON.parse(stdout) as PostgresTeardownResult;
+  } catch (err) {
+    throw new Error(
+      `Failed to parse postgres teardown JSON output: ${(err as Error).message}\nRaw stdout: ${stdout}`
+    );
+  }
+}
+
+export async function verifyLearnerCleanupFromPostgres(
+  userId: string,
+  anchorConceptId?: string,
+  options: { readonly databaseUrl?: string } = {}
+): Promise<PostgresCleanupVerificationResult> {
+  const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+  const probeScript = path.resolve(__dirname, 'postgres_probe.py');
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (options.databaseUrl) {
+    env.DATABASE_URL = options.databaseUrl;
+  }
+  if (!env.DATABASE_URL || env.DATABASE_URL.trim() === '') {
+    throw new Error('verifyLearnerCleanupFromPostgres failed: DATABASE_URL is missing or empty.');
+  }
+
+  const args = anchorConceptId
+    ? [probeScript, '--verify-cleanup', userId, anchorConceptId]
+    : [probeScript, '--verify-cleanup', userId];
+
+  const { stdout, stderr } = await execFileAsync(
+    pythonBin,
+    args,
+    { env }
+  );
+
+  if (stderr && stderr.trim() !== '') {
+    if (stderr.toLowerCase().includes('error')) {
+      throw new Error(`Postgres verify cleanup error: ${stderr.trim()}`);
+    }
+  }
+
+  try {
+    return JSON.parse(stdout) as PostgresCleanupVerificationResult;
+  } catch (err) {
+    throw new Error(
+      `Failed to parse postgres verify cleanup JSON output: ${(err as Error).message}\nRaw stdout: ${stdout}`
+    );
+  }
+}
+
