@@ -46,6 +46,8 @@ import {
   type TodayActivityDto,
   type TodayPlanDto,
   type ReviewTargetHandoff,
+  type SetupTodayLearnerOptions,
+  type TodayLearnerContext,
 } from './phase_c_runner';
 import {
   captureLearnerDigestFromPostgres,
@@ -240,6 +242,13 @@ export function parseReviewAnswerResponse(json: unknown): ReviewAnswerResultDto 
   };
 }
 
+export interface PhaseDExecutionSeams {
+  readonly setupThroughToday?: (options: SetupTodayLearnerOptions) => Promise<TodayLearnerContext>;
+  readonly fetchFn?: typeof fetch;
+  readonly captureDigest?: (userId: string, conceptId: string) => Promise<LearnerStateDigest>;
+  readonly teardownLearner?: (userId: string, conceptId: string) => Promise<FrllCleanupReport>;
+}
+
 export interface PhaseDOptions {
   readonly apiBaseUrl?: string;
   readonly conceptId?: string;
@@ -250,6 +259,7 @@ export interface PhaseDOptions {
   readonly dailyMinutes?: number;
   readonly rating?: 'again' | 'hard' | 'good' | 'easy';
   readonly responseTimeMs?: number;
+  readonly seams?: PhaseDExecutionSeams;
 }
 
 export interface PhaseDReport {
@@ -286,12 +296,17 @@ export async function runPhaseDLearningLoop(
   let provisionedUserId: string | null = null;
   let resultReport: PhaseDReport | null = null;
 
+  const setupThroughToday = options.seams?.setupThroughToday ?? setupRealLearnerThroughTodayTarget;
+  const fetchFn = options.seams?.fetchFn ?? globalThis.fetch;
+  const captureDigest = options.seams?.captureDigest ?? captureLearnerDigestFromPostgres;
+  const teardownLearner = options.seams?.teardownLearner ?? teardownRealLearner;
+
   try {
     // -------------------------------------------------------------------------
     // D1. Execute unbroken prerequisite chain through Today target
     // -------------------------------------------------------------------------
     console.log('[Phase D][1/8] Executing unbroken prerequisite chain through Today target...');
-    const context = await setupRealLearnerThroughTodayTarget({
+    const context = await setupThroughToday({
       ...options,
       tag: 'phase-d',
       onUserCreated: (uid) => {
@@ -345,7 +360,7 @@ export async function runPhaseDLearningLoop(
     // -------------------------------------------------------------------------
     console.log('[Phase D][3/8] Fetching Review queue via GET /v1/review/queue...');
     const queueUrl = `${context.apiBaseUrl}/v1/review/queue?languageProfileId=${encodeURIComponent(context.languageProfileId)}`;
-    const queueRes = await fetch(queueUrl, {
+    const queueRes = await fetchFn(queueUrl, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${context.session.accessToken}`,
@@ -375,7 +390,7 @@ export async function runPhaseDLearningLoop(
     console.log(`  [OK] Target review item verified in queue: reviewItemId=${reviewItemId}, conceptId=${conceptId}, prompt="${targetQueueItem.prompt.promptText}".`);
 
     // Verify queue fetch caused zero state mutations
-    const postQueueDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
+    const postQueueDigest = await captureDigest(context.user.id, conceptId);
     if (postQueueDigest.review_event_count !== 0) {
       throw new Error('FRLL-08 failure: Queue fetch created unexpected review_event.');
     }
@@ -391,7 +406,7 @@ export async function runPhaseDLearningLoop(
     // -------------------------------------------------------------------------
     console.log(`[Phase D][4/8] Submitting Review answer (rating='${rating}', responseTimeMs=${responseTimeMs}, idempotencyKey=${idempotencyKey})...`);
     const answerUrl = `${context.apiBaseUrl}/v1/review/${encodeURIComponent(reviewItemId)}/answer`;
-    const answerRes = await fetch(answerUrl, {
+    const answerRes = await fetchFn(answerUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${context.session.accessToken}`,
@@ -430,7 +445,7 @@ export async function runPhaseDLearningLoop(
     // D5. Observational PostgreSQL Probe: Atomic State Transition Proof (FRLL-08, FRLL-09)
     // -------------------------------------------------------------------------
     console.log('[Phase D][5/8] Observational PostgreSQL proof: verifying atomic state transition (FRLL-08, FRLL-09)...');
-    const postAnswerDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
+    const postAnswerDigest = await captureDigest(context.user.id, conceptId);
 
     // A. Scheduler Transition
     if (postAnswerDigest.review_item_count !== 1) {
@@ -530,7 +545,7 @@ export async function runPhaseDLearningLoop(
     // D6. Idempotent Replay Proof (FRLL-10)
     // -------------------------------------------------------------------------
     console.log('[Phase D][6/8] Testing idempotent replay with identical Idempotency-Key and payload (FRLL-10)...');
-    const replayRes = await fetch(answerUrl, {
+    const replayRes = await fetchFn(answerUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${context.session.accessToken}`,
@@ -567,7 +582,7 @@ export async function runPhaseDLearningLoop(
     }
 
     // Probe DB: Verify 0 duplicate rows and state_version remains 2
-    const postReplayDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
+    const postReplayDigest = await captureDigest(context.user.id, conceptId);
     if (postReplayDigest.review_item_count !== 1) {
       throw new Error(`FRLL-10 failure: post-replay review_item_count is ${postReplayDigest.review_item_count} (expected 1).`);
     }
@@ -594,7 +609,7 @@ export async function runPhaseDLearningLoop(
     // -------------------------------------------------------------------------
     console.log('[Phase D][7/8] Testing conflict guard: reusing same Idempotency-Key with different rating ("hard")...');
     const conflictRating = rating === 'good' ? 'hard' : 'good';
-    const conflictRes = await fetch(answerUrl, {
+    const conflictRes = await fetchFn(answerUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${context.session.accessToken}`,
@@ -616,7 +631,7 @@ export async function runPhaseDLearningLoop(
     console.log('  [OK] Conflict guard verified: Server rejected reused Idempotency-Key with HTTP 409.');
 
     // Probe DB: verify conflict produced zero state mutations
-    const postConflictDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
+    const postConflictDigest = await captureDigest(context.user.id, conceptId);
     if (postConflictDigest.fsrs_states[0]?.state_version !== 2) {
       throw new Error('Conflict guard failure: FSRS state_version mutated on 409.');
     }
@@ -633,7 +648,7 @@ export async function runPhaseDLearningLoop(
     // D8. Post-Answer Queue Reconcile
     // -------------------------------------------------------------------------
     console.log('[Phase D][8/8] Re-checking Review queue: verifying reviewed item is no longer immediately due...');
-    const postQueueRes = await fetch(queueUrl, {
+    const postQueueRes = await fetchFn(queueUrl, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${context.session.accessToken}`,
@@ -671,13 +686,11 @@ export async function runPhaseDLearningLoop(
       durationMs,
       cleanupVerified: false,
     };
-
-    return resultReport;
   } finally {
     if (provisionedUserId) {
       console.log(`[Phase D] Tearing down disposable test user ${provisionedUserId}...`);
       try {
-        const cleanupReport = await teardownRealLearner(provisionedUserId, conceptId);
+        const cleanupReport = await teardownLearner(provisionedUserId, conceptId);
         const cleanupVerified = isTeardownVerified(cleanupReport);
         if (resultReport) {
           resultReport = {
@@ -689,7 +702,10 @@ export async function runPhaseDLearningLoop(
         if (!cleanupVerified) {
           console.error(
             '[Phase D] CLEANUP WARNING: Database or auth was not completely clean after teardown:',
-            cleanupReport.postgresDetails?.counts
+            cleanupReport?.postgresDetails?.counts
+          );
+          throw new Error(
+            `FRLL Phase D cleanup failure: Teardown verification failed: ${JSON.stringify(cleanupReport?.postgresDetails?.counts)}`
           );
         } else {
           console.log('  [OK] Disposable test user completely purged; 0 rows remain across all learner tables; anchor concept intact.');
@@ -700,4 +716,10 @@ export async function runPhaseDLearningLoop(
       }
     }
   }
+
+  if (!resultReport) {
+    throw new Error('FRLL Phase D failed: resultReport was not constructed before teardown.');
+  }
+
+  return resultReport;
 }

@@ -213,5 +213,324 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
       expect(phaseDVerified).toBe(true);
     });
   });
+
+  describe('Phase D Runner Return & Finally Execution Semantics', () => {
+    const mockContext = {
+      user: { id: '11111111-1111-4111-8111-111111111111', email: 'test@example.com' },
+      session: { accessToken: 'mock-token', userId: '11111111-1111-4111-8111-111111111111' },
+      authHeaders: { Authorization: 'Bearer mock-token' },
+      me: {
+        id: '11111111-1111-4111-8111-111111111111',
+        email: 'test@example.com',
+        displayName: 'Test',
+        interfaceLanguageCode: 'vi',
+        timeZone: 'Asia/Ho_Chi_Minh',
+        languageProfiles: [],
+      },
+      languageProfileId: '22222222-2222-4222-8222-222222222222',
+      conceptId: '7f110000-0000-4000-8000-000000000004',
+      reviewItemId: '44444444-4444-4444-8444-444444444444',
+      todayPlan: {
+        id: '33333333-3333-4333-8333-333333333333',
+        languageProfileId: '22222222-2222-4222-8222-222222222222',
+        planDate: '2026-09-06',
+        timeZone: 'Asia/Ho_Chi_Minh',
+        targetMinutes: 15,
+        completedMinutes: 0,
+        status: 'active',
+        engineVersion: 'today-heuristic-v1',
+        activities: [],
+        createdAt: '2026-09-06T00:00:00Z',
+        updatedAt: '2026-09-06T00:00:00Z',
+      },
+      reviewActivity: {
+        id: '55555555-5555-4555-8555-555555555555',
+        position: 0,
+        activityType: 'review',
+        title: 'Review',
+        description: 'Review due item',
+        estimatedMinutes: 5,
+        reasonCodes: ['FSRS_DUE'],
+        reasonText: 'Due',
+        status: 'pending',
+        completedCount: 0,
+        createdAt: '2026-09-06T00:00:00Z',
+      },
+      handoff: {
+        actorId: '11111111-1111-4111-8111-111111111111',
+        languageProfileId: '22222222-2222-4222-8222-222222222222',
+        conceptId: '7f110000-0000-4000-8000-000000000004',
+        reviewItemId: '44444444-4444-4444-8444-444444444444',
+        todayPlanId: '33333333-3333-4333-8333-333333333333',
+        todayActivityId: '55555555-5555-4555-8555-555555555555',
+      },
+      preTodayDigest: {} as any,
+      postTodayDigest: {
+        user_id: '11111111-1111-4111-8111-111111111111',
+        concept_id: '7f110000-0000-4000-8000-000000000004',
+        review_item_count: 1,
+        review_item_ids: ['44444444-4444-4444-8444-444444444444'],
+        fsrs_state_count: 1,
+        fsrs_states: [
+          {
+            review_item_id: '44444444-4444-4444-8444-444444444444',
+            state: 'new',
+            state_version: 1,
+            due_at: '2026-09-06T08:00:00Z',
+            last_review_at: null,
+          },
+        ],
+        review_event_count: 0,
+        review_events: [],
+        learning_event_count: 1,
+        learning_events: [{ event_type: 'learning.concept.saved.v1', source_type: 'concept_save_intent' }],
+        concept_state: { has_projectable_evidence: false, production_evidence_count: 0 },
+        skill_states: [],
+        today_plan_count: 1,
+        today_plan_ids: ['33333333-3333-4333-8333-333333333333'],
+        today_activity_review_item_ids: ['44444444-4444-4444-8444-444444444444'],
+      } as any,
+      apiBaseUrl: 'http://127.0.0.1:8000',
+    };
+
+    function createMockPostAnswerDigest(idempotencyKey: string) {
+      return {
+        ...mockContext.postTodayDigest,
+        fsrs_states: [
+          {
+            review_item_id: '44444444-4444-4444-8444-444444444444',
+            state: 'learning',
+            state_version: 2,
+            due_at: '2026-09-07T08:00:00Z',
+            last_review_at: '2026-09-06T08:00:00Z',
+          },
+        ],
+        review_event_count: 1,
+        review_events: [
+          {
+            id: '66666666-6666-4666-8666-666666666666',
+            review_item_id: '44444444-4444-4444-8444-444444444444',
+            idempotency_key: idempotencyKey,
+            rating: 'good',
+            response_time_ms: 1500,
+            request_fingerprint: 'mock-fp',
+            created_at: '2026-09-06T08:00:00Z',
+            has_memory_snapshot: true,
+            has_competence_snapshot: true,
+            result_memory_snapshot: { state: 'learning' },
+            result_competence_snapshot: { production: { score: 0.85 } },
+          },
+        ],
+        learning_event_count: 2,
+        learning_events: [
+          { event_type: 'learning.concept.saved.v1', source_type: 'concept_save_intent' },
+          {
+            event_type: 'learning.review.completed.v1',
+            source_type: 'review_event',
+            source_event_id: '66666666-6666-4666-8666-666666666666',
+            ingestion_sequence: 2,
+          },
+        ],
+        concept_state: {
+          has_projectable_evidence: true,
+          production_evidence_count: 1,
+          recognition_evidence_count: 0,
+          listening_evidence_count: 0,
+        },
+      };
+    }
+
+    function createMockHarness() {
+      let queueCallCount = 0;
+      let capturedKey = '';
+
+      const fetchFn = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        const urlStr = String(url);
+        const method = init?.method ?? 'GET';
+
+        if (urlStr.includes('/v1/review/queue') && method === 'GET') {
+          queueCallCount++;
+          const queueData =
+            queueCallCount === 1
+              ? [
+                  {
+                    reviewItemId: '44444444-4444-4444-8444-444444444444',
+                    concept: {
+                      id: '7f110000-0000-4000-8000-000000000004',
+                      canonicalForm: 'frll-anchor',
+                      isDue: true,
+                      status: 'learning',
+                    },
+                    exerciseMode: 'self_recall',
+                    prompt: { promptText: 'frll-anchor' },
+                    memory: { state: 'new', dueAt: '2026-09-06T08:00:00Z', isDue: true },
+                    competence: {
+                      recognition: { score: 0, confidence: 0, evidenceCount: 0 },
+                      listening: { score: 0, confidence: 0, evidenceCount: 0 },
+                      production: { score: 0, confidence: 0, evidenceCount: 0 },
+                    },
+                  },
+                ]
+              : [];
+          return new Response(JSON.stringify({ data: queueData }), { status: 200 });
+        }
+
+        if (urlStr.includes('/answer') && method === 'POST') {
+          const headers = (init?.headers as Record<string, string>) || {};
+          const headerKey = headers['Idempotency-Key'] || headers['idempotency-key'];
+          if (headerKey) {
+            capturedKey = headerKey;
+          }
+          const body = JSON.parse(String(init?.body ?? '{}'));
+          if (body.rating === 'hard') {
+            return new Response(JSON.stringify({ error: 'Conflict' }), { status: 409 });
+          }
+          return new Response(
+            JSON.stringify({
+              data: {
+                reviewItemId: '44444444-4444-4444-8444-444444444444',
+                memory: {
+                  state: 'learning',
+                  dueAt: '2026-09-07T08:00:00Z',
+                  lastReviewedAt: '2026-09-06T08:00:00Z',
+                  isDue: false,
+                },
+                competence: {
+                  recognition: { score: 0, confidence: 0, evidenceCount: 0 },
+                  listening: { score: 0, confidence: 0, evidenceCount: 0 },
+                  production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+                },
+                remainingDueCount: 0,
+                feedback: 'OK',
+              },
+            }),
+            { status: 200 }
+          );
+        }
+
+        return new Response('{}', { status: 200 });
+      };
+
+      let captureDigestCount = 0;
+      const captureDigest = async () => {
+        captureDigestCount++;
+        if (captureDigestCount === 1) {
+          return mockContext.postTodayDigest;
+        }
+        return createMockPostAnswerDigest(capturedKey) as any;
+      };
+
+      return { fetchFn, captureDigest };
+    }
+
+    const validTeardownReport: FrllCleanupReport = {
+      authDeleted: true,
+      postgresClean: true,
+      postgresDetails: {
+        user_id: '11111111-1111-4111-8111-111111111111',
+        clean: true,
+        counts: {
+          users: 0,
+          learner_profiles: 0,
+          user_languages: 0,
+          review_items: 0,
+          fsrs_states: 0,
+          learning_events: 0,
+          concept_save_intents: 0,
+          profile_mutation_results: 0,
+          user_concept_states: 0,
+          user_saved_concepts: 0,
+          today_plans: 0,
+          today_plan_activities: 0,
+          today_activity_review_items: 0,
+          review_events: 0,
+        },
+        anchor_concept_intact: true,
+      },
+    };
+
+    it('proves resultReport is constructed before cleanup, finally mutates it, and returned report has cleanupVerified=true', async () => {
+      const harness = createMockHarness();
+
+      const report = await runPhaseDLearningLoop({
+        seams: {
+          setupThroughToday: async (opts) => {
+            opts.onUserCreated?.('11111111-1111-4111-8111-111111111111');
+            return mockContext;
+          },
+          fetchFn: harness.fetchFn as any,
+          captureDigest: harness.captureDigest as any,
+          teardownLearner: async () => validTeardownReport,
+        },
+      });
+
+      // 1. Result constructed before cleanup
+      expect(report.success).toBe(true);
+      expect(report.userId).toBe('11111111-1111-4111-8111-111111111111');
+      expect(report.reviewItemId).toBe('44444444-4444-4444-8444-444444444444');
+
+      // 2. Teardown ran and 3. The returned report has cleanupVerified=true
+      expect(report.cleanupVerified).toBe(true);
+
+      // 4. cleanupReport is present and contains canonical proof
+      expect(report.cleanupReport).toBeDefined();
+      expect(report.cleanupReport?.authDeleted).toBe(true);
+      expect(report.cleanupReport?.postgresClean).toBe(true);
+      expect(report.cleanupReport?.postgresDetails.clean).toBe(true);
+      expect(report.cleanupReport?.postgresDetails.counts.users).toBe(0);
+      expect(report.cleanupReport?.postgresDetails.counts.review_events).toBe(0);
+    });
+
+    it('5a. failure in cleanup (throwing) still rejects instead of returning a report with false', async () => {
+      const harness = createMockHarness();
+
+      await expect(
+        runPhaseDLearningLoop({
+          seams: {
+            setupThroughToday: async (opts) => {
+              opts.onUserCreated?.('11111111-1111-4111-8111-111111111111');
+              return mockContext;
+            },
+            fetchFn: harness.fetchFn as any,
+            captureDigest: harness.captureDigest as any,
+            teardownLearner: async () => {
+              throw new Error('Supabase Auth connection timed out during delete');
+            },
+          },
+        })
+      ).rejects.toThrow('Supabase Auth connection timed out during delete');
+    });
+
+    it('5b. dirty state in cleanup report still rejects fail-closed instead of returning success', async () => {
+      const harness = createMockHarness();
+
+      const dirtyTeardownReport: FrllCleanupReport = {
+        authDeleted: true,
+        postgresClean: false,
+        postgresDetails: {
+          ...validTeardownReport.postgresDetails,
+          clean: false,
+          counts: {
+            ...validTeardownReport.postgresDetails.counts,
+            review_events: 1,
+          },
+        },
+      };
+
+      await expect(
+        runPhaseDLearningLoop({
+          seams: {
+            setupThroughToday: async (opts) => {
+              opts.onUserCreated?.('11111111-1111-4111-8111-111111111111');
+              return mockContext;
+            },
+            fetchFn: harness.fetchFn as any,
+            captureDigest: harness.captureDigest as any,
+            teardownLearner: async () => dirtyTeardownReport,
+          },
+        })
+      ).rejects.toThrow('FRLL Phase D cleanup failure');
+    });
+  });
 });
 
