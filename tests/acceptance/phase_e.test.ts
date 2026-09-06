@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runPhaseELearningLoop } from './support/phase_e_runner';
+import { runPhaseELearningLoop, expectProjectionNumberEquivalent } from './support/phase_e_runner';
 
 const hasRealSupabaseEnv = Boolean(
   process.env.SUPABASE_URL &&
@@ -48,8 +48,8 @@ describe('FRLL Phase E: Real Review Competence -> Brain Read-Only Projection (FR
       // Synthetic-zero distinction: MUST be backed by real learner state
       expect(detail.status).not.toBe('unseen');
       expect(detail.status).toBe(dbConcept?.status);
-      expect(detail.mastery).toBe(dbConcept?.mastery);
-      expect(detail.confidence).toBe(dbConcept?.confidence);
+      expectProjectionNumberEquivalent(detail.mastery, dbConcept?.mastery, 'Brain mastery');
+      expectProjectionNumberEquivalent(detail.confidence, dbConcept?.confidence, 'Brain confidence');
       expect(detail.memory).not.toBeNull();
 
       // Memory snapshot matches PostgreSQL FSRS state
@@ -61,11 +61,11 @@ describe('FRLL Phase E: Real Review Competence -> Brain Read-Only Projection (FR
 
       // Competence projection matches PostgreSQL authority
       expect(detail.competence.production.evidenceCount).toBe(1);
-      expect(detail.competence.production.score).toBeCloseTo(Number(dbConcept?.production), 3);
-      expect(detail.competence.recognition.score).toBe(0.5);
+      expectProjectionNumberEquivalent(detail.competence.production.score, dbConcept?.production, 'Brain production score');
+      expectProjectionNumberEquivalent(detail.competence.recognition.score, 0.5, 'Brain recognition score');
       expect(detail.competence.recognition.confidence).toBe(0);
       expect(detail.competence.recognition.evidenceCount).toBe(0);
-      expect(detail.competence.listening.score).toBe(0.5);
+      expectProjectionNumberEquivalent(detail.competence.listening.score, 0.5, 'Brain listening score');
       expect(detail.competence.listening.confidence).toBe(0);
       expect(detail.competence.listening.evidenceCount).toBe(0);
 

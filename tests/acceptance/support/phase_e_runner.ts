@@ -54,6 +54,80 @@ import {
   type LearnerStateDigest,
 } from './postgres_probe_client';
 
+/**
+ * Canonical numeric equivalence validator for learner projection values.
+ *
+ * In Language Brain and Competence projections, metrics like competence scores,
+ * confidences, and mastery derive from fractional Bayesian updates (e.g. 1/30 = 0.033333333...)
+ * and are persisted in PostgreSQL columns typed as `numeric(10,8)`.
+ *
+ * The canonical database scale is 8 decimal places (`numeric(10,8)`).
+ * Transport serialization (Pydantic / JSON / IEEE 754 float) and PostgreSQL numeric
+ * representation can exhibit rounding at the 8th/9th decimal place (e.g. 3e-9 difference).
+ *
+ * This validator enforces:
+ * - Both values must be finite numbers (rejects NaN, Infinity, -Infinity).
+ * - Values must match within PROJECTION_NUMERIC_TOLERANCE (1e-6).
+ * - Materially divergent values (e.g. 0.0333 vs 0.04) fail closed.
+ */
+export const PROJECTION_NUMERIC_TOLERANCE = 1e-6;
+
+export function isProjectionNumberEquivalent(
+  actual: number | string | null | undefined,
+  expected: number | string | null | undefined,
+  tolerance: number = PROJECTION_NUMERIC_TOLERANCE
+): boolean {
+  if (actual === null || actual === undefined) {
+    return expected === null || expected === undefined;
+  }
+  if (expected === null || expected === undefined) {
+    return false;
+  }
+
+  const numActual = typeof actual === 'number' ? actual : Number(actual);
+  const numExpected = typeof expected === 'number' ? expected : Number(expected);
+
+  if (!Number.isFinite(numActual) || !Number.isFinite(numExpected)) {
+    return false;
+  }
+
+  return Math.abs(numActual - numExpected) <= tolerance;
+}
+
+export function expectProjectionNumberEquivalent(
+  actual: number | string | null | undefined,
+  expected: number | string | null | undefined,
+  fieldName: string,
+  tolerance: number = PROJECTION_NUMERIC_TOLERANCE
+): void {
+  if (actual === null || actual === undefined) {
+    if (expected !== null && expected !== undefined) {
+      throw new Error(`FRLL-12 failure: ${fieldName} is ${actual} (expected ${expected}).`);
+    }
+    return;
+  }
+  if (expected === null || expected === undefined) {
+    throw new Error(`FRLL-12 failure: ${fieldName} is ${actual} (expected ${expected}).`);
+  }
+
+  const numActual = typeof actual === 'number' ? actual : Number(actual);
+  const numExpected = typeof expected === 'number' ? expected : Number(expected);
+
+  if (!Number.isFinite(numActual)) {
+    throw new Error(`FRLL-12 failure: ${fieldName} actual value is not a finite number (${actual}).`);
+  }
+  if (!Number.isFinite(numExpected)) {
+    throw new Error(`FRLL-12 failure: ${fieldName} expected value is not a finite number (${expected}).`);
+  }
+
+  const diff = Math.abs(numActual - numExpected);
+  if (diff > tolerance) {
+    throw new Error(
+      `FRLL-12 failure: ${fieldName} ${numActual} != PostgreSQL ${numExpected} (difference ${diff} > tolerance ${tolerance}).`
+    );
+  }
+}
+
 export interface BrainConceptDetailDto {
   readonly concept: {
     readonly id: string;
@@ -532,31 +606,26 @@ export async function runPhaseELearningLoop(
     if (brainConceptDetail.status !== preConceptState.status) {
       throw new Error(`FRLL-12 failure: Brain status '${brainConceptDetail.status}' != PostgreSQL status '${preConceptState.status}'.`);
     }
-    if (brainConceptDetail.mastery !== preConceptState.mastery) {
-      throw new Error(`FRLL-12 failure: Brain mastery ${brainConceptDetail.mastery} != PostgreSQL mastery ${preConceptState.mastery}.`);
-    }
-    if (brainConceptDetail.confidence !== preConceptState.confidence) {
-      throw new Error(`FRLL-12 failure: Brain confidence ${brainConceptDetail.confidence} != PostgreSQL confidence ${preConceptState.confidence}.`);
-    }
+    expectProjectionNumberEquivalent(brainConceptDetail.mastery, preConceptState.mastery, 'Brain mastery');
+    expectProjectionNumberEquivalent(brainConceptDetail.confidence, preConceptState.confidence, 'Brain confidence');
 
     // Competence dimensions
     const brainProd = brainConceptDetail.competence.production;
-    const dbProdScore = typeof preConceptState.production === 'number' ? preConceptState.production : Number(preConceptState.production);
-    if (Math.abs(brainProd.score - dbProdScore) > 0.001) {
-      throw new Error(`FRLL-12 failure: Brain production score ${brainProd.score} != PostgreSQL production ${dbProdScore}.`);
-    }
+    expectProjectionNumberEquivalent(brainProd.score, preConceptState.production, 'Brain production score');
     if (brainProd.evidenceCount !== 1) {
       throw new Error(`FRLL-12 failure: Brain production evidenceCount is ${brainProd.evidenceCount} (expected 1).`);
     }
 
     const brainRec = brainConceptDetail.competence.recognition;
-    if (brainRec.score !== 0.5 || brainRec.confidence !== 0 || brainRec.evidenceCount !== 0) {
-      throw new Error(`FRLL-12 failure: Brain recognition dimension is not at zero-evidence prior (got score=${brainRec.score}, evidence=${brainRec.evidenceCount}).`);
+    expectProjectionNumberEquivalent(brainRec.score, 0.5, 'Brain recognition score');
+    if (brainRec.confidence !== 0 || brainRec.evidenceCount !== 0) {
+      throw new Error(`FRLL-12 failure: Brain recognition dimension is not at zero-evidence prior (got confidence=${brainRec.confidence}, evidence=${brainRec.evidenceCount}).`);
     }
 
     const brainList = brainConceptDetail.competence.listening;
-    if (brainList.score !== 0.5 || brainList.confidence !== 0 || brainList.evidenceCount !== 0) {
-      throw new Error(`FRLL-12 failure: Brain listening dimension is not at zero-evidence prior (got score=${brainList.score}, evidence=${brainList.evidenceCount}).`);
+    expectProjectionNumberEquivalent(brainList.score, 0.5, 'Brain listening score');
+    if (brainList.confidence !== 0 || brainList.evidenceCount !== 0) {
+      throw new Error(`FRLL-12 failure: Brain listening dimension is not at zero-evidence prior (got confidence=${brainList.confidence}, evidence=${brainList.evidenceCount}).`);
     }
 
     // Memory snapshot

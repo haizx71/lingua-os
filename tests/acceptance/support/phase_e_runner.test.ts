@@ -4,6 +4,9 @@ import {
   parseBrainSummaryResponse,
   parseBrainConceptListResponse,
   runPhaseELearningLoop,
+  isProjectionNumberEquivalent,
+  expectProjectionNumberEquivalent,
+  PROJECTION_NUMERIC_TOLERANCE,
 } from './phase_e_runner';
 import type { FrllCleanupReport } from './phase_b_runner';
 import type { LearnerStateDigest } from './postgres_probe_client';
@@ -651,7 +654,9 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             teardownLearner: async () => validTeardownReport,
           },
         })
-      ).rejects.toThrow('FRLL-12 failure: Brain production score 0.42 != PostgreSQL production 0.85');
+      ).rejects.toThrow(
+        /FRLL-12 failure: Brain production score 0\.42 != PostgreSQL 0\.85/
+      );
     });
 
     it('fails closed if Brain GET mutates learner state (read-only invariant violation)', async () => {
@@ -709,6 +714,85 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
           },
         })
       ).rejects.toThrow('FRLL Phase E cleanup failure');
+    });
+  });
+
+  describe('Canonical Numeric Comparison Policy (FRLL-12)', () => {
+    it('accepts canonical Brain API representation (0.03333333) vs PostgreSQL Decimal probe (0.033333333)', () => {
+      expect(isProjectionNumberEquivalent(0.03333333, 0.033333333)).toBe(true);
+      expect(isProjectionNumberEquivalent('0.03333333', '0.033333333')).toBe(true);
+      expect(() =>
+        expectProjectionNumberEquivalent(0.03333333, 0.033333333, 'Brain confidence')
+      ).not.toThrow();
+      expect(() =>
+        expectProjectionNumberEquivalent(0.03333333, '0.033333333', 'Brain confidence')
+      ).not.toThrow();
+    });
+
+    it('accepts exact equal numeric values and strings', () => {
+      expect(isProjectionNumberEquivalent(0.5, 0.5)).toBe(true);
+      expect(isProjectionNumberEquivalent('0.5', 0.5)).toBe(true);
+      expect(isProjectionNumberEquivalent(0, 0)).toBe(true);
+      expect(() =>
+        expectProjectionNumberEquivalent(0.5, 0.5, 'Brain recognition score')
+      ).not.toThrow();
+    });
+
+    it('accepts null/undefined equivalence for unreached mastery', () => {
+      expect(isProjectionNumberEquivalent(null, null)).toBe(true);
+      expect(isProjectionNumberEquivalent(undefined, undefined)).toBe(true);
+      expect(isProjectionNumberEquivalent(null, undefined)).toBe(true);
+      expect(() =>
+        expectProjectionNumberEquivalent(null, null, 'Brain mastery')
+      ).not.toThrow();
+    });
+
+    it('fails closed on mismatched null/undefined', () => {
+      expect(isProjectionNumberEquivalent(null, 0.5)).toBe(false);
+      expect(isProjectionNumberEquivalent(0.5, null)).toBe(false);
+      expect(() =>
+        expectProjectionNumberEquivalent(null, 0.5, 'Brain mastery')
+      ).toThrow('FRLL-12 failure: Brain mastery is null (expected 0.5).');
+      expect(() =>
+        expectProjectionNumberEquivalent(0.5, null, 'Brain mastery')
+      ).toThrow('FRLL-12 failure: Brain mastery is 0.5 (expected null).');
+    });
+
+    it('fails closed on materially divergent values (e.g. 0.04 vs 0.03333333)', () => {
+      expect(isProjectionNumberEquivalent(0.04, 0.03333333)).toBe(false);
+      expect(() =>
+        expectProjectionNumberEquivalent(0.04, 0.03333333, 'Brain confidence')
+      ).toThrow(/FRLL-12 failure: Brain confidence 0\.04 != PostgreSQL 0\.03333333/);
+    });
+
+    it('fails closed on materially divergent production score (e.g. 0.42 vs 0.85)', () => {
+      expect(isProjectionNumberEquivalent(0.42, 0.85)).toBe(false);
+      expect(() =>
+        expectProjectionNumberEquivalent(0.42, 0.85, 'Brain production score')
+      ).toThrow(/FRLL-12 failure: Brain production score 0\.42 != PostgreSQL 0\.85/);
+    });
+
+    it('fails closed when actual or expected is NaN', () => {
+      expect(isProjectionNumberEquivalent(NaN, 0.5)).toBe(false);
+      expect(isProjectionNumberEquivalent(0.5, NaN)).toBe(false);
+      expect(isProjectionNumberEquivalent(NaN, NaN)).toBe(false);
+      expect(() =>
+        expectProjectionNumberEquivalent(NaN, 0.5, 'Brain confidence')
+      ).toThrow('FRLL-12 failure: Brain confidence actual value is not a finite number (NaN).');
+      expect(() =>
+        expectProjectionNumberEquivalent(0.5, NaN, 'Brain confidence')
+      ).toThrow('FRLL-12 failure: Brain confidence expected value is not a finite number (NaN).');
+    });
+
+    it('fails closed when actual or expected is Infinity or -Infinity', () => {
+      expect(isProjectionNumberEquivalent(Infinity, 0.5)).toBe(false);
+      expect(isProjectionNumberEquivalent(0.5, -Infinity)).toBe(false);
+      expect(() =>
+        expectProjectionNumberEquivalent(Infinity, 0.5, 'Brain confidence')
+      ).toThrow('FRLL-12 failure: Brain confidence actual value is not a finite number (Infinity).');
+      expect(() =>
+        expectProjectionNumberEquivalent(0.5, -Infinity, 'Brain confidence')
+      ).toThrow('FRLL-12 failure: Brain confidence expected value is not a finite number (-Infinity).');
     });
   });
 });
