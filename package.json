@@ -18,12 +18,14 @@
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:all": "pnpm test && pnpm backend:test",
+    "test:frll": "powershell -File scripts/verify-first-real-learning-loop.ps1",
     "typecheck": "pnpm contracts:check-generated && pnpm -r typecheck",
     "lint": "eslint . --max-warnings=0",
     "storybook": "pnpm --filter @lingua/ui storybook",
     "build-storybook": "pnpm --filter @lingua/ui build-storybook"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.4",

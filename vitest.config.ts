@@ -9,6 +9,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/frontend/setup.ts'],
     testTimeout: 15000,
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/acceptance/*.spec.ts'],
   },
   resolve: {
     alias: {

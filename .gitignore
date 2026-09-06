@@ -17,3 +17,5 @@ __pycache__/
 venv/
 storybook-static/
 .gemini/
+test-results/
+playwright-report/
