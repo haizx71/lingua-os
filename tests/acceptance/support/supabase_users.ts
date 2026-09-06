@@ -1,10 +1,11 @@
 /**
  * Acceptance test Supabase Auth Admin provisioner for First Real Learning Loop.
- * Strictly uses official Supabase Auth Admin API via service-role key to create/delete
- * disposable test users without hardcoded credentials.
+ * Strictly uses official Supabase Auth Admin API via createClient(url, secretKey, { auth: ... })
+ * to create/delete disposable test users without hardcoded credentials or manual Bearer JWT headers.
  */
 
 import { randomUUID, randomBytes } from 'node:crypto';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export interface DisposableSupabaseUser {
   readonly id: string;
@@ -15,28 +16,60 @@ export interface DisposableSupabaseUser {
 export interface SupabaseAdminConfig {
   readonly supabaseUrl?: string;
   readonly serviceRoleKey?: string;
+  readonly secretKey?: string;
+  readonly client?: SupabaseClient;
 }
 
 function getValidatedAdminConfig(config: SupabaseAdminConfig = {}): {
   readonly supabaseUrl: string;
+  readonly secretKey: string;
   readonly serviceRoleKey: string;
+  readonly client?: SupabaseClient;
 } {
+  if (config.client) {
+    return {
+      supabaseUrl: config.supabaseUrl ?? 'https://provided-client.supabase.co',
+      secretKey: 'provided-in-client',
+      serviceRoleKey: 'provided-in-client',
+      client: config.client,
+    };
+  }
+
   const supabaseUrl = config.supabaseUrl ?? process.env.SUPABASE_URL;
-  const serviceRoleKey = config.serviceRoleKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey =
+    config.secretKey ??
+    config.serviceRoleKey ??
+    process.env.SUPABASE_SECRET_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || supabaseUrl.trim() === '') {
     throw new Error('Supabase admin provisioning failed: SUPABASE_URL is missing or empty.');
   }
-  if (!serviceRoleKey || serviceRoleKey.trim() === '') {
+  if (!secretKey || secretKey.trim() === '') {
     throw new Error(
-      'Supabase admin provisioning failed: SUPABASE_SERVICE_ROLE_KEY is missing or empty.'
+      'Supabase admin provisioning failed: SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) is missing or empty.'
     );
   }
 
+  const trimmedKey = secretKey.trim();
   return {
     supabaseUrl: supabaseUrl.replace(/\/+$/, ''),
-    serviceRoleKey: serviceRoleKey.trim(),
+    secretKey: trimmedKey,
+    serviceRoleKey: trimmedKey,
   };
+}
+
+export function createSupabaseAdminClient(
+  supabaseUrl: string,
+  secretKey: string
+): SupabaseClient {
+  return createClient(supabaseUrl, secretKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
 }
 
 export function generateDisposableCredentials(tag?: string): {
@@ -51,82 +84,67 @@ export function generateDisposableCredentials(tag?: string): {
 }
 
 /**
- * Creates a confirmed disposable user in Supabase Auth via the Admin API.
- * Never logs passwords or service role credentials.
+ * Creates a confirmed disposable user in Supabase Auth via the official Auth Admin API.
+ * Uses createClient with server-side admin options (autoRefreshToken: false, persistSession: false).
+ * Never logs passwords or secret key credentials.
  */
 export async function createDisposableSupabaseUser(
   config: SupabaseAdminConfig & { readonly tag?: string } = {}
 ): Promise<DisposableSupabaseUser> {
-  const { supabaseUrl, serviceRoleKey } = getValidatedAdminConfig(config);
+  const adminConfig = getValidatedAdminConfig(config);
+  const client =
+    adminConfig.client ??
+    createSupabaseAdminClient(adminConfig.supabaseUrl, adminConfig.secretKey);
   const { email, password } = generateDisposableCredentials(config.tag);
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-    method: 'POST',
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      'Content-Type': 'application/json',
+  const { data, error } = await client.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      frll_disposable_test_user: true,
+      created_at: new Date().toISOString(),
     },
-    body: JSON.stringify({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        frll_disposable_test_user: true,
-        created_at: new Date().toISOString(),
-      },
-    }),
   });
 
-  if (!response.ok) {
-    const status = response.status;
-    const errorBody = await response.text().catch(() => '');
-    throw new Error(
-      `Failed to provision disposable Supabase test user (HTTP ${status}): ${errorBody.slice(0, 200)}`
-    );
-  }
-
-  const data = (await response.json()) as { id?: string; user?: { id?: string } };
-  const userId = data.id ?? data.user?.id;
-  if (!userId || typeof userId !== 'string') {
-    throw new Error('Supabase admin user creation succeeded but returned no valid user ID.');
+  if (error || !data?.user?.id) {
+    const errorMsg = error?.message ?? 'User creation returned no valid user entity';
+    throw new Error(`Failed to provision disposable Supabase test user: ${errorMsg}`);
   }
 
   return {
-    id: userId,
+    id: data.user.id,
     email,
     password,
   };
 }
 
 /**
- * Deletes a disposable test user in Supabase Auth via the Admin API.
+ * Deletes a disposable test user in Supabase Auth via the official Auth Admin API.
  * When deleted, foreign keys in PostgreSQL cascade and clean up all application learner state.
  */
 export async function deleteDisposableSupabaseUser(
   config: SupabaseAdminConfig & { readonly userId: string }
 ): Promise<void> {
-  const { supabaseUrl, serviceRoleKey } = getValidatedAdminConfig(config);
   if (!config.userId || config.userId.trim() === '') {
     throw new Error('Cannot delete Supabase test user: userId is missing or empty.');
   }
 
-  const response = await fetch(
-    `${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(config.userId)}`,
-    {
-      method: 'DELETE',
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-      },
-    }
-  );
+  const adminConfig = getValidatedAdminConfig(config);
+  const client =
+    adminConfig.client ??
+    createSupabaseAdminClient(adminConfig.supabaseUrl, adminConfig.secretKey);
 
-  if (!response.ok && response.status !== 404) {
-    const status = response.status;
-    const errorBody = await response.text().catch(() => '');
-    throw new Error(
-      `Failed to delete disposable Supabase test user ${config.userId} (HTTP ${status}): ${errorBody.slice(0, 200)}`
-    );
+  const { error } = await client.auth.admin.deleteUser(config.userId);
+
+  if (error) {
+    // 404/not-found is considered safely idempotent for cleanup
+    const msg = error.message ?? '';
+    const status = (error as { status?: number }).status;
+    if (status !== 404 && !msg.toLowerCase().includes('not found')) {
+      throw new Error(
+        `Failed to delete disposable Supabase test user ${config.userId}: ${msg}`
+      );
+    }
   }
 }

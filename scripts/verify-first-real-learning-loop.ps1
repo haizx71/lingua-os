@@ -25,12 +25,10 @@ Write-Host "LINGUA OS - FIRST REAL LEARNING LOOP ORCHESTRATOR" -ForegroundColor 
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "Workspace: $ProjectRoot"
 
-# 1. Required environment variables
-$RequiredVars = @(
+# 1. Required environment variables: preferred modern names with backward-compatible legacy aliases
+$FixedVars = @(
     "DATABASE_URL",
     "SUPABASE_URL",
-    "SUPABASE_ANON_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "NEXT_PUBLIC_API_BASE_URL",
@@ -38,11 +36,29 @@ $RequiredVars = @(
 )
 
 $MissingVars = @()
-foreach ($varName in $RequiredVars) {
+foreach ($varName in $FixedVars) {
     $val = [System.Environment]::GetEnvironmentVariable($varName)
     if ([string]::IsNullOrWhiteSpace($val)) {
         $MissingVars += $varName
     }
+}
+
+# Publishable key (preferred: SUPABASE_PUBLISHABLE_KEY, fallback: SUPABASE_ANON_KEY)
+$pubKey = [System.Environment]::GetEnvironmentVariable("SUPABASE_PUBLISHABLE_KEY")
+if ([string]::IsNullOrWhiteSpace($pubKey)) {
+    $pubKey = [System.Environment]::GetEnvironmentVariable("SUPABASE_ANON_KEY")
+}
+if ([string]::IsNullOrWhiteSpace($pubKey)) {
+    $MissingVars += "SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY)"
+}
+
+# Secret key (preferred: SUPABASE_SECRET_KEY, fallback: SUPABASE_SERVICE_ROLE_KEY)
+$secKey = [System.Environment]::GetEnvironmentVariable("SUPABASE_SECRET_KEY")
+if ([string]::IsNullOrWhiteSpace($secKey)) {
+    $secKey = [System.Environment]::GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY")
+}
+if ([string]::IsNullOrWhiteSpace($secKey)) {
+    $MissingVars += "SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)"
 }
 
 if ($MissingVars.Count -gt 0) {

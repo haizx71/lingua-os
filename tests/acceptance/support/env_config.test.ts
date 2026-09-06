@@ -2,7 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { validateFrllEnvironment, FRLL_REQUIRED_ENV_VARS } from './env_config';
 
 describe('FRLL Environment Configuration & Safety Preflight', () => {
-  const validEnv: Record<string, string> = {
+  const preferredEnv: Record<string, string> = {
+    DATABASE_URL: 'postgresql://postgres:secretpassword@db.dev.supabase.co:5432/postgres',
+    SUPABASE_URL: 'https://project-ref.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'publishable-key-token',
+    SUPABASE_SECRET_KEY: 'super-secret-sb-key-12345',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://project-ref.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'publishable-key-token',
+    NEXT_PUBLIC_API_BASE_URL: '/api',
+    REVIEW_CURSOR_SECRET: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  };
+
+  const legacyEnv: Record<string, string> = {
     DATABASE_URL: 'postgresql://postgres:secretpassword@db.dev.supabase.co:5432/postgres',
     SUPABASE_URL: 'https://project-ref.supabase.co',
     SUPABASE_ANON_KEY: 'anon-key-token',
@@ -13,8 +24,8 @@ describe('FRLL Environment Configuration & Safety Preflight', () => {
     REVIEW_CURSOR_SECRET: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   };
 
-  it('validates a complete, consistent development environment successfully', () => {
-    const result = validateFrllEnvironment(validEnv);
+  it('validates a complete development environment using preferred modern keys', () => {
+    const result = validateFrllEnvironment(preferredEnv);
     expect(result.ok).toBe(true);
     expect(result.missingVars).toHaveLength(0);
     expect(result.errors).toHaveLength(0);
@@ -22,7 +33,27 @@ describe('FRLL Environment Configuration & Safety Preflight', () => {
     expect(result.safeConfig?.supabaseUrl).toBe('https://project-ref.supabase.co');
     expect(result.safeConfig?.apiBaseUrl).toBe('/api');
     expect(result.safeConfig?.databaseHost).toBe('db.dev.supabase.co');
+    expect(result.safeConfig?.hasSecretKey).toBe(true);
+    expect(result.safeConfig?.hasPublishableKey).toBe(true);
     expect(result.safeConfig?.hasServiceRoleKey).toBe(true);
+    expect(result.safeConfig?.hasAnonKey).toBe(true);
+
+    // Verify no secret leakage into safeConfig
+    const configStr = JSON.stringify(result.safeConfig);
+    expect(configStr).not.toContain('super-secret-sb-key-12345');
+    expect(configStr).not.toContain('secretpassword');
+  });
+
+  it('validates a complete development environment using legacy aliases for backward compatibility', () => {
+    const result = validateFrllEnvironment(legacyEnv);
+    expect(result.ok).toBe(true);
+    expect(result.missingVars).toHaveLength(0);
+    expect(result.errors).toHaveLength(0);
+    expect(result.safeConfig).toBeDefined();
+    expect(result.safeConfig?.hasSecretKey).toBe(true);
+    expect(result.safeConfig?.hasPublishableKey).toBe(true);
+    expect(result.safeConfig?.hasServiceRoleKey).toBe(true);
+    expect(result.safeConfig?.hasAnonKey).toBe(true);
   });
 
   it('fails clearly and enumerates missing required variables without leaking any existing secrets', () => {
@@ -34,7 +65,7 @@ describe('FRLL Environment Configuration & Safety Preflight', () => {
     // Partial env test
     const partialEnv = {
       DATABASE_URL: 'postgresql://user:pass@host:5432/db',
-      SUPABASE_SERVICE_ROLE_KEY: 'secret-key-123',
+      SUPABASE_SECRET_KEY: 'secret-key-123',
     };
     const partialResult = validateFrllEnvironment(partialEnv);
     expect(partialResult.ok).toBe(false);
@@ -48,9 +79,31 @@ describe('FRLL Environment Configuration & Safety Preflight', () => {
     }
   });
 
+  it('fails closed when secret key is missing', () => {
+    const noSecretEnv = { ...preferredEnv };
+    delete (noSecretEnv as Record<string, string | undefined>).SUPABASE_SECRET_KEY;
+    delete (noSecretEnv as Record<string, string | undefined>).SUPABASE_SERVICE_ROLE_KEY;
+
+    const result = validateFrllEnvironment(noSecretEnv);
+    expect(result.ok).toBe(false);
+    expect(result.missingVars).toContain('SUPABASE_SECRET_KEY');
+    expect(result.safeConfig).toBeUndefined();
+  });
+
+  it('fails closed when publishable key is missing', () => {
+    const noPubEnv = { ...preferredEnv };
+    delete (noPubEnv as Record<string, string | undefined>).SUPABASE_PUBLISHABLE_KEY;
+    delete (noPubEnv as Record<string, string | undefined>).SUPABASE_ANON_KEY;
+
+    const result = validateFrllEnvironment(noPubEnv);
+    expect(result.ok).toBe(false);
+    expect(result.missingVars).toContain('SUPABASE_PUBLISHABLE_KEY');
+    expect(result.safeConfig).toBeUndefined();
+  });
+
   it('rejects mismatch between backend SUPABASE_URL and frontend NEXT_PUBLIC_SUPABASE_URL', () => {
     const mismatchedEnv = {
-      ...validEnv,
+      ...preferredEnv,
       NEXT_PUBLIC_SUPABASE_URL: 'https://different-project.supabase.co',
     };
     const result = validateFrllEnvironment(mismatchedEnv);
@@ -60,7 +113,7 @@ describe('FRLL Environment Configuration & Safety Preflight', () => {
 
   it('rejects invalid NEXT_PUBLIC_API_BASE_URL that is not same-origin /api', () => {
     const invalidApiEnv = {
-      ...validEnv,
+      ...preferredEnv,
       NEXT_PUBLIC_API_BASE_URL: 'http://localhost:8000',
     };
     const result = validateFrllEnvironment(invalidApiEnv);
@@ -70,7 +123,7 @@ describe('FRLL Environment Configuration & Safety Preflight', () => {
 
   it('fails closed when target environment appears to be production without explicit override', () => {
     const prodEnv = {
-      ...validEnv,
+      ...preferredEnv,
       SUPABASE_URL: 'https://prod.supabase.co',
       NEXT_PUBLIC_SUPABASE_URL: 'https://prod.supabase.co',
     };

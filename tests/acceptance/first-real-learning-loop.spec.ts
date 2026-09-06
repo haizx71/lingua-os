@@ -35,7 +35,7 @@ const LEARNER_DERIVED_TABLES = [
 
 const hasRealSupabaseEnv = Boolean(
   process.env.SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY) &&
     process.env.DATABASE_URL
 );
 
@@ -78,7 +78,10 @@ test.describe('FRLL Phase A: Acceptance Test Preflight & Fixture Isolation', () 
     expect(result.missingVars).toEqual(FRLL_REQUIRED_ENV_VARS);
     expect(result.missingVars).toContain('DATABASE_URL');
     expect(result.missingVars).toContain('SUPABASE_URL');
-    expect(result.missingVars).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(
+      result.missingVars.includes('SUPABASE_SECRET_KEY') ||
+      result.missingVars.includes('SUPABASE_SERVICE_ROLE_KEY')
+    ).toBe(true);
     expect(result.missingVars).toContain('NEXT_PUBLIC_SUPABASE_URL');
     expect(result.missingVars).toContain('NEXT_PUBLIC_API_BASE_URL');
     expect(result.missingVars.length).toBe(8);

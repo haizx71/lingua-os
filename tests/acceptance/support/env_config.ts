@@ -3,7 +3,18 @@
  * Validates required Supabase, PostgreSQL, and proxy configuration without leaking secrets.
  */
 
-export const FRLL_REQUIRED_ENV_VARS = [
+export const FRLL_PREFERRED_ENV_VARS = [
+  'DATABASE_URL',
+  'SUPABASE_URL',
+  'SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_API_BASE_URL',
+  'REVIEW_CURSOR_SECRET',
+] as const;
+
+export const FRLL_LEGACY_ENV_VARS = [
   'DATABASE_URL',
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
@@ -14,7 +25,12 @@ export const FRLL_REQUIRED_ENV_VARS = [
   'REVIEW_CURSOR_SECRET',
 ] as const;
 
-export type FrllRequiredEnvVar = (typeof FRLL_REQUIRED_ENV_VARS)[number];
+export const FRLL_REQUIRED_ENV_VARS = FRLL_PREFERRED_ENV_VARS;
+
+export type FrllRequiredEnvVar =
+  | (typeof FRLL_PREFERRED_ENV_VARS)[number]
+  | 'SUPABASE_ANON_KEY'
+  | 'SUPABASE_SERVICE_ROLE_KEY';
 
 export interface SafeFrllConfig {
   readonly supabaseUrl: string;
@@ -22,7 +38,9 @@ export interface SafeFrllConfig {
   readonly databaseHost: string;
   readonly databasePort: number;
   readonly databaseName: string;
+  readonly hasSecretKey: boolean;
   readonly hasServiceRoleKey: boolean;
+  readonly hasPublishableKey: boolean;
   readonly hasAnonKey: boolean;
   readonly hasReviewCursorSecret: boolean;
 }
@@ -53,11 +71,53 @@ export function validateFrllEnvironment(
   const missingVars: FrllRequiredEnvVar[] = [];
   const errors: string[] = [];
 
-  for (const varName of FRLL_REQUIRED_ENV_VARS) {
-    const value = env[varName];
-    if (!value || value.trim() === '') {
-      missingVars.push(varName);
-    }
+  // 1. DATABASE_URL
+  if (!env.DATABASE_URL || env.DATABASE_URL.trim() === '') {
+    missingVars.push('DATABASE_URL');
+  }
+
+  // 2. SUPABASE_URL
+  if (!env.SUPABASE_URL || env.SUPABASE_URL.trim() === '') {
+    missingVars.push('SUPABASE_URL');
+  }
+
+  // 3. Publishable key: accept SUPABASE_PUBLISHABLE_KEY or SUPABASE_ANON_KEY
+  const hasPublishable = Boolean(
+    env.SUPABASE_PUBLISHABLE_KEY?.trim() || env.SUPABASE_ANON_KEY?.trim()
+  );
+  if (!hasPublishable) {
+    missingVars.push('SUPABASE_PUBLISHABLE_KEY');
+  }
+
+  // 4. Secret key: accept SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY
+  const hasSecret = Boolean(
+    env.SUPABASE_SECRET_KEY?.trim() || env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  );
+  if (!hasSecret) {
+    missingVars.push('SUPABASE_SECRET_KEY');
+  }
+
+  // 5. NEXT_PUBLIC_SUPABASE_URL
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL.trim() === '') {
+    missingVars.push('NEXT_PUBLIC_SUPABASE_URL');
+  }
+
+  // 6. NEXT_PUBLIC_SUPABASE_ANON_KEY (can also accept NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
+  const hasNextPublicAnon = Boolean(
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+  );
+  if (!hasNextPublicAnon) {
+    missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
+
+  // 7. NEXT_PUBLIC_API_BASE_URL
+  if (!env.NEXT_PUBLIC_API_BASE_URL || env.NEXT_PUBLIC_API_BASE_URL.trim() === '') {
+    missingVars.push('NEXT_PUBLIC_API_BASE_URL');
+  }
+
+  // 8. REVIEW_CURSOR_SECRET
+  if (!env.REVIEW_CURSOR_SECRET || env.REVIEW_CURSOR_SECRET.trim() === '') {
+    missingVars.push('REVIEW_CURSOR_SECRET');
   }
 
   if (missingVars.length > 0) {
@@ -105,8 +165,10 @@ export function validateFrllEnvironment(
     databaseHost: dbInfo.host,
     databasePort: dbInfo.port,
     databaseName: dbInfo.name,
-    hasServiceRoleKey: Boolean(env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
-    hasAnonKey: Boolean(env.SUPABASE_ANON_KEY?.trim()),
+    hasSecretKey: hasSecret,
+    hasServiceRoleKey: hasSecret,
+    hasPublishableKey: hasPublishable,
+    hasAnonKey: hasPublishable,
     hasReviewCursorSecret: Boolean(env.REVIEW_CURSOR_SECRET?.trim()),
   };
 
