@@ -10,11 +10,65 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
+
+
+def normalize_scalar_for_json(val: Any) -> Any:
+    """Normalize a single scalar or structure for deterministic JSON serialization.
+
+    Canonical conversions:
+    - Decimal -> canonical decimal string (exact PostgreSQL precision preserved)
+    - UUID -> canonical lowercase UUID string
+    - datetime / date -> ISO-8601 string
+    - int / float / str / bool / None -> native JSON types
+    - dict -> recursively normalized dict
+    - list / tuple -> recursively normalized list
+
+    Fails closed on any unknown/unsupported object type.
+    """
+    if val is None:
+        return None
+    if isinstance(val, (int, float, str, bool)):
+        return val
+    if isinstance(val, Decimal):
+        return str(val)
+    if isinstance(val, UUID):
+        return str(val)
+    if isinstance(val, (datetime, date)):
+        return val.isoformat()
+    if isinstance(val, dict):
+        return {k: normalize_scalar_for_json(v) for k, v in val.items()}
+    if isinstance(val, (list, tuple)):
+        return [normalize_scalar_for_json(item) for item in val]
+    raise TypeError(
+        f"Unsupported type for canonical JSON serialization: {type(val).__name__} (value: {val!r})"
+    )
+
+
+class CanonicalJsonEncoder(json.JSONEncoder):
+    """Fail-closed JSONEncoder for canonical PostgreSQL scalar types."""
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, Decimal):
+            return str(o)
+        if isinstance(o, UUID):
+            return str(o)
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        return super().default(o)
+
+
+def serialize_digest_to_json(digest: LearnerStateDigest, indent: int | None = 2) -> str:
+    """Serialize LearnerStateDigest to deterministic JSON using canonical type mapping."""
+    raw = asdict(digest)
+    normalized = normalize_scalar_for_json(raw)
+    return json.dumps(normalized, indent=indent, cls=CanonicalJsonEncoder)
 
 
 @dataclass(frozen=True)
@@ -182,14 +236,6 @@ class PostgresLearnerProbe:
                 ).fetchall()
                 today_review_item_ids = [str(r["review_item_id"]) for r in mapped_rows]
 
-            # Format rows for clean serializability
-            def _clean(val: Any) -> Any:
-                if isinstance(val, UUID):
-                    return str(val)
-                if hasattr(val, "isoformat"):
-                    return val.isoformat()
-                return val
-
             return LearnerStateDigest(
                 user_id=str(user_id),
                 concept_id=str(concept_id),
@@ -202,17 +248,27 @@ class PostgresLearnerProbe:
                 review_item_count=len(item_rows),
                 review_item_ids=[str(i) for i in item_ids],
                 fsrs_state_count=len(fsrs_rows),
-                fsrs_states=[{k: _clean(v) for k, v in row.items()} for row in fsrs_rows],
+                fsrs_states=[
+                    {k: normalize_scalar_for_json(v) for k, v in row.items()} for row in fsrs_rows
+                ],
                 learning_event_count=len(learning_event_rows),
                 learning_events=[
-                    {k: _clean(v) for k, v in row.items()} for row in learning_event_rows
+                    {k: normalize_scalar_for_json(v) for k, v in row.items()}
+                    for row in learning_event_rows
                 ],
                 review_event_count=len(review_event_rows),
-                review_events=[{k: _clean(v) for k, v in row.items()} for row in review_event_rows],
-                concept_state={k: _clean(v) for k, v in concept_state_row.items()}
+                review_events=[
+                    {k: normalize_scalar_for_json(v) for k, v in row.items()}
+                    for row in review_event_rows
+                ],
+                concept_state={
+                    k: normalize_scalar_for_json(v) for k, v in concept_state_row.items()
+                }
                 if concept_state_row
                 else None,
-                skill_states=[{k: _clean(v) for k, v in row.items()} for row in skill_rows],
+                skill_states=[
+                    {k: normalize_scalar_for_json(v) for k, v in row.items()} for row in skill_rows
+                ],
                 today_plan_count=len(today_plan_rows),
                 today_plan_ids=[str(p) for p in today_plan_ids],
                 today_activity_review_item_ids=today_review_item_ids,
@@ -243,7 +299,7 @@ def main() -> None:
 
     probe = PostgresLearnerProbe(db_url)
     digest = probe.capture_digest(user_id, concept_id)
-    print(json.dumps(asdict(digest), indent=2))
+    print(serialize_digest_to_json(digest, indent=2))
 
 
 if __name__ == "__main__":

@@ -143,3 +143,139 @@ def test_canonical_migrations_prove_schema_evolution() -> None:
     assert "plan_date date NOT NULL," in mig_0001
     assert "skill text NOT NULL" in mig_0001
     assert "mastery numeric" in mig_0001
+
+
+def test_digest_json_serialization_preserves_canonical_types() -> None:
+    """Assert serialization handles Decimal, UUID, datetime, date, and null deterministically."""
+    import json
+    from datetime import UTC, date, datetime
+    from decimal import Decimal
+    from uuid import UUID
+
+    from tests.acceptance.support.postgres_probe import (
+        LearnerStateDigest,
+        normalize_scalar_for_json,
+        serialize_digest_to_json,
+    )
+
+    test_user_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    test_concept_id = UUID("7f110000-0000-4000-8000-000000000004")
+    test_review_item_id = UUID("11111111-1111-4000-8000-000000000001")
+    test_event_id = UUID("22222222-2222-4000-8000-000000000002")
+
+    digest = LearnerStateDigest(
+        user_id=str(test_user_id),
+        concept_id=str(test_concept_id),
+        user_exists=True,
+        profile_time_zone="Asia/Ho_Chi_Minh",
+        language_profile_ids=["33333333-3333-4000-8000-000000000003"],
+        is_concept_saved=True,
+        save_intent_count=1,
+        save_intent_ids=["44444444-4444-4000-8000-000000000004"],
+        review_item_count=1,
+        review_item_ids=[str(test_review_item_id)],
+        fsrs_state_count=1,
+        fsrs_states=[
+            {
+                "review_item_id": test_review_item_id,
+                "state": "learning",
+                "state_version": 2,
+                "last_review_at": datetime(2026, 9, 6, 10, 0, 0, tzinfo=UTC),
+                "due_at": datetime(2026, 9, 6, 14, 30, 0, tzinfo=UTC),
+                "stability": Decimal("4.12345678"),
+                "difficulty": Decimal("2.5000"),
+                "step": 1,
+            }
+        ],
+        learning_event_count=1,
+        learning_events=[
+            {
+                "learning_event_id": test_event_id,
+                "id": str(test_event_id),
+                "event_type": "learning.concept.saved.v1",
+                "source_type": "concept_save_intent",
+                "source_event_id": test_event_id,
+                "ingestion_sequence": 1,
+                "created_at": datetime(2026, 9, 6, 9, 0, 0, tzinfo=UTC),
+            }
+        ],
+        review_event_count=0,
+        review_events=[],
+        concept_state={
+            "status": "learning",
+            "state_version": 2,
+            "has_learning_intent": True,
+            "has_projectable_evidence": False,
+            "mastery": Decimal("0.50000000"),
+            "mastery_score": Decimal("0.50000000"),
+            "confidence": Decimal("0.7500"),
+            "recognition": Decimal("0.50000000"),
+            "recognition_score": Decimal("0.50000000"),
+            "listening": Decimal("0.50000000"),
+            "listening_score": Decimal("0.50000000"),
+            "production": Decimal("0.50000000"),
+            "production_score": Decimal("0.50000000"),
+            "recognition_evidence_count": 0,
+            "listening_evidence_count": 0,
+            "production_evidence_count": 0,
+        },
+        skill_states=[
+            {
+                "skill": "recognition",
+                "skill_type": "recognition",
+                "score": Decimal("0.6500"),
+                "confidence": Decimal("0.8000"),
+                "evidence_count": 5,
+            }
+        ],
+        today_plan_count=1,
+        today_plan_ids=["66666666-6666-4000-8000-000000000006"],
+        today_activity_review_item_ids=[str(test_review_item_id)],
+    )
+
+    # 1. JSON serialization succeeds without TypeError
+    json_str = serialize_digest_to_json(digest)
+    assert isinstance(json_str, str)
+
+    # 2. Parsed JSON preserves exact Decimal string precision without floating-point drift
+    data = json.loads(json_str)
+    fsrs = data["fsrs_states"][0]
+    assert fsrs["difficulty"] == "2.5000"
+    assert fsrs["stability"] == "4.12345678"
+
+    # 3. Timestamps are ISO-8601 formatted strings
+    assert fsrs["due_at"] == "2026-09-06T14:30:00+00:00"
+    assert fsrs["last_review_at"] == "2026-09-06T10:00:00+00:00"
+
+    # 4. UUIDs are canonical lowercase strings
+    assert fsrs["review_item_id"] == "11111111-1111-4000-8000-000000000001"
+    assert data["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
+
+    # 5. Concept state precision preserved
+    cs = data["concept_state"]
+    assert cs["mastery"] == "0.50000000"
+    assert cs["confidence"] == "0.7500"
+
+    # 6. Dates are ISO-8601 formatted
+    normalized_date = normalize_scalar_for_json(date(2026, 9, 6))
+    assert normalized_date == "2026-09-06"
+
+    # 7. No credentials leaked in output
+    for sensitive in ["password", "secret", "token", "postgres://", "postgresql://"]:
+        assert sensitive not in json_str.lower()
+
+
+def test_normalize_scalar_for_json_fails_closed_on_unsupported_types() -> None:
+    """Assert normalize_scalar_for_json fails closed on unknown or arbitrary object types."""
+    import pytest
+
+    from tests.acceptance.support.postgres_probe import normalize_scalar_for_json
+
+    class ArbitraryObject:
+        pass
+
+    with pytest.raises(TypeError, match="Unsupported type for canonical JSON serialization"):
+        normalize_scalar_for_json(ArbitraryObject())
+
+    with pytest.raises(TypeError, match="Unsupported type for canonical JSON serialization"):
+        normalize_scalar_for_json({1, 2, 3})
