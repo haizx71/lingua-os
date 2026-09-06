@@ -48,6 +48,9 @@ export interface LearnerConceptStateRecord {
   readonly listening_score?: number;
   readonly production?: number;
   readonly production_score?: number;
+  readonly recognition_evidence_count?: number;
+  readonly listening_evidence_count?: number;
+  readonly production_evidence_count?: number;
 }
 
 export interface LearnerTodayPlanRecord {
@@ -74,6 +77,22 @@ export interface LearnerTodayActivityRecord {
   readonly completed_count?: number;
 }
 
+export interface LearnerReviewEventRecord {
+  readonly id: string;
+  readonly review_item_id: string;
+  readonly idempotency_key: string;
+  readonly rating: string;
+  readonly response_time_ms: number;
+  readonly request_fingerprint: string;
+  readonly created_at: string;
+  readonly has_memory_snapshot: boolean;
+  readonly has_competence_snapshot: boolean;
+  readonly result_memory_snapshot?: Record<string, unknown> | null;
+  readonly result_competence_snapshot?: Record<string, unknown> | null;
+  readonly result_remaining_due_count?: number | null;
+  readonly result_feedback?: string | null;
+}
+
 export interface LearnerStateDigest {
   readonly user_id: string;
   readonly concept_id: string;
@@ -90,7 +109,7 @@ export interface LearnerStateDigest {
   readonly learning_event_count: number;
   readonly learning_events: LearnerLearningEventRecord[];
   readonly review_event_count: number;
-  readonly review_events: Array<Record<string, unknown>>;
+  readonly review_events: LearnerReviewEventRecord[];
   readonly concept_state: LearnerConceptStateRecord | null;
   readonly skill_states: Array<Record<string, unknown>>;
   readonly today_plan_count: number;
@@ -165,6 +184,7 @@ export interface PostgresCleanupVerificationResult {
     readonly today_plans?: number;
     readonly today_plan_activities?: number;
     readonly today_activity_review_items?: number;
+    readonly review_events?: number;
   };
   readonly anchor_concept_intact: boolean;
 }
@@ -262,6 +282,7 @@ export interface PostgresOrphanRecoveryResult {
     readonly today_plans?: number;
     readonly today_plan_activities?: number;
     readonly today_activity_review_items?: number;
+    readonly review_events?: number;
   };
 }
 

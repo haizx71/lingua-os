@@ -25,6 +25,7 @@ import {
   FRLL_ANCHOR_CONCEPT_ID,
   setupRealLearnerThroughSaveLearn,
   teardownRealLearner,
+  type ParsedMeResponse,
   type PhaseBCleanupReport,
 } from './phase_b_runner';
 import {
@@ -163,6 +164,247 @@ export interface PhaseCOptions {
   readonly dailyMinutes?: number;
 }
 
+export interface SetupTodayLearnerOptions extends PhaseCOptions {
+  readonly onUserCreated?: (userId: string) => void;
+  readonly tag?: string;
+}
+
+export interface TodayLearnerContext {
+  readonly user: { id: string; email: string; password?: string };
+  readonly session: { accessToken: string; userId: string };
+  readonly authHeaders: Record<string, string>;
+  readonly me: ParsedMeResponse;
+  readonly languageProfileId: string;
+  readonly conceptId: string;
+  readonly reviewItemId: string;
+  readonly todayPlan: TodayPlanDto;
+  readonly reviewActivity: TodayActivityDto;
+  readonly handoff: ReviewTargetHandoff;
+  readonly preTodayDigest: LearnerStateDigest;
+  readonly postTodayDigest: LearnerStateDigest;
+  readonly apiBaseUrl: string;
+}
+
+export async function setupRealLearnerThroughTodayTarget(
+  options: SetupTodayLearnerOptions = {}
+): Promise<TodayLearnerContext> {
+  const conceptId = options.conceptId ?? FRLL_ANCHOR_CONCEPT_ID;
+  const expectedTimeZone = options.timeZone ?? 'Asia/Ho_Chi_Minh';
+  const tag = options.tag ?? 'phase-c';
+
+  // 1. Setup real learner through Save/Learn (Phase B flow)
+  console.log(`[Today Setup][1/4] Running Save/Learn prerequisite setup (${tag})...`);
+  const context = await setupRealLearnerThroughSaveLearn({
+    ...options,
+    tag,
+  });
+
+  const reviewItemId = context.reviewItemId;
+  const preTodayDigest = context.postSaveDigest;
+
+  // Confirm pre-Today database invariants
+  if (preTodayDigest.review_item_count !== 1) {
+    throw new Error(
+      `FRLL-06 failure: pre-Today review_item_count is ${preTodayDigest.review_item_count} (expected 1).`
+    );
+  }
+  if (preTodayDigest.fsrs_state_count !== 1) {
+    throw new Error(
+      `FRLL-06 failure: pre-Today fsrs_state_count is ${preTodayDigest.fsrs_state_count} (expected 1).`
+    );
+  }
+  const preFsrs = preTodayDigest.fsrs_states[0];
+  if (preFsrs.state !== 'new') {
+    throw new Error(`FRLL-06 failure: pre-Today FSRS state is '${preFsrs.state}' (expected 'new').`);
+  }
+  if (preFsrs.state_version !== 1) {
+    throw new Error(
+      `FRLL-06 failure: pre-Today FSRS state_version is ${preFsrs.state_version} (expected 1).`
+    );
+  }
+  if (!preFsrs.due_at) {
+    throw new Error('FRLL-06 failure: pre-Today FSRS due_at is null.');
+  }
+  if (preFsrs.last_review_at !== null) {
+    throw new Error('FRLL-06 failure: pre-Today FSRS last_review_at must be null.');
+  }
+  if (preTodayDigest.review_event_count !== 0) {
+    throw new Error(
+      `FRLL-06 failure: pre-Today review_event_count is ${preTodayDigest.review_event_count} (expected 0).`
+    );
+  }
+  if (preTodayDigest.today_plan_count !== 0) {
+    throw new Error(
+      `FRLL-07 failure: pre-Today today_plan_count is ${preTodayDigest.today_plan_count} (expected 0).`
+    );
+  }
+
+  console.log(`  [OK] Pre-Today invariants verified: review_item_id=${reviewItemId}, FSRS state=new, due_at=${preFsrs.due_at}`);
+
+  // 2. Call FastAPI GET /v1/today (server authority, NO timezone param)
+  console.log('[Today Setup][2/4] Calling GET /v1/today (server-side authority, no timezone query parameter)...');
+  const todayUrl = `${context.apiBaseUrl}/v1/today?languageProfileId=${encodeURIComponent(context.languageProfileId)}`;
+  const todayRes = await fetch(todayUrl, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${context.session.accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (todayRes.status !== 200) {
+    const errBody = await todayRes.text();
+    throw new Error(`FRLL-07 failure: GET /v1/today returned HTTP ${todayRes.status}: ${errBody}`);
+  }
+
+  const todayPlan = parseTodayPlanResponse(await todayRes.json());
+  console.log(`  [OK] Today plan generated: planId=${todayPlan.id}, planDate=${todayPlan.planDate}, timeZone=${todayPlan.timeZone}`);
+
+  // 3. Validate TodayPlan response (C-01..C-05, C-10)
+  console.log('[Today Setup][3/4] Validating Today plan contract & scheduling assertions (C-01..C-05, C-10)...');
+
+  if (todayPlan.languageProfileId !== context.languageProfileId) {
+    throw new Error(
+      `FRLL-07 C-02 failure: todayPlan.languageProfileId (${todayPlan.languageProfileId}) != active profile (${context.languageProfileId}).`
+    );
+  }
+
+  if (todayPlan.timeZone !== expectedTimeZone) {
+    throw new Error(
+      `FRLL-07 C-03 failure: todayPlan.timeZone (${todayPlan.timeZone}) != expected profile timezone (${expectedTimeZone}).`
+    );
+  }
+
+  if (todayPlan.engineVersion !== 'today-heuristic-v1') {
+    throw new Error(
+      `FRLL-07 C-10 failure: todayPlan.engineVersion is '${todayPlan.engineVersion}' (expected 'today-heuristic-v1').`
+    );
+  }
+
+  const reviewActivities = todayPlan.activities.filter((a) => a.activityType === 'review');
+  if (reviewActivities.length === 0) {
+    throw new Error(
+      `FRLL-07 C-04 failure: Today plan contains 0 review activities (total activities: ${todayPlan.activities.length}).`
+    );
+  }
+
+  const targetActivity = reviewActivities.find(
+    (a) => a.reviewItemId === reviewItemId || a.conceptId === conceptId
+  );
+  if (!targetActivity) {
+    throw new Error(
+      `FRLL-07 C-05 failure: No review activity found mapping to reviewItemId=${reviewItemId} or conceptId=${conceptId}.`
+    );
+  }
+  if (targetActivity.reviewItemId !== reviewItemId) {
+    throw new Error(
+      `FRLL-07 C-05 failure: Review activity reviewItemId (${targetActivity.reviewItemId}) != ${reviewItemId}.`
+    );
+  }
+  if (targetActivity.conceptId !== conceptId) {
+    throw new Error(
+      `FRLL-07 C-05 failure: Review activity conceptId (${targetActivity.conceptId}) != ${conceptId}.`
+    );
+  }
+  if (!targetActivity.reasonCodes.includes('FSRS_DUE')) {
+    throw new Error(
+      `FRLL-07 C-05 failure: Review activity reasonCodes (${JSON.stringify(targetActivity.reasonCodes)}) does not include 'FSRS_DUE'.`
+    );
+  }
+
+  console.log(`  [OK] Target activity ${targetActivity.id} maps review_item_id=${reviewItemId} with FSRS_DUE.`);
+
+  // 4. Observational PostgreSQL probe proving C-06..C-08
+  console.log('[Today Setup][4/4] Observational PostgreSQL proof: verifying C-06..C-08...');
+  const postTodayDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
+
+  if (postTodayDigest.today_plan_count !== 1) {
+    throw new Error(
+      `FRLL-07 failure: DB today_plan_count is ${postTodayDigest.today_plan_count} (expected exactly 1).`
+    );
+  }
+  if (!postTodayDigest.today_plan_ids.includes(todayPlan.id)) {
+    throw new Error(
+      `FRLL-07 failure: DB today_plan_ids does not contain API plan ID ${todayPlan.id}.`
+    );
+  }
+  if (!postTodayDigest.today_activity_review_item_ids.includes(reviewItemId)) {
+    throw new Error(
+      `FRLL-07 failure: DB today_activity_review_item_ids does not contain ${reviewItemId}.`
+    );
+  }
+
+  if (postTodayDigest.review_item_count !== 1) {
+    throw new Error(
+      `FRLL-07 C-06 failure: review_item_count after Today is ${postTodayDigest.review_item_count} (expected 1).`
+    );
+  }
+  if (postTodayDigest.review_item_ids[0] !== reviewItemId) {
+    throw new Error('FRLL-07 C-06 failure: review_item_id mutated after Today generation.');
+  }
+  if (postTodayDigest.fsrs_state_count !== 1) {
+    throw new Error(
+      `FRLL-07 C-06 failure: fsrs_state_count after Today is ${postTodayDigest.fsrs_state_count} (expected 1).`
+    );
+  }
+
+  const postFsrs = postTodayDigest.fsrs_states[0];
+  if (postFsrs.review_item_id !== reviewItemId) {
+    throw new Error('FRLL-07 C-07 failure: FSRS state review_item_id mismatch.');
+  }
+  if (postFsrs.state !== 'new') {
+    throw new Error(`FRLL-07 C-07 failure: FSRS state mutated to '${postFsrs.state}' (expected 'new').`);
+  }
+  if (postFsrs.state_version !== 1) {
+    throw new Error(`FRLL-07 C-07 failure: FSRS state_version mutated to ${postFsrs.state_version} (expected 1).`);
+  }
+  if (postFsrs.due_at !== preFsrs.due_at) {
+    throw new Error(`FRLL-07 C-07 failure: FSRS due_at mutated: ${postFsrs.due_at} != ${preFsrs.due_at}`);
+  }
+  if (postFsrs.last_review_at !== null) {
+    throw new Error('FRLL-07 C-07 failure: FSRS last_review_at mutated to non-null before review.');
+  }
+
+  if (postTodayDigest.review_event_count !== 0) {
+    throw new Error(
+      `FRLL-07 C-08 failure: review_event_count is ${postTodayDigest.review_event_count} (expected 0 before Review).`
+    );
+  }
+  if (postTodayDigest.learning_event_count !== 1) {
+    throw new Error(
+      `FRLL-07 C-08 failure: learning_event_count is ${postTodayDigest.learning_event_count} (expected 1 save event).`
+    );
+  }
+  if (postTodayDigest.concept_state?.has_projectable_evidence !== false) {
+    throw new Error('FRLL-07 C-08 failure: concept_state has_projectable_evidence became true from Today.');
+  }
+
+  const handoff: ReviewTargetHandoff = {
+    actorId: context.user.id,
+    languageProfileId: context.languageProfileId,
+    conceptId,
+    reviewItemId,
+    todayPlanId: todayPlan.id,
+    todayActivityId: targetActivity.id,
+  };
+
+  return {
+    user: context.user,
+    session: context.session,
+    authHeaders: context.authHeaders,
+    me: context.me,
+    languageProfileId: context.languageProfileId,
+    conceptId,
+    reviewItemId,
+    todayPlan,
+    reviewActivity: targetActivity,
+    handoff,
+    preTodayDigest,
+    postTodayDigest,
+    apiBaseUrl: context.apiBaseUrl,
+  };
+}
+
 export interface PhaseCReport {
   readonly success: boolean;
   readonly userId: string;
@@ -185,17 +427,12 @@ export async function runPhaseCLearningLoop(
 ): Promise<PhaseCReport> {
   const startTime = Date.now();
   const conceptId = options.conceptId ?? FRLL_ANCHOR_CONCEPT_ID;
-  const expectedTimeZone = options.timeZone ?? 'Asia/Ho_Chi_Minh';
 
   let provisionedUserId: string | null = null;
   let resultReport: PhaseCReport | null = null;
 
   try {
-    // -------------------------------------------------------------------------
-    // C1. Setup real learner through Save/Learn (Phase B flow)
-    // -------------------------------------------------------------------------
-    console.log('[Phase C][1/6] Running Phase B setup: real auth, profile, and explicit Save/Learn...');
-    const context = await setupRealLearnerThroughSaveLearn({
+    const context = await setupRealLearnerThroughTodayTarget({
       ...options,
       tag: 'phase-c',
       onUserCreated: (uid) => {
@@ -203,197 +440,11 @@ export async function runPhaseCLearningLoop(
       },
     });
 
-    const reviewItemId = context.reviewItemId;
-    const preTodayDigest = context.postSaveDigest;
-
-    // Confirm pre-Today database invariants
-    if (preTodayDigest.review_item_count !== 1) {
-      throw new Error(`FRLL-06 failure: pre-Today review_item_count is ${preTodayDigest.review_item_count} (expected 1).`);
-    }
-    if (preTodayDigest.fsrs_state_count !== 1) {
-      throw new Error(`FRLL-06 failure: pre-Today fsrs_state_count is ${preTodayDigest.fsrs_state_count} (expected 1).`);
-    }
-    const preFsrs = preTodayDigest.fsrs_states[0];
-    if (preFsrs.state !== 'new') {
-      throw new Error(`FRLL-06 failure: pre-Today FSRS state is '${preFsrs.state}' (expected 'new').`);
-    }
-    if (preFsrs.state_version !== 1) {
-      throw new Error(`FRLL-06 failure: pre-Today FSRS state_version is ${preFsrs.state_version} (expected 1).`);
-    }
-    if (!preFsrs.due_at) {
-      throw new Error('FRLL-06 failure: pre-Today FSRS due_at is null.');
-    }
-    if (preFsrs.last_review_at !== null) {
-      throw new Error('FRLL-06 failure: pre-Today FSRS last_review_at must be null.');
-    }
-    if (preTodayDigest.review_event_count !== 0) {
-      throw new Error(`FRLL-06 failure: pre-Today review_event_count is ${preTodayDigest.review_event_count} (expected 0).`);
-    }
-    if (preTodayDigest.today_plan_count !== 0) {
-      throw new Error(`FRLL-07 failure: pre-Today today_plan_count is ${preTodayDigest.today_plan_count} (expected 0).`);
-    }
-
-    console.log(`  [OK] Pre-Today invariants verified: review_item_id=${reviewItemId}, FSRS state=new, due_at=${preFsrs.due_at}`);
-
-    // -------------------------------------------------------------------------
-    // C2. Call FastAPI GET /v1/today (server authority, NO timezone param)
-    // -------------------------------------------------------------------------
-    console.log('[Phase C][2/6] Calling GET /v1/today (server-side authority, no timezone query parameter)...');
-    const todayUrl = `${context.apiBaseUrl}/v1/today?languageProfileId=${encodeURIComponent(context.languageProfileId)}`;
-    const todayRes = await fetch(todayUrl, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${context.session.accessToken}`,
-        Accept: 'application/json',
-      },
-    });
-
-    if (todayRes.status !== 200) {
-      const errBody = await todayRes.text();
-      throw new Error(`FRLL-07 failure: GET /v1/today returned HTTP ${todayRes.status}: ${errBody}`);
-    }
-
-    const todayPlan = parseTodayPlanResponse(await todayRes.json());
-    console.log(`  [OK] Today plan generated: planId=${todayPlan.id}, planDate=${todayPlan.planDate}, timeZone=${todayPlan.timeZone}`);
-
-    // -------------------------------------------------------------------------
-    // C3. Validate TodayPlan response (C-01..C-05, C-10)
-    // -------------------------------------------------------------------------
-    console.log('[Phase C][3/6] Validating Today plan contract & scheduling assertions (C-01..C-05, C-10)...');
-
-    // C-02: Profile parity
-    if (todayPlan.languageProfileId !== context.languageProfileId) {
-      throw new Error(
-        `FRLL-07 C-02 failure: todayPlan.languageProfileId (${todayPlan.languageProfileId}) != active profile (${context.languageProfileId}).`
-      );
-    }
-
-    // C-03: Persisted timezone authority
-    if (todayPlan.timeZone !== expectedTimeZone) {
-      throw new Error(
-        `FRLL-07 C-03 failure: todayPlan.timeZone (${todayPlan.timeZone}) != expected profile timezone (${expectedTimeZone}).`
-      );
-    }
-
-    // C-10: Engine version
-    if (todayPlan.engineVersion !== 'today-heuristic-v1') {
-      throw new Error(
-        `FRLL-07 C-10 failure: todayPlan.engineVersion is '${todayPlan.engineVersion}' (expected 'today-heuristic-v1').`
-      );
-    }
-
-    // C-04: At least one review activity
-    const reviewActivities = todayPlan.activities.filter((a) => a.activityType === 'review');
-    if (reviewActivities.length === 0) {
-      throw new Error(
-        `FRLL-07 C-04 failure: Today plan contains 0 review activities (total activities: ${todayPlan.activities.length}).`
-      );
-    }
-
-    // C-05: Exact review target mapping & FSRS_DUE reason
-    const targetActivity = reviewActivities.find(
-      (a) => a.reviewItemId === reviewItemId || a.conceptId === conceptId
-    );
-    if (!targetActivity) {
-      throw new Error(
-        `FRLL-07 C-05 failure: No review activity found mapping to reviewItemId=${reviewItemId} or conceptId=${conceptId}.`
-      );
-    }
-    if (targetActivity.reviewItemId !== reviewItemId) {
-      throw new Error(
-        `FRLL-07 C-05 failure: Review activity reviewItemId (${targetActivity.reviewItemId}) != ${reviewItemId}.`
-      );
-    }
-    if (targetActivity.conceptId !== conceptId) {
-      throw new Error(
-        `FRLL-07 C-05 failure: Review activity conceptId (${targetActivity.conceptId}) != ${conceptId}.`
-      );
-    }
-    if (!targetActivity.reasonCodes.includes('FSRS_DUE')) {
-      throw new Error(
-        `FRLL-07 C-05 failure: Review activity reasonCodes (${JSON.stringify(targetActivity.reasonCodes)}) does not include 'FSRS_DUE'.`
-      );
-    }
-
-    console.log(`  [OK] C-01..C-05 & C-10 passed: Target activity ${targetActivity.id} maps review_item_id=${reviewItemId} with FSRS_DUE.`);
-
-    // -------------------------------------------------------------------------
-    // C4. Observational PostgreSQL probe proving C-06..C-08
-    // -------------------------------------------------------------------------
-    console.log('[Phase C][4/6] Observational PostgreSQL proof: verifying C-06..C-08...');
-    const postTodayDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
-
-    // C-01 (DB actor parity): Today plan row belongs to user
-    if (postTodayDigest.today_plan_count !== 1) {
-      throw new Error(
-        `FRLL-07 failure: DB today_plan_count is ${postTodayDigest.today_plan_count} (expected exactly 1).`
-      );
-    }
-    if (!postTodayDigest.today_plan_ids.includes(todayPlan.id)) {
-      throw new Error(
-        `FRLL-07 failure: DB today_plan_ids does not contain API plan ID ${todayPlan.id}.`
-      );
-    }
-    if (!postTodayDigest.today_activity_review_item_ids.includes(reviewItemId)) {
-      throw new Error(
-        `FRLL-07 failure: DB today_activity_review_item_ids does not contain ${reviewItemId}.`
-      );
-    }
-
-    // C-06: State isolation (zero new review items created)
-    if (postTodayDigest.review_item_count !== 1) {
-      throw new Error(
-        `FRLL-07 C-06 failure: review_item_count after Today is ${postTodayDigest.review_item_count} (expected 1).`
-      );
-    }
-    if (postTodayDigest.review_item_ids[0] !== reviewItemId) {
-      throw new Error('FRLL-07 C-06 failure: review_item_id mutated after Today generation.');
-    }
-    if (postTodayDigest.fsrs_state_count !== 1) {
-      throw new Error(
-        `FRLL-07 C-06 failure: fsrs_state_count after Today is ${postTodayDigest.fsrs_state_count} (expected 1).`
-      );
-    }
-
-    // C-07: FSRS memory lineage integrity
-    const postFsrs = postTodayDigest.fsrs_states[0];
-    if (postFsrs.review_item_id !== reviewItemId) {
-      throw new Error('FRLL-07 C-07 failure: FSRS state review_item_id mismatch.');
-    }
-    if (postFsrs.state !== 'new') {
-      throw new Error(`FRLL-07 C-07 failure: FSRS state mutated to '${postFsrs.state}' (expected 'new').`);
-    }
-    if (postFsrs.state_version !== 1) {
-      throw new Error(`FRLL-07 C-07 failure: FSRS state_version mutated to ${postFsrs.state_version} (expected 1).`);
-    }
-    if (postFsrs.due_at !== preFsrs.due_at) {
-      throw new Error(`FRLL-07 C-07 failure: FSRS due_at mutated: ${postFsrs.due_at} != ${preFsrs.due_at}`);
-    }
-    if (postFsrs.last_review_at !== null) {
-      throw new Error('FRLL-07 C-07 failure: FSRS last_review_at mutated to non-null before review.');
-    }
-
-    // C-08: Zero fake review evidence
-    if (postTodayDigest.review_event_count !== 0) {
-      throw new Error(
-        `FRLL-07 C-08 failure: review_event_count is ${postTodayDigest.review_event_count} (expected 0 before Review).`
-      );
-    }
-    if (postTodayDigest.learning_event_count !== 1) {
-      throw new Error(
-        `FRLL-07 C-08 failure: learning_event_count is ${postTodayDigest.learning_event_count} (expected 1 save event).`
-      );
-    }
-    if (postTodayDigest.concept_state?.has_projectable_evidence !== false) {
-      throw new Error('FRLL-07 C-08 failure: concept_state has_projectable_evidence became true from Today.');
-    }
-
-    console.log('  [OK] C-06..C-08 verified: Memory lineage unchanged, 0 fake review evidence, exact DB plan mapping.');
-
     // -------------------------------------------------------------------------
     // C5. Today plan generation idempotence (C-09)
     // -------------------------------------------------------------------------
     console.log('[Phase C][5/6] Re-requesting GET /v1/today to verify plan generation idempotence (C-09)...');
+    const todayUrl = `${context.apiBaseUrl}/v1/today?languageProfileId=${encodeURIComponent(context.languageProfileId)}`;
     const requeryRes = await fetch(todayUrl, {
       method: 'GET',
       headers: {
@@ -408,9 +459,9 @@ export async function runPhaseCLearningLoop(
     }
 
     const requeryPlan = parseTodayPlanResponse(await requeryRes.json());
-    if (requeryPlan.id !== todayPlan.id) {
+    if (requeryPlan.id !== context.todayPlan.id) {
       throw new Error(
-        `FRLL-07 C-09 failure: Re-requested plan ID (${requeryPlan.id}) != first plan ID (${todayPlan.id}).`
+        `FRLL-07 C-09 failure: Re-requested plan ID (${requeryPlan.id}) != first plan ID (${context.todayPlan.id}).`
       );
     }
 
@@ -428,32 +479,18 @@ export async function runPhaseCLearningLoop(
 
     console.log('  [OK] C-09 verified: Re-request returns identical plan ID and creates 0 duplicate rows.');
 
-    // -------------------------------------------------------------------------
-    // C6. Construct Review Target Handoff
-    // -------------------------------------------------------------------------
-    const handoff: ReviewTargetHandoff = {
-      actorId: context.user.id,
-      languageProfileId: context.languageProfileId,
-      conceptId,
-      reviewItemId,
-      todayPlanId: todayPlan.id,
-      todayActivityId: targetActivity.id,
-    };
-
-    console.log(`  [OK] Review Target Handoff ready: actorId=${handoff.actorId}, reviewItemId=${handoff.reviewItemId}, activityId=${handoff.todayActivityId}`);
-
     const durationMs = Date.now() - startTime;
     resultReport = {
       success: true,
       userId: context.user.id,
       languageProfileId: context.languageProfileId,
       conceptId,
-      reviewItemId,
-      todayPlan,
-      reviewActivity: targetActivity,
-      handoff,
-      preTodayDigest,
-      postTodayDigest,
+      reviewItemId: context.reviewItemId,
+      todayPlan: context.todayPlan,
+      reviewActivity: context.reviewActivity,
+      handoff: context.handoff,
+      preTodayDigest: context.preTodayDigest,
+      postTodayDigest: context.postTodayDigest,
       postRequeryDigest,
       durationMs,
       cleanupVerified: false,

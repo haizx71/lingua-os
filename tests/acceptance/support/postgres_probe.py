@@ -181,6 +181,7 @@ class PostgresLearnerProbe:
                            request_fingerprint, created_at,
                            (result_memory_snapshot IS NOT NULL) AS has_memory_snapshot,
                            (result_competence_snapshot IS NOT NULL) AS has_competence_snapshot,
+                           result_memory_snapshot, result_competence_snapshot,
                            result_remaining_due_count, result_feedback
                     FROM review_events
                     WHERE user_id = %s AND review_item_id = ANY(%s)
@@ -501,6 +502,9 @@ class PostgresLearnerProbe:
                 "SELECT count(*) AS c FROM today_activity_review_items WHERE user_id = %s",
                 (user_id,),
             )
+            review_events_count = get_count(
+                "SELECT count(*) AS c FROM review_events WHERE user_id = %s", (user_id,)
+            )
 
             anchor_count = 1
             if anchor_concept_id is not None:
@@ -522,6 +526,7 @@ class PostgresLearnerProbe:
                 and today_plan_count == 0
                 and today_activity_count == 0
                 and today_review_item_count == 0
+                and review_events_count == 0
                 and (anchor_count >= 1 if anchor_concept_id is not None else True)
             )
 
@@ -542,6 +547,7 @@ class PostgresLearnerProbe:
                     "today_plans": today_plan_count,
                     "today_plan_activities": today_activity_count,
                     "today_activity_review_items": today_review_item_count,
+                    "review_events": review_events_count,
                 },
                 "anchor_concept_intact": (
                     anchor_count >= 1 if anchor_concept_id is not None else True

@@ -369,6 +369,7 @@ def test_teardown_source_enforces_safety_invariants() -> None:
         "today_plans",
         "today_plan_activities",
         "today_activity_review_items",
+        "review_events",
     ]:
         assert f"FROM {tbl} WHERE" in verify_source
 
