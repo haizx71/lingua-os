@@ -97,7 +97,7 @@ class PostgresLearnerProbe:
                 fsrs_rows = conn.execute(
                     """
                     SELECT review_item_id, state, state_version, last_review_at, due_at,
-                           stability, difficulty, scheduled_days, reps, lapses
+                           stability, difficulty, step
                     FROM fsrs_states
                     WHERE user_id = %s AND review_item_id = ANY(%s)
                     ORDER BY review_item_id ASC
@@ -107,10 +107,12 @@ class PostgresLearnerProbe:
 
             learning_event_rows = conn.execute(
                 """
-                SELECT id, event_type, source_type, source_event_id, ingestion_sequence, created_at
+                SELECT learning_event_id,
+                       learning_event_id AS id,
+                       event_type, source_type, source_event_id, ingestion_sequence, created_at
                 FROM learning_events
                 WHERE user_id = %s AND concept_id = %s
-                ORDER BY ingestion_sequence ASC
+                ORDER BY ingestion_sequence ASC NULLS LAST, created_at ASC
                 """,
                 (user_id, concept_id),
             ).fetchall()
@@ -134,8 +136,12 @@ class PostgresLearnerProbe:
             concept_state_row = conn.execute(
                 """
                 SELECT status, state_version, has_learning_intent, has_projectable_evidence,
-                       mastery_score, confidence, recognition_score, listening_score,
-                       production_score, recognition_evidence_count,
+                       mastery, mastery AS mastery_score,
+                       confidence,
+                       recognition, recognition AS recognition_score,
+                       listening, listening AS listening_score,
+                       production, production AS production_score,
+                       recognition_evidence_count,
                        listening_evidence_count, production_evidence_count
                 FROM user_concept_states
                 WHERE user_id = %s AND concept_id = %s
@@ -145,17 +151,17 @@ class PostgresLearnerProbe:
 
             skill_rows = conn.execute(
                 """
-                SELECT skill_type, score, confidence, evidence_count
+                SELECT skill, skill AS skill_type, score, confidence, evidence_count
                 FROM user_skill_states
                 WHERE user_id = %s
-                ORDER BY skill_type ASC
+                ORDER BY skill ASC
                 """,
                 (user_id,),
             ).fetchall()
 
             today_plan_rows = conn.execute(
                 """
-                SELECT id, local_date, time_zone, engine_version, as_of
+                SELECT id, plan_date, plan_date AS local_date, time_zone, engine_version, as_of
                 FROM today_plans
                 WHERE user_id = %s
                 ORDER BY created_at ASC

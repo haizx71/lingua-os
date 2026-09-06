@@ -18,13 +18,15 @@ export interface LearnerFsrsStateRecord {
   readonly due_at: string | null;
   readonly stability: number | null;
   readonly difficulty: number | null;
-  readonly scheduled_days: number;
-  readonly reps: number;
-  readonly lapses: number;
+  readonly step?: number | null;
+  readonly scheduled_days?: number;
+  readonly reps?: number;
+  readonly lapses?: number;
 }
 
 export interface LearnerLearningEventRecord {
-  readonly id: string;
+  readonly learning_event_id: string;
+  readonly id?: string;
   readonly event_type: string;
   readonly source_type: string;
   readonly source_event_id: string;
@@ -37,11 +39,15 @@ export interface LearnerConceptStateRecord {
   readonly state_version: number;
   readonly has_learning_intent: boolean;
   readonly has_projectable_evidence: boolean;
-  readonly mastery_score: number | null;
+  readonly mastery?: number | null;
+  readonly mastery_score?: number | null;
   readonly confidence: number;
-  readonly recognition_score: number;
-  readonly listening_score: number;
-  readonly production_score: number;
+  readonly recognition?: number;
+  readonly recognition_score?: number;
+  readonly listening?: number;
+  readonly listening_score?: number;
+  readonly production?: number;
+  readonly production_score?: number;
 }
 
 export interface LearnerStateDigest {
