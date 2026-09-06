@@ -545,6 +545,110 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
       expect(report.brainConceptList?.items[0].concept.id).toBe('7f110000-0000-4000-8000-000000000004');
     });
 
+    it('proves Brain comparison authority derives strictly from fresh PostgreSQL concept_state rather than Review response snapshot or in-memory projection', async () => {
+      // Setup context with deliberately divergent/unquantized snapshot values in the Review response
+      const contextWithDivergentSnapshot = {
+        ...mockContext,
+        firstAnswerResponse: {
+          ...mockContext.firstAnswerResponse,
+          competence: {
+            recognition: { score: 0.99, confidence: 0.99, evidenceCount: 99 },
+            listening: { score: 0.99, confidence: 0.99, evidenceCount: 99 },
+            production: { score: 0.99, confidence: 0.99, evidenceCount: 99 },
+          },
+        },
+        postReviewDigest: {
+          ...mockContext.postReviewDigest,
+          review_events: [
+            {
+              ...mockContext.postReviewDigest.review_events[0],
+              result_competence_snapshot: {
+                production: { score: 0.99, confidence: 0.99, evidenceCount: 99 },
+              },
+            },
+          ],
+          concept_state: {
+            ...mockContext.postReviewDigest.concept_state!,
+            // Stored PostgreSQL authority strictly matches canonical numeric(10,8) scale: 0.03333333
+            confidence: 0.03333333,
+            production: 0.85,
+          },
+        },
+      };
+
+      const mockBrainDetail = {
+        concept: {
+          id: '7f110000-0000-4000-8000-000000000004',
+          languageCode: 'en',
+          canonicalForm: 'frll-anchor',
+          partOfSpeech: 'noun',
+          definitions: [],
+          examples: [],
+          relations: [],
+          learner: {
+            status: 'learning',
+            isDue: false,
+            exposureCount: 0,
+            lastSeenAt: null,
+            competence: {
+              recognition: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
+              listening: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
+              production: { score: 0.85, confidence: 0.03333333, evidenceCount: 1, updatedAt: '2026-09-06T08:00:00Z' },
+            },
+            mastery: null,
+            confidence: 0.03333333,
+            memory: {
+              state: 'learning',
+              dueAt: '2026-09-07T08:00:00Z',
+              lastReviewedAt: '2026-09-06T08:00:00Z',
+              isDue: false,
+            },
+          },
+        },
+        status: 'learning',
+        competence: {
+          recognition: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
+          listening: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
+          production: { score: 0.85, confidence: 0.03333333, evidenceCount: 1, updatedAt: '2026-09-06T08:00:00Z' },
+        },
+        mastery: null,
+        confidence: 0.03333333,
+        memory: {
+          state: 'learning',
+          dueAt: '2026-09-07T08:00:00Z',
+          lastReviewedAt: '2026-09-06T08:00:00Z',
+          isDue: false,
+        },
+        evidence: {
+          reviewCount: 1,
+          exposureCount: 0,
+        },
+      };
+
+      let capturedProbeCount = 0;
+      const report = await runPhaseELearningLoop({
+        seams: {
+          setupThroughReviewAnswer: async (opts) => {
+            opts.onUserCreated?.('11111111-1111-4111-8111-111111111111');
+            return contextWithDivergentSnapshot;
+          },
+          fetchFn: createMockBrainFetch(mockBrainDetail) as any,
+          captureDigest: async () => {
+            capturedProbeCount++;
+            return contextWithDivergentSnapshot.postReviewDigest;
+          },
+          teardownLearner: async () => validTeardownReport,
+        },
+      });
+
+      // Proof: Verification passes because Brain matches fresh PostgreSQL concept_state,
+      // proving zero reliance on the divergent Review response or event snapshot.
+      expect(report.success).toBe(true);
+      expect(capturedProbeCount).toBeGreaterThanOrEqual(2);
+      expect(report.brainConceptDetail.confidence).toBe(0.03333333);
+      expect(report.preBrainDigest.concept_state?.confidence).toBe(0.03333333);
+    });
+
     it('fails closed if Brain returns synthetic-zero status "unseen" despite persisted Review evidence', async () => {
       const syntheticZeroDetail = {
         concept: {
