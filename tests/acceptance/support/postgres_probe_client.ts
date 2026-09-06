@@ -50,6 +50,30 @@ export interface LearnerConceptStateRecord {
   readonly production_score?: number;
 }
 
+export interface LearnerTodayPlanRecord {
+  readonly id: string;
+  readonly plan_date: string;
+  readonly local_date?: string;
+  readonly time_zone: string;
+  readonly engine_version: string;
+  readonly as_of: string;
+}
+
+export interface LearnerTodayActivityRecord {
+  readonly id: string;
+  readonly plan_id: string;
+  readonly activity_type: string;
+  readonly position: number;
+  readonly estimated_minutes: number;
+  readonly reason_codes: string[];
+  readonly concept_id?: string | null;
+  readonly content_id?: string | null;
+  readonly review_item_id?: string | null;
+  readonly status: string;
+  readonly target_count?: number;
+  readonly completed_count?: number;
+}
+
 export interface LearnerStateDigest {
   readonly user_id: string;
   readonly concept_id: string;
@@ -72,7 +96,10 @@ export interface LearnerStateDigest {
   readonly today_plan_count: number;
   readonly today_plan_ids: string[];
   readonly today_activity_review_item_ids: string[];
+  readonly today_plans?: LearnerTodayPlanRecord[];
+  readonly today_activities?: LearnerTodayActivityRecord[];
 }
+
 
 export async function captureLearnerDigestFromPostgres(
   userId: string,
@@ -135,6 +162,9 @@ export interface PostgresCleanupVerificationResult {
     readonly profile_mutation_results: number;
     readonly user_concept_states: number;
     readonly user_saved_concepts: number;
+    readonly today_plans?: number;
+    readonly today_plan_activities?: number;
+    readonly today_activity_review_items?: number;
   };
   readonly anchor_concept_intact: boolean;
 }
@@ -229,6 +259,9 @@ export interface PostgresOrphanRecoveryResult {
     readonly profile_mutation_results: number;
     readonly user_concept_states: number;
     readonly user_saved_concepts: number;
+    readonly today_plans?: number;
+    readonly today_plan_activities?: number;
+    readonly today_activity_review_items?: number;
   };
 }
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -94,6 +94,8 @@ class LearnerStateDigest:
     today_plan_count: int
     today_plan_ids: list[str]
     today_activity_review_item_ids: list[str]
+    today_plans: list[dict[str, Any]] = field(default_factory=list)
+    today_activities: list[dict[str, Any]] = field(default_factory=list)
 
 
 class PostgresLearnerProbe:
@@ -236,6 +238,17 @@ class PostgresLearnerProbe:
                 ).fetchall()
                 today_review_item_ids = [str(r["review_item_id"]) for r in mapped_rows]
 
+            today_activity_rows = conn.execute(
+                """
+                SELECT id, plan_id, activity_type, position, estimated_minutes, reason_codes,
+                       concept_id, content_id, review_item_id, status, target_count, completed_count
+                FROM today_plan_activities
+                WHERE user_id = %s
+                ORDER BY position ASC, id ASC
+                """,
+                (user_id,),
+            ).fetchall()
+
             return LearnerStateDigest(
                 user_id=str(user_id),
                 concept_id=str(concept_id),
@@ -272,6 +285,14 @@ class PostgresLearnerProbe:
                 today_plan_count=len(today_plan_rows),
                 today_plan_ids=[str(p) for p in today_plan_ids],
                 today_activity_review_item_ids=today_review_item_ids,
+                today_plans=[
+                    {k: normalize_scalar_for_json(v) for k, v in row.items()}
+                    for row in today_plan_rows
+                ],
+                today_activities=[
+                    {k: normalize_scalar_for_json(v) for k, v in row.items()}
+                    for row in today_activity_rows
+                ],
             )
 
     def teardown_disposable_user(self, user_id: UUID) -> dict[str, Any]:
@@ -391,19 +412,14 @@ class PostgresLearnerProbe:
                 conn.execute("DELETE FROM fsrs_states WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM review_events WHERE user_id = %s", (user_id,))
                 conn.execute(
-                    """
-                    DELETE FROM today_activity_review_items
-                    WHERE review_item_id IN (
-                        SELECT id FROM review_items WHERE user_id = %s
-                    )
-                    """,
-                    (user_id,),
+                    "DELETE FROM today_activity_review_items WHERE user_id = %s", (user_id,)
                 )
+                conn.execute("DELETE FROM today_plan_activities WHERE user_id = %s", (user_id,))
+                conn.execute("DELETE FROM today_plans WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM review_items WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM user_concept_states WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM user_skill_states WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM user_saved_concepts WHERE user_id = %s", (user_id,))
-                conn.execute("DELETE FROM today_plans WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM user_languages WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM learner_profiles WHERE user_id = %s", (user_id,))
                 conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
@@ -475,6 +491,16 @@ class PostgresLearnerProbe:
             saved_concept_count = get_count(
                 "SELECT count(*) AS c FROM user_saved_concepts WHERE user_id = %s", (user_id,)
             )
+            today_plan_count = get_count(
+                "SELECT count(*) AS c FROM today_plans WHERE user_id = %s", (user_id,)
+            )
+            today_activity_count = get_count(
+                "SELECT count(*) AS c FROM today_plan_activities WHERE user_id = %s", (user_id,)
+            )
+            today_review_item_count = get_count(
+                "SELECT count(*) AS c FROM today_activity_review_items WHERE user_id = %s",
+                (user_id,),
+            )
 
             anchor_count = 1
             if anchor_concept_id is not None:
@@ -493,6 +519,9 @@ class PostgresLearnerProbe:
                 and profile_mutation_count == 0
                 and concept_state_count == 0
                 and saved_concept_count == 0
+                and today_plan_count == 0
+                and today_activity_count == 0
+                and today_review_item_count == 0
                 and (anchor_count >= 1 if anchor_concept_id is not None else True)
             )
 
@@ -510,6 +539,9 @@ class PostgresLearnerProbe:
                     "profile_mutation_results": profile_mutation_count,
                     "user_concept_states": concept_state_count,
                     "user_saved_concepts": saved_concept_count,
+                    "today_plans": today_plan_count,
+                    "today_plan_activities": today_activity_count,
+                    "today_activity_review_items": today_review_item_count,
                 },
                 "anchor_concept_intact": (
                     anchor_count >= 1 if anchor_concept_id is not None else True
