@@ -23,8 +23,10 @@
 
 import {
   FRLL_ANCHOR_CONCEPT_ID,
+  isTeardownVerified,
   setupRealLearnerThroughSaveLearn,
   teardownRealLearner,
+  type FrllCleanupReport,
   type ParsedMeResponse,
   type PhaseBCleanupReport,
 } from './phase_b_runner';
@@ -419,7 +421,7 @@ export interface PhaseCReport {
   readonly postRequeryDigest: LearnerStateDigest;
   readonly durationMs: number;
   readonly cleanupVerified: boolean;
-  readonly cleanupReport?: PhaseBCleanupReport;
+  readonly cleanupReport?: FrllCleanupReport;
 }
 
 export async function runPhaseCLearningLoop(
@@ -503,10 +505,11 @@ export async function runPhaseCLearningLoop(
       try {
         console.log(`[Phase C][6/6] Tearing down application state for disposable user ${provisionedUserId}...`);
         const cleanupReport = await teardownRealLearner(provisionedUserId, conceptId);
+        const cleanupVerified = isTeardownVerified(cleanupReport);
         if (resultReport) {
           resultReport = {
             ...resultReport,
-            cleanupVerified: true,
+            cleanupVerified,
             cleanupReport,
           };
         }

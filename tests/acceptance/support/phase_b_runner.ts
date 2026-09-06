@@ -128,6 +128,21 @@ export interface PhaseBCleanupReport {
   readonly postgresDetails: PostgresCleanupVerificationResult;
 }
 
+export type FrllCleanupReport = PhaseBCleanupReport;
+
+export function isTeardownVerified(
+  report: PhaseBCleanupReport | undefined | null
+): boolean {
+  if (!report) return false;
+  return Boolean(
+    report.authDeleted === true &&
+      report.postgresClean === true &&
+      report.postgresDetails &&
+      report.postgresDetails.clean === true &&
+      report.postgresDetails.anchor_concept_intact === true
+  );
+}
+
 export interface PhaseBReport {
   readonly success: boolean;
   readonly userId: string;
@@ -659,10 +674,11 @@ export async function runPhaseBLearningLoop(
     if (provisionedUserId) {
       try {
         const cleanupReport = await teardownRealLearner(provisionedUserId, conceptId);
+        const cleanupVerified = isTeardownVerified(cleanupReport);
         if (resultReport) {
           resultReport = {
             ...resultReport,
-            cleanupVerified: true,
+            cleanupVerified,
             cleanupReport,
           };
         }
@@ -673,6 +689,7 @@ export async function runPhaseBLearningLoop(
         if (resultReport) {
           throw new Error(`FRLL Phase B cleanup failure: ${(cleanupErr as Error).message}`);
         }
+        throw cleanupErr;
       }
     }
   }

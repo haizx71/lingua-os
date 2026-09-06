@@ -35,7 +35,9 @@
 import { randomUUID } from 'node:crypto';
 import {
   FRLL_ANCHOR_CONCEPT_ID,
+  isTeardownVerified,
   teardownRealLearner,
+  type FrllCleanupReport,
   type ParsedMeResponse,
   type PhaseBCleanupReport,
 } from './phase_b_runner';
@@ -269,7 +271,7 @@ export interface PhaseDReport {
   readonly postConflictDigest: LearnerStateDigest;
   readonly durationMs: number;
   readonly cleanupVerified: boolean;
-  readonly cleanupReport?: PhaseBCleanupReport;
+  readonly cleanupReport?: FrllCleanupReport;
 }
 
 export async function runPhaseDLearningLoop(
@@ -676,20 +678,25 @@ export async function runPhaseDLearningLoop(
       console.log(`[Phase D] Tearing down disposable test user ${provisionedUserId}...`);
       try {
         const cleanupReport = await teardownRealLearner(provisionedUserId, conceptId);
+        const cleanupVerified = isTeardownVerified(cleanupReport);
         if (resultReport) {
           resultReport = {
             ...resultReport,
-            cleanupVerified: cleanupReport.isClean,
+            cleanupVerified,
             cleanupReport,
           };
         }
-        if (!cleanupReport.isClean) {
-          console.error('[Phase D] CLEANUP WARNING: Database was not completely clean after teardown:', cleanupReport.counts);
+        if (!cleanupVerified) {
+          console.error(
+            '[Phase D] CLEANUP WARNING: Database or auth was not completely clean after teardown:',
+            cleanupReport.postgresDetails?.counts
+          );
         } else {
           console.log('  [OK] Disposable test user completely purged; 0 rows remain across all learner tables; anchor concept intact.');
         }
       } catch (err) {
         console.error('[Phase D] Error during teardown:', err);
+        throw err;
       }
     }
   }

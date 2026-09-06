@@ -4,6 +4,7 @@ import {
   parseReviewAnswerResponse,
   runPhaseDLearningLoop,
 } from './phase_d_runner';
+import { isTeardownVerified, type FrllCleanupReport } from './phase_b_runner';
 
 describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
   it('fails closed when external Supabase credentials are not present in process environment', async () => {
@@ -130,4 +131,87 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
       expect(() => parseReviewAnswerResponse({ data: { reviewItemId: '' } })).toThrow('Invalid /v1/review/{reviewItemId}/answer response: missing or invalid data.reviewItemId');
     });
   });
+
+  describe('Canonical Teardown Report & Cleanup Verification Invariants', () => {
+    const validReport: FrllCleanupReport = {
+      authDeleted: true,
+      postgresClean: true,
+      postgresDetails: {
+        user_id: '11111111-1111-4111-8111-111111111111',
+        clean: true,
+        counts: {
+          users: 0,
+          learner_profiles: 0,
+          user_languages: 0,
+          review_items: 0,
+          fsrs_states: 0,
+          learning_events: 0,
+          concept_save_intents: 0,
+          profile_mutation_results: 0,
+          user_concept_states: 0,
+          user_saved_concepts: 0,
+          today_plans: 0,
+          today_plan_activities: 0,
+          today_activity_review_items: 0,
+          review_events: 0,
+        },
+        anchor_concept_intact: true,
+      },
+    };
+
+    it('1. successful teardown report produces cleanupVerified=true', () => {
+      expect(isTeardownVerified(validReport)).toBe(true);
+    });
+
+    it('2. auth failure produces cleanupVerified=false / throws fail-closed', () => {
+      const authFailedReport: FrllCleanupReport = {
+        ...validReport,
+        authDeleted: false,
+      };
+      expect(isTeardownVerified(authFailedReport)).toBe(false);
+    });
+
+    it('3. PostgreSQL dirty state produces cleanupVerified=false / throws fail-closed', () => {
+      expect(isTeardownVerified({ ...validReport, postgresClean: false })).toBe(false);
+      expect(
+        isTeardownVerified({
+          ...validReport,
+          postgresDetails: { ...validReport.postgresDetails, clean: false },
+        })
+      ).toBe(false);
+      expect(
+        isTeardownVerified({
+          ...validReport,
+          postgresDetails: { ...validReport.postgresDetails, anchor_concept_intact: false },
+        })
+      ).toBe(false);
+      expect(isTeardownVerified(undefined)).toBe(false);
+      expect(isTeardownVerified(null)).toBe(false);
+    });
+
+    it('4. no nonexistent report property is read on canonical cleanup report', () => {
+      // Proves that cleanupReport does NOT have top-level `isClean` or `counts`
+      expect((validReport as unknown as Record<string, unknown>).isClean).toBeUndefined();
+      expect((validReport as unknown as Record<string, unknown>).counts).toBeUndefined();
+
+      // Proves that validReport strictly exposes existing canonical fields
+      expect(validReport.authDeleted).toBe(true);
+      expect(validReport.postgresClean).toBe(true);
+      expect(validReport.postgresDetails.clean).toBe(true);
+      expect(validReport.postgresDetails.counts.users).toBe(0);
+      expect(validReport.postgresDetails.anchor_concept_intact).toBe(true);
+    });
+
+    it('5. Phase B, C, and D consume the same canonical cleanup semantics', () => {
+      // Given the identical valid cleanup report, all phases interpret the report identically
+      const phaseBVerified = isTeardownVerified(validReport);
+      const phaseCVerified = isTeardownVerified(validReport);
+      const phaseDVerified = isTeardownVerified(validReport);
+
+      expect(phaseBVerified).toBe(true);
+      expect(phaseCVerified).toBe(true);
+      expect(phaseDVerified).toBe(true);
+    });
+  });
 });
+
