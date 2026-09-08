@@ -344,6 +344,25 @@ Dependencies: TASK-005, TASK-014
 Implement Progress according to the UI spec.
 *Note: UI analytics and evidence breakdown complete; marked BLOCKED pending Codex implementation of TASK-014.*
 
+## FRLL acceptance checkpoint
+
+### FRLL-F1 — Acceptance harness hardening R2/R3/R4/R5
+
+Owner: CODEX
+Checkpoint status: READY_FOR_INDEPENDENT_REVIEW
+Baseline: `1878406`; preserves existing B/C/D/E acceptance flows.
+
+Complete replay/snapshot and database equality, full persisted competence observations,
+fail-closed disposable Auth cleanup verification and frozen OpenAPI response validation.
+All eight required adversarial attacks fail closed. Support: 115 PASS; full Vitest:
+581 PASS / 4 environment-conditional SKIP; relevant PostgreSQL/backend: 100 PASS.
+Static gates pass; protected product areas unchanged. Evidence and limitations:
+`docs/FRLL_F1_HARDENING_REVIEW.md`.
+
+FRLL is not DONE or ACCEPTED. Remaining REQUIRED:
+R1 — real browser/reload/lost-response/Actor-B/isolation proof.
+Do not begin R1 or new product work under the F1 authorization.
+
 ## Onboarding
 
 ### TASK-016 — Starting Level Estimate v1

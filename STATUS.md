@@ -3,6 +3,19 @@
 Version: 4.0 starter
 Phase: TASK-017, TASK-008B, TASK-009 Mini, TASK-011 Today Live & TASK-007 Review Live Completed and Accepted; GAP-01 Closed
 
+## Current checkpoint — FRLL F1
+
+- R2/R3/R4/R5 acceptance-harness hardening: `READY_FOR_INDEPENDENT_REVIEW`.
+- Complete replay/snapshot and database equality, persisted competence authority,
+  fail-closed Auth deletion verification, and frozen OpenAPI response validation implemented.
+- Verification: support 115 PASS; full Vitest 581 PASS / 4 live-environment SKIP;
+  relevant real-PostgreSQL/backend tests 100 PASS; standalone probe 12 PASS / 1 SKIP.
+  Ruff, mypy, generated freshness, cache-preserving typecheck and lint PASS.
+- No changes to contracts, services, migrations, frontend source or tsbuildinfo.
+- Evidence: `docs/FRLL_F1_HARDENING_REVIEW.md`. FRLL is not DONE or ACCEPTED.
+- Remaining REQUIRED: R1 — real browser/reload/lost-response/Actor-B/isolation proof.
+  R1 was not started in F1 and requires separate execution authorization.
+
 ## Completed
 
 - `TASK-007`: Review UI / Review Live Frontend Integration — ACCEPTED
@@ -481,8 +494,8 @@ None.
 ## Next
 
 - TASK-008A is DONE. Do not start another task without explicit authorization.
-- TASK-017 hardening in progress across Slices A–D (C-1 through C-6).
+- TASK-017 hardening is accepted and DONE (see completed evidence above).
 - TASK-017A is DONE and verified (458/458 backend, 338/338 frontend).
-- TASK-007 is ACCEPTED and DONE; First Real Learning Loop has not started and requires explicit authorization.
+- TASK-007 is ACCEPTED and DONE; FRLL F1 is READY_FOR_INDEPENDENT_REVIEW, not FRLL acceptance. R1 remains required and was not started in F1.
 - Reader resume position, synchronized preferences, saved-sentence notes, configurable learner
   new-concept budget, data export and account deletion remain future schema/contract decisions.
