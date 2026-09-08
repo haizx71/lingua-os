@@ -33,6 +33,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   FRLL_ANCHOR_CONCEPT_ID,
   isTeardownVerified,
@@ -54,192 +55,27 @@ import {
   type LearnerStateDigest,
 } from './postgres_probe_client';
 
-export interface CompetenceScoreDto {
-  readonly score: number;
-  readonly confidence: number;
-  readonly evidenceCount: number;
-  readonly updatedAt?: string | null;
+import type { components } from '../../../packages/types/src/generated/openapi';
+import { validateContract } from './contract_validation';
+import { assertReviewPersistence } from './review_persistence';
+
+export type CompetenceScoreDto = components['schemas']['CompetenceScore'];
+export type CompetenceSignalsDto = components['schemas']['CompetenceSignals'];
+export type MemorySnapshotDto = components['schemas']['MemorySnapshot'];
+export type ReviewQueueItemDto = components['schemas']['ReviewQueueItem'];
+export type ReviewAnswerResultDto = components['schemas']['ReviewAnswerResult'];
+
+export function parseCompetenceSignals(json: unknown): CompetenceSignalsDto {
+  return validateContract('CompetenceSignals', json);
 }
-
-export interface CompetenceSignalsDto {
-  readonly recognition: CompetenceScoreDto;
-  readonly listening: CompetenceScoreDto;
-  readonly production: CompetenceScoreDto;
+export function parseMemorySnapshot(json: unknown): MemorySnapshotDto {
+  return validateContract('MemorySnapshot', json);
 }
-
-export interface MemorySnapshotDto {
-  readonly state: string;
-  readonly dueAt: string;
-  readonly lastReviewedAt?: string | null;
-  readonly isDue: boolean;
+export function parseReviewQueueResponse(json: unknown): readonly ReviewQueueItemDto[] {
+  return validateContract('ReviewQueueResponse', json).data;
 }
-
-export interface ReviewQueueItemDto {
-  readonly reviewItemId: string;
-  readonly concept: {
-    readonly id: string;
-    readonly canonicalForm: string;
-    readonly partOfSpeech?: string | null;
-    readonly status: string;
-    readonly isDue: boolean;
-  };
-  readonly exerciseMode: string;
-  readonly prompt: {
-    readonly promptText: string;
-    readonly contextSentence?: string | null;
-    readonly translation?: string | null;
-  };
-  readonly memory: MemorySnapshotDto;
-  readonly competence: CompetenceSignalsDto;
-}
-
-export interface ReviewAnswerResultDto {
-  readonly reviewItemId: string;
-  readonly memory: MemorySnapshotDto;
-  readonly competence: CompetenceSignalsDto;
-  readonly remainingDueCount: number;
-  readonly feedback?: string | null;
-}
-
-function parseCompetenceScore(item: unknown, label: string): CompetenceScoreDto {
-  if (!item || typeof item !== 'object') {
-    throw new Error(`Invalid Review response: ${label} is not an object`);
-  }
-  const scoreObj = item as Record<string, unknown>;
-  if (typeof scoreObj.score !== 'number') {
-    throw new Error(`Invalid Review response: ${label}.score is not a number`);
-  }
-  if (typeof scoreObj.confidence !== 'number') {
-    throw new Error(`Invalid Review response: ${label}.confidence is not a number`);
-  }
-  if (typeof scoreObj.evidenceCount !== 'number') {
-    throw new Error(`Invalid Review response: ${label}.evidenceCount is not a number`);
-  }
-  return {
-    score: scoreObj.score,
-    confidence: scoreObj.confidence,
-    evidenceCount: scoreObj.evidenceCount,
-    updatedAt: typeof scoreObj.updatedAt === 'string' ? scoreObj.updatedAt : null,
-  };
-}
-
-export function parseCompetenceSignals(item: unknown): CompetenceSignalsDto {
-  if (!item || typeof item !== 'object') {
-    throw new Error('Invalid Review response: competence is not an object');
-  }
-  const comp = item as Record<string, unknown>;
-  return {
-    recognition: parseCompetenceScore(comp.recognition, 'competence.recognition'),
-    listening: parseCompetenceScore(comp.listening, 'competence.listening'),
-    production: parseCompetenceScore(comp.production, 'competence.production'),
-  };
-}
-
-export function parseMemorySnapshot(item: unknown): MemorySnapshotDto {
-  if (!item || typeof item !== 'object') {
-    throw new Error('Invalid Review response: memory is not an object');
-  }
-  const mem = item as Record<string, unknown>;
-  if (typeof mem.state !== 'string' || !mem.state) {
-    throw new Error('Invalid Review response: missing or invalid memory.state');
-  }
-  if (typeof mem.dueAt !== 'string' || !mem.dueAt) {
-    throw new Error('Invalid Review response: missing or invalid memory.dueAt');
-  }
-  if (typeof mem.isDue !== 'boolean') {
-    throw new Error('Invalid Review response: memory.isDue is not a boolean');
-  }
-  return {
-    state: mem.state,
-    dueAt: mem.dueAt,
-    lastReviewedAt: typeof mem.lastReviewedAt === 'string' ? mem.lastReviewedAt : null,
-    isDue: mem.isDue,
-  };
-}
-
-export function parseReviewQueueResponse(json: unknown): ReviewQueueItemDto[] {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/review/queue response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!Array.isArray(data)) {
-    throw new Error('Invalid /v1/review/queue response: data is not an array');
-  }
-
-  return data.map((item, index) => {
-    if (!item || typeof item !== 'object') {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} is not an object`);
-    }
-    const qItem = item as Record<string, unknown>;
-    if (typeof qItem.reviewItemId !== 'string' || !qItem.reviewItemId) {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} missing reviewItemId`);
-    }
-    if (!qItem.concept || typeof qItem.concept !== 'object') {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} missing concept`);
-    }
-    const conceptObj = qItem.concept as Record<string, unknown>;
-    if (typeof conceptObj.id !== 'string' || !conceptObj.id) {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} concept missing id`);
-    }
-    if (typeof conceptObj.canonicalForm !== 'string') {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} concept missing canonicalForm`);
-    }
-    if (typeof qItem.exerciseMode !== 'string') {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} missing exerciseMode`);
-    }
-    if (!qItem.prompt || typeof qItem.prompt !== 'object') {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} missing prompt`);
-    }
-    const promptObj = qItem.prompt as Record<string, unknown>;
-    if (typeof promptObj.promptText !== 'string') {
-      throw new Error(`Invalid /v1/review/queue response: item at index ${index} prompt missing promptText`);
-    }
-
-    return {
-      reviewItemId: qItem.reviewItemId,
-      concept: {
-        id: conceptObj.id,
-        canonicalForm: conceptObj.canonicalForm,
-        partOfSpeech: typeof conceptObj.partOfSpeech === 'string' ? conceptObj.partOfSpeech : null,
-        status: typeof conceptObj.status === 'string' ? conceptObj.status : 'discovered',
-        isDue: typeof conceptObj.isDue === 'boolean' ? conceptObj.isDue : true,
-      },
-      exerciseMode: qItem.exerciseMode,
-      prompt: {
-        promptText: promptObj.promptText,
-        contextSentence: typeof promptObj.contextSentence === 'string' ? promptObj.contextSentence : null,
-        translation: typeof promptObj.translation === 'string' ? promptObj.translation : null,
-      },
-      memory: parseMemorySnapshot(qItem.memory),
-      competence: parseCompetenceSignals(qItem.competence),
-    };
-  });
-}
-
 export function parseReviewAnswerResponse(json: unknown): ReviewAnswerResultDto {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/review/{reviewItemId}/answer response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid /v1/review/{reviewItemId}/answer response: data is not an object');
-  }
-  const d = data as Record<string, unknown>;
-
-  if (typeof d.reviewItemId !== 'string' || !d.reviewItemId) {
-    throw new Error('Invalid /v1/review/{reviewItemId}/answer response: missing or invalid data.reviewItemId');
-  }
-  if (typeof d.remainingDueCount !== 'number') {
-    throw new Error('Invalid /v1/review/{reviewItemId}/answer response: data.remainingDueCount is not a number');
-  }
-
-  return {
-    reviewItemId: d.reviewItemId,
-    memory: parseMemorySnapshot(d.memory),
-    competence: parseCompetenceSignals(d.competence),
-    remainingDueCount: d.remainingDueCount,
-    feedback: typeof d.feedback === 'string' ? d.feedback : null,
-  };
+  return validateContract('ReviewAnswerResponse', json).data;
 }
 
 export interface PhaseDExecutionSeams {
@@ -400,6 +236,9 @@ export async function setupRealLearnerThroughReviewAnswer(
 
   // Verify queue fetch caused zero state mutations
   const postQueueDigest = await captureDigest(context.user.id, conceptId);
+  if (!isDeepStrictEqual(postQueueDigest, preAnswerDigest)) {
+    throw new Error('FRLL-08 failure: Queue fetch mutated persisted learner digest.');
+  }
   if (postQueueDigest.review_event_count !== 0) {
     throw new Error('FRLL-08 failure: Queue fetch created unexpected review_event.');
   }
@@ -531,6 +370,7 @@ export async function setupRealLearnerThroughReviewAnswer(
   }
 
   // D. Competence Update
+  assertReviewPersistence(firstAnswer, preAnswerDigest, postAnswerDigest, context.languageProfileId);
   const conceptState = postAnswerDigest.concept_state;
   if (!conceptState) {
     throw new Error('FRLL-09 failure: concept_state row missing in PostgreSQL.');
@@ -555,7 +395,7 @@ export async function setupRealLearnerThroughReviewAnswer(
     actorId: context.user.id,
     reviewItemId,
     reviewEventId: revEvent.id,
-    reviewLearningEventId: reviewLearningEvent.id,
+    reviewLearningEventId: reviewLearningEvent.learning_event_id,
     postReviewDigest: postAnswerDigest,
     preAnswerDigest,
     queueItem: targetQueueItem,
@@ -621,6 +461,9 @@ export async function runPhaseDLearningLoop(
     }
 
     const replayedAnswer = parseReviewAnswerResponse(await replayRes.json());
+    if (!isDeepStrictEqual(replayedAnswer, firstAnswer)) {
+      throw new Error('FRLL-10 failure: Replay semantic response differs from committed first answer.');
+    }
     if (replayedAnswer.reviewItemId !== firstAnswer.reviewItemId) {
       throw new Error('FRLL-10 failure: Replay reviewItemId mismatch.');
     }
@@ -639,6 +482,9 @@ export async function runPhaseDLearningLoop(
 
     // Probe DB: Verify 0 duplicate rows and state_version remains 2
     const postReplayDigest = await captureDigest(context.user.id, conceptId);
+    if (!isDeepStrictEqual(postReplayDigest, context.postReviewDigest)) {
+      throw new Error('FRLL-10 failure: Replay changed persisted learner digest.');
+    }
     if (postReplayDigest.review_item_count !== 1) {
       throw new Error(`FRLL-10 failure: post-replay review_item_count is ${postReplayDigest.review_item_count} (expected 1).`);
     }
@@ -684,10 +530,18 @@ export async function runPhaseDLearningLoop(
       throw new Error(`Conflict guard failure: Reusing Idempotency-Key with changed rating returned HTTP ${conflictRes.status} (expected 409 Conflict): ${respBody}`);
     }
 
+    const conflictBody = validateContract('ErrorEnvelope', await conflictRes.json());
+    if (conflictBody?.error?.code !== 'IDEMPOTENCY_KEY_REUSED') {
+      throw new Error('Conflict guard failure: expected canonical IDEMPOTENCY_KEY_REUSED error.');
+    }
+
     console.log('  [OK] Conflict guard verified: Server rejected reused Idempotency-Key with HTTP 409.');
 
     // Probe DB: verify conflict produced zero state mutations
     const postConflictDigest = await captureDigest(context.user.id, conceptId);
+    if (!isDeepStrictEqual(postConflictDigest, postReplayDigest)) {
+      throw new Error('Conflict guard failure: persisted learner digest mutated on 409.');
+    }
     if (postConflictDigest.fsrs_states[0]?.state_version !== 2) {
       throw new Error('Conflict guard failure: FSRS state_version mutated on 409.');
     }
@@ -712,13 +566,19 @@ export async function runPhaseDLearningLoop(
       },
     });
 
-    if (postQueueRes.status === 200) {
+    if (postQueueRes.status !== 200) {
+      throw new Error(`Review queue reconcile failure: HTTP ${postQueueRes.status}; expected 200.`);
+    }
+    {
       const remainingQueueItems = parseReviewQueueResponse(await postQueueRes.json());
       const stillDue = remainingQueueItems.some((item) => item.reviewItemId === reviewItemId);
       if (stillDue) {
         throw new Error(`Review queue reconcile failure: reviewItemId ${reviewItemId} is still present in queue after being answered.`);
       }
       console.log(`  [OK] Queue reconciled: reviewItemId is no longer due (remaining items in queue: ${remainingQueueItems.length}).`);
+    }
+    if (!isDeepStrictEqual(await captureDigest(context.user.id, conceptId), postConflictDigest)) {
+      throw new Error('Review queue reconcile failure: persisted learner digest mutated.');
     }
 
     const durationMs = Date.now() - startTime;

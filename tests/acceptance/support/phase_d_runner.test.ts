@@ -1,3 +1,4 @@
+import { priorConcept, reviewedConcept, priorSkills, reviewedSkills, priorHead, reviewedHead, parameterLineage, parameterId, committedMemorySnapshot, committedCompetenceSnapshot, reviewedSignals } from './projection-fixtures';
 import { describe, it, expect } from 'vitest';
 import {
   parseReviewQueueResponse,
@@ -52,17 +53,16 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
             memory: {
               state: 'new',
               dueAt: '2026-09-06T08:00:00Z',
-              lastReviewedAt: null,
               isDue: true,
             },
             competence: {
-              recognition: { score: 0.0, confidence: 0.0, evidenceCount: 0, updatedAt: null },
-              listening: { score: 0.0, confidence: 0.0, evidenceCount: 0, updatedAt: null },
-              production: { score: 0.0, confidence: 0.0, evidenceCount: 0, updatedAt: null },
+              recognition: { score: 0.0, confidence: 0.0, evidenceCount: 0 },
+              listening: { score: 0.0, confidence: 0.0, evidenceCount: 0 },
+              production: { score: 0.0, confidence: 0.0, evidenceCount: 0 },
             },
           },
         ],
-        meta: {
+        meta: { apiVersion: '1.0',
           requestId: '55555555-5555-4555-8555-555555555555',
           nextCursor: null,
           hasMore: false,
@@ -84,9 +84,9 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
     });
 
     it('throws descriptive error if missing data envelope or invalid items', () => {
-      expect(() => parseReviewQueueResponse({})).toThrow('Invalid /v1/review/queue response: missing data envelope');
-      expect(() => parseReviewQueueResponse({ data: null })).toThrow('Invalid /v1/review/queue response: data is not an array');
-      expect(() => parseReviewQueueResponse({ data: [{}] })).toThrow('Invalid /v1/review/queue response: item at index 0 missing reviewItemId');
+      expect(() => parseReviewQueueResponse({})).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseReviewQueueResponse({ data: null })).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseReviewQueueResponse({ data: [{}] })).toThrow('frozen OpenAPI validation failed');
     });
   });
 
@@ -102,14 +102,14 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
             isDue: false,
           },
           competence: {
-            recognition: { score: 0.0, confidence: 0.0, evidenceCount: 0, updatedAt: null },
-            listening: { score: 0.0, confidence: 0.0, evidenceCount: 0, updatedAt: null },
+            recognition: { score: 0.0, confidence: 0.0, evidenceCount: 0 },
+            listening: { score: 0.0, confidence: 0.0, evidenceCount: 0 },
             production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: '2026-09-06T08:00:00Z' },
           },
           remainingDueCount: 0,
           feedback: 'Đã ghi nhận kết quả ôn tập.',
         },
-        meta: {
+        meta: { apiVersion: '1.0',
           requestId: '55555555-5555-4555-8555-555555555555',
         },
       };
@@ -126,9 +126,9 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
     });
 
     it('throws descriptive error if missing data envelope or invalid fields', () => {
-      expect(() => parseReviewAnswerResponse({})).toThrow('Invalid /v1/review/{reviewItemId}/answer response: missing data envelope');
-      expect(() => parseReviewAnswerResponse({ data: null })).toThrow('Invalid /v1/review/{reviewItemId}/answer response: data is not an object');
-      expect(() => parseReviewAnswerResponse({ data: { reviewItemId: '' } })).toThrow('Invalid /v1/review/{reviewItemId}/answer response: missing or invalid data.reviewItemId');
+      expect(() => parseReviewAnswerResponse({})).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseReviewAnswerResponse({ data: null })).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseReviewAnswerResponse({ data: { reviewItemId: '' } })).toThrow('frozen OpenAPI validation failed');
     });
   });
 
@@ -284,8 +284,9 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
         review_events: [],
         learning_event_count: 1,
         learning_events: [{ event_type: 'learning.concept.saved.v1', source_type: 'concept_save_intent' }],
-        concept_state: { has_projectable_evidence: false, production_evidence_count: 0 },
-        skill_states: [],
+        concept_state: priorConcept,
+        skill_states: priorSkills,
+        projection_heads: [priorHead], review_items: [], save_intents: [],
         today_plan_count: 1,
         today_plan_ids: ['33333333-3333-4333-8333-333333333333'],
         today_activity_review_item_ids: ['44444444-4444-4444-8444-444444444444'],
@@ -300,6 +301,7 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
           {
             review_item_id: '44444444-4444-4444-8444-444444444444',
             state: 'learning',
+            parameter_set_id: parameterId, params_version: 'fsrs-6-default-v1', step: 0,
             state_version: 2,
             due_at: '2026-09-07T08:00:00Z',
             last_review_at: '2026-09-06T08:00:00Z',
@@ -317,26 +319,26 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
             created_at: '2026-09-06T08:00:00Z',
             has_memory_snapshot: true,
             has_competence_snapshot: true,
-            result_memory_snapshot: { state: 'learning' },
-            result_competence_snapshot: { production: { score: 0.85 } },
+            result_memory_snapshot: committedMemorySnapshot,
+            result_competence_snapshot: committedCompetenceSnapshot,
+            result_remaining_due_count: 0, result_feedback: 'OK',
           },
         ],
         learning_event_count: 2,
         learning_events: [
           { event_type: 'learning.concept.saved.v1', source_type: 'concept_save_intent' },
           {
+            ...parameterLineage,
+            learning_event_id: '77777777-7777-4777-8777-777777777777',
             event_type: 'learning.review.completed.v1',
             source_type: 'review_event',
             source_event_id: '66666666-6666-4666-8666-666666666666',
             ingestion_sequence: 2,
           },
         ],
-        concept_state: {
-          has_projectable_evidence: true,
-          production_evidence_count: 1,
-          recognition_evidence_count: 0,
-          listening_evidence_count: 0,
-        },
+        concept_state: reviewedConcept,
+        skill_states: reviewedSkills,
+        projection_heads: [reviewedHead],
       };
     }
 
@@ -372,7 +374,10 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
                   },
                 ]
               : [];
-          return new Response(JSON.stringify({ data: queueData }), { status: 200 });
+          return new Response(JSON.stringify({ data: queueData, meta: {
+            apiVersion: '1.0', requestId: '990e8400-e29b-41d4-a716-446655440000',
+            nextCursor: null, hasMore: false, pageSize: queueData.length,
+          } }), { status: 200 });
         }
 
         if (urlStr.includes('/answer') && method === 'POST') {
@@ -383,7 +388,10 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
           }
           const body = JSON.parse(String(init?.body ?? '{}'));
           if (body.rating === 'hard') {
-            return new Response(JSON.stringify({ error: 'Conflict' }), { status: 409 });
+            return new Response(JSON.stringify({ error: {
+              code: 'IDEMPOTENCY_KEY_REUSED', message: 'Conflict',
+              requestId: '11111111-1111-4111-8111-111111111111',
+            } }), { status: 409 });
           }
           return new Response(
             JSON.stringify({
@@ -395,14 +403,11 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
                   lastReviewedAt: '2026-09-06T08:00:00Z',
                   isDue: false,
                 },
-                competence: {
-                  recognition: { score: 0, confidence: 0, evidenceCount: 0 },
-                  listening: { score: 0, confidence: 0, evidenceCount: 0 },
-                  production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
-                },
+                competence: reviewedSignals,
                 remainingDueCount: 0,
                 feedback: 'OK',
               },
+              meta: { apiVersion: '1.0', requestId: '990e8400-e29b-41d4-a716-446655440000' },
             }),
             { status: 200 }
           );
@@ -448,6 +453,121 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
         anchor_concept_intact: true,
       },
     };
+
+    it.each(['snapshot score', 'snapshot due', 'snapshot remaining'])('F1 rejects first committed %s mismatch', async attack => {
+      const harness = createMockHarness();
+      let probes = 0;
+      await expect(runPhaseDLearningLoop({ seams: {
+        setupThroughToday: async opts => { opts.onUserCreated?.(mockContext.user.id); return mockContext; },
+        fetchFn: harness.fetchFn,
+        captureDigest: async () => {
+          const digest = JSON.parse(JSON.stringify(await harness.captureDigest()));
+          if (++probes >= 2) {
+            const event = digest.review_events[0];
+            if (attack === 'snapshot score') event.result_competence_snapshot.production.score = 0.01;
+            if (attack === 'snapshot due') event.result_memory_snapshot.dueAt = '2030-01-01T00:00:00Z';
+            if (attack === 'snapshot remaining') event.result_remaining_due_count = 123;
+          }
+          return digest;
+        },
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow('persisted');
+    });
+
+    it.each(['score', 'confidence', 'last_evidence_at'])('F1 rejects first Review skill %s mismatch', async field => {
+      const harness = createMockHarness();
+      let probes = 0;
+      await expect(runPhaseDLearningLoop({ seams: {
+        setupThroughToday: async opts => { opts.onUserCreated?.(mockContext.user.id); return mockContext; },
+        fetchFn: harness.fetchFn,
+        captureDigest: async () => {
+          const digest = JSON.parse(JSON.stringify(await harness.captureDigest()));
+          if (++probes >= 2) digest.skill_states[2][field] = field === 'last_evidence_at' ? '2030-01-01T00:00:00Z' : 0.99;
+          return digest;
+        },
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow(`persisted production skill ${field}`);
+    });
+
+    it.each(['production score', 'remainingDueCount', 'queue HTTP 500'])('F1 rejects corrupted %s', async (attack) => {
+      const harness = createMockHarness();
+      let answers = 0;
+      let queues = 0;
+      const fetchFn: typeof fetch = async (url, init) => {
+        const response = await harness.fetchFn(url, init);
+        if (String(url).includes('/answer') && ++answers === 2) {
+          const raw = await response.json();
+          if (attack === 'production score') raw.data.competence.production.score = 0.01;
+          if (attack === 'remainingDueCount') raw.data.remainingDueCount = 123;
+          return new Response(JSON.stringify(raw), { status: response.status });
+        }
+        if (String(url).includes('/queue') && ++queues === 2 && attack === 'queue HTTP 500') {
+          return new Response('{}', { status: 500 });
+        }
+        return response;
+      };
+      await expect(runPhaseDLearningLoop({ seams: {
+        setupThroughToday: async (opts) => {
+          opts.onUserCreated?.(mockContext.user.id);
+          return mockContext;
+        },
+        fetchFn,
+        captureDigest: harness.captureDigest,
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow(attack === 'queue HTTP 500' ? 'queue reconcile' : 'Replay');
+    });
+
+    it.each(['feedback', 'memory isDue', 'recognition confidence', 'missing score'])('F1 rejects replay %s drift', async attack => {
+      const harness = createMockHarness();
+      let answers = 0;
+      await expect(runPhaseDLearningLoop({ seams: {
+        setupThroughToday: async opts => { opts.onUserCreated?.(mockContext.user.id); return mockContext; },
+        fetchFn: async (url, init) => {
+          const response = await harness.fetchFn(url, init);
+          if (String(url).includes('/answer') && ++answers === 2) {
+            const raw = await response.json();
+            if (attack === 'feedback') raw.data.feedback = 'corrupted';
+            if (attack === 'memory isDue') raw.data.memory.isDue = true;
+            if (attack === 'recognition confidence') raw.data.competence.recognition.confidence = 0.1;
+            if (attack === 'missing score') delete raw.data.competence.production.score;
+            return new Response(JSON.stringify(raw), { status: 200 });
+          }
+          return response;
+        },
+        captureDigest: harness.captureDigest,
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow(attack === 'missing score' ? 'frozen OpenAPI' : 'Replay');
+    });
+
+    it.each(['replay', 'conflict'])('F1 rejects %s persisted mass mutation despite unchanged row counts', async stage => {
+      const harness = createMockHarness();
+      let probes = 0;
+      await expect(runPhaseDLearningLoop({ seams: {
+        setupThroughToday: async opts => { opts.onUserCreated?.(mockContext.user.id); return mockContext; },
+        fetchFn: harness.fetchFn,
+        captureDigest: async () => {
+          const digest = JSON.parse(JSON.stringify(await harness.captureDigest()));
+          if (++probes === (stage === 'replay' ? 3 : 4)) digest.concept_state.production_positive_mass = '999';
+          return digest;
+        },
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow('persisted learner digest');
+    });
+
+    it('F1 rejects noncanonical HTTP 409 error code', async () => {
+      const harness = createMockHarness();
+      await expect(runPhaseDLearningLoop({ seams: {
+        setupThroughToday: async opts => { opts.onUserCreated?.(mockContext.user.id); return mockContext; },
+        fetchFn: async (url, init) => {
+          const response = await harness.fetchFn(url, init);
+          if (response.status !== 409) return response;
+          const raw = await response.json(); raw.error.code = 'CONFLICT';
+          return new Response(JSON.stringify(raw), { status: 409 });
+        },
+        captureDigest: harness.captureDigest,
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow('expected canonical IDEMPOTENCY_KEY_REUSED');
+    });
 
     it('proves resultReport is constructed before cleanup, finally mutates it, and returned report has cleanupVerified=true', async () => {
       const harness = createMockHarness();
@@ -533,4 +653,3 @@ describe('Phase D Runner Static Invariants & Fail-Closed Behavior', () => {
     });
   });
 });
-
