@@ -1,3 +1,4 @@
+import { priorConcept, reviewedSkills, reviewedAt } from './projection-fixtures';
 import { describe, it, expect } from 'vitest';
 import {
   parseBrainConceptResponse,
@@ -53,7 +54,6 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             status: 'learning',
             isDue: false,
             exposureCount: 0,
-            lastSeenAt: null,
             memory: {
               state: 'learning',
               dueAt: '2026-09-07T08:00:00Z',
@@ -63,7 +63,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             competence: {
               recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
               listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-              production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+              production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
             },
           },
         },
@@ -71,7 +71,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
         competence: {
           recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
           listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-          production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+          production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
         },
         mastery: null,
         confidence: 0.6,
@@ -87,7 +87,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
           lastReviewedAt: '2026-09-06T08:00:00Z',
         },
       },
-      meta: { requestId: 'req-123' },
+      meta: { apiVersion: '1.0', requestId: '990e8400-e29b-41d4-a716-446655440000' },
     };
 
     it('correctly parses canonical FastAPI/OpenAPI BrainConceptResponse', () => {
@@ -104,14 +104,14 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
     });
 
     it('throws descriptive error if missing data envelope or invalid fields', () => {
-      expect(() => parseBrainConceptResponse(null)).toThrow('missing data envelope');
-      expect(() => parseBrainConceptResponse({})).toThrow('missing data envelope');
-      expect(() => parseBrainConceptResponse({ data: {} })).toThrow('missing or invalid data.concept');
+      expect(() => parseBrainConceptResponse(null)).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseBrainConceptResponse({})).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseBrainConceptResponse({ data: {} })).toThrow('frozen OpenAPI validation failed');
       expect(() =>
         parseBrainConceptResponse({
           data: { concept: { id: '', canonicalForm: 'a' } },
         })
-      ).toThrow('data.concept.id is missing or invalid');
+      ).toThrow('frozen OpenAPI validation failed');
     });
   });
 
@@ -126,7 +126,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             discovered: 0,
             learning: 1,
             active: 0,
-            retained: 0,
+            familiar: 0, weak: 0, forgotten: 0,
             mastered: 0,
           },
           dueCount: 0,
@@ -134,11 +134,13 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
           competence: {
             recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
             listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-            production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+            production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
           },
           recentConcepts: [],
+          startingLevelEstimate: null,
           calculatedAt: '2026-09-06T08:00:00Z',
         },
+        meta: { apiVersion: '1.0', requestId: '990e8400-e29b-41d4-a716-446655440000' },
       });
 
       expect(parsed.languageProfileId).toBe('22222222-2222-4222-8222-222222222222');
@@ -159,10 +161,10 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
               isDue: false,
             },
             competence: {
-              recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
-              listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-              production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
-            },
+                      recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
+                      listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
+                      production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
+                    },
             mastery: null,
             confidence: 0.6,
             memory: {
@@ -174,8 +176,9 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             exposureCount: 0,
           },
         ],
-        meta: {
-          requestId: 'req-456',
+        meta: { apiVersion: '1.0',
+          requestId: '990e8400-e29b-41d4-a716-446655440000',
+          nextCursor: null,
           hasMore: false,
           pageSize: 1,
         },
@@ -269,7 +272,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
         competence: {
           recognition: { score: 0, confidence: 0, evidenceCount: 0 },
           listening: { score: 0, confidence: 0, evidenceCount: 0 },
-          production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+          production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
         },
         remainingDueCount: 0,
       },
@@ -313,6 +316,8 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
           { event_type: 'learning.review.completed.v1', source_type: 'review_event', source_event_id: '66666666-6666-4666-8666-666666666666', ingestion_sequence: 2 },
         ],
         concept_state: {
+          ...priorConcept,
+          production_last_evidence_at: reviewedAt,
           status: 'learning',
           state_version: 2,
           has_learning_intent: true,
@@ -327,7 +332,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
           listening: 0.5,
           listening_evidence_count: 0,
         },
-        skill_states: [],
+        skill_states: reviewedSkills,
         today_plan_count: 1,
         today_plan_ids: ['33333333-3333-4333-8333-333333333333'],
         today_activity_review_item_ids: ['44444444-4444-4444-8444-444444444444'],
@@ -354,7 +359,6 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                 status: 'learning',
                 isDue: false,
                 exposureCount: 0,
-                lastSeenAt: null,
                 memory: {
                   state: 'learning',
                   dueAt: '2026-09-07T08:00:00Z',
@@ -364,7 +368,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                 competence: {
                   recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
                   listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-                  production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+                  production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
                 },
               },
             },
@@ -372,7 +376,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             competence: {
               recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
               listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-              production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+              production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
             },
             mastery: null,
             confidence: 0.6,
@@ -385,11 +389,10 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             evidence: {
               exposureCount: 0,
               reviewCount: 1,
-              lastSeenAt: null,
               lastReviewedAt: '2026-09-06T08:00:00Z',
             },
           };
-          return new Response(JSON.stringify({ data: detailData, meta: { requestId: 'req-1' } }), {
+          return new Response(JSON.stringify({ data: detailData, meta: { apiVersion: '1.0', requestId: '990e8400-e29b-41d4-a716-446655440000' } }), {
             status: 200,
           });
         }
@@ -405,7 +408,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                   discovered: 0,
                   learning: 1,
                   active: 0,
-                  retained: 0,
+                  familiar: 0, weak: 0, forgotten: 0,
                   mastered: 0,
                 },
                 dueCount: 0,
@@ -413,7 +416,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                 competence: {
                   recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
                   listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-                  production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+                  production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
                 },
                 recentConcepts: [
                   {
@@ -423,13 +426,13 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                       status: 'learning',
                       isDue: false,
                     },
-                    competence: {
+                    competence: customDetail?.competence ?? {
                       recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
                       listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-                      production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
+                      production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
                     },
                     mastery: null,
-                    confidence: 0.6,
+                    confidence: customDetail?.confidence ?? 0.6,
                     memory: {
                       state: 'learning',
                       dueAt: '2026-09-07T08:00:00Z',
@@ -440,7 +443,9 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                   },
                 ],
                 calculatedAt: '2026-09-06T08:00:00Z',
+                startingLevelEstimate: null,
               },
+              meta: { apiVersion: '1.0', requestId: '990e8400-e29b-41d4-a716-446655440000' },
             }),
             { status: 200 }
           );
@@ -457,13 +462,13 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                     status: 'learning',
                     isDue: false,
                   },
-                  competence: {
-                    recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
-                    listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-                    production: { score: 0.85, confidence: 0.6, evidenceCount: 1 },
-                  },
+                  competence: customDetail?.competence ?? {
+                      recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
+                      listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
+                      production: { score: 0.85, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt },
+                    },
                   mastery: null,
-                  confidence: 0.6,
+                  confidence: customDetail?.confidence ?? 0.6,
                   memory: {
                     state: 'learning',
                     dueAt: '2026-09-07T08:00:00Z',
@@ -473,8 +478,9 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
                   exposureCount: 0,
                 },
               ],
-              meta: {
-                requestId: 'req-list-1',
+              meta: { apiVersion: '1.0',
+                requestId: '990e8400-e29b-41d4-a716-446655440000',
+                nextCursor: null,
                 hasMore: false,
                 pageSize: 1,
               },
@@ -512,6 +518,27 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
         anchor_concept_intact: true,
       },
     };
+
+    it.each(['production confidence', 'nested learner status'])('F1 rejects Brain %s mismatch against PostgreSQL', async attack => {
+      const fetchBase = createMockBrainFetch();
+      await expect(runPhaseELearningLoop({ seams: {
+        setupThroughReviewAnswer: async (opts) => {
+          opts.onUserCreated?.(mockContext.user.id);
+          return mockContext;
+        },
+        fetchFn: async (url) => {
+          const response = await fetchBase(url);
+          const raw = await response.json();
+          if (String(url).includes('/concepts/')) {
+            if (attack === 'production confidence') raw.data.competence.production.confidence = 0.99;
+            else raw.data.concept.learner.status = 'mastered';
+          }
+          return new Response(JSON.stringify(raw), { status: response.status });
+        },
+        captureDigest: async () => mockContext.postReviewDigest,
+        teardownLearner: async () => validTeardownReport,
+      } })).rejects.toThrow(`Brain ${attack}`);
+    });
 
     it('proves happy path: Brain projects authoritative competence without synthetic fallback, GET is read-only, and cleanup passes', async () => {
       const report = await runPhaseELearningLoop({
@@ -571,6 +598,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             ...mockContext.postReviewDigest.concept_state!,
             // Stored PostgreSQL authority strictly matches canonical numeric(10,8) scale: 0.03333333
             confidence: 0.03333333,
+            production_confidence: 0.03333333,
             production: 0.85,
           },
         },
@@ -589,14 +617,11 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             status: 'learning',
             isDue: false,
             exposureCount: 0,
-            lastSeenAt: null,
             competence: {
-              recognition: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
-              listening: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
+              recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
+              listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
               production: { score: 0.85, confidence: 0.03333333, evidenceCount: 1, updatedAt: '2026-09-06T08:00:00Z' },
             },
-            mastery: null,
-            confidence: 0.03333333,
             memory: {
               state: 'learning',
               dueAt: '2026-09-07T08:00:00Z',
@@ -607,8 +632,8 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
         },
         status: 'learning',
         competence: {
-          recognition: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
-          listening: { score: 0.5, confidence: 0, evidenceCount: 0, updatedAt: null },
+          recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
+          listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
           production: { score: 0.85, confidence: 0.03333333, evidenceCount: 1, updatedAt: '2026-09-06T08:00:00Z' },
         },
         mastery: null,
@@ -721,7 +746,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
             competence: {
               recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
               listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-              production: { score: 0.42, confidence: 0.6, evidenceCount: 1 }, // Divergent!
+              production: { score: 0.42, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt }, // Divergent!
             },
           },
         },
@@ -729,7 +754,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
         competence: {
           recognition: { score: 0.5, confidence: 0, evidenceCount: 0 },
           listening: { score: 0.5, confidence: 0, evidenceCount: 0 },
-          production: { score: 0.42, confidence: 0.6, evidenceCount: 1 }, // Divergent!
+          production: { score: 0.42, confidence: 0.6, evidenceCount: 1, updatedAt: reviewedAt }, // Divergent!
         },
         mastery: null,
         confidence: 0.6,
@@ -759,7 +784,7 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
           },
         })
       ).rejects.toThrow(
-        /FRLL-12 failure: Brain production score 0\.42 != PostgreSQL 0\.85/
+        'Brain production score: differs from persisted numeric(10,8) authority'
       );
     });
 
@@ -850,10 +875,11 @@ describe('Phase E Runner Static Invariants & Fail-Closed Behavior', () => {
       ).not.toThrow();
     });
 
-    it('accepts null/undefined equivalence for unreached mastery', () => {
+    it('accepts explicit null mastery but rejects omitted authority', () => {
       expect(isProjectionNumberEquivalent(null, null)).toBe(true);
-      expect(isProjectionNumberEquivalent(undefined, undefined)).toBe(true);
-      expect(isProjectionNumberEquivalent(null, undefined)).toBe(true);
+      expect(isProjectionNumberEquivalent(undefined, undefined)).toBe(false);
+      expect(isProjectionNumberEquivalent(null, undefined)).toBe(false);
+      expect(() => expectProjectionNumberEquivalent(null, undefined, 'Brain mastery')).toThrow('missing');
       expect(() =>
         expectProjectionNumberEquivalent(null, null, 'Brain mastery')
       ).not.toThrow();

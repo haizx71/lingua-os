@@ -41,13 +41,8 @@ import {
 } from './phase_b_runner';
 import {
   setupRealLearnerThroughReviewAnswer,
-  type CompetenceScoreDto,
-  type CompetenceSignalsDto,
-  type MemorySnapshotDto,
   type ReviewAnswerLearnerContext,
   type SetupReviewAnswerLearnerOptions,
-  parseCompetenceSignals,
-  parseMemorySnapshot,
 } from './phase_d_runner';
 import {
   captureLearnerDigestFromPostgres,
@@ -79,6 +74,7 @@ export function isProjectionNumberEquivalent(
   expected: number | string | null | undefined,
   tolerance: number = PROJECTION_NUMERIC_TOLERANCE
 ): boolean {
+  if (actual === undefined || expected === undefined) return false;
   if (actual === null || actual === undefined) {
     return expected === null || expected === undefined;
   }
@@ -102,6 +98,9 @@ export function expectProjectionNumberEquivalent(
   fieldName: string,
   tolerance: number = PROJECTION_NUMERIC_TOLERANCE
 ): void {
+  if (actual === undefined || expected === undefined) {
+    throw new Error(`FRLL-12 failure: ${fieldName} authority is missing.`);
+  }
   if (actual === null || actual === undefined) {
     if (expected !== null && expected !== undefined) {
       throw new Error(`FRLL-12 failure: ${fieldName} is ${actual} (expected ${expected}).`);
@@ -130,282 +129,26 @@ export function expectProjectionNumberEquivalent(
   }
 }
 
-export interface BrainConceptDetailDto {
-  readonly concept: {
-    readonly id: string;
-    readonly languageCode: string;
-    readonly canonicalForm: string;
-    readonly partOfSpeech?: string | null;
-    readonly level?: {
-      readonly frameworkCode: string;
-      readonly code: string;
-      readonly label?: string | null;
-    } | null;
-    readonly definitions: readonly {
-      readonly definition: string;
-      readonly translation?: string | null;
-      readonly languageCode: string;
-      readonly order: number;
-    }[];
-    readonly examples: readonly {
-      readonly sentenceId: string;
-      readonly text: string;
-      readonly translation?: string | null;
-      readonly audioUrl?: string | null;
-    }[];
-    readonly relations: readonly {
-      readonly conceptId: string;
-      readonly relationType: string;
-      readonly canonicalForm: string;
-    }[];
-    readonly learner: {
-      readonly status: string;
-      readonly isDue: boolean;
-      readonly exposureCount: number;
-      readonly lastSeenAt?: string | null;
-      readonly memory?: MemorySnapshotDto | null;
-      readonly competence: CompetenceSignalsDto;
-    };
-    readonly attribution?: {
-      readonly sourceName: string;
-      readonly licenseCode: string;
-      readonly attributionText?: string | null;
-      readonly sourceUrl?: string | null;
-    } | null;
-  };
-  readonly status: string;
-  readonly competence: CompetenceSignalsDto;
-  readonly mastery: number | null;
-  readonly confidence: number;
-  readonly memory: MemorySnapshotDto | null;
-  readonly evidence: {
-    readonly exposureCount: number;
-    readonly reviewCount: number;
-    readonly lastSeenAt?: string | null;
-    readonly lastReviewedAt?: string | null;
-  };
-}
+import type { components } from '../../../packages/types/src/generated/openapi';
+import { validateContract } from './contract_validation';
+import { assertExact, assertPersistedCompetence, assertProjectionNumber, assertTimestamp } from './persisted_assertions';
 
-export interface BrainConceptSummaryDto {
-  readonly concept: {
-    readonly id: string;
-    readonly canonicalForm: string;
-    readonly partOfSpeech?: string | null;
-    readonly status: string;
-    readonly isDue: boolean;
-  };
-  readonly competence: CompetenceSignalsDto;
-  readonly mastery: number | null;
-  readonly confidence: number;
-  readonly memory?: MemorySnapshotDto | null;
-  readonly exposureCount: number;
-  readonly lastSeenAt?: string | null;
-}
-
-export interface BrainSummaryDto {
-  readonly languageProfileId: string;
-  readonly statusCounts: {
-    readonly total: number;
-    readonly unseen: number;
-    readonly discovered: number;
-    readonly learning: number;
-    readonly active: number;
-    readonly retained: number;
-    readonly mastered: number;
-    readonly due?: number;
-    readonly weak?: number;
-    readonly forgotten?: number;
-  };
-  readonly dueCount: number;
-  readonly memoryHealth: number | null;
-  readonly competence: CompetenceSignalsDto;
-  readonly startingLevelEstimate?: unknown | null;
-  readonly recentConcepts: readonly BrainConceptSummaryDto[];
-  readonly calculatedAt: string;
-}
-
+export type BrainConceptDetailDto = components['schemas']['BrainConceptDetail'];
+export type BrainConceptSummaryDto = components['schemas']['BrainConceptSummary'];
+export type BrainSummaryDto = components['schemas']['BrainSummary'];
 export interface BrainConceptListResponseDto {
   readonly items: readonly BrainConceptSummaryDto[];
-  readonly meta: {
-    readonly requestId: string;
-    readonly nextCursor?: string | null;
-    readonly hasMore: boolean;
-    readonly pageSize: number;
-  };
+  readonly meta: components['schemas']['CursorResponseMeta'];
 }
-
 export function parseBrainConceptResponse(json: unknown): BrainConceptDetailDto {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data is not an object');
-  }
-  const d = data as Record<string, unknown>;
-
-  if (!d.concept || typeof d.concept !== 'object') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: missing or invalid data.concept');
-  }
-  const c = d.concept as Record<string, unknown>;
-  if (typeof c.id !== 'string' || !c.id) {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.concept.id is missing or invalid');
-  }
-  if (typeof c.canonicalForm !== 'string') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.concept.canonicalForm is missing or invalid');
-  }
-  if (typeof d.status !== 'string' || !d.status) {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.status is missing or invalid');
-  }
-  if (typeof d.confidence !== 'number') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.confidence is not a number');
-  }
-  if (d.mastery !== null && typeof d.mastery !== 'number') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.mastery must be a number or null');
-  }
-  if (!d.evidence || typeof d.evidence !== 'object') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: missing or invalid data.evidence');
-  }
-  const ev = d.evidence as Record<string, unknown>;
-  if (typeof ev.exposureCount !== 'number') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.evidence.exposureCount is not a number');
-  }
-  if (typeof ev.reviewCount !== 'number') {
-    throw new Error('Invalid /v1/brain/concepts/{conceptId} response: data.evidence.reviewCount is not a number');
-  }
-
-  const memory = d.memory ? parseMemorySnapshot(d.memory) : null;
-  const competence = parseCompetenceSignals(d.competence);
-
-  const learnerObj = (c.learner as Record<string, unknown>) ?? {};
-
-  return {
-    concept: {
-      id: c.id,
-      languageCode: typeof c.languageCode === 'string' ? c.languageCode : 'en',
-      canonicalForm: c.canonicalForm,
-      partOfSpeech: typeof c.partOfSpeech === 'string' ? c.partOfSpeech : null,
-      level: (c.level as any) ?? null,
-      definitions: Array.isArray(c.definitions) ? (c.definitions as any) : [],
-      examples: Array.isArray(c.examples) ? (c.examples as any) : [],
-      relations: Array.isArray(c.relations) ? (c.relations as any) : [],
-      learner: {
-        status: typeof learnerObj.status === 'string' ? learnerObj.status : d.status,
-        isDue: typeof learnerObj.isDue === 'boolean' ? learnerObj.isDue : (memory?.isDue ?? false),
-        exposureCount: typeof learnerObj.exposureCount === 'number' ? learnerObj.exposureCount : ev.exposureCount,
-        lastSeenAt: typeof learnerObj.lastSeenAt === 'string' ? learnerObj.lastSeenAt : null,
-        memory: learnerObj.memory ? parseMemorySnapshot(learnerObj.memory) : memory,
-        competence: learnerObj.competence ? parseCompetenceSignals(learnerObj.competence) : competence,
-      },
-      attribution: (c.attribution as any) ?? null,
-    },
-    status: d.status,
-    competence,
-    mastery: d.mastery,
-    confidence: d.confidence,
-    memory,
-    evidence: {
-      exposureCount: ev.exposureCount,
-      reviewCount: ev.reviewCount,
-      lastSeenAt: typeof ev.lastSeenAt === 'string' ? ev.lastSeenAt : null,
-      lastReviewedAt: typeof ev.lastReviewedAt === 'string' ? ev.lastReviewedAt : null,
-    },
-  };
+  return validateContract('BrainConceptResponse', json).data;
 }
-
 export function parseBrainSummaryResponse(json: unknown): BrainSummaryDto {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/brain/summary response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid /v1/brain/summary response: data is not an object');
-  }
-  const d = data as Record<string, unknown>;
-
-  if (typeof d.languageProfileId !== 'string' || !d.languageProfileId) {
-    throw new Error('Invalid /v1/brain/summary response: data.languageProfileId is missing or invalid');
-  }
-  if (!d.statusCounts || typeof d.statusCounts !== 'object') {
-    throw new Error('Invalid /v1/brain/summary response: data.statusCounts is missing or invalid');
-  }
-  if (typeof d.dueCount !== 'number') {
-    throw new Error('Invalid /v1/brain/summary response: data.dueCount is not a number');
-  }
-
-  const sc = d.statusCounts as Record<string, number>;
-  const recent = Array.isArray(d.recentConcepts) ? d.recentConcepts : [];
-
-  return {
-    languageProfileId: d.languageProfileId,
-    statusCounts: {
-      total: sc.total ?? 0,
-      unseen: sc.unseen ?? 0,
-      discovered: sc.discovered ?? 0,
-      learning: sc.learning ?? 0,
-      active: sc.active ?? 0,
-      retained: sc.retained ?? 0,
-      mastered: sc.mastered ?? 0,
-      due: sc.due,
-      weak: sc.weak,
-      forgotten: sc.forgotten,
-    },
-    dueCount: d.dueCount,
-    memoryHealth: typeof d.memoryHealth === 'number' ? d.memoryHealth : null,
-    competence: parseCompetenceSignals(d.competence),
-    startingLevelEstimate: d.startingLevelEstimate,
-    recentConcepts: recent.map((item: any) => ({
-      concept: {
-        id: item.concept?.id,
-        canonicalForm: item.concept?.canonicalForm,
-        partOfSpeech: item.concept?.partOfSpeech ?? null,
-        status: item.concept?.status,
-        isDue: item.concept?.isDue ?? false,
-      },
-      competence: parseCompetenceSignals(item.competence),
-      mastery: typeof item.mastery === 'number' ? item.mastery : null,
-      confidence: typeof item.confidence === 'number' ? item.confidence : 0,
-      memory: item.memory ? parseMemorySnapshot(item.memory) : null,
-      exposureCount: typeof item.exposureCount === 'number' ? item.exposureCount : 0,
-      lastSeenAt: typeof item.lastSeenAt === 'string' ? item.lastSeenAt : null,
-    })),
-    calculatedAt: typeof d.calculatedAt === 'string' ? d.calculatedAt : new Date().toISOString(),
-  };
+  return validateContract('BrainSummaryResponse', json).data;
 }
-
 export function parseBrainConceptListResponse(json: unknown): BrainConceptListResponseDto {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/brain/concepts response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!Array.isArray(data)) {
-    throw new Error('Invalid /v1/brain/concepts response: data is not an array');
-  }
-  const meta = ((json as { meta?: unknown }).meta as Record<string, unknown>) ?? {};
-
-  return {
-    items: data.map((item: any) => ({
-      concept: {
-        id: item.concept?.id,
-        canonicalForm: item.concept?.canonicalForm,
-        partOfSpeech: item.concept?.partOfSpeech ?? null,
-        status: item.concept?.status,
-        isDue: item.concept?.isDue ?? false,
-      },
-      competence: parseCompetenceSignals(item.competence),
-      mastery: typeof item.mastery === 'number' ? item.mastery : null,
-      confidence: typeof item.confidence === 'number' ? item.confidence : 0,
-      memory: item.memory ? parseMemorySnapshot(item.memory) : null,
-      exposureCount: typeof item.exposureCount === 'number' ? item.exposureCount : 0,
-      lastSeenAt: typeof item.lastSeenAt === 'string' ? item.lastSeenAt : null,
-    })),
-    meta: {
-      requestId: typeof meta.requestId === 'string' ? meta.requestId : '',
-      nextCursor: typeof meta.nextCursor === 'string' ? meta.nextCursor : null,
-      hasMore: Boolean(meta.hasMore),
-      pageSize: typeof meta.pageSize === 'number' ? meta.pageSize : data.length,
-    },
-  };
+  const response = validateContract('BrainConceptListResponse', json);
+  return { items: response.data, meta: response.meta };
 }
 
 export interface PhaseEExecutionSeams {
@@ -483,6 +226,7 @@ function assertDigestsIdentical(pre: LearnerStateDigest, post: LearnerStateDiges
   if (JSON.stringify(pre.today_activities) !== JSON.stringify(post.today_activities)) {
     throw new Error('Read-only invariant violated: today_activities mutated during Brain GET');
   }
+  assertExact(post, pre, 'Read-only invariant violated: complete learner digest');
 }
 
 export async function runPhaseELearningLoop(
@@ -608,10 +352,13 @@ export async function runPhaseELearningLoop(
     if (brainConceptDetail.status !== preConceptState.status) {
       throw new Error(`FRLL-12 failure: Brain status '${brainConceptDetail.status}' != PostgreSQL status '${preConceptState.status}'.`);
     }
+    assertExact(brainConceptDetail.concept.learner.status, preConceptState.status, 'Brain nested learner status');
     expectProjectionNumberEquivalent(brainConceptDetail.mastery, preConceptState.mastery, 'Brain mastery');
     expectProjectionNumberEquivalent(brainConceptDetail.confidence, preConceptState.confidence, 'Brain confidence');
 
     // Competence dimensions
+    assertPersistedCompetence(brainConceptDetail.competence, preConceptState, 'Brain');
+    assertPersistedCompetence(brainConceptDetail.concept.learner.competence, preConceptState, 'Brain concept learner');
     const brainProd = brainConceptDetail.competence.production;
     expectProjectionNumberEquivalent(brainProd.score, preConceptState.production, 'Brain production score');
     if (brainProd.evidenceCount !== 1) {
@@ -635,15 +382,8 @@ export async function runPhaseELearningLoop(
     if (brainConceptDetail.memory.state !== dbFsrs.state) {
       throw new Error(`FRLL-12 failure: Brain memory.state '${brainConceptDetail.memory.state}' != PostgreSQL FSRS state '${dbFsrs.state}'.`);
     }
-    if (new Date(brainConceptDetail.memory.dueAt).getTime() !== new Date(dbFsrs.due_at).getTime()) {
-      throw new Error(`FRLL-12 failure: Brain memory.dueAt '${brainConceptDetail.memory.dueAt}' != PostgreSQL FSRS due_at '${dbFsrs.due_at}'.`);
-    }
-    if (brainConceptDetail.memory.lastReviewedAt === null || dbFsrs.last_review_at === null) {
-      throw new Error('FRLL-12 failure: Brain memory.lastReviewedAt or PostgreSQL last_review_at is unexpectedly null.');
-    }
-    if (new Date(brainConceptDetail.memory.lastReviewedAt).getTime() !== new Date(dbFsrs.last_review_at).getTime()) {
-      throw new Error(`FRLL-12 failure: Brain memory.lastReviewedAt '${brainConceptDetail.memory.lastReviewedAt}' != PostgreSQL last_review_at '${dbFsrs.last_review_at}'.`);
-    }
+    assertTimestamp(brainConceptDetail.memory.dueAt, dbFsrs.due_at, 'Brain memory dueAt');
+    assertTimestamp(brainConceptDetail.memory.lastReviewedAt, dbFsrs.last_review_at, 'Brain memory lastReviewedAt');
 
     // Evidence
     if (brainConceptDetail.evidence.reviewCount !== 1) {
@@ -679,6 +419,29 @@ export async function runPhaseELearningLoop(
       if (brainSummary.statusCounts.learning < 1) {
         throw new Error(`Brain summary failure: statusCounts.learning is ${brainSummary.statusCounts.learning} (expected >= 1).`);
       }
+      assertExact(brainSummary.memoryHealth, null, 'Brain memoryHealth');
+      for (const dimension of ['recognition', 'listening', 'production'] as const) {
+        const rows = preBrainDigest.skill_states.filter(row => row.skill === dimension && row.user_language_id === languageProfileId);
+        if (rows.length > 1) throw new Error('Brain skill authority: duplicate skill rows.');
+        const score = brainSummary.competence[dimension];
+        if (rows.length === 0) {
+          // Approved synthetic zero-evidence policy, only when PostgreSQL has no row.
+          assertExact(score, { score: 0.5, confidence: 0, evidenceCount: 0 }, `Brain summary ${dimension} zero state`);
+        } else {
+          const row = rows[0];
+          assertProjectionNumber(score.score, row.score, `Brain summary ${dimension} score`);
+          assertProjectionNumber(score.confidence, row.confidence, `Brain summary ${dimension} confidence`);
+          assertExact(score.evidenceCount, row.evidence_count, `Brain summary ${dimension} evidenceCount`);
+          if (row.last_evidence_at === null) assertExact('updatedAt' in score, false, `Brain summary ${dimension} updatedAt`);
+          else assertTimestamp(score.updatedAt, row.last_evidence_at, `Brain summary ${dimension} updatedAt`);
+        }
+      }
+      const recentAnchor = brainSummary.recentConcepts.find(item => item.concept.id === conceptId);
+      if (!recentAnchor) throw new Error('Brain summary: reviewed anchor missing from recent concepts.');
+      assertPersistedCompetence(recentAnchor.competence, preConceptState, 'Brain recent concept');
+      assertProjectionNumber(recentAnchor.mastery, preConceptState.mastery, 'Brain recent mastery');
+      assertProjectionNumber(recentAnchor.confidence, preConceptState.confidence, 'Brain recent confidence');
+      assertExact(recentAnchor.concept.status, preConceptState.status, 'Brain recent status');
       console.log(`  [OK] Brain summary verified: languageProfileId=${brainSummary.languageProfileId}, total=${brainSummary.statusCounts.total}, learning=${brainSummary.statusCounts.learning}.`);
     } else {
       const errBody = await summaryRes.text();
@@ -708,6 +471,9 @@ export async function runPhaseELearningLoop(
       if (anchorItem.competence.production.evidenceCount !== 1) {
         throw new Error(`Brain concept list failure: anchor item production evidenceCount is ${anchorItem.competence.production.evidenceCount} (expected 1).`);
       }
+      assertPersistedCompetence(anchorItem.competence, preConceptState, 'Brain list concept');
+      assertProjectionNumber(anchorItem.mastery, preConceptState.mastery, 'Brain list mastery');
+      assertProjectionNumber(anchorItem.confidence, preConceptState.confidence, 'Brain list confidence');
       console.log(`  [OK] Brain concept list verified: item count=${brainConceptList.items.length}, anchor concept found with status="learning".`);
     } else {
       const errBody = await listRes.text();
