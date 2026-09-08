@@ -5,7 +5,7 @@
  */
 
 import { randomUUID, randomBytes } from 'node:crypto';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, isAuthApiError, type SupabaseClient } from '@supabase/supabase-js';
 
 export interface DisposableSupabaseUser {
   readonly id: string;
@@ -228,7 +228,8 @@ export async function deleteDisposableSupabaseUser(
 
 /**
  * Verifies observationally that a disposable user is no longer present in Supabase Auth.
- * Returns true if the user does not exist (HTTP 404 or user null).
+ * Only the canonical Auth API user_not_found/404 proves absence.
+ * A null user without that error is ambiguous, not deletion evidence.
  */
 export async function verifyDisposableUserDeletedFromAuth(
   config: SupabaseAdminConfig & { readonly userId: string }
@@ -242,16 +243,24 @@ export async function verifyDisposableUserDeletedFromAuth(
     adminConfig.client ??
     createSupabaseAdminClient(adminConfig.supabaseUrl, adminConfig.secretKey);
 
-  const { data, error } = await client.auth.admin.getUserById(config.userId);
-
-  if (error) {
-    const msg = error.message ?? '';
-    const status = (error as { status?: number }).status;
-    if (status === 404 || msg.toLowerCase().includes('not found')) {
-      return true;
-    }
+  let response;
+  try {
+    response = await client.auth.admin.getUserById(config.userId);
+  } catch {
+    // Never echo transport errors: they may contain credentials or URLs.
+    throw new Error('Cannot confirm disposable Supabase user deletion: Auth request failed.');
   }
 
-  return !data?.user;
+  if (
+    response?.data?.user === null &&
+    isAuthApiError(response.error) &&
+    response.error.status === 404 &&
+    response.error.code === 'user_not_found'
+  ) {
+    return true;
+  }
+  if (response?.error === null && response.data?.user?.id === config.userId) {
+    return false;
+  }
+  throw new Error('Cannot confirm disposable Supabase user deletion: invalid or unsuccessful Auth response.');
 }
-

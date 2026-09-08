@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { AuthApiError, type SupabaseClient } from '@supabase/supabase-js';
 import {
   createDisposableSupabaseUser,
   deleteDisposableSupabaseUser,
@@ -193,10 +193,10 @@ describe('FRLL Supabase User Provisioner Seam', () => {
   });
 
   describe('verifyDisposableUserDeletedFromAuth', () => {
-    it('returns true when getUserById returns 404 or user not found', async () => {
+    it('returns true only for canonical Auth API user_not_found with HTTP 404', async () => {
       const mockGetUser = vi.fn().mockResolvedValue({
         data: { user: null },
-        error: { message: 'User not found', status: 404 },
+        error: new AuthApiError('User not found', 404, 'user_not_found'),
       });
 
       const mockClient = {
@@ -242,6 +242,43 @@ describe('FRLL Supabase User Provisioner Seam', () => {
       await expect(
         verifyDisposableUserDeletedFromAuth({ userId: '' })
       ).rejects.toThrow('Cannot verify Supabase test user: userId is missing or empty');
+    });
+
+    it.each([
+      ['unauthorized', new AuthApiError('User not found', 401, 'user_not_found')],
+      ['forbidden', new AuthApiError('Forbidden', 403, 'not_admin')],
+      ['server failure', new AuthApiError('Server failed', 500, 'unexpected_failure')],
+      ['generic 404', new AuthApiError('Not found', 404)],
+      ['wrong 404 code', new AuthApiError('User not found', 404, 'session_not_found')],
+      ['plain malformed error', { status: 404, code: 'user_not_found' }],
+    ])('fails closed for %s instead of treating null user as deletion', async (_label, error) => {
+      const client = {
+        auth: { admin: { getUserById: vi.fn().mockResolvedValue({ data: { user: null }, error }) } },
+      } as unknown as SupabaseClient;
+      await expect(verifyDisposableUserDeletedFromAuth({ client, userId: 'actor-a' }))
+        .rejects.toThrow('Cannot confirm disposable Supabase user deletion');
+    });
+
+    it.each([
+      ['null user on success', { data: { user: null }, error: null }],
+      ['missing data', { error: null }],
+      ['missing user', { data: {}, error: null }],
+      ['missing envelope', undefined],
+      ['wrong user identity', { data: { user: { id: 'actor-b' } }, error: null }],
+    ])('fails closed for malformed response: %s', async (_label, response) => {
+      const client = {
+        auth: { admin: { getUserById: vi.fn().mockResolvedValue(response) } },
+      } as unknown as SupabaseClient;
+      await expect(verifyDisposableUserDeletedFromAuth({ client, userId: 'actor-a' }))
+        .rejects.toThrow('Cannot confirm disposable Supabase user deletion');
+    });
+
+    it('fails closed without exposing network error contents', async () => {
+      const client = {
+        auth: { admin: { getUserById: vi.fn().mockRejectedValue(new Error('secret-network-detail')) } },
+      } as unknown as SupabaseClient;
+      await expect(verifyDisposableUserDeletedFromAuth({ client, userId: 'actor-a' }))
+        .rejects.toThrow(/^Cannot confirm disposable Supabase user deletion: Auth request failed\.$/);
     });
   });
 });
