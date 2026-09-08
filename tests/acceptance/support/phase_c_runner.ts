@@ -35,116 +35,14 @@ import {
   type LearnerStateDigest,
 } from './postgres_probe_client';
 
-export interface TodayActivityDto {
-  readonly id: string;
-  readonly position: number;
-  readonly activityType: 'review' | 'read' | 'explore' | string;
-  readonly title: string;
-  readonly description: string;
-  readonly estimatedMinutes: number;
-  readonly reasonCodes: string[];
-  readonly reasonText: string;
-  readonly status: string;
-  readonly targetCount?: number | null;
-  readonly completedCount: number;
-  readonly contentId?: string | null;
-  readonly conceptId?: string | null;
-  readonly reviewItemId?: string | null;
-  readonly completedAt?: string | null;
-  readonly createdAt: string;
-}
+import type { components } from '../../../packages/types/src/generated/openapi';
+import { validateContract } from './contract_validation';
 
-export interface TodayPlanDto {
-  readonly id: string;
-  readonly languageProfileId: string;
-  readonly planDate: string;
-  readonly timeZone: string;
-  readonly targetMinutes: number;
-  readonly completedMinutes: number;
-  readonly status: string;
-  readonly engineVersion: string;
-  readonly activities: readonly TodayActivityDto[];
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
+export type TodayActivityDto = components['schemas']['TodayActivity'];
+export type TodayPlanDto = components['schemas']['TodayPlan'];
 
 export function parseTodayPlanResponse(json: unknown): TodayPlanDto {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/today response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid /v1/today response: data is not an object');
-  }
-  const d = data as Record<string, unknown>;
-
-  if (typeof d.id !== 'string' || !d.id) {
-    throw new Error('Invalid /v1/today response: missing or invalid data.id');
-  }
-  if (typeof d.languageProfileId !== 'string' || !d.languageProfileId) {
-    throw new Error('Invalid /v1/today response: missing or invalid data.languageProfileId');
-  }
-  if (typeof d.planDate !== 'string' || !d.planDate) {
-    throw new Error('Invalid /v1/today response: missing or invalid data.planDate');
-  }
-  if (typeof d.timeZone !== 'string' || !d.timeZone) {
-    throw new Error('Invalid /v1/today response: missing or invalid data.timeZone');
-  }
-  if (typeof d.engineVersion !== 'string' || !d.engineVersion) {
-    throw new Error('Invalid /v1/today response: missing or invalid data.engineVersion');
-  }
-  if (!Array.isArray(d.activities)) {
-    throw new Error('Invalid /v1/today response: data.activities is not an array');
-  }
-
-  const activities: TodayActivityDto[] = d.activities.map((item, index) => {
-    if (!item || typeof item !== 'object') {
-      throw new Error(`Invalid /v1/today response: activity at index ${index} is not an object`);
-    }
-    const act = item as Record<string, unknown>;
-    if (typeof act.id !== 'string' || !act.id) {
-      throw new Error(`Invalid /v1/today response: activity at index ${index} missing id`);
-    }
-    if (typeof act.activityType !== 'string' || !act.activityType) {
-      throw new Error(`Invalid /v1/today response: activity at index ${index} missing activityType`);
-    }
-    if (!Array.isArray(act.reasonCodes)) {
-      throw new Error(`Invalid /v1/today response: activity at index ${index} reasonCodes is not an array`);
-    }
-
-    return {
-      id: act.id,
-      position: typeof act.position === 'number' ? act.position : index,
-      activityType: act.activityType,
-      title: typeof act.title === 'string' ? act.title : '',
-      description: typeof act.description === 'string' ? act.description : '',
-      estimatedMinutes: typeof act.estimatedMinutes === 'number' ? act.estimatedMinutes : 0,
-      reasonCodes: act.reasonCodes.map((r) => String(r)),
-      reasonText: typeof act.reasonText === 'string' ? act.reasonText : '',
-      status: typeof act.status === 'string' ? act.status : 'pending',
-      targetCount: typeof act.targetCount === 'number' ? act.targetCount : null,
-      completedCount: typeof act.completedCount === 'number' ? act.completedCount : 0,
-      contentId: typeof act.contentId === 'string' ? act.contentId : null,
-      conceptId: typeof act.conceptId === 'string' ? act.conceptId : null,
-      reviewItemId: typeof act.reviewItemId === 'string' ? act.reviewItemId : null,
-      completedAt: typeof act.completedAt === 'string' ? act.completedAt : null,
-      createdAt: typeof act.createdAt === 'string' ? act.createdAt : '',
-    };
-  });
-
-  return {
-    id: d.id,
-    languageProfileId: d.languageProfileId,
-    planDate: d.planDate,
-    timeZone: d.timeZone,
-    targetMinutes: typeof d.targetMinutes === 'number' ? d.targetMinutes : 15,
-    completedMinutes: typeof d.completedMinutes === 'number' ? d.completedMinutes : 0,
-    status: typeof d.status === 'string' ? d.status : 'active',
-    engineVersion: d.engineVersion,
-    activities,
-    createdAt: typeof d.createdAt === 'string' ? d.createdAt : '',
-    updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : '',
-  };
+  return validateContract('TodayPlanResponse', json).data;
 }
 
 export interface ReviewTargetHandoff {

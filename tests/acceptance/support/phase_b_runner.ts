@@ -33,83 +33,18 @@ import {
 export const FRLL_ANCHOR_CONCEPT_ID = '7f110000-0000-4000-8000-000000000004';
 export const FRLL_ANCHOR_LEMMA = 'frll-anchor';
 
-export interface ParsedMeResponse {
-  id: string;
-  email: string | null;
-  displayName: string | null;
-  interfaceLanguageCode: string;
-  timeZone: string | null;
-  languageProfiles: Array<{ id: string }>;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { components } from '../../../packages/types/src/generated/openapi';
+import { validateContract } from './contract_validation';
+
+export type ParsedMeResponse = components['schemas']['MeProfile'];
+export type ParsedConceptSummary = components['schemas']['ConceptSummary'];
 
 export function parseMeResponse(json: unknown): ParsedMeResponse {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/me response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid /v1/me response: data is not an object');
-  }
-  const d = data as Record<string, unknown>;
-  if (typeof d.id !== 'string') {
-    throw new Error('Invalid /v1/me response: missing or invalid data.id');
-  }
-  return {
-    id: d.id,
-    email: typeof d.email === 'string' ? d.email : null,
-    displayName: typeof d.displayName === 'string' ? d.displayName : null,
-    interfaceLanguageCode: typeof d.interfaceLanguageCode === 'string' ? d.interfaceLanguageCode : 'en',
-    timeZone: typeof d.timeZone === 'string' ? d.timeZone : null,
-    languageProfiles: Array.isArray(d.languageProfiles) ? (d.languageProfiles as Array<{ id: string }>) : [],
-    createdAt: typeof d.createdAt === 'string' ? d.createdAt : '',
-    updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : '',
-  };
+  return validateContract('MeResponse', json).data;
 }
 
-export interface ParsedConceptSummary {
-  readonly id: string;
-  readonly canonicalForm: string;
-  readonly lemma?: string;
-}
-
-export function parseDictionarySearchResponse(json: unknown): ParsedConceptSummary[] {
-  if (!json || typeof json !== 'object' || !('data' in json)) {
-    throw new Error('Invalid /v1/dictionary/search response: missing data envelope');
-  }
-  const data = (json as { data: unknown }).data;
-  let rawItems: unknown[] | null = null;
-  if (Array.isArray(data)) {
-    rawItems = data;
-  } else if (
-    data &&
-    typeof data === 'object' &&
-    'items' in data &&
-    Array.isArray((data as Record<string, unknown>).items)
-  ) {
-    rawItems = (data as { items: unknown[] }).items;
-  }
-  if (!rawItems) {
-    throw new Error('Invalid /v1/dictionary/search response: data is neither an array nor an object with items');
-  }
-  return rawItems.map((raw) => {
-    const it = (raw ?? {}) as Record<string, unknown>;
-    const id = typeof it.id === 'string' ? it.id : '';
-    const canonicalForm =
-      typeof it.canonicalForm === 'string'
-        ? it.canonicalForm
-        : typeof it.lemma === 'string'
-          ? it.lemma
-          : '';
-    const lemma =
-      typeof it.lemma === 'string'
-        ? it.lemma
-        : typeof it.canonicalForm === 'string'
-          ? it.canonicalForm
-          : undefined;
-    return { id, canonicalForm, lemma };
-  });
+export function parseDictionarySearchResponse(json: unknown): readonly ParsedConceptSummary[] {
+  return validateContract('DictionarySearchResponse', json).data;
 }
 
 export interface PhaseBOptions {
@@ -281,6 +216,7 @@ export async function setupRealLearnerThroughSaveLearn(
         `PATCH /v1/me failed with HTTP ${patchRes.status}. Body: ${patchError}`
       );
     }
+    parseMeResponse(await patchRes.json());
     currentEtag = patchRes.headers.get('etag');
     console.log(`  [OK] Timezone persisted: ${timeZone}`);
   } else {
@@ -295,7 +231,7 @@ export async function setupRealLearnerThroughSaveLearn(
   if (listRes.status !== 200) {
     throw new Error(`GET /v1/me/languages failed with HTTP ${listRes.status}`);
   }
-  const listData = (await listRes.json()) as { data: Array<{ id: string }> };
+  const listData = validateContract('LanguageProfilesResponse', await listRes.json());
   if (listData.data.length !== 0) {
     throw new Error(
       `FRLL-03 failure: Fresh actor has ${listData.data.length} language profiles (expected 0).`
@@ -324,13 +260,7 @@ export async function setupRealLearnerThroughSaveLearn(
     );
   }
 
-  const createdLanguage = (await createRes.json()) as {
-    data: {
-      id: string;
-      targetLanguageCode: string;
-      nativeLanguageCode: string;
-    };
-  };
+  const createdLanguage = validateContract('LanguageProfileResponse', await createRes.json());
   const languageProfileId = createdLanguage.data.id;
   console.log(
     `  [OK] Created language profile: ${languageProfileId} (${nativeLanguageCode} -> ${targetLanguageCode})`
@@ -344,9 +274,7 @@ export async function setupRealLearnerThroughSaveLearn(
   if (confirmRes.status !== 200) {
     throw new Error(`GET /v1/me/languages confirmation failed: ${confirmRes.status}`);
   }
-  const confirmData = (await confirmRes.json()) as {
-    data: Array<{ id: string; targetLanguageCode: string; nativeLanguageCode: string }>;
-  };
+  const confirmData = validateContract('LanguageProfilesResponse', await confirmRes.json());
   if (confirmData.data.length !== 1 || confirmData.data[0].id !== languageProfileId) {
     throw new Error(
       `FRLL-02 failure: Profile confirmation mismatch. Expected 1 profile (${languageProfileId}), got ${confirmData.data.length}.`
@@ -378,7 +306,7 @@ export async function setupRealLearnerThroughSaveLearn(
     );
   }
   console.log(
-    `  [OK] Found anchor concept '${foundConcept.canonicalForm || foundConcept.lemma || foundConcept.id}' (${foundConcept.id}).`
+    `  [OK] Found anchor concept '${foundConcept.canonicalForm}' (${foundConcept.id}).`
   );
 
   // -------------------------------------------------------------------------
@@ -430,14 +358,7 @@ export async function setupRealLearnerThroughSaveLearn(
     );
   }
 
-  const saveResult = (await saveRes.json()) as {
-    data: {
-      id: string;
-      itemType: string;
-      isSaved: boolean;
-      savedAt: string;
-    };
-  };
+  const saveResult = validateContract('LibraryMutationResponse', await saveRes.json());
 
   if (!saveResult.data.isSaved || saveResult.data.id !== conceptId) {
     throw new Error(
@@ -445,6 +366,7 @@ export async function setupRealLearnerThroughSaveLearn(
     );
   }
   const firstSaveTimestamp = saveResult.data.savedAt;
+  if (typeof firstSaveTimestamp !== 'string') throw new Error('FRLL-05 failure: saved concept has no savedAt.');
   console.log(`  [OK] Concept saved successfully at: ${firstSaveTimestamp}`);
 
   // -------------------------------------------------------------------------
@@ -601,13 +523,12 @@ export async function runPhaseBLearningLoop(
       throw new Error(`Repeated PUT /v1/library/concepts failed: ${resaveRes.status}. Body: ${resaveErr}`);
     }
 
-    const resaveResult = (await resaveRes.json()) as {
-      data: { isSaved: boolean; savedAt: string };
-    };
+    const resaveResult = validateContract('LibraryMutationResponse', await resaveRes.json());
     if (!resaveResult.data.isSaved) {
       throw new Error(`Repeated Save returned isSaved=false: ${JSON.stringify(resaveResult)}`);
     }
     const secondSaveTimestamp = resaveResult.data.savedAt;
+    if (typeof secondSaveTimestamp !== 'string') throw new Error('FRLL-06 failure: saved concept has no savedAt.');
 
     const postResaveDigest = await captureLearnerDigestFromPostgres(context.user.id, conceptId);
 
@@ -696,4 +617,3 @@ export async function runPhaseBLearningLoop(
 
   return resultReport!;
 }
-

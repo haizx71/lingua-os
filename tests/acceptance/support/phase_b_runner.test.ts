@@ -44,7 +44,7 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
           createdAt: '2026-09-06T00:00:00Z',
           updatedAt: '2026-09-06T00:00:00Z',
         },
-        meta: {
+        meta: { apiVersion: '1.0',
           requestId: '990e8400-e29b-41d4-a716-446655440000',
         },
       };
@@ -59,8 +59,8 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
     });
 
     it('throws descriptive error if /v1/me payload is missing data or id', () => {
-      expect(() => parseMeResponse({})).toThrow('Invalid /v1/me response: missing data envelope');
-      expect(() => parseMeResponse({ data: {} })).toThrow('Invalid /v1/me response: missing or invalid data.id');
+      expect(() => parseMeResponse({})).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseMeResponse({ data: {} })).toThrow('frozen OpenAPI validation failed');
     });
 
     it('correctly parses frozen DictionarySearchResponse with data as array', () => {
@@ -69,14 +69,12 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
           {
             id: '7f110000-0000-4000-8000-000000000004',
             canonicalForm: 'frll-anchor',
-            pos: 'noun',
-            cefrLevel: 'A1',
-            frequencyRank: 1,
-            shortGloss: 'Deterministic test anchor concept',
+            partOfSpeech: 'noun',
+            isDue: false,
             status: 'unseen',
           },
         ],
-        meta: {
+        meta: { apiVersion: '1.0',
           requestId: '990e8400-e29b-41d4-a716-446655440000',
           nextCursor: null,
           hasMore: false,
@@ -88,10 +86,10 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
       expect(items).toHaveLength(1);
       expect(items[0].id).toBe('7f110000-0000-4000-8000-000000000004');
       expect(items[0].canonicalForm).toBe('frll-anchor');
-      expect(items[0].lemma).toBe('frll-anchor');
+      expect(items[0].partOfSpeech).toBe('noun');
     });
 
-    it('correctly handles legacy mock with lemma property', () => {
+    it('rejects legacy mock with lemma property', () => {
       const legacySearchResponse = {
         data: [
           {
@@ -101,10 +99,7 @@ describe('Phase B Runner Static Invariants & Fail-Closed Behavior', () => {
         ],
       };
 
-      const items = parseDictionarySearchResponse(legacySearchResponse);
-      expect(items).toHaveLength(1);
-      expect(items[0].canonicalForm).toBe('frll-anchor');
-      expect(items[0].lemma).toBe('frll-anchor');
+      expect(() => parseDictionarySearchResponse(legacySearchResponse)).toThrow('frozen OpenAPI validation failed');
     });
   });
 });

@@ -50,15 +50,13 @@ describe('Phase C Runner Static Invariants & Fail-Closed Behavior', () => {
               completedCount: 0,
               conceptId: '7f110000-0000-4000-8000-000000000004',
               reviewItemId: '44444444-4444-4444-8444-444444444444',
-              contentId: null,
-              completedAt: null,
               createdAt: '2026-09-06T08:00:00Z',
             },
           ],
           createdAt: '2026-09-06T08:00:00Z',
           updatedAt: '2026-09-06T08:00:00Z',
         },
-        meta: {
+        meta: { apiVersion: '1.0',
           requestId: '55555555-5555-4555-8555-555555555555',
         },
       };
@@ -83,9 +81,9 @@ describe('Phase C Runner Static Invariants & Fail-Closed Behavior', () => {
     });
 
     it('throws descriptive error if missing data envelope or required fields', () => {
-      expect(() => parseTodayPlanResponse({})).toThrow('Invalid /v1/today response: missing data envelope');
-      expect(() => parseTodayPlanResponse({ data: null })).toThrow('Invalid /v1/today response: data is not an object');
-      expect(() => parseTodayPlanResponse({ data: { id: '' } })).toThrow('Invalid /v1/today response: missing or invalid data.id');
+      expect(() => parseTodayPlanResponse({})).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseTodayPlanResponse({ data: null })).toThrow('frozen OpenAPI validation failed');
+      expect(() => parseTodayPlanResponse({ data: { id: '' } })).toThrow('frozen OpenAPI validation failed');
       expect(() =>
         parseTodayPlanResponse({
           data: {
@@ -93,7 +91,7 @@ describe('Phase C Runner Static Invariants & Fail-Closed Behavior', () => {
             languageProfileId: '',
           },
         })
-      ).toThrow('Invalid /v1/today response: missing or invalid data.languageProfileId');
+      ).toThrow('frozen OpenAPI validation failed');
     });
 
     it('throws descriptive error if activities are invalid', () => {
@@ -115,7 +113,7 @@ describe('Phase C Runner Static Invariants & Fail-Closed Behavior', () => {
       };
 
       expect(() => parseTodayPlanResponse(invalidActivitiesResponse)).toThrow(
-        'Invalid /v1/today response: activity at index 0 missing activityType'
+        'frozen OpenAPI validation failed'
       );
     });
   });
