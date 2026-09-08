@@ -96,6 +96,9 @@ class LearnerStateDigest:
     today_activity_review_item_ids: list[str]
     today_plans: list[dict[str, Any]] = field(default_factory=list)
     today_activities: list[dict[str, Any]] = field(default_factory=list)
+    projection_heads: list[dict[str, Any]] = field(default_factory=list)
+    review_items: list[dict[str, Any]] = field(default_factory=list)
+    save_intents: list[dict[str, Any]] = field(default_factory=list)
 
 
 class PostgresLearnerProbe:
@@ -106,7 +109,7 @@ class PostgresLearnerProbe:
 
     def _open_read_only_connection(self) -> psycopg.Connection[Any]:
         connection = psycopg.connect(self.database_url, autocommit=False, row_factory=dict_row)
-        connection.execute("SET TRANSACTION READ ONLY")
+        connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
         return connection
 
     def capture_digest(self, user_id: UUID, concept_id: UUID) -> LearnerStateDigest:
@@ -129,7 +132,7 @@ class PostgresLearnerProbe:
 
             intent_rows = conn.execute(
                 """
-                SELECT id, created_at
+                SELECT *
                 FROM concept_save_intents
                 WHERE user_id = %s AND concept_id = %s
                 ORDER BY created_at ASC
@@ -139,7 +142,7 @@ class PostgresLearnerProbe:
 
             item_rows = conn.execute(
                 """
-                SELECT id, status, created_from
+                SELECT *
                 FROM review_items
                 WHERE user_id = %s AND concept_id = %s
                 ORDER BY created_at ASC
@@ -152,8 +155,7 @@ class PostgresLearnerProbe:
             if item_ids:
                 fsrs_rows = conn.execute(
                     """
-                    SELECT review_item_id, state, state_version, last_review_at, due_at,
-                           stability, difficulty, step
+                    SELECT *
                     FROM fsrs_states
                     WHERE user_id = %s AND review_item_id = ANY(%s)
                     ORDER BY review_item_id ASC
@@ -163,9 +165,7 @@ class PostgresLearnerProbe:
 
             learning_event_rows = conn.execute(
                 """
-                SELECT learning_event_id,
-                       learning_event_id AS id,
-                       event_type, source_type, source_event_id, ingestion_sequence, created_at
+                SELECT learning_events.*, learning_event_id AS id
                 FROM learning_events
                 WHERE user_id = %s AND concept_id = %s
                 ORDER BY ingestion_sequence ASC NULLS LAST, created_at ASC
@@ -177,12 +177,9 @@ class PostgresLearnerProbe:
             if item_ids:
                 review_event_rows = conn.execute(
                     """
-                    SELECT id, review_item_id, idempotency_key, rating, response_time_ms,
-                           request_fingerprint, created_at,
+                    SELECT review_events.*,
                            (result_memory_snapshot IS NOT NULL) AS has_memory_snapshot,
-                           (result_competence_snapshot IS NOT NULL) AS has_competence_snapshot,
-                           result_memory_snapshot, result_competence_snapshot,
-                           result_remaining_due_count, result_feedback
+                           (result_competence_snapshot IS NOT NULL) AS has_competence_snapshot
                     FROM review_events
                     WHERE user_id = %s AND review_item_id = ANY(%s)
                     ORDER BY created_at ASC
@@ -192,14 +189,9 @@ class PostgresLearnerProbe:
 
             concept_state_row = conn.execute(
                 """
-                SELECT status, state_version, has_learning_intent, has_projectable_evidence,
-                       mastery, mastery AS mastery_score,
-                       confidence,
-                       recognition, recognition AS recognition_score,
-                       listening, listening AS listening_score,
-                       production, production AS production_score,
-                       recognition_evidence_count,
-                       listening_evidence_count, production_evidence_count
+                SELECT user_concept_states.*, mastery AS mastery_score,
+                       recognition AS recognition_score, listening AS listening_score,
+                       production AS production_score
                 FROM user_concept_states
                 WHERE user_id = %s AND concept_id = %s
                 """,
@@ -208,17 +200,17 @@ class PostgresLearnerProbe:
 
             skill_rows = conn.execute(
                 """
-                SELECT skill, skill AS skill_type, score, confidence, evidence_count
+                SELECT user_skill_states.*, skill AS skill_type
                 FROM user_skill_states
                 WHERE user_id = %s
-                ORDER BY skill ASC
+                ORDER BY user_language_id ASC, skill ASC
                 """,
                 (user_id,),
             ).fetchall()
 
             today_plan_rows = conn.execute(
                 """
-                SELECT id, plan_date, plan_date AS local_date, time_zone, engine_version, as_of
+                SELECT today_plans.*, plan_date AS local_date
                 FROM today_plans
                 WHERE user_id = %s
                 ORDER BY created_at ASC
@@ -234,6 +226,7 @@ class PostgresLearnerProbe:
                     SELECT review_item_id
                     FROM today_activity_review_items
                     WHERE review_item_id = ANY(%s)
+                    ORDER BY review_item_id ASC
                     """,
                     (item_ids,),
                 ).fetchall()
@@ -241,11 +234,18 @@ class PostgresLearnerProbe:
 
             today_activity_rows = conn.execute(
                 """
-                SELECT id, plan_id, activity_type, position, estimated_minutes, reason_codes,
-                       concept_id, content_id, review_item_id, status, target_count, completed_count
+                SELECT *
                 FROM today_plan_activities
                 WHERE user_id = %s
                 ORDER BY position ASC, id ASC
+                """,
+                (user_id,),
+            ).fetchall()
+
+            head_rows = conn.execute(
+                """
+                SELECT * FROM user_language_projection_heads
+                WHERE user_id = %s ORDER BY user_language_id
                 """,
                 (user_id,),
             ).fetchall()
@@ -294,6 +294,9 @@ class PostgresLearnerProbe:
                     {k: normalize_scalar_for_json(v) for k, v in row.items()}
                     for row in today_activity_rows
                 ],
+                projection_heads=normalize_scalar_for_json(head_rows),
+                review_items=normalize_scalar_for_json(item_rows),
+                save_intents=normalize_scalar_for_json(intent_rows),
             )
 
     def teardown_disposable_user(self, user_id: UUID) -> dict[str, Any]:
@@ -489,6 +492,13 @@ class PostgresLearnerProbe:
             concept_state_count = get_count(
                 "SELECT count(*) AS c FROM user_concept_states WHERE user_id = %s", (user_id,)
             )
+            skill_count = get_count(
+                "SELECT count(*) AS c FROM user_skill_states WHERE user_id = %s", (user_id,)
+            )
+            head_count = get_count(
+                "SELECT count(*) AS c FROM user_language_projection_heads WHERE user_id = %s",
+                (user_id,),
+            )
             saved_concept_count = get_count(
                 "SELECT count(*) AS c FROM user_saved_concepts WHERE user_id = %s", (user_id,)
             )
@@ -522,6 +532,8 @@ class PostgresLearnerProbe:
                 and save_intent_count == 0
                 and profile_mutation_count == 0
                 and concept_state_count == 0
+                and skill_count == 0
+                and head_count == 0
                 and saved_concept_count == 0
                 and today_plan_count == 0
                 and today_activity_count == 0
@@ -543,6 +555,8 @@ class PostgresLearnerProbe:
                     "concept_save_intents": save_intent_count,
                     "profile_mutation_results": profile_mutation_count,
                     "user_concept_states": concept_state_count,
+                    "user_skill_states": skill_count,
+                    "user_language_projection_heads": head_count,
                     "user_saved_concepts": saved_concept_count,
                     "today_plans": today_plan_count,
                     "today_plan_activities": today_activity_count,

@@ -427,3 +427,34 @@ def test_teardown_preserves_fk_cascades_and_bans_blanket_trigger_suppression() -
     assert "finally:" in orphan_src
     orphan_finally = orphan_src.split("finally:")[1]
     assert "ENABLE TRIGGER" in orphan_finally
+
+
+@pytest.mark.parametrize("residual_table", ["user_skill_states", "user_language_projection_heads"])
+def test_f1_cleanup_rejects_residual_competence_rows(
+    monkeypatch: pytest.MonkeyPatch, residual_table: str
+) -> None:
+    """A missing parent is not evidence that every downstream row was removed.
+
+    This fault-injection seam models a residual row during cleanup verification;
+    it does not disable foreign keys or manufacture an orphan in PostgreSQL.
+    """
+    from unittest.mock import MagicMock
+
+    connection = MagicMock()
+
+    def execute(query: str, params: object) -> MagicMock:
+        assert params == (actor_id,)
+        result = MagicMock()
+        result.fetchone.return_value = {"c": 1 if f"FROM {residual_table} WHERE" in query else 0}
+        return result
+
+    actor_id = uuid.uuid4()
+    connection.execute.side_effect = execute
+    connection.__enter__.return_value = connection
+    probe = PostgresLearnerProbe("unused-fault-injection-seam")
+    monkeypatch.setattr(probe, "_open_read_only_connection", lambda: connection)
+
+    result = probe.verify_cleanup(actor_id)
+
+    assert result["clean"] is False, f"Residual {residual_table} must fail cleanup"
+    assert result["counts"][residual_table] == 1

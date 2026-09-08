@@ -35,6 +35,16 @@ export interface LearnerLearningEventRecord {
 }
 
 export interface LearnerConceptStateRecord {
+  readonly recognition_confidence: number | string;
+  readonly listening_confidence: number | string;
+  readonly production_confidence: number | string;
+  readonly recognition_last_evidence_at: string | null;
+  readonly listening_last_evidence_at: string | null;
+  readonly production_last_evidence_at: string | null;
+  readonly competence_parameter_set_id: string | null;
+  readonly competence_parameter_version: string | null;
+  readonly projection_method_version: string;
+  readonly [column: string]: unknown;
   readonly status: string;
   readonly state_version: number;
   readonly has_learning_intent: boolean;
@@ -94,6 +104,9 @@ export interface LearnerReviewEventRecord {
 }
 
 export interface LearnerStateDigest {
+  readonly projection_heads: Array<Record<string, unknown>>;
+  readonly review_items: Array<Record<string, unknown>>;
+  readonly save_intents: Array<Record<string, unknown>>;
   readonly user_id: string;
   readonly concept_id: string;
   readonly user_exists: boolean;
@@ -171,6 +184,8 @@ export interface PostgresCleanupVerificationResult {
   readonly user_id: string;
   readonly clean: boolean;
   readonly counts: {
+    readonly user_skill_states: number;
+    readonly user_language_projection_heads: number;
     readonly users: number;
     readonly learner_profiles: number;
     readonly user_languages: number;
@@ -320,4 +335,3 @@ export async function recoverOrphanedLearnerPostgres(
     );
   }
 }
-
