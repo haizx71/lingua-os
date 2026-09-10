@@ -2,6 +2,7 @@
 import type {
   AssessmentSessionDto,
   BrainConceptSummaryDto,
+  BrainConceptDetailDto,
   BrainSummaryDto,
   ConceptDetailDto,
   ContentDetailDto,
@@ -16,6 +17,7 @@ import type {
 import type { CEFRLevel } from '../enums';
 import type {
   BrainConceptViewModel,
+  BrainSummaryViewModel,
   DictionaryConceptViewModel,
   ProgressSummaryViewModel,
   ReaderPassageViewModel,
@@ -120,13 +122,79 @@ export function mapBrainConceptToViewModel(
     ...(item.concept.partOfSpeech ? { pos: item.concept.partOfSpeech } : {}),
     ipa: item.concept.ipa ?? '',
     translationVi,
-    cefr: (item.concept.level?.code ?? 'A0') as CEFRLevel,
+    ...(item.concept.level ? { cefr: item.concept.level.code } : {}),
     status: item.concept.status,
     isDue: item.concept.isDue,
     groupLabel: 'Khái niệm gần đây',
+    mastery: item.mastery,
+    confidence: item.confidence,
+    exposureCount: item.exposureCount,
     recognitionScore: percent(item.competence.recognition.score),
+    recognitionConfidence: percent(item.competence.recognition.confidence),
+    recognitionEvidenceCount: item.competence.recognition.evidenceCount,
     listeningScore: percent(item.competence.listening.score),
+    listeningConfidence: percent(item.competence.listening.confidence),
+    listeningEvidenceCount: item.competence.listening.evidenceCount,
     productionScore: percent(item.competence.production.score),
+    productionConfidence: percent(item.competence.production.confidence),
+    productionEvidenceCount: item.competence.production.evidenceCount,
+  };
+}
+
+export function mapBrainSummaryToViewModel(summary: BrainSummaryDto): BrainSummaryViewModel {
+  return {
+    languageProfileId: summary.languageProfileId,
+    statusCounts: { ...summary.statusCounts },
+    dueCount: summary.dueCount,
+    memoryHealth: summary.memoryHealth,
+    competence: {
+      recognition: {
+        score: summary.competence.recognition.score,
+        confidence: summary.competence.recognition.confidence,
+        evidenceCount: summary.competence.recognition.evidenceCount,
+      },
+      listening: {
+        score: summary.competence.listening.score,
+        confidence: summary.competence.listening.confidence,
+        evidenceCount: summary.competence.listening.evidenceCount,
+      },
+      production: {
+        score: summary.competence.production.score,
+        confidence: summary.competence.production.confidence,
+        evidenceCount: summary.competence.production.evidenceCount,
+      },
+    },
+  };
+}
+
+export function mapBrainConceptDetailToViewModel(
+  item: BrainConceptDetailDto,
+  translationVi = ''
+): BrainConceptViewModel {
+  const { concept } = item;
+  return {
+    id: concept.id,
+    label: concept.canonicalForm,
+    lemma: concept.canonicalForm,
+    ...(concept.partOfSpeech ? { pos: concept.partOfSpeech } : {}),
+    ipa: concept.ipa ?? '',
+    translationVi: translationVi || (concept.definitions[0]?.translation ?? concept.definitions[0]?.definition ?? ''),
+    ...(concept.level ? { cefr: concept.level.code } : {}),
+    status: item.status,
+    isDue: concept.learner.isDue,
+    groupLabel: 'Chi tiết khái niệm',
+    mastery: item.mastery,
+    confidence: item.confidence,
+    exposureCount: item.evidence.exposureCount,
+    recognitionScore: percent(item.competence.recognition.score),
+    recognitionConfidence: percent(item.competence.recognition.confidence),
+    recognitionEvidenceCount: item.competence.recognition.evidenceCount,
+    listeningScore: percent(item.competence.listening.score),
+    listeningConfidence: percent(item.competence.listening.confidence),
+    listeningEvidenceCount: item.competence.listening.evidenceCount,
+    productionScore: percent(item.competence.production.score),
+    productionConfidence: percent(item.competence.production.confidence),
+    productionEvidenceCount: item.competence.production.evidenceCount,
   };
 }
 

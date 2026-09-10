@@ -84,13 +84,43 @@ export interface BrainConceptViewModel {
   readonly pos?: string;
   readonly ipa: string;
   readonly translationVi: string;
-  readonly cefr: CEFRLevel;
+  /** Optional because non-lexical concepts may not have a proficiency level. */
+  readonly cefr?: string;
   readonly status: ConceptStatus;
   readonly isDue: boolean;
   readonly groupLabel: string;
+  /** Authoritative nullable aggregate; null means the server has no eligible evidence yet. */
+  readonly mastery: number | null;
+  /** Authoritative confidence aggregate, kept distinct from mastery and dimension confidence. */
+  readonly confidence: number;
+  readonly exposureCount: number;
   readonly recognitionScore: number;
+  readonly recognitionConfidence: number;
+  readonly recognitionEvidenceCount: number;
   readonly listeningScore: number;
+  readonly listeningConfidence: number;
+  readonly listeningEvidenceCount: number;
   readonly productionScore: number;
+  readonly productionConfidence: number;
+  readonly productionEvidenceCount: number;
+}
+
+export interface BrainCompetenceViewModel {
+  readonly score: number;
+  readonly confidence: number;
+  readonly evidenceCount: number;
+}
+
+export interface BrainSummaryViewModel {
+  readonly languageProfileId: string;
+  readonly statusCounts: Readonly<Record<ConceptStatus, number>>;
+  readonly dueCount: number;
+  readonly memoryHealth: number | null;
+  readonly competence: Readonly<{
+    recognition: BrainCompetenceViewModel;
+    listening: BrainCompetenceViewModel;
+    production: BrainCompetenceViewModel;
+  }>;
 }
 
 export interface ProgressSummaryViewModel {

@@ -1,19 +1,46 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { fireEvent, screen, within } from '@testing-library/react';
-import BrainPage from '@/app/brain/page';
 import { LanguageBrainCanvas } from '@/features/brain/LanguageBrainCanvas';
 import {
   mapBrainConceptToViewModel,
+  mapBrainSummaryToViewModel,
   mockBrainConceptSummary,
   mockGrammarConceptSummary,
+  mockApiResponses,
+  type BrainSummaryDto,
 } from '@lingua/types';
 import { renderWithProviders } from '../harness/test-render';
 import { assertProgressbarA11y } from '../harness/a11y-helpers';
 
+const presentationSummaryDto: BrainSummaryDto = {
+  ...mockApiResponses.brainSummary.data,
+  statusCounts: {
+    ...mockApiResponses.brainSummary.data.statusCounts,
+    learning: 71,
+    mastered: 483,
+    weak: 28,
+  },
+  memoryHealth: 0.87,
+  competence: {
+    ...mockApiResponses.brainSummary.data.competence,
+    recognition: { ...mockApiResponses.brainSummary.data.competence.recognition, score: 0.72 },
+    listening: { ...mockApiResponses.brainSummary.data.competence.listening, score: 0.54 },
+    production: { ...mockApiResponses.brainSummary.data.competence.production, score: 0.38 },
+  },
+};
+const presentationSummary = mapBrainSummaryToViewModel(presentationSummaryDto);
+const presentationNodes = [mapBrainConceptToViewModel(mockBrainConceptSummary, 'Cuộc hẹn chính thức')];
+
+function renderPresentationBrain() {
+  return renderWithProviders(
+    <LanguageBrainCanvas initialNodes={presentationNodes} summary={presentationSummary} state="success" />
+  );
+}
+
 describe('Tier 1: Feature 08 - Language Brain Graph & Memory Model', () => {
   it('test_brain_page_renders_header_and_learner_state_model_subhead', () => {
-    renderWithProviders(<BrainPage />);
+    renderPresentationBrain();
 
     expect(screen.getByText('Learner State Model')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: /Language Brain của bạn/i })).toBeInTheDocument();
@@ -23,7 +50,7 @@ describe('Tier 1: Feature 08 - Language Brain Graph & Memory Model', () => {
   });
 
   it('test_brain_page_renders_mastered_concepts_metric_card', () => {
-    renderWithProviders(<BrainPage />);
+    renderPresentationBrain();
 
     expect(screen.getByText('Đã vững (Mastered)')).toBeInTheDocument();
     expect(screen.getByText('483')).toBeInTheDocument();
@@ -31,7 +58,7 @@ describe('Tier 1: Feature 08 - Language Brain Graph & Memory Model', () => {
   });
 
   it('test_brain_page_renders_learning_and_weak_metrics', () => {
-    renderWithProviders(<BrainPage />);
+    renderPresentationBrain();
 
     expect(screen.getByText('Đang học (Learning)')).toBeInTheDocument();
     expect(screen.getByText('71')).toBeInTheDocument();
@@ -41,14 +68,14 @@ describe('Tier 1: Feature 08 - Language Brain Graph & Memory Model', () => {
   });
 
   it('test_brain_page_renders_overall_memory_health_score', () => {
-    renderWithProviders(<BrainPage />);
+    renderPresentationBrain();
 
     expect(screen.getByText('Sức khỏe trí nhớ')).toBeInTheDocument();
     expect(screen.getByText('87%')).toBeInTheDocument();
   });
 
   it('test_brain_page_renders_tri_dimensional_skill_evidence_bars', () => {
-    renderWithProviders(<BrainPage />);
+    renderPresentationBrain();
 
     expect(
       screen.getByRole('heading', { level: 2, name: /Bằng chứng năng lực theo chiều kỹ năng/i })

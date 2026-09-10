@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -31,7 +31,7 @@ import {
   X,
   BookOpen,
 } from 'lucide-react';
-import { type ConceptStatus, type CEFRLevel, type ApiErrorCode } from '@lingua/types';
+import { type ApiErrorCode, type BrainSummaryViewModel } from '@lingua/types';
 import { defaultBrainNodes, type BrainNodeItem } from '../../fixtures/brainFixture';
 
 
@@ -40,7 +40,16 @@ if (typeof window !== 'undefined') {
 }
 
 export interface LanguageBrainCanvasProps {
-  initialNodes?: BrainNodeItem[];
+  initialNodes?: readonly BrainNodeItem[];
+  nodes?: readonly BrainNodeItem[];
+  contextKey?: string;
+  summary?: BrainSummaryViewModel | null;
+  state?: 'loading' | 'empty' | 'error' | 'success';
+  detailNode?: BrainNodeItem | null;
+  detailLoading?: boolean;
+  detailError?: { message: string } | null;
+  error?: { code?: string } | null;
+  onRetry?: () => void;
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
   onSelectConcept?: (node: BrainNodeItem) => void;
@@ -48,18 +57,29 @@ export interface LanguageBrainCanvasProps {
 
 export function LanguageBrainCanvas({
   initialNodes = defaultBrainNodes,
+  nodes: liveNodes,
+  contextKey = 'presentation',
+  summary = null,
+  state,
+  detailNode = null,
+  detailLoading = false,
+  detailError = null,
+  error = null,
+  onRetry,
   forcedState = 'success',
   forcedErrorCode = 'INTERNAL_ERROR',
   onSelectConcept,
 }: LanguageBrainCanvasProps) {
-  const [nodes, setNodes] = useState<BrainNodeItem[]>(initialNodes);
+  const nodes = liveNodes ?? initialNodes;
   const [selectedCefr, setSelectedCefr] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNode, setSelectedNode] = useState<BrainNodeItem | null>(null);
+  const [selectedContextKey, setSelectedContextKey] = useState(contextKey);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
-  const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
+  const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
+  const currentState = state ?? localForcedState;
+  const errorCode = forcedErrorCode;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -68,6 +88,23 @@ export function LanguageBrainCanvas({
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const { contextSafe } = useGSAP({ scope: viewportRef });
+
+  useEffect(() => {
+    setLocalForcedState(forcedState);
+  }, [forcedState]);
+
+  useEffect(() => {
+    if (selectedNode && !nodes.some((node) => node.id === selectedNode.id)) {
+      setSelectedNode(null);
+    }
+  }, [nodes, selectedNode]);
+
+  useEffect(() => {
+    setSelectedNode(null);
+    setSelectedContextKey(contextKey);
+  }, [contextKey]);
+
+  const selectedNodeForContext = selectedContextKey === contextKey ? selectedNode : null;
 
   const animateCamera = contextSafe((targetX: number, targetY: number, targetScale: number) => {
     if (!stageRef.current) return;
@@ -143,6 +180,7 @@ export function LanguageBrainCanvas({
   }, [nodes, selectedCefr, selectedStatus, searchQuery]);
 
   const handleNodeClick = (node: BrainNodeItem) => {
+    setSelectedContextKey(contextKey);
     setSelectedNode(node);
     if (onSelectConcept) {
       onSelectConcept(node);
@@ -154,8 +192,8 @@ export function LanguageBrainCanvas({
     const clampedZoom = Math.max(50, Math.min(150, newZoom));
     setZoomLevel(clampedZoom);
 
-    if (selectedNode) {
-      centerNode(selectedNode, clampedZoom);
+    if (selectedNodeForContext) {
+      centerNode(selectedNodeForContext, clampedZoom);
     } else {
       const viewportEl = viewportRef.current;
       const vW = viewportEl?.clientWidth || 600;
@@ -179,25 +217,50 @@ export function LanguageBrainCanvas({
   };
 
   const handleRetry = () => {
-    setCurrentState('loading');
-    setTimeout(() => {
-      setCurrentState('success');
-    }, 400);
+    if (onRetry) {
+      onRetry();
+      return;
+    }
+    setLocalForcedState('loading');
+    setTimeout(() => setLocalForcedState('success'), 400);
   };
+
+  const visibleSelectedNode = detailNode && selectedNodeForContext?.id === detailNode.id
+    ? detailNode
+    : selectedNodeForContext;
+
+  const displayPercent = (value: number | null | undefined): string => (
+    value === null || value === undefined ? 'Chưa có dữ liệu' : `${Math.round(value * 100)}%`
+  );
+  const summaryCount = (key: keyof BrainSummaryViewModel['statusCounts']): string => (
+    summary
+      ? String(summary.statusCounts[key])
+      : '—'
+  );
+  const summarySkillPercent = (dimension: 'recognition' | 'listening' | 'production'): number => (
+    summary ? Math.round(summary.competence[dimension].score * 100) : 0
+  );
 
   if (currentState === 'loading') {
     return <LoadingState message="Đang tải dữ liệu mạng lưới Language Brain..." count={4} />;
   }
 
   if (currentState === 'error') {
-    return <ErrorState code={errorCode} onRetry={handleRetry} />;
+    return (
+      <ErrorState
+        code={error?.code ?? errorCode}
+        title="Không thể tải Language Brain"
+        message="Không thể tải dữ liệu Language Brain. Vui lòng thử lại sau."
+        onRetry={handleRetry}
+      />
+    );
   }
 
   if (currentState === 'empty') {
     return (
       <EmptyState
         title="Chưa có từ vựng trong Brain"
-        description="Hãy bắt đầu đọc bài trong Reader hoặc làm bài kiểm tra khởi điểm để hệ thống xây dựng Language Brain cho bạn."
+        description={`Hãy bắt đầu đọc bài trong Reader hoặc làm bài kiểm tra khởi điểm để hệ thống xây dựng Language Brain cho bạn. ${summary?.memoryHealth === null || summary?.memoryHealth === undefined ? 'Chưa có dữ liệu sức khỏe trí nhớ.' : ''}`}
         actionLabel="Bắt đầu đọc bài"
         onAction={() => {
           window.location.href = '/read';
@@ -227,7 +290,7 @@ export function LanguageBrainCanvas({
           <span className="text-xs text-[var(--text-secondary)] font-medium">
             Đã vững (Mastered)
           </span>
-          <div className="text-2xl font-bold text-[var(--status-success)] mt-1">483</div>
+          <div className="text-2xl font-bold text-[var(--status-success)] mt-1">{summaryCount('mastered')}</div>
           <span className="text-[11px] text-[var(--text-muted)]">Trí nhớ dài hạn FSRS</span>
         </Card>
 
@@ -235,7 +298,7 @@ export function LanguageBrainCanvas({
           <span className="text-xs text-[var(--text-secondary)] font-medium">
             Đang học (Learning)
           </span>
-          <div className="text-2xl font-bold text-[var(--status-info)] mt-1">71</div>
+          <div className="text-2xl font-bold text-[var(--status-info)] mt-1">{summaryCount('learning')}</div>
           <span className="text-[11px] text-[var(--text-muted)]">Đang củng cố phản xạ</span>
         </Card>
 
@@ -243,7 +306,7 @@ export function LanguageBrainCanvas({
           <span className="text-xs text-[var(--text-secondary)] font-medium">
             Cần ôn (Weak / Due)
           </span>
-          <div className="text-2xl font-bold text-[var(--status-warning)] mt-1">28</div>
+          <div className="text-2xl font-bold text-[var(--status-warning)] mt-1">{summaryCount('weak')}</div>
           <span className="text-[11px] text-[var(--text-muted)]">Ưu tiên ôn hôm nay</span>
         </Card>
 
@@ -251,8 +314,14 @@ export function LanguageBrainCanvas({
           <span className="text-xs text-[var(--text-secondary)] font-medium">
             Sức khỏe trí nhớ
           </span>
-          <div className="text-2xl font-bold text-[var(--action-primary)] mt-1">87%</div>
-          <span className="text-[11px] text-[var(--text-muted)]">Mức duy trì cao</span>
+          <div className="text-2xl font-bold text-[var(--action-primary)] mt-1">
+            {displayPercent(summary?.memoryHealth)}
+          </div>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {summary?.memoryHealth === null || summary?.memoryHealth === undefined
+              ? 'Chưa có dữ liệu sức khỏe trí nhớ'
+              : 'Mức duy trì cao'}
+          </span>
         </Card>
       </div>
 
@@ -263,14 +332,14 @@ export function LanguageBrainCanvas({
         </h2>
         <div className="space-y-3">
           <Progress
-            value={72}
+            value={summarySkillPercent('recognition')}
             max={100}
             label="Nhận diện khi đọc (Recognition Evidence)"
             showValueText
             size="sm"
           />
           <Progress
-            value={54}
+            value={summarySkillPercent('listening')}
             max={100}
             label="Nhận diện khi nghe (Listening Evidence)"
             showValueText
@@ -278,7 +347,7 @@ export function LanguageBrainCanvas({
             variant="warning"
           />
           <Progress
-            value={38}
+            value={summarySkillPercent('production')}
             max={100}
             label="Năng lực tự sử dụng (Production Evidence)"
             showValueText
@@ -419,7 +488,7 @@ export function LanguageBrainCanvas({
                     isDue={node.isDue}
                     term={node.label}
                     size="md"
-                    className={`cursor-pointer hover:shadow-sm ${selectedNode?.id === node.id ? 'ring-2 ring-[var(--focus-ring)] shadow-md' : ''}`}
+                    className={`cursor-pointer hover:shadow-sm ${selectedNodeForContext?.id === node.id ? 'ring-2 ring-[var(--focus-ring)] shadow-md' : ''}`}
                   />
                 </button>
               ))
@@ -429,7 +498,7 @@ export function LanguageBrainCanvas({
       </Card>
 
       {/* Selected Concept Detail Drawer */}
-      {selectedNode && (
+      {visibleSelectedNode && (
         <div
           role="dialog"
           aria-label="Chi tiết khái niệm"
@@ -439,15 +508,17 @@ export function LanguageBrainCanvas({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-[var(--text-primary)]">
-                  {selectedNode.label}
+                  {visibleSelectedNode.label}
                 </h3>
-                <Badge variant="primary" size="sm">
-                  {selectedNode.cefr}
-                </Badge>
+                {visibleSelectedNode.cefr && (
+                  <Badge variant="primary" size="sm">
+                    {visibleSelectedNode.cefr}
+                  </Badge>
+                )}
               </div>
-              {(selectedNode.ipa || selectedNode.pos) && (
+              {(visibleSelectedNode.ipa || visibleSelectedNode.pos) && (
                 <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-                  {[selectedNode.ipa, selectedNode.pos].filter(Boolean).join(' • ')}
+                  {[visibleSelectedNode.ipa, visibleSelectedNode.pos].filter(Boolean).join(' • ')}
                 </p>
               )}
             </div>
@@ -462,8 +533,23 @@ export function LanguageBrainCanvas({
           </div>
 
           <div className="text-sm text-[var(--text-secondary)]">
-            <p className="font-medium text-[var(--text-primary)]">{selectedNode.translationVi}</p>
-            <p className="text-xs text-[var(--text-muted)] mt-1">Nhóm: {selectedNode.groupLabel}</p>
+            <p className="font-medium text-[var(--text-primary)]">{visibleSelectedNode.translationVi}</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">Nhóm: {visibleSelectedNode.groupLabel}</p>
+          </div>
+
+          {detailLoading && (
+            <p className="text-xs text-[var(--text-secondary)]" role="status">Đang tải chi tiết khái niệm...</p>
+          )}
+          {detailError && (
+            <InlineAlert variant="danger" title="Không thể tải chi tiết khái niệm">
+              Vui lòng thử lại bằng cách chọn lại khái niệm.
+            </InlineAlert>
+          )}
+
+          <div className="grid grid-cols-3 gap-2 text-xs text-[var(--text-secondary)]">
+            <span>Độ vững: <strong>{displayPercent(visibleSelectedNode.mastery)}</strong></span>
+            <span>Độ tin cậy: <strong>{displayPercent(visibleSelectedNode.confidence)}</strong></span>
+            <span>Đã gặp: <strong>{visibleSelectedNode.exposureCount}</strong></span>
           </div>
 
           {/* Skill Radar / Progress */}
@@ -472,22 +558,22 @@ export function LanguageBrainCanvas({
               Bằng chứng 3 chiều:
             </span>
             <Progress
-              value={selectedNode.recognitionScore}
+              value={visibleSelectedNode.recognitionScore}
               max={100}
-              label={`Nhận diện: ${selectedNode.recognitionScore}%`}
+              label={`Nhận diện: ${visibleSelectedNode.recognitionScore}%`}
               size="sm"
             />
             <Progress
-              value={selectedNode.listeningScore}
+              value={visibleSelectedNode.listeningScore}
               max={100}
-              label={`Nghe: ${selectedNode.listeningScore}%`}
+              label={`Nghe: ${visibleSelectedNode.listeningScore}%`}
               size="sm"
               variant="warning"
             />
             <Progress
-              value={selectedNode.productionScore}
+              value={visibleSelectedNode.productionScore}
               max={100}
-              label={`Tự dùng: ${selectedNode.productionScore}%`}
+              label={`Tự dùng: ${visibleSelectedNode.productionScore}%`}
               size="sm"
               variant="warning"
             />

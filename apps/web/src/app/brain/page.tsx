@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { LanguageBrainCanvas } from '../../features/brain/LanguageBrainCanvas';
+import { BrainPage } from '../../features/brain/BrainPage';
 
-export default function BrainPage() {
-  return <LanguageBrainCanvas />;
+export default function BrainRoute() {
+  return <BrainPage />;
 }
