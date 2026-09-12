@@ -392,6 +392,21 @@ isolation. This milestone does not authorize AI Tutor, speech features,
 Chinese/Japanese, frontend ownership of domain algorithms, or changes to the
 frozen FRLL baseline.
 
+### Private staging deployment hardening (pre-pilot gate)
+Owner: CODEX
+Status: READY
+Dependencies: FRLL accepted; no product/domain changes permitted.
+
+Repository preparation for the frozen `Browser → Vercel → /api → Render
+FastAPI → Supabase` topology is implemented and covered by focused tests.
+DEP-01 (server-side `/api` proxy), DEP-04 (minimal Render runtime manifest),
+DEP-05 (hosted frontend configuration fails closed), and DEP-10 (environment
+file ignore coverage) are resolved in code/config. DEP-03 remains an explicit
+external Supabase staging-dashboard action: the hosted Site URL and exact
+allowed redirect URLs must be configured and verified before deployment. No
+host was deployed or pushed by this work; independent deployment review is
+required before enabling staging.
+
 ## Onboarding
 
 ### TASK-016 — Starting Level Estimate v1

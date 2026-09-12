@@ -220,9 +220,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
   }, [client, updateSessionState]);
 
   useEffect(() => {
-    const apiClient = getApiClient();
-    apiClient.setActor?.(user?.id ?? null);
-  }, [user]);
+    if (!isConfigured) return;
+    try {
+      const apiClient = getApiClient();
+      apiClient.setActor?.(user?.id ?? null);
+    } catch {
+      // Hosted configuration errors are surfaced by the readiness boundary;
+      // an auth lifecycle effect must not crash the public auth screen.
+    }
+  }, [isConfigured, user]);
 
   const userIdentity = useMemo(() => mapSupabaseUserToIdentity(user), [user]);
 

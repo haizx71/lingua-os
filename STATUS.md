@@ -1,7 +1,7 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: TASK-017, TASK-008B, TASK-009 Mini, TASK-011 Today Live & TASK-007 Review Live Completed and Accepted; GAP-01 Closed
+Phase: FRLL accepted/frozen; staging deployment hardening ready for independent review; GAP-01 Closed
 
 ## Current checkpoint — FRLL accepted / frozen
 
@@ -273,11 +273,39 @@ Phase: TASK-017, TASK-008B, TASK-009 Mini, TASK-011 Today Live & TASK-007 Review
 
 ## In progress
 
-None.
+- Private staging deployment hardening — IMPLEMENTED / READY FOR INDEPENDENT
+  DEPLOYMENT REVIEW (deployment intentionally not run)
+  - DEP-01: server-only Next.js `/api/[...path]` proxy forwards the frozen
+    methods, query, body and auth/concurrency headers to `API_INTERNAL_URL`,
+    preserving upstream status/body/ETag/Cache-Control and returning a generic
+    503 when configuration or upstream access fails.
+  - DEP-03: code/documentation is hosted-domain compatible, but the Supabase
+    staging Site URL and exact allowed redirect URLs remain an external
+    dashboard configuration and verification step; no wildcard or callback
+    path was added.
+  - DEP-04: minimal `render.yaml` records the pinned FastAPI start command and
+    `/health` check with environment variable names only.
+  - DEP-05: hosted/staging API client selection now fails closed when live API
+    or browser Supabase configuration is incomplete; development/test mocks
+    remain available through the non-hosted path or explicit injection.
+  - DEP-10: `.gitignore` covers `.env.development`, `.env.production`,
+    `.env.staging` and `.env.*.local`; `.env.example` remains trackable.
+  - Verification after the correction: focused deployment/auth/readiness tests
+    39/39, frontend Vitest 520/520 across 38 files, and the complete non-live
+    Vitest scope 663/663 with the four accepted live FRLL phase tests explicitly
+    skipped. Backend pytest 493/493, Ruff format/lint, strict mypy, contract
+    freshness, workspace typecheck, ESLint, Storybook, production build and
+    `git diff --check` pass. A voluntary live-suite rerun hit external Supabase
+    cleanup latency in Phase D/E after the domain assertions; all disposable
+    actors from the timed-out runs were scoped-cleaned and verified absent.
+    Contracts, services, database and migrations have zero diff.
 
 ## Blockers
 
-- `TASK-009 Mini`, `TASK-011`, and `TASK-007` are accepted (see Completed). First Real Learning Loop has not started and is not authorized by this task.
+- Actual Vercel/Render deployment is intentionally not authorized by this
+  task. Before enabling private staging, complete the external Supabase Auth
+  Site URL/redirect allowlist setup (DEP-03), set the documented host
+  environment variables, and run an independent deployment review.
 - TASK-012 satisfies TASK-013 and the Brain portion of TASK-014, but TASK-014 is not the recommended next task. TASK-015 retains its stated upstream dependency.
 
 ## Verification Status
@@ -498,6 +526,9 @@ None.
 
 ## Next
 
+- Private staging deployment hardening is implementation-complete and awaits
+  independent deployment review plus external Supabase hosted Auth URL setup;
+  do not deploy or push as part of this change.
 - TASK-008A is DONE. Do not start another task without explicit authorization.
 - TASK-017 hardening is accepted and DONE (see completed evidence above).
 - TASK-017A is DONE and verified (458/458 backend, 338/338 frontend).

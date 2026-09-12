@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   evaluateProductReadiness,
   isLinguaActorAbortedError,
@@ -34,7 +34,21 @@ export interface ProductReadinessResult {
 export function useProductReadiness(customApiClient?: ApiClient): ProductReadinessResult {
   const auth = useAuth();
   const { authState, user, isConfigured, getActorEpoch, isCurrentActor } = auth;
-  const api = customApiClient ?? getApiClient();
+  const apiResolution = useMemo(() => {
+    if (customApiClient) return { api: customApiClient, error: null as Error | null };
+    if (!isConfigured || authState !== 'authenticated') return { api: null, error: null as Error | null };
+
+    try {
+      return { api: getApiClient(), error: null as Error | null };
+    } catch (error) {
+      return {
+        api: null,
+        error: error instanceof Error ? error : new Error('Live API configuration is incomplete.'),
+      };
+    }
+  }, [authState, customApiClient, isConfigured]);
+  const api = apiResolution.api;
+  const apiResolutionError = apiResolution.error;
 
   const [status, setStatus] = useState<ReadinessStatus>(
     !isConfigured || authState === 'unauthenticated' ? 'unauthenticated' : 'loading'
@@ -54,6 +68,13 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
       setTimeZone(null);
       setActiveLanguageProfileId(null);
       setError(null);
+      return;
+    }
+
+    if (apiResolutionError || !api) {
+      setError(apiResolutionError ?? new Error('Live API configuration is incomplete.'));
+      setStatus('error');
+      setIsReady(false);
       return;
     }
 
@@ -93,7 +114,7 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
       setStatus('error');
       setIsReady(false);
     }
-  }, [api, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
+  }, [api, apiResolutionError, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
 
   useEffect(() => {
     void checkReadiness();
