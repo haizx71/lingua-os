@@ -71,6 +71,10 @@ endpoint, OpenAPI schema, generated DTO or database migration is changed.
   Actor-B isolation/late response), all cleanup proofs PASS.
 - Final live checkpoint #2: **4/4 PASS** with a second fresh actor set and the
   same independent cleanup proofs.
+- Fresh infrastructure-unblock rerun: checkpoint 1 F1/R1 **4/4 + 4/4 PASS**;
+  checkpoint 2 F1/R1 **4/4 + 4/4 PASS**, with disjoint hashed actor sets and
+  raw logs retained outside the repository. Sanitized record:
+  `docs/FRLL_CHECKPOINT_EVIDENCE_20260912.md`.
 - Actual supplied credential scan of tracked/candidate files: PASS (no matches).
 
 ## Fresh checkpoints
