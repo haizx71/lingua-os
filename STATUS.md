@@ -3,23 +3,23 @@
 Version: 4.0 starter
 Phase: TASK-017, TASK-008B, TASK-009 Mini, TASK-011 Today Live & TASK-007 Review Live Completed and Accepted; GAP-01 Closed
 
-## Current checkpoint — FRLL final takeover
+## Current checkpoint — FRLL accepted / frozen
 
-- F1 R2/R3/R4/R5 controller phases: `LIVE VERIFIED` (4/4 PASS); acceptance
-  support/adversarial suite: 143/143 PASS.
-- R1 browser checkpoint #1: `LIVE VERIFIED` (4/4 PASS) with fresh actors;
-  checkpoint #2: `LIVE VERIFIED` (4/4 PASS) with a second fresh actor set.
-  Both prove normal 200 answer, post-commit response loss and exact replay,
-  passive zero-write, Actor-B isolation/late-response protection, and
-  fail-closed cleanup with catalog-anchor survival.
+- `FRLL = ACCEPTED` — final reviewer verdict: `FINAL FRLL ACCEPTED` after the
+  infrastructure unblock.
+- Accepted implementation/evidence HEAD: `0723c1d7780bc0f6087da81b5ebac764658c3162`.
+- Two fresh checkpoints, each with new disposable actors: F1 B–E `4/4 PASS`
+  and R1 browser `4/4 PASS`. Both prove normal HTTP 200 answer,
+  post-commit response loss and exact same-receipt replay, PostgreSQL
+  exact-once persistence, Actor-B isolation, passive zero-write behavior,
+  fail-closed cleanup and catalog-anchor survival.
+- Sanitized evidence: `docs/FRLL_CHECKPOINT_EVIDENCE_20260912.md`; detailed
+  ledger: `docs/FRLL_FINAL_TAKEOVER_REVIEW.md`.
 - Frontend regression: 657/657 PASS (51 files); contracts freshness,
-  typecheck, lint, Storybook and production build PASS.
-- Backend last verified: 493/493 on Docker PostgreSQL 17. A final rerun after
-  the live checkpoints was attempted but blocked by the local Docker Linux
-  engine being stopped; no backend/contracts/database diff exists.
-- Evidence ledger: `docs/FRLL_FINAL_TAKEOVER_REVIEW.md` and plan
-  `plans/FRLL-final-takeover.md`.
-- FRLL status: `READY_FOR_FINAL_INDEPENDENT_REVIEW`; not DONE or ACCEPTED.
+  typecheck, lint, Storybook and production build PASS. Backend baseline:
+  493/493 PASS on Docker PostgreSQL 17.
+- FRLL is now frozen. Reopen only for a real regression or newly proven
+  acceptance defect; do not refactor it for style.
 
 ## Completed
 

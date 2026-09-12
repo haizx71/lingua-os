@@ -1,6 +1,6 @@
 # FRLL final takeover — 2026-09-12
 
-Status: IMPLEMENTED / TESTED / LIVE VERIFIED / READY_FOR_FINAL_INDEPENDENT_REVIEW.
+Status: ACCEPTED / FROZEN.
 Start HEAD a4f3498 on master.
 User accepts P1 and the existing Review queue/answer concurrency patch.
 Preserve all existing work. No push; independent final acceptance remains required.
@@ -55,5 +55,5 @@ Do not label skipped/historical evidence PASS or self-declare FRLL ACCEPTED.
 - Backend last verified: 493/493 on Docker PostgreSQL 17. A final rerun was
   attempted after the live checkpoints but was blocked by the local Docker
   Linux engine being stopped; no backend source or contract diff exists.
-- No final FRLL acceptance is self-declared; an independent reviewer remains
-  the acceptance authority.
+- Final reviewer verdict: `FINAL FRLL ACCEPTED`. FRLL is frozen; reopen only
+  for a real regression or newly proven acceptance defect.

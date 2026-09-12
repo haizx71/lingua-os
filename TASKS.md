@@ -364,13 +364,33 @@ F1 controller phases B/C/D/E and adversarial support checks are LIVE VERIFIED
 #2 are each LIVE VERIFIED at 4/4 with fresh actors, including HTTP 200 answer,
 post-commit response-loss/replay, passive zero-write, Actor-B isolation and
 fail-closed cleanup. Frontend regression is 657/657; contracts freshness,
-typecheck, lint, Storybook and production build pass. Backend last verified is
-493/493 on Docker PostgreSQL 17; a final rerun was blocked by the local Docker
-Linux engine being stopped. Evidence: `docs/FRLL_FINAL_TAKEOVER_REVIEW.md`.
+typecheck, lint, Storybook and production build pass. Backend baseline is
+493/493 on Docker PostgreSQL 17. Sanitized evidence:
+`docs/FRLL_CHECKPOINT_EVIDENCE_20260912.md`; implementation/evidence HEAD:
+`0723c1d7780bc0f6087da81b5ebac764658c3162`.
 
-Checkpoint status: `READY_FOR_FINAL_INDEPENDENT_REVIEW`.
-FRLL is not DONE or ACCEPTED. Do not begin First Real Learning Loop follow-on
-product work until an independent reviewer accepts this evidence.
+Checkpoint status: `ACCEPTED` (final reviewer verdict: `FINAL FRLL ACCEPTED`).
+FRLL is frozen as a regression baseline. Reopen only for a real regression or
+newly proven acceptance defect; do not refactor it for style. The next planning
+milestone is `MVP Pilot Readiness`; no implementation is authorized by this
+entry.
+
+## MVP Pilot Readiness (planning milestone)
+
+Status: PLANNED — discovery and acceptance planning only; implementation not started.
+Owner: CODEX / GEMINI within existing ownership boundaries.
+Dependencies: FRLL accepted; TASK-017 and TASK-017A complete.
+
+Goal: verify that a real learner can use the MVP end-to-end without developer
+intervention. The readiness review will cover signup/login/logout/recovery,
+onboarding and Starting Level, profile/language setup, Dictionary → Learn,
+Reader encounters, Today, Review, Brain and Progress; refresh/reopen/browser
+restart; mobile layout; empty/loading/error/offline-ish states; deployment and
+migration configuration; production secret handling; error logging and
+observability; backup/recovery; security/rate limits; and real user-data
+isolation. This milestone does not authorize AI Tutor, speech features,
+Chinese/Japanese, frontend ownership of domain algorithms, or changes to the
+frozen FRLL baseline.
 
 ## Onboarding
 

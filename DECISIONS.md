@@ -278,3 +278,22 @@ Unsaving a concept (`DELETE /v1/library/concepts/{conceptId}`) removes Library m
 - Canonical competence replay must reproduce `has_learning_intent` identically from historical `learning.concept.saved.v1` events.
 
 References: TASK-008B, GAP-01, MEM-001, EVID-001.
+
+## ADR-023 — First Real Learning Loop acceptance baseline
+Status: ACCEPTED (final independent re-review after infrastructure unblock)
+
+The First Real Learning Loop (FRLL) is accepted as the frozen MVP evidence
+baseline. The accepted implementation/evidence HEAD is
+`0723c1d7780bc0f6087da81b5ebac764658c3162`. Two fresh, independent checkpoints
+were executed after the canonical stack was restarted with the required public
+Supabase browser configuration. Each checkpoint passed F1 phases B–E (4/4) and
+R1 browser scenarios (4/4), including committed response-loss and exact
+same-receipt replay, PostgreSQL exact-once assertions, Actor-B isolation,
+passive zero-write behavior, fail-closed cleanup and catalog-anchor survival.
+
+Sanitized evidence is recorded in
+`docs/FRLL_CHECKPOINT_EVIDENCE_20260912.md`; raw logs remain outside the
+repository under `D:\LINGUA_FRLL_RAW_20260912`. Actor sets are represented only
+by truncated SHA-256 hashes. This decision freezes FRLL as a regression
+baseline: do not change it for style or refactoring. Reopen only on a real
+regression or a newly discovered acceptance defect.

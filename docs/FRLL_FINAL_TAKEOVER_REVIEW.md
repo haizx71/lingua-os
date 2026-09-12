@@ -1,7 +1,9 @@
 # FRLL final takeover — verification ledger
 
 Date: 2026-09-12. Starting HEAD: `a4f349847772fc1f99398dc0ec29ed01228c856b`.
-Status: evidence complete; **ready for independent final FRLL acceptance**.
+Status: **FRLL ACCEPTED**; frozen regression baseline.
+Final reviewer verdict: `FINAL FRLL ACCEPTED`. Accepted implementation/evidence
+HEAD: `0723c1d7780bc0f6087da81b5ebac764658c3162`.
 
 ## Scope and authority
 
@@ -87,9 +89,9 @@ No skipped, interrupted or pre-hardening run is counted as final evidence.
 ## Review and remaining authority
 
 Internal read-only adversarial review found the missing normal browser proof;
-that omission was corrected. This ledger records implementation evidence only;
-it does not replace the owner's requested fresh final independent review. No
-final ACCEPTED verdict is issued.
+that omission was corrected. The final independent reviewer accepted this
+evidence after the infrastructure unblock. FRLL is frozen and must be reopened
+only for a real regression or newly proven acceptance defect.
 
-Pre-existing untracked handover/audit documents and the generated tsbuildinfo
-overlay are outside the intended commits and are preserved, not silently reset.
+Pre-existing handover/audit documents were moved to an external archive and the
+generated tsbuildinfo overlay was removed from the worktree before tagging.
