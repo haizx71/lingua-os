@@ -15,6 +15,24 @@ const rootId = 'urn:lingua:frll:frozen-contract';
 ajv.addSchema({ $id: rootId, components: document.components });
 const validators = new Map<string, ValidateFunction>();
 
+/** Validate the unadapted browser response against its actual frozen operation. */
+export function validateBrowserResponse(method: string, pathname: string, status: number, raw: unknown): void {
+  if (status < 200 || status >= 300) throw new Error('Browser product response HTTP ' + status);
+  const segments = pathname.split('/');
+  const template = Object.keys(document.paths).find(path => {
+    const parts = path.split('/');
+    return parts.length === segments.length && parts.every((part, index) =>
+      part.startsWith('{') ? segments[index].length > 0 : part === segments[index]);
+  });
+  const operation = template && document.paths[template][method.toLowerCase()];
+  const response = operation?.responses?.[String(status)];
+  const schema = response?.content?.['application/json']?.schema?.$ref?.split('/').at(-1);
+  if (!schema || !document.components.schemas[schema]) {
+    throw new Error('Browser response has no frozen operation/schema.');
+  }
+  validateContract(schema as keyof Schemas, raw);
+}
+
 export function validateContract<K extends keyof Schemas>(schema: K, raw: unknown): Schemas[K] {
   let validate = validators.get(schema);
   if (!validate) {

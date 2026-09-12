@@ -104,6 +104,7 @@ export interface LearnerReviewEventRecord {
 }
 
 export interface LearnerStateDigest {
+  readonly learner_rows?: Record<string, Array<Record<string, unknown>>>;
   readonly projection_heads: Array<Record<string, unknown>>;
   readonly review_items: Array<Record<string, unknown>>;
   readonly save_intents: Array<Record<string, unknown>>;
@@ -152,7 +153,7 @@ export async function captureLearnerDigestFromPostgres(
   const { stdout, stderr } = await execFileAsync(
     pythonBin,
     [probeScript, userId, conceptId],
-    { env }
+    { env, timeout: 35_000 }
   );
 
   if (stderr && stderr.trim() !== '') {
@@ -221,7 +222,7 @@ export async function teardownDisposableLearnerPostgres(
   const { stdout, stderr } = await execFileAsync(
     pythonBin,
     [probeScript, '--teardown', userId],
-    { env }
+    { env, timeout: 35_000 }
   );
 
   if (stderr && stderr.trim() !== '') {
@@ -261,7 +262,7 @@ export async function verifyLearnerCleanupFromPostgres(
   const { stdout, stderr } = await execFileAsync(
     pythonBin,
     args,
-    { env }
+    { env, timeout: 35_000 }
   );
 
   if (stderr && stderr.trim() !== '') {
@@ -318,7 +319,7 @@ export async function recoverOrphanedLearnerPostgres(
   const { stdout, stderr } = await execFileAsync(
     pythonBin,
     [probeScript, '--recover-orphan', userId],
-    { env }
+    { env, timeout: 35_000 }
   );
 
   if (stderr && stderr.trim() !== '') {

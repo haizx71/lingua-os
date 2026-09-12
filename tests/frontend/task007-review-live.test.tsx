@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { useReviewSession } from '../../apps/web/src/features/review/useReviewSession';
@@ -228,7 +228,7 @@ describe('TASK-007 recovery and logical-operation regressions', () => {
     } finally { write.mockRestore(); }
   });
 
-  it('same-actor refetch invalidates a late answer but preserves its recovery receipt', async () => {
+  it('same-actor refetch does not invalidate an in-flight answer and completes reconciliation', async () => {
     let settle!: (value: ReviewAnswerResponseDto) => void;
     const answerReviewItem = vi.fn(() => new Promise<ReviewAnswerResponseDto>(resolve => { settle = resolve; }));
     const h = setup({ listReviewQueue: vi.fn().mockResolvedValue(mockQueueResponse), answerReviewItem } as unknown as ApiClient);
@@ -236,9 +236,10 @@ describe('TASK-007 recovery and logical-operation regressions', () => {
     act(() => { void h.result.current.submitRating('good'); });
     await act(async () => { await h.result.current.refetch(); });
     await act(async () => { settle(createMockAnswerResponse(mockQueueItem1.reviewItemId, 0)); });
-    expect(h.result.current.currentIndex).toBe(0);
-    expect(h.result.current.lastFeedback).toBeNull();
-    expect(h.result.current.pendingRetryOperation?.rating).toBe('good');
+    expect(h.result.current.currentIndex).toBe(2);
+    expect(h.result.current.lastFeedback).toBe('Đã ghi nhận: Tốt (Good) — Đã ghi nhớ');
+    expect(h.result.current.pendingRetryOperation).toBeNull();
+    expect(h.result.current.isSubmitting).toBe(false);
   });
 
   it('loads opaque cursor pages in server order without treating first page as complete', async () => {
@@ -952,6 +953,265 @@ describe('TASK-007: Review Live Frontend Integration', () => {
       // Server returned remainingDueCount = 77 and custom feedback
       expect(await screen.findByText('Server Authoritative Feedback: Rep 3')).toBeInTheDocument();
       expect(screen.getByText('77 từ đến hạn')).toBeInTheDocument();
+    });
+  });
+
+  describe('6. Overlapping loadQueue() Race Hardening (TEST-007-23 .. TEST-007-25)', () => {
+    it('TEST-007-23: stale older queue responses cannot overwrite newer queue state', async () => {
+      let resolveFirstCall: (res: ReviewQueueResponseDto) => void;
+      const firstPromise = new Promise<ReviewQueueResponseDto>((resolve) => {
+        resolveFirstCall = resolve;
+      });
+
+      let callIndex = 0;
+      const listReviewQueue = vi.fn(async () => {
+        callIndex++;
+        if (callIndex === 1) return firstPromise;
+        return {
+          data: [{ ...mockQueueItem2, concept: { ...mockQueueItem2.concept, canonicalForm: 'newer-item' } }],
+          meta: { ...mockQueueResponse.meta, pageSize: 1 },
+        };
+      });
+      const client = { listReviewQueue } as unknown as ApiClient;
+
+      const { result } = renderHook(() => useReviewSession({ apiClient: client }), {
+        wrapper: ({ children }) => <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>,
+      });
+
+      // Wait for first call to be dispatched
+      await waitFor(() => expect(listReviewQueue).toHaveBeenCalledTimes(1));
+
+      // Trigger second call while first is still pending
+      await act(async () => {
+        await result.current.refetch();
+      });
+      expect(listReviewQueue).toHaveBeenCalledTimes(2);
+
+      // Verify newer item is present in queue
+      expect(result.current.queue).toHaveLength(1);
+      expect(result.current.currentCard?.term).toBe('newer-item');
+      expect(result.current.remainingDueCount).toBe(1);
+
+      // Stale first call resolves late with old items
+      await act(async () => {
+        resolveFirstCall!(mockQueueResponse);
+      });
+
+      // The newer result must NOT be overwritten by the stale first call
+      expect(result.current.queue).toHaveLength(1);
+      expect(result.current.currentCard?.term).toBe('newer-item');
+      expect(result.current.remainingDueCount).toBe(1);
+    });
+
+    it('TEST-007-24: actor switch cannot leak prior actor queue state', async () => {
+      let resolveUserAQueue: (res: ReviewQueueResponseDto) => void;
+      const userAPromise = new Promise<ReviewQueueResponseDto>((resolve) => {
+        resolveUserAQueue = resolve;
+      });
+
+      const userBQueue: ReviewQueueResponseDto = {
+        data: [{ ...mockQueueItem2, concept: { ...mockQueueItem2.concept, canonicalForm: 'user-b-card' } }],
+        meta: { ...mockQueueResponse.meta, pageSize: 1 },
+      };
+
+      let callCount = 0;
+      const listReviewQueue = vi.fn(async () => {
+        callCount++;
+        if (callCount === 1) return userAPromise;
+        return userBQueue;
+      });
+      const client = { listReviewQueue } as unknown as ApiClient;
+
+      const { result } = renderHook(() => useReviewSession({ apiClient: client }), {
+        wrapper: ({ children }) => <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>,
+      });
+
+      // User A call initiated
+      await waitFor(() => expect(listReviewQueue).toHaveBeenCalledTimes(1));
+
+      // Switch to User B while User A queue call is in flight
+      act(() => {
+        mockSupabase.switchUser(sessionB);
+      });
+
+      // User B should load its own queue
+      await waitFor(() => expect(listReviewQueue).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(result.current.currentCard?.term).toBe('user-b-card'));
+
+      // Now late User A response arrives with User A items
+      await act(async () => {
+        resolveUserAQueue!(mockQueueResponse);
+      });
+
+      // User B queue must NOT be polluted or overwritten by User A response
+      expect(result.current.queue).toHaveLength(1);
+      expect(result.current.currentCard?.term).toBe('user-b-card');
+      expect(result.current.queue[0].term).toBe('user-b-card');
+    });
+
+    it('TEST-007-25: genuine empty latest response still works correctly and is not dropped', async () => {
+      let resolveFirstCall: (res: ReviewQueueResponseDto) => void;
+      const firstPromise = new Promise<ReviewQueueResponseDto>((resolve) => {
+        resolveFirstCall = resolve;
+      });
+
+      const emptyQueueResponse: ReviewQueueResponseDto = {
+        data: [],
+        meta: {
+          ...mockQueueResponse.meta,
+          pageSize: 0,
+        },
+      };
+
+      let callIndex = 0;
+      const listReviewQueue = vi.fn(async () => {
+        callIndex++;
+        if (callIndex === 1) return firstPromise;
+        return emptyQueueResponse;
+      });
+      const client = { listReviewQueue } as unknown as ApiClient;
+
+      const { result } = renderHook(() => useReviewSession({ apiClient: client }), {
+        wrapper: ({ children }) => <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>,
+      });
+
+      await waitFor(() => expect(listReviewQueue).toHaveBeenCalledTimes(1));
+
+      // Second request returns empty queue
+      await act(async () => {
+        await result.current.refetch();
+      });
+      expect(listReviewQueue).toHaveBeenCalledTimes(2);
+
+      // Verify empty queue is committed
+      expect(result.current.queue).toHaveLength(0);
+      expect(result.current.currentCard).toBeNull();
+      expect(result.current.remainingDueCount).toBe(0);
+
+      // Stale first call resolves late with non-empty items
+      await act(async () => {
+        resolveFirstCall!(mockQueueResponse);
+      });
+
+      // Must remain empty and not be overwritten by stale non-empty response
+      expect(result.current.queue).toHaveLength(0);
+      expect(result.current.currentCard).toBeNull();
+      expect(result.current.remainingDueCount).toBe(0);
+    });
+
+    it('TEST-007-26: answering final card in queue triggers internal loadQueue(), loads new queue, and allows immediate next answer submission', async () => {
+      const listReviewQueue = vi.fn()
+        .mockResolvedValueOnce({
+          data: [mockQueueItem1],
+          meta: { ...mockQueueResponse.meta, pageSize: 1 },
+        })
+        .mockResolvedValueOnce({
+          data: [mockQueueItem2],
+          meta: { ...mockQueueResponse.meta, pageSize: 1 },
+        });
+
+      const answerReviewItem = vi.fn()
+        .mockResolvedValueOnce(createMockAnswerResponse(mockQueueItem1.reviewItemId, 1))
+        .mockResolvedValueOnce(createMockAnswerResponse(mockQueueItem2.reviewItemId, 0));
+
+      const client = { listReviewQueue, answerReviewItem } as unknown as ApiClient;
+
+      const { result } = renderHook(() => useReviewSession({ apiClient: client }), {
+        wrapper: ({ children }) => <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>,
+      });
+
+      await waitFor(() => expect(result.current.currentCard?.id).toBe(mockQueueItem1.reviewItemId));
+      expect(result.current.queue).toHaveLength(1);
+
+      // Submit answer for the final card (currentIndex = 0, queue.length = 1)
+      await act(async () => {
+        await result.current.submitRating('good');
+      });
+
+      // Internal loadQueue() was triggered and completed
+      expect(listReviewQueue).toHaveBeenCalledTimes(2);
+      expect(answerReviewItem).toHaveBeenCalledTimes(1);
+
+      // Verify new queue is loaded and locks are released
+      expect(result.current.queue).toHaveLength(1);
+      expect(result.current.currentCard?.id).toBe(mockQueueItem2.reviewItemId);
+      expect(result.current.isSubmitting).toBe(false);
+
+      // Must be able to submit answer for the next card immediately (proves busyRef is not locked)
+      await act(async () => {
+        await result.current.submitRating('easy');
+      });
+
+      expect(answerReviewItem).toHaveBeenCalledTimes(2);
+      expect(result.current.reviewedCount).toBe(2);
+      expect(result.current.isSubmitting).toBe(false);
+    });
+
+    it('TEST-007-27: external refetch queue load while answerReviewItem is in-flight preserves answer completion and does not stick busyRef', async () => {
+      let resolveAnswer!: (res: ReviewAnswerResponseDto) => void;
+      const answerPromise = new Promise<ReviewAnswerResponseDto>((resolve) => {
+        resolveAnswer = resolve;
+      });
+
+      const listReviewQueue = vi.fn().mockResolvedValue(mockQueueResponse);
+      const answerReviewItem = vi.fn(() => answerPromise);
+      const client = { listReviewQueue, answerReviewItem } as unknown as ApiClient;
+
+      const { result } = renderHook(() => useReviewSession({ apiClient: client }), {
+        wrapper: ({ children }) => <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>,
+      });
+
+      await waitFor(() => expect(result.current.currentCard).not.toBeNull());
+
+      // Start answer submission (remains in flight)
+      act(() => {
+        void result.current.submitRating('good');
+      });
+
+      expect(result.current.isSubmitting).toBe(true);
+
+      // Trigger external refetch while answer is in flight
+      await act(async () => {
+        await result.current.refetch();
+      });
+
+      // Answer settles
+      await act(async () => {
+        resolveAnswer(createMockAnswerResponse(mockQueueItem1.reviewItemId, 1, 'Great job!'));
+      });
+
+      // Answer was NOT dropped: feedback recorded, reviewedCount incremented, busyRef released
+      expect(result.current.lastFeedback).toBe('Great job!');
+      expect(result.current.reviewedCount).toBe(1);
+      expect(result.current.isSubmitting).toBe(false);
+      expect(result.current.pendingRetryOperation).toBeNull();
+    });
+
+    it('TEST-007-28: bailout/auth-transition during internal loadQueue does not leave busyRef permanently locked', async () => {
+      const listReviewQueue = vi.fn().mockResolvedValueOnce({
+        data: [mockQueueItem1],
+        meta: { ...mockQueueResponse.meta, pageSize: 1 },
+      });
+
+      const answerReviewItem = vi.fn().mockResolvedValueOnce(createMockAnswerResponse(mockQueueItem1.reviewItemId, 1));
+      const client = { listReviewQueue, answerReviewItem } as unknown as ApiClient;
+
+      const { result } = renderHook(() => useReviewSession({ apiClient: client }), {
+        wrapper: ({ children }) => <AuthProvider customClient={mockSupabase}>{children}</AuthProvider>,
+      });
+
+      await waitFor(() => expect(result.current.currentCard?.id).toBe(mockQueueItem1.reviewItemId));
+
+      // Second listReviewQueue (internal reload) throws an unexpected error
+      listReviewQueue.mockRejectedValueOnce(new Error('Network disconnected during reload'));
+
+      await act(async () => {
+        await result.current.submitRating('good');
+      });
+
+      // Even though internal reload failed with an error, busyRef and isSubmitting MUST be released via token cleanup
+      expect(result.current.isSubmitting).toBe(false);
+      expect(result.current.error?.message).toBe('Network disconnected during reload');
     });
   });
 });

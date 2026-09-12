@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { runPhaseDLearningLoop } from './support/phase_d_runner';
 

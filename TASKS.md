@@ -359,9 +359,18 @@ All eight required adversarial attacks fail closed. Support: 115 PASS; full Vite
 Static gates pass; protected product areas unchanged. Evidence and limitations:
 `docs/FRLL_F1_HARDENING_REVIEW.md`.
 
-FRLL is not DONE or ACCEPTED. Remaining REQUIRED:
-R1 — real browser/reload/lost-response/Actor-B/isolation proof.
-Do not begin R1 or new product work under the F1 authorization.
+F1 controller phases B/C/D/E and adversarial support checks are LIVE VERIFIED
+(4/4 phases; 143/143 support tests). R1 browser checkpoint #1 and checkpoint
+#2 are each LIVE VERIFIED at 4/4 with fresh actors, including HTTP 200 answer,
+post-commit response-loss/replay, passive zero-write, Actor-B isolation and
+fail-closed cleanup. Frontend regression is 657/657; contracts freshness,
+typecheck, lint, Storybook and production build pass. Backend last verified is
+493/493 on Docker PostgreSQL 17; a final rerun was blocked by the local Docker
+Linux engine being stopped. Evidence: `docs/FRLL_FINAL_TAKEOVER_REVIEW.md`.
+
+Checkpoint status: `READY_FOR_FINAL_INDEPENDENT_REVIEW`.
+FRLL is not DONE or ACCEPTED. Do not begin First Real Learning Loop follow-on
+product work until an independent reviewer accepts this evidence.
 
 ## Onboarding
 

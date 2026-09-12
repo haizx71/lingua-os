@@ -11,7 +11,6 @@ import uuid
 from pathlib import Path
 
 import psycopg
-import pytest
 from lingua_api.catalog.sql import allowed_record_sql
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -95,17 +94,13 @@ def test_frll_fixture_sql_static_invariants() -> None:
 
 
 def test_frll_fixture_database_execution(
-    migrated_postgres_url: str | None = None,
+    isolated_migrated_postgres_url: str,
 ) -> None:
     """Verify fixture idempotence, completeness, and zero learner state on real Postgres."""
-    # Read external test database URL if available
-    import os
-
-    db_url = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
-    if not db_url:
-        pytest.skip(
-            "PostgreSQL environment not configured (set TEST_DATABASE_URL or run with Docker)"
-        )
+    # Always use the existing disposable migrated fixture. A defaulted pytest
+    # argument is not injected; falling back to DATABASE_URL could seed runtime
+    # data or fail on a placeholder instead of testing the isolated database.
+    db_url = isolated_migrated_postgres_url
 
     sql_text = FIXTURE_PATH.read_text(encoding="utf-8")
 

@@ -3,18 +3,23 @@
 Version: 4.0 starter
 Phase: TASK-017, TASK-008B, TASK-009 Mini, TASK-011 Today Live & TASK-007 Review Live Completed and Accepted; GAP-01 Closed
 
-## Current checkpoint — FRLL F1
+## Current checkpoint — FRLL final takeover
 
-- R2/R3/R4/R5 acceptance-harness hardening: `READY_FOR_INDEPENDENT_REVIEW`.
-- Complete replay/snapshot and database equality, persisted competence authority,
-  fail-closed Auth deletion verification, and frozen OpenAPI response validation implemented.
-- Verification: support 115 PASS; full Vitest 581 PASS / 4 live-environment SKIP;
-  relevant real-PostgreSQL/backend tests 100 PASS; standalone probe 12 PASS / 1 SKIP.
-  Ruff, mypy, generated freshness, cache-preserving typecheck and lint PASS.
-- No changes to contracts, services, migrations, frontend source or tsbuildinfo.
-- Evidence: `docs/FRLL_F1_HARDENING_REVIEW.md`. FRLL is not DONE or ACCEPTED.
-- Remaining REQUIRED: R1 — real browser/reload/lost-response/Actor-B/isolation proof.
-  R1 was not started in F1 and requires separate execution authorization.
+- F1 R2/R3/R4/R5 controller phases: `LIVE VERIFIED` (4/4 PASS); acceptance
+  support/adversarial suite: 143/143 PASS.
+- R1 browser checkpoint #1: `LIVE VERIFIED` (4/4 PASS) with fresh actors;
+  checkpoint #2: `LIVE VERIFIED` (4/4 PASS) with a second fresh actor set.
+  Both prove normal 200 answer, post-commit response loss and exact replay,
+  passive zero-write, Actor-B isolation/late-response protection, and
+  fail-closed cleanup with catalog-anchor survival.
+- Frontend regression: 657/657 PASS (51 files); contracts freshness,
+  typecheck, lint, Storybook and production build PASS.
+- Backend last verified: 493/493 on Docker PostgreSQL 17. A final rerun after
+  the live checkpoints was attempted but blocked by the local Docker Linux
+  engine being stopped; no backend/contracts/database diff exists.
+- Evidence ledger: `docs/FRLL_FINAL_TAKEOVER_REVIEW.md` and plan
+  `plans/FRLL-final-takeover.md`.
+- FRLL status: `READY_FOR_FINAL_INDEPENDENT_REVIEW`; not DONE or ACCEPTED.
 
 ## Completed
 

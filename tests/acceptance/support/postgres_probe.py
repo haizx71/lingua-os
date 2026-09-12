@@ -16,6 +16,7 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
+from psycopg import sql
 from psycopg.rows import dict_row
 
 
@@ -99,6 +100,7 @@ class LearnerStateDigest:
     projection_heads: list[dict[str, Any]] = field(default_factory=list)
     review_items: list[dict[str, Any]] = field(default_factory=list)
     save_intents: list[dict[str, Any]] = field(default_factory=list)
+    learner_rows: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
 class PostgresLearnerProbe:
@@ -114,6 +116,28 @@ class PostgresLearnerProbe:
 
     def capture_digest(self, user_id: UUID, concept_id: UUID) -> LearnerStateDigest:
         with self._open_read_only_connection() as conn:
+            # Capture every public base table with user ownership, including
+            # other concepts. Counts for a single anchor cannot prove zero-write.
+            owned_tables = conn.execute(
+                """SELECT c.table_name FROM information_schema.columns c
+                   JOIN information_schema.tables t
+                     ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+                   WHERE c.table_schema = 'public' AND c.column_name = 'user_id'
+                     AND t.table_type = 'BASE TABLE' ORDER BY c.table_name"""
+            ).fetchall()
+            learner_rows = {}
+            for table in ["users", *[r["table_name"] for r in owned_tables]]:
+                owner_column = "id" if table == "users" else "user_id"
+                rows = conn.execute(
+                    sql.SQL("SELECT * FROM public.{} WHERE {} = %s").format(
+                        sql.Identifier(table), sql.Identifier(owner_column)
+                    ),
+                    (user_id,),
+                ).fetchall()
+                normalized = normalize_scalar_for_json(rows)
+                learner_rows[table] = sorted(
+                    normalized, key=lambda row: json.dumps(row, sort_keys=True)
+                )
             user_row = conn.execute("SELECT id FROM users WHERE id = %s", (user_id,)).fetchone()
 
             profile_row = conn.execute(
@@ -297,6 +321,7 @@ class PostgresLearnerProbe:
                 projection_heads=normalize_scalar_for_json(head_rows),
                 review_items=normalize_scalar_for_json(item_rows),
                 save_intents=normalize_scalar_for_json(intent_rows),
+                learner_rows=learner_rows,
             )
 
     def teardown_disposable_user(self, user_id: UUID) -> dict[str, Any]:

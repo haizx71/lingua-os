@@ -75,6 +75,7 @@ export function useReviewSession({
   const [lastFeedback, setLastFeedback] = useState<string | null>(null);
   const [pendingRetryOperation, setPendingRetryOperation] = useState<PendingReviewOperation | null>(null);
   const sequenceRef = useRef(0);
+  const queueSequenceRef = useRef(0);
   const mountedRef = useRef(false);
   const busyRef = useRef<symbol | null>(null);
   const activeOperationRef = useRef<PendingReviewOperation | null>(null);
@@ -82,26 +83,42 @@ export function useReviewSession({
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; sequenceRef.current++; };
+    return () => {
+      mountedRef.current = false;
+      sequenceRef.current++;
+      queueSequenceRef.current++;
+    };
   }, []);
 
   const captureGuard = useCallback(() => {
     const sequence = sequenceRef.current;
     const epoch = getActorEpoch?.() ?? 0;
-    return () => mountedRef.current && sequence === sequenceRef.current &&
-      (!isCurrentActor || isCurrentActor(epoch, actorId));
-  }, [actorId, getActorEpoch, isCurrentActor]);
+    const capturedActorId = actorId;
+    return () =>
+      mountedRef.current &&
+      sequence === sequenceRef.current &&
+      (!isCurrentActor || isCurrentActor(epoch, capturedActorId)) &&
+      (!api.getCurrentActorId || api.getCurrentActorId() === capturedActorId);
+  }, [actorId, api, getActorEpoch, isCurrentActor]);
 
   const loadQueue = useCallback(async () => {
+    const seq = ++queueSequenceRef.current;
     if (!canRequest) {
       if (configured) setQueue([]);
       setIsLoading(configured && authState === 'loading');
       return;
     }
-    sequenceRef.current++;
-    const current = captureGuard();
-    busyRef.current = null;
-    setIsSubmitting(false);
+    const epoch = getActorEpoch?.() ?? 0;
+    const requestActorId = actorId;
+    const isCurrent = () => {
+      return (
+        mountedRef.current &&
+        seq === queueSequenceRef.current &&
+        (!isCurrentActor || isCurrentActor(epoch, requestActorId)) &&
+        (!api.getCurrentActorId || api.getCurrentActorId() === requestActorId)
+      );
+    };
+
     setIsLoading(true);
     setError(null);
     try {
@@ -118,7 +135,7 @@ export function useReviewSession({
       if (cursor) cursors.add(cursor);
       do {
         const response = await api.listReviewQueue(cursor ? { ...stableQuery, cursor } : stableQuery);
-        if (!current()) return;
+        if (!isCurrent()) return;
         items.push(...response.data.map(mapReviewQueueItemToViewModel));
         const next = response.meta.nextCursor;
         if (response.meta.hasMore) {
@@ -130,22 +147,35 @@ export function useReviewSession({
           cursor = undefined;
         }
       } while (cursor);
-      if (new Set(items.map(item => item.id)).size !== items.length) throw new Error('Duplicate review item');
+      if (new Set(items.map((item) => item.id)).size !== items.length) throw new Error('Duplicate review item');
+      if (!isCurrent()) return;
       setQueue(items);
       setCurrentIndex(0);
       setRemainingDueCount(items.length);
       setIsAnswerRevealed(false);
       cardStartTimeRef.current = performance.now();
     } catch (err) {
-      if (!current() || isLinguaActorAbortedError(err)) return;
+      if (!isCurrent() || isLinguaActorAbortedError(err)) return;
       setError(err instanceof Error ? err : new Error('Review unavailable'));
     } finally {
-      if (current()) setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
-  }, [api, authState, canRequest, captureGuard, configured, customApiClient, receiptKey, stableQuery]);
+  }, [
+    api,
+    authState,
+    canRequest,
+    configured,
+    customApiClient,
+    getActorEpoch,
+    isCurrentActor,
+    actorId,
+    receiptKey,
+    stableQuery,
+  ]);
 
   useEffect(() => {
     sequenceRef.current++;
+    queueSequenceRef.current++;
     busyRef.current = null;
     activeOperationRef.current = null;
     setQueue(initialQueue ?? (live ? [] : defaultReviewQueue));
@@ -162,7 +192,9 @@ export function useReviewSession({
 
   useEffect(() => {
     if (!skipInitialFetch) void loadQueue();
-    return () => { sequenceRef.current++; };
+    return () => {
+      queueSequenceRef.current++;
+    };
   }, [loadQueue, skipInitialFetch]);
 
   const currentCard = queue[currentIndex] ?? null;
@@ -223,7 +255,7 @@ export function useReviewSession({
       setPendingRetryOperation(operation);
       setActionError(err instanceof Error ? err : new Error('Review unavailable'));
     } finally {
-      if (current() && busyRef.current === token) {
+      if (busyRef.current === token) {
         busyRef.current = null;
         setIsSubmitting(false);
       }

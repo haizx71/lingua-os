@@ -10,6 +10,20 @@ import {
 } from './supabase_users';
 
 describe('FRLL Supabase User Provisioner Seam', () => {
+  it.each([createSupabaseAdminClient, createSupabaseLearnerClient])(
+    'bounds real SDK network requests with an abort signal (%#)', async factory => {
+      const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+        JSON.stringify({ id: '00000000-0000-4000-8000-000000000001' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ));
+      try {
+        const client = factory('https://test.supabase.co', 'test-only-public-key');
+        await client.auth.admin.getUserById('00000000-0000-4000-8000-000000000001');
+        expect(request).toHaveBeenCalled();
+        expect(request.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+      } finally { request.mockRestore(); }
+    },
+  );
   it('fails clearly when credentials are not configured', async () => {
     await expect(
       createDisposableSupabaseUser({ supabaseUrl: '', secretKey: '' })

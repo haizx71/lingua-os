@@ -7,6 +7,12 @@
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createClient, isAuthApiError, type SupabaseClient } from '@supabase/supabase-js';
 
+const boundedAuthFetch: typeof fetch = (input, init) => {
+  const deadline = AbortSignal.timeout(15_000);
+  const signal = init?.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+  return fetch(input, { ...init, signal });
+};
+
 export interface DisposableSupabaseUser {
   readonly id: string;
   readonly email: string;
@@ -64,6 +70,7 @@ export function createSupabaseAdminClient(
   secretKey: string
 ): SupabaseClient {
   return createClient(supabaseUrl, secretKey, {
+    global: { fetch: boundedAuthFetch },
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -89,6 +96,7 @@ export function createSupabaseLearnerClient(
   publishableKey: string
 ): SupabaseClient {
   return createClient(supabaseUrl, publishableKey, {
+    global: { fetch: boundedAuthFetch },
     auth: {
       autoRefreshToken: false,
       persistSession: false,

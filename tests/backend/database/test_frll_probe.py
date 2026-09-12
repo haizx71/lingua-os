@@ -139,3 +139,31 @@ def test_f1_cleanup_reports_competence_tables_and_verifies_cascade(
     assert after["counts"]["user_skill_states"] == 0
     assert after["counts"]["user_language_projection_heads"] == 0
     assert after["anchor_concept_intact"] is True
+
+
+def test_r1_complete_digest_observes_non_anchor_rows_and_same_count_mutations(
+    persisted_probe_learner: tuple[str, uuid.UUID],
+) -> None:
+    database_url, actor_id = persisted_probe_learner
+    probe = PostgresLearnerProbe(database_url)
+    # Query an unrelated anchor: the full ownership digest must still include
+    # this actor's existing concept, profile and projection-head state.
+    unrelated_anchor = uuid.uuid4()
+    before = probe.capture_digest(actor_id, unrelated_anchor)
+    assert before.concept_state is None
+    rows = before.learner_rows
+    assert rows["users"][0]["id"] == str(actor_id)
+    assert rows["user_concept_states"][0]["concept_id"] == str(CONCEPT)
+    assert len(rows["user_languages"]) == 1
+    assert len(rows["user_language_projection_heads"]) == 1
+    with psycopg.connect(database_url) as connection:
+        connection.execute(
+            "UPDATE user_languages SET daily_minutes = 25 WHERE user_id = %s", (actor_id,)
+        )
+    after = probe.capture_digest(actor_id, unrelated_anchor)
+    assert len(after.learner_rows["user_languages"]) == len(rows["user_languages"])
+    assert after.learner_rows["user_languages"] != rows["user_languages"]
+    assert after.learner_rows["user_concept_states"] == rows["user_concept_states"]
+    assert all(
+        not owned for owned in probe.capture_digest(uuid.uuid4(), CONCEPT).learner_rows.values()
+    )

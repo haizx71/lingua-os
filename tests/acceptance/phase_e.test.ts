@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { runPhaseELearningLoop, expectProjectionNumberEquivalent } from './support/phase_e_runner';
 
