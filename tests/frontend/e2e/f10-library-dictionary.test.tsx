@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react';
 import DictionaryPage from '@/app/dictionary/page';
 import LibraryPage from '@/app/library/page';
 import { DictionaryView } from '@/features/dictionary/DictionaryView';
+import { defaultDictionaryConcepts } from '@/fixtures/dictionaryFixture';
 import { mapConceptDetailToDictionaryViewModel, mockGrammarConceptDetail } from '@lingua/types';
 import { renderWithProviders } from '../harness/test-render';
 import { assertEmptyState } from '../harness/state-helpers';
@@ -20,7 +21,7 @@ describe('Tier 1: Feature 10 - Library & Dictionary', () => {
   });
 
   it('test_dictionary_displays_concept_card_with_ipa_and_vietnamese_definition', () => {
-    renderWithProviders(<DictionaryPage />);
+    renderWithProviders(<DictionaryView initialConcepts={defaultDictionaryConcepts} />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'appointment' })).toBeInTheDocument();
     expect(screen.getByText(/\/əˈpɔɪnt\.mənt\/ • Danh từ/i)).toBeInTheDocument();
@@ -30,7 +31,7 @@ describe('Tier 1: Feature 10 - Library & Dictionary', () => {
   });
 
   it('test_dictionary_displays_concept_status_chip', () => {
-    renderWithProviders(<DictionaryPage />);
+    renderWithProviders(<DictionaryView initialConcepts={defaultDictionaryConcepts} />);
 
     const chip = screen.getAllByRole('status')[0];
     expect(chip).toBeInTheDocument();

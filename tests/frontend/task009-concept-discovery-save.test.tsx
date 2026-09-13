@@ -3,9 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { AuthProvider } from '../../apps/web/src/features/auth';
+import DictionaryPage from '../../apps/web/src/app/dictionary/page';
 import { DictionaryView } from '../../apps/web/src/features/dictionary/DictionaryView';
+import { setApiClient } from '../../apps/web/src/lib/api/client';
 import {
   MockApiClient,
+  HttpApiClient,
   mockConceptSummary,
   mockSecondConceptSummary,
   type ApiClient,
@@ -89,6 +92,7 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
     vi.clearAllMocks();
     mockSupabase = createMockSupabase(sessionA);
     api = new MockApiClient();
+    setApiClient(api);
     // By default in unit tests, mock listLibraryItems returns empty list so tests start clean
     vi.spyOn(api, 'listLibraryItems').mockResolvedValue({
       data: [],
@@ -123,6 +127,21 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
     });
 
     expect(await screen.findByRole('heading', { level: 2, name: 'appointment' })).toBeInTheDocument();
+  });
+
+  it('TEST-009-LIVE-01: live transport never exposes provisional dictionary fixtures before an authoritative search', async () => {
+    const liveApi = new HttpApiClient({
+      baseUrl: '/api',
+      authTokenProvider: async () => 'live-token',
+      fetchFn: vi.fn(),
+    });
+
+    setApiClient(liveApi);
+    render(<DictionaryPage />);
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'appointment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Lưu từ appointment để học/i })).not.toBeInTheDocument();
+    setApiClient(api);
   });
 
   it('TEST-009-02: concept IDs preserved through adapter/view model without mutation', async () => {
