@@ -200,6 +200,13 @@ export class HttpApiClient implements ApiClient {
       Authorization: `Bearer ${token}`,
       ...normalizeHeaders(params.headers),
     };
+    if (this.baseUrl === '/api') {
+      const ifMatchEntry = Object.entries(headers).find(([name]) => name.toLowerCase() === 'if-match');
+      if (ifMatchEntry) {
+        delete headers[ifMatchEntry[0]];
+        headers['X-Lingua-If-Match'] = ifMatchEntry[1];
+      }
+    }
     const init: RequestInit = { method: params.method, headers };
     if (params.body !== undefined) {
       headers['Content-Type'] = 'application/json';

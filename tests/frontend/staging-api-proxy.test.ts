@@ -20,7 +20,7 @@ function request(method: string, url = 'https://staging.example.test/api/v1/me?c
       Accept: 'application/json',
       Authorization: 'Bearer actor-token',
       'Content-Type': 'application/json',
-      'If-Match': '"profile-v1"',
+      'X-Lingua-If-Match': '"profile-v1"',
       'Idempotency-Key': '00000000-0000-4000-8000-000000000001',
     },
     body,
@@ -55,6 +55,7 @@ describe('production same-origin API proxy', () => {
     const forwardedHeaders = new Headers(init?.headers);
     expect(forwardedHeaders.get('authorization')).toBe('Bearer actor-token');
     expect(forwardedHeaders.get('if-match')).toBe('"profile-v1"');
+    expect(forwardedHeaders.get('x-lingua-if-match')).toBeNull();
     expect(forwardedHeaders.get('idempotency-key')).toBe('00000000-0000-4000-8000-000000000001');
     expect(forwardedHeaders.get('content-type')).toBe('application/json');
     expect(await new Response(init?.body).text()).toBe('{"goal":"communication"}');

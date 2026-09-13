@@ -140,6 +140,29 @@ describe('HttpApiClient', () => {
     expect(client.getLastEtag('me')).toBe('"profile-v1"');
   });
 
+  it('tunnels If-Match across the hosted proxy without exposing it to the Vercel cache layer', async () => {
+    const fetchFn = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const requestHeaders = new Headers(init?.headers);
+      expect(requestHeaders.get('if-match')).toBeNull();
+      expect(requestHeaders.get('x-lingua-if-match')).toBe('"profile-v1"');
+      return response(mockApiResponses.me, {
+        headers: { 'X-Lingua-Upstream-ETag': '"profile-v2"' },
+      });
+    });
+    const client = new HttpApiClient({
+      baseUrl: '/api',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+    });
+
+    await client.updateMe({
+      body: { timeZone: 'Asia/Ho_Chi_Minh' },
+      headers: { 'If-Match': '"profile-v1"' },
+    });
+
+    expect(client.getLastEtag('me')).toBe('"profile-v2"');
+  });
+
   it('does not change an idempotency key when the caller repeats an ambiguous mutation', async () => {
     const fetchFn = vi.fn(async () => response(mockApiResponses.languageProfile));
     const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn });

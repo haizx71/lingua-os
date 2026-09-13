@@ -51,12 +51,16 @@ function unavailableResponse(): NextResponse {
 
 function forwardRequestHeaders(request: Request): Headers {
   const headers = new Headers();
+  const tunneledIfMatch = request.headers.get('x-lingua-if-match');
   request.headers.forEach((value, name) => {
     const normalizedName = name.toLowerCase();
     if (normalizedName === 'host' || normalizedName === 'content-length' || normalizedName === 'cookie') return;
     if (HOP_BY_HOP_HEADERS.has(normalizedName)) return;
+    if (normalizedName === 'x-lingua-if-match') return;
+    if (normalizedName === 'if-match' && tunneledIfMatch) return;
     headers.set(name, value);
   });
+  if (tunneledIfMatch) headers.set('If-Match', tunneledIfMatch);
   return headers;
 }
 
