@@ -297,3 +297,29 @@ repository under `D:\LINGUA_FRLL_RAW_20260912`. Actor sets are represented only
 by truncated SHA-256 hashes. This decision freezes FRLL as a regression
 baseline: do not change it for style or refactoring. Reopen only on a real
 regression or a newly discovered acceptance defect.
+
+## ADR-024 — Bounded owner content authoring over the existing Reader schema
+Status: ACCEPTED
+
+TASK-ADMIN-001 uses the existing Supabase JWT subject plus a server-only, comma-separated UUID
+allowlist (`LINGUA_ADMIN_USER_IDS`) as its bounded owner authorization boundary. Missing, empty or
+malformed configuration fails closed. This is intentionally not a general RBAC system, and the
+allowlist never enters browser configuration or API payloads.
+
+Owner-authored English micro-articles reuse the existing relational Reader/provenance model:
+`licenses`, `data_sources`, `source_records`, `content_items`, `content_versions`, `sentences`,
+`content_segments`, `sentence_concepts`, `content_concepts`, `content_metrics` and curated CEFR
+levels. The fixed `LINGUA-FIRST-PARTY` license is server-created only with allowed usage; explicit
+attribution and a rights statement are still mandatory and stored. No schema migration is needed.
+
+Sentence segmentation is deterministic and provider-free. Concept occurrences are derived only
+from accepted exact catalog matching already used by Reader Analyze. An unmapped sentence is a
+visible validation failure; the system never invents a concept, translation, confidence or CEFR
+claim. Validation advances eligible content to `reviewed`, but PostgreSQL's existing Reader
+publication trigger remains the final authority for `published`. Published and retired records are
+not editable; corrections require a new content identity. Retirement preserves the audit record but
+removes it from learner Reader discovery.
+
+The `/admin` route requires authentication but deliberately does not bootstrap learner readiness or
+create learner state. All Admin persistence is catalog/content provenance, and tests verify that
+learning events, review events and learner concept state remain unchanged.

@@ -52,7 +52,8 @@ export function AppRouteBoundary({
   const effectiveRouter = router ?? { replace: () => {}, push: () => {} };
   const effectivePathname = pathname ?? '/';
   const { authState, isConfigured } = useAuth();
-  const readiness = useProductReadiness();
+  const isAdminRoute = effectivePathname === '/admin' || effectivePathname.startsWith('/admin/');
+  const readiness = useProductReadiness(undefined, !isAdminRoute);
   const isPublicRoute = publicRoutes.has(effectivePathname);
   const isOnboardingRoute = effectivePathname === '/onboarding';
 
@@ -65,6 +66,7 @@ export function AppRouteBoundary({
     }
 
     if (authState === 'authenticated') {
+      if (isAdminRoute) return;
       if (readiness.status === 'loading' || readiness.status === 'error') {
         return;
       }
@@ -91,7 +93,7 @@ export function AppRouteBoundary({
         }
       }
     }
-  }, [authState, effectivePathname, effectiveRouter, isConfigured, isOnboardingRoute, isPublicRoute, readiness.status]);
+  }, [authState, effectivePathname, effectiveRouter, isAdminRoute, isConfigured, isOnboardingRoute, isPublicRoute, readiness.status]);
 
   if (!isPublicRoute && !isConfigured) {
     return (
@@ -117,6 +119,7 @@ export function AppRouteBoundary({
     }
 
     if (!isPublicRoute) {
+      if (isAdminRoute) return <AppShell>{children}</AppShell>;
       if (readiness.status === 'loading') {
         return <LoadingState message="Đang kiểm tra hồ sơ học tập..." count={2} />;
       }

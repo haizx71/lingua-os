@@ -12,6 +12,10 @@ from pydantic import BaseModel
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from lingua_api.admin.authorization import AdminActorPolicy, AdminForbidden
+from lingua_api.admin.domain import AdminInvalidState, AdminNotFound, AdminValidationError
+from lingua_api.admin.routes import router as admin_router
+from lingua_api.admin.service import AdminContentApplication
 from lingua_api.assessment.domain import (
     AssessmentIdempotencyConflict,
     AssessmentInvalidState,
@@ -102,6 +106,7 @@ def create_app(
     token_verifier: AccessTokenVerifier | None = None,
     clock: Clock | None = None,
     cursor_secret: bytes | None = None,
+    admin_user_ids: str | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="LINGUA OS API",
@@ -111,6 +116,14 @@ def create_app(
     resolved_database_url = database_url or os.getenv("DATABASE_URL")
     resolved_cursor_secret = cursor_secret or _cursor_secret_from_environment()
     application.state.token_verifier = token_verifier or _token_verifier_from_environment()
+    application.state.admin_actor_policy = AdminActorPolicy.from_environment_value(
+        admin_user_ids if admin_user_ids is not None else os.getenv("LINGUA_ADMIN_USER_IDS")
+    )
+    application.state.admin_content_application = (
+        AdminContentApplication(resolved_database_url, clock=clock)
+        if resolved_database_url is not None
+        else None
+    )
     application.state.review_application = (
         ReviewApplication(
             resolved_database_url,
@@ -167,6 +180,7 @@ def create_app(
         return await call_next(request)
 
     _register_error_handlers(application)
+    application.include_router(admin_router)
     application.include_router(profile_router)
     application.include_router(review_router)
     application.include_router(content_router)
@@ -185,6 +199,31 @@ def create_app(
 
 
 def _register_error_handlers(application: FastAPI) -> None:
+    @application.exception_handler(AdminForbidden)
+    async def admin_forbidden(request: Request, error: AdminForbidden) -> JSONResponse:
+        del error
+        return _error(request, 403, "FORBIDDEN", "This action is not permitted.")
+
+    @application.exception_handler(AdminNotFound)
+    async def admin_not_found(request: Request, error: AdminNotFound) -> JSONResponse:
+        del error
+        return _error(request, 404, "NOT_FOUND", "The requested content was not found.")
+
+    @application.exception_handler(AdminInvalidState)
+    async def admin_invalid_state(request: Request, error: AdminInvalidState) -> JSONResponse:
+        del error
+        return _error(
+            request,
+            409,
+            "INVALID_STATE_TRANSITION",
+            "The content is not in a state that allows this action.",
+        )
+
+    @application.exception_handler(AdminValidationError)
+    async def admin_validation(request: Request, error: AdminValidationError) -> JSONResponse:
+        del error
+        return _error(request, 422, "VALIDATION_ERROR", "The content request is invalid.")
+
     @application.exception_handler(AccessTokenInvalid)
     async def unauthenticated(request: Request, error: AccessTokenInvalid) -> JSONResponse:
         del error

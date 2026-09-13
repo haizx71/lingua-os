@@ -4,6 +4,104 @@
  */
 
 export interface paths {
+    readonly "/v1/admin/content": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** List bounded owner-authored content records */
+        readonly get: operations["listAdminContent"];
+        readonly put?: never;
+        /** Create one original English micro-article */
+        readonly post: operations["createAdminContent"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/admin/content/{contentId}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        /** Inspect one owner-authored content record */
+        readonly get: operations["getAdminContent"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        /**
+         * Update an unpublished owner-authored content record
+         * @description Published and retired records cannot be edited; corrections require a new content identity.
+         */
+        readonly patch: operations["updateAdminContent"];
+        readonly trace?: never;
+    };
+    readonly "/v1/admin/content/{contentId}/validate": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Validate first-party provenance and Reader publication dependencies */
+        readonly post: operations["validateAdminContent"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/admin/content/{contentId}/publish": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Publish reviewed first-party content through the authoritative database gate */
+        readonly post: operations["publishAdminContent"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/admin/content/{contentId}/retire": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Retire published first-party content from learner discovery */
+        readonly post: operations["retireAdminContent"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/v1/me": {
         readonly parameters: {
             readonly query?: never;
@@ -698,6 +796,8 @@ export interface components {
         /** @enum {string} */
         readonly ContentType: "article" | "story" | "dialogue" | "lesson" | "transcript";
         /** @enum {string} */
+        readonly AdminContentStatus: "raw" | "normalized" | "enriched" | "reviewed" | "published" | "quarantined" | "retired";
+        /** @enum {string} */
         readonly ReaderExposureType: "read" | "listen" | "lookup";
         /**
          * @description Curator-selected Reader fit label; it is not a formal CEFR certification.
@@ -1207,6 +1307,79 @@ export interface components {
             readonly data: components["schemas"]["ContentDetail"];
             readonly meta: components["schemas"]["ResponseMeta"];
         };
+        readonly CreateAdminContentRequest: {
+            readonly title: string;
+            readonly body: string;
+            /** @constant */
+            readonly languageCode: "en";
+            readonly level: components["schemas"]["ReaderContentLevel"];
+            readonly authorName: string;
+            readonly sourceName: string;
+            readonly sourceVersion: string;
+            readonly attributionText: string;
+            readonly rightsStatement: string;
+        };
+        readonly UpdateAdminContentRequest: {
+            readonly title?: string;
+            readonly body?: string;
+            readonly level?: components["schemas"]["ReaderContentLevel"];
+            readonly authorName?: string;
+            readonly sourceName?: string;
+            readonly sourceVersion?: string;
+            readonly attributionText?: string;
+            readonly rightsStatement?: string;
+        };
+        readonly AdminSentencePreview: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly order: number;
+            readonly text: string;
+            readonly conceptCount: number;
+        };
+        readonly AdminContent: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly body: string;
+            /** @constant */
+            readonly languageCode: "en";
+            /** @constant */
+            readonly contentType: "article";
+            readonly level: components["schemas"]["ReaderContentLevel"];
+            readonly status: components["schemas"]["AdminContentStatus"];
+            readonly authorName: string;
+            readonly sourceName: string;
+            readonly sourceVersion: string;
+            /** @constant */
+            readonly licenseCode: "LINGUA-FIRST-PARTY";
+            readonly attributionText: string;
+            readonly rightsStatement: string;
+            readonly sourceRecordKey: string;
+            readonly rawHash: string;
+            readonly sentences: readonly components["schemas"]["AdminSentencePreview"][];
+            readonly publishedAt?: string | null;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly updatedAt: string;
+        };
+        readonly AdminContentValidation: {
+            readonly content: components["schemas"]["AdminContent"];
+            readonly isValid: boolean;
+            readonly issues: readonly components["schemas"]["ValidationIssue"][];
+        };
+        readonly AdminContentListResponse: {
+            readonly data: readonly components["schemas"]["AdminContent"][];
+            readonly meta: components["schemas"]["ResponseMeta"];
+        };
+        readonly AdminContentResponse: {
+            readonly data: components["schemas"]["AdminContent"];
+            readonly meta: components["schemas"]["ResponseMeta"];
+        };
+        readonly AdminContentValidationResponse: {
+            readonly data: components["schemas"]["AdminContentValidation"];
+            readonly meta: components["schemas"]["ResponseMeta"];
+        };
         readonly SavedConceptItem: {
             /** @constant */
             readonly itemType: "concept";
@@ -1538,6 +1711,202 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly listAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Owner-only authoring catalog ordered by latest update. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentListResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly createAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CreateAdminContentRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description First-party content and deterministic normalized structure created. */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 409: components["responses"]["Conflict"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly getAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Authoring detail and deterministic sentence preview. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly updateAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["UpdateAdminContentRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Updated authoring detail with rebuilt deterministic sentence structure. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly validateAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Current validation result; valid content advances to reviewed. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentValidationResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly publishAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Published content; its Reader structure is now immutable. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly retireAdminContent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Retired content remains auditable but is no longer learner-visible. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
     readonly getMe: {
         readonly parameters: {
             readonly query?: never;

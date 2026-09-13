@@ -31,7 +31,7 @@ export interface ProductReadinessResult {
  *
  * Starting level estimate is explicitly OPTIONAL; unestimated learners are fully product-ready.
  */
-export function useProductReadiness(customApiClient?: ApiClient): ProductReadinessResult {
+export function useProductReadiness(customApiClient?: ApiClient, enabled = true): ProductReadinessResult {
   const auth = useAuth();
   const { authState, user, isConfigured, getActorEpoch, isCurrentActor } = auth;
   const apiResolution = useMemo(() => {
@@ -59,6 +59,14 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
   const [error, setError] = useState<Error | null>(null);
 
   const checkReadiness = useCallback(async () => {
+    if (!enabled) {
+      setStatus('ready');
+      setIsReady(true);
+      setTimeZone(null);
+      setActiveLanguageProfileId(null);
+      setError(null);
+      return;
+    }
     const opEpoch = getActorEpoch ? getActorEpoch() : 0;
     const opActorId = user?.id ?? null;
 
@@ -114,7 +122,7 @@ export function useProductReadiness(customApiClient?: ApiClient): ProductReadine
       setStatus('error');
       setIsReady(false);
     }
-  }, [api, apiResolutionError, authState, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
+  }, [api, apiResolutionError, authState, enabled, isConfigured, user?.id, getActorEpoch, isCurrentActor]);
 
   useEffect(() => {
     void checkReadiness();

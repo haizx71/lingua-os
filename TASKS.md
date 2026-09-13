@@ -17,6 +17,24 @@ For non-trivial tasks:
 
 Approved specs and accepted ADRs are locked design by default. Do not brainstorm them again unless the task exposes a genuine unresolved gap.
 
+## Owner administration
+
+### TASK-ADMIN-001 — Owner-only first-party content authoring vertical slice
+Owner: CODEX
+Status: DONE
+Dependencies: TASK-003, TASK-004, TASK-008, owner self-use baseline
+
+Implement the smallest server-authorized Admin surface needed for the owner to create, inspect,
+validate, publish and retire an original English micro-article without editing PostgreSQL manually.
+
+*Completed and verified: fail-closed Supabase actor UUID allowlist, seven versioned Admin API
+operations, deterministic sentence segmentation and catalog matching, explicit first-party
+provenance/rights, authoritative Reader publication gate, minimal `/admin` UI, generated OpenAPI
+types and Reader visibility after publication. Existing PostgreSQL tables were reused; no migration,
+learner-state write, learner-domain change, deployment or push was performed. Verification: 506/506
+backend tests and 677/677 frontend/acceptance tests (55 files, sequential worker execution), contract
+freshness, OpenAPI validation, Ruff, mypy, TypeScript, ESLint, production build and diff check PASS.*
+
 ## Owner self-use baseline checkpoint — accepted (2026-09-13)
 
 ```text

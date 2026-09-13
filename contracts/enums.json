@@ -22,5 +22,6 @@
   "reader_content_level": ["A0", "A1", "A2", "B1"],
   "content_segment_type": ["sentence", "paragraph", "dialogue_turn", "caption"],
   "library_item_type": ["content", "sentence", "concept"],
-  "content_quality_status": ["raw", "normalized", "review_pending", "approved", "rejected"]
+  "content_quality_status": ["raw", "normalized", "review_pending", "approved", "rejected"],
+  "admin_content_status": ["raw", "normalized", "enriched", "reviewed", "published", "quarantined", "retired"]
 }

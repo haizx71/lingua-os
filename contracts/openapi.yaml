@@ -49,7 +49,146 @@ tags:
     description: Relational Language Brain summary, list, and concept projections.
   - name: Progress
     description: Bounded evidence-based learning progress summaries.
+  - name: Admin
+    description: Owner-only first-party content authoring; access is controlled by server-side actor UUID allowlist.
 paths:
+  /v1/admin/content:
+    get:
+      tags: [Admin]
+      operationId: listAdminContent
+      summary: List bounded owner-authored content records
+      responses:
+        '200':
+          description: Owner-only authoring catalog ordered by latest update.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentListResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Admin]
+      operationId: createAdminContent
+      summary: Create one original English micro-article
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAdminContentRequest' }
+      responses:
+        '201':
+          description: First-party content and deterministic normalized structure created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/admin/content/{contentId}:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    get:
+      tags: [Admin]
+      operationId: getAdminContent
+      summary: Inspect one owner-authored content record
+      responses:
+        '200':
+          description: Authoring detail and deterministic sentence preview.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Admin]
+      operationId: updateAdminContent
+      summary: Update an unpublished owner-authored content record
+      description: Published and retired records cannot be edited; corrections require a new content identity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAdminContentRequest' }
+      responses:
+        '200':
+          description: Updated authoring detail with rebuilt deterministic sentence structure.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/admin/content/{contentId}/validate:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    post:
+      tags: [Admin]
+      operationId: validateAdminContent
+      summary: Validate first-party provenance and Reader publication dependencies
+      responses:
+        '200':
+          description: Current validation result; valid content advances to reviewed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentValidationResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/admin/content/{contentId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    post:
+      tags: [Admin]
+      operationId: publishAdminContent
+      summary: Publish reviewed first-party content through the authoritative database gate
+      responses:
+        '200':
+          description: Published content; its Reader structure is now immutable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/admin/content/{contentId}/retire:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    post:
+      tags: [Admin]
+      operationId: retireAdminContent
+      summary: Retire published first-party content from learner discovery
+      responses:
+        '200':
+          description: Retired content remains auditable but is no longer learner-visible.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /v1/me:
     get:
       tags: [Profile]
@@ -1221,6 +1360,10 @@ components:
       type: string
       x-enum-registry: content_type
       enum: [article, story, dialogue, lesson, transcript]
+    AdminContentStatus:
+      type: string
+      x-enum-registry: admin_content_status
+      enum: [raw, normalized, enriched, reviewed, published, quarantined, retired]
     ReaderExposureType:
       type: string
       x-enum-registry: reader_exposure_type
@@ -1913,6 +2056,107 @@ components:
       required: [data, meta]
       properties:
         data: { $ref: '#/components/schemas/ContentDetail' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    CreateAdminContentRequest:
+      type: object
+      additionalProperties: false
+      required: [title, body, languageCode, level, authorName, sourceName, sourceVersion, attributionText, rightsStatement]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        body: { type: string, minLength: 1, maxLength: 100000 }
+        languageCode: { type: string, const: en }
+        level: { $ref: '#/components/schemas/ReaderContentLevel' }
+        authorName: { type: string, minLength: 1, maxLength: 200 }
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 100 }
+        attributionText: { type: string, minLength: 1, maxLength: 1000 }
+        rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+    UpdateAdminContentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        body: { type: string, minLength: 1, maxLength: 100000 }
+        level: { $ref: '#/components/schemas/ReaderContentLevel' }
+        authorName: { type: string, minLength: 1, maxLength: 200 }
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 100 }
+        attributionText: { type: string, minLength: 1, maxLength: 1000 }
+        rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+    AdminSentencePreview:
+      type: object
+      additionalProperties: false
+      required: [id, order, text, conceptCount]
+      properties:
+        id: { type: string, format: uuid }
+        order: { type: integer, minimum: 0 }
+        text: { type: string, minLength: 1, maxLength: 5000 }
+        conceptCount: { type: integer, minimum: 0 }
+    AdminContent:
+      type: object
+      additionalProperties: false
+      required: [id, title, body, languageCode, contentType, level, status, authorName, sourceName, sourceVersion, licenseCode, attributionText, rightsStatement, sourceRecordKey, rawHash, sentences, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 500 }
+        body: { type: string, minLength: 1, maxLength: 100000 }
+        languageCode: { type: string, const: en }
+        contentType: { type: string, const: article }
+        level: { $ref: '#/components/schemas/ReaderContentLevel' }
+        status: { $ref: '#/components/schemas/AdminContentStatus' }
+        authorName: { type: string, minLength: 1, maxLength: 200 }
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 100 }
+        licenseCode: { type: string, const: LINGUA-FIRST-PARTY }
+        attributionText: { type: string, minLength: 1, maxLength: 1000 }
+        rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+        sourceRecordKey: { type: string, minLength: 1, maxLength: 200 }
+        rawHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        sentences:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/AdminSentencePreview' }
+        publishedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: 'null' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AdminContentValidation:
+      type: object
+      additionalProperties: false
+      required: [content, isValid, issues]
+      properties:
+        content: { $ref: '#/components/schemas/AdminContent' }
+        isValid: { type: boolean }
+        issues:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ValidationIssue' }
+    AdminContentListResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/AdminContent' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    AdminContentResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/AdminContent' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    AdminContentValidationResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/AdminContentValidation' }
         meta: { $ref: '#/components/schemas/ResponseMeta' }
     SavedConceptItem:
       type: object

@@ -19,6 +19,11 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
     published_paths = set(app.openapi()["paths"])
 
     assert published_paths == {
+        "/v1/admin/content",
+        "/v1/admin/content/{contentId}",
+        "/v1/admin/content/{contentId}/validate",
+        "/v1/admin/content/{contentId}/publish",
+        "/v1/admin/content/{contentId}/retire",
         "/v1/me",
         "/v1/me/languages",
         "/v1/me/languages/{languageProfileId}",
@@ -46,6 +51,54 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/library/sentences/{sentenceId}",
     }
     assert "/health" not in published_paths
+
+
+def test_admin_runtime_metadata_preserves_the_owner_content_contract() -> None:
+    generated = app.openapi()
+    operations = (
+        ("/v1/admin/content", "get", "listAdminContent", {"200", "401", "403", "422", "500"}),
+        (
+            "/v1/admin/content",
+            "post",
+            "createAdminContent",
+            {"201", "401", "403", "409", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}",
+            "get",
+            "getAdminContent",
+            {"200", "401", "403", "404", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}",
+            "patch",
+            "updateAdminContent",
+            {"200", "401", "403", "404", "409", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}/validate",
+            "post",
+            "validateAdminContent",
+            {"200", "401", "403", "404", "409", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}/publish",
+            "post",
+            "publishAdminContent",
+            {"200", "401", "403", "404", "409", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}/retire",
+            "post",
+            "retireAdminContent",
+            {"200", "401", "403", "404", "409", "422", "500"},
+        ),
+    )
+    for path, method, operation_id, responses in operations:
+        operation = generated["paths"][path][method]
+        assert operation["operationId"] == operation_id
+        assert set(operation["responses"]) == responses
+        assert operation["security"] == [{"bearerAuth": []}]
 
 
 def test_profile_runtime_metadata_preserves_the_five_frozen_operations() -> None:

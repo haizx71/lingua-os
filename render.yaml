@@ -12,3 +12,5 @@ services:
         sync: false
       - key: REVIEW_CURSOR_SECRET
         sync: false
+      - key: LINGUA_ADMIN_USER_IDS
+        sync: false

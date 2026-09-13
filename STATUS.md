@@ -1,7 +1,28 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; staging deployment hardening ready for independent review; GAP-01 Closed
+Phase: FRLL accepted/frozen; TASK-ADMIN-001 owner content authoring complete; GAP-01 Closed
+
+## Current checkpoint — TASK-ADMIN-001 complete (2026-09-13)
+
+- Owner-only first-party content authoring is implemented through seven authenticated
+  `/v1/admin/content` operations and a minimal `/admin` web surface.
+- Authorization uses the existing Supabase JWT actor identity plus the server-only
+  `LINGUA_ADMIN_USER_IDS` UUID allowlist. Missing or malformed configuration fails closed; anonymous
+  actors receive 401 and authenticated non-owners receive 403.
+- Original English micro-articles persist explicit source records, SHA-256 provenance, attribution,
+  rights statement and a fixed first-party license identity. Sentence order/Unicode are preserved by
+  deterministic provider-free segmentation; catalog concept matches are never fabricated.
+- Validation exposes unmapped sentences and invalid provenance. Publication remains controlled by
+  the existing PostgreSQL Reader gate; published structure stays immutable and retired content is no
+  longer learner-visible.
+- Reused existing schema only: no migration and no learner-state mutation. Existing Reader GET
+  returns successfully published content.
+- Verification: OpenAPI validation and generated TypeScript freshness PASS; Ruff format/lint and
+  mypy PASS; backend 506/506 PASS; focused Admin frontend 6/6 PASS; full frontend/acceptance 677/677
+  PASS across 55 files with sequential workers; TypeScript, ESLint, production build and
+  `git diff --check` PASS. Storybook was not required because no shared UI component or story changed.
+- No deployment and no remote push were performed.
 
 ## Owner self-use baseline checkpoint — accepted (2026-09-13)
 

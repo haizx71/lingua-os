@@ -14,6 +14,11 @@ ENUMS_PATH = ROOT / "contracts" / "enums.json"
 ERRORS_PATH = ROOT / "contracts" / "errors.json"
 
 EXPECTED_PATHS = {
+    "/v1/admin/content",
+    "/v1/admin/content/{contentId}",
+    "/v1/admin/content/{contentId}/validate",
+    "/v1/admin/content/{contentId}/publish",
+    "/v1/admin/content/{contentId}/retire",
     "/v1/me",
     "/v1/me/languages",
     "/v1/me/languages/{languageProfileId}",

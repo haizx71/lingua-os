@@ -1,5 +1,8 @@
 /** Contract-shaped transport boundary. React components consume adapter view models, not this API. */
 import type {
+  AdminContentListResponseDto,
+  AdminContentResponseDto,
+  AdminContentValidationResponseDto,
   AssessmentSessionResponseDto,
   BrainConceptListResponseDto,
   BrainConceptResponseDto,
@@ -8,6 +11,7 @@ import type {
   ConceptResponseDto,
   ContentRecommendationsResponseDto,
   ContentResponseDto,
+  CreateAdminContentRequestDto,
   CreateLanguageProfileRequestDto,
   DictionarySearchResponseDto,
   LanguageProfileResponseDto,
@@ -30,6 +34,7 @@ import type {
   TodayPlanResponseDto,
   UpdateLanguageProfileRequestDto,
   UpdateMeRequestDto,
+  UpdateAdminContentRequestDto,
 } from './api/dtos';
 import {
   createApiError,
@@ -54,6 +59,13 @@ export interface ApiClient {
   setActor?(actorId: string | null): void;
   getCurrentActorId?(): string | null;
   getActorGeneration?(): number;
+  listAdminContent(): Promise<AdminContentListResponseDto>;
+  createAdminContent(body: CreateAdminContentRequestDto): Promise<AdminContentResponseDto>;
+  getAdminContent(contentId: string): Promise<AdminContentResponseDto>;
+  updateAdminContent(input: { contentId: string; body: UpdateAdminContentRequestDto }): Promise<AdminContentResponseDto>;
+  validateAdminContent(contentId: string): Promise<AdminContentValidationResponseDto>;
+  publishAdminContent(contentId: string): Promise<AdminContentResponseDto>;
+  retireAdminContent(contentId: string): Promise<AdminContentResponseDto>;
   getMe(): Promise<MeResponseDto>;
   updateMe(input: { body: UpdateMeRequestDto; headers: OperationHeaders<'updateMe'> }): Promise<MeResponseDto>;
   listMyLanguageProfiles(): Promise<LanguageProfilesResponseDto>;
@@ -269,6 +281,14 @@ export class HttpApiClient implements ApiClient {
     return payload as T;
   }
 
+  listAdminContent() { return this.request<AdminContentListResponseDto>({ method: 'GET', path: '/v1/admin/content' }); }
+  createAdminContent(body: CreateAdminContentRequestDto) { return this.request<AdminContentResponseDto>({ method: 'POST', path: '/v1/admin/content', body }); }
+  getAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'GET', path: `/v1/admin/content/${encodeURIComponent(contentId)}` }); }
+  updateAdminContent(input: Parameters<ApiClient['updateAdminContent']>[0]) { return this.request<AdminContentResponseDto>({ method: 'PATCH', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}`, body: input.body }); }
+  validateAdminContent(contentId: string) { return this.request<AdminContentValidationResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/validate` }); }
+  publishAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/publish` }); }
+  retireAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/retire` }); }
+
   getMe() { return this.request<MeResponseDto>({ method: 'GET', path: '/v1/me', resourceKey: 'me' }); }
   updateMe(input: Parameters<ApiClient['updateMe']>[0]) { return this.request<MeResponseDto>({ method: 'PATCH', path: '/v1/me', body: input.body, headers: input.headers, resourceKey: 'me' }); }
   listMyLanguageProfiles() { return this.request<LanguageProfilesResponseDto>({ method: 'GET', path: '/v1/me/languages' }); }
@@ -351,6 +371,18 @@ export class MockApiClient implements ApiClient {
 
   private async fixture<T>(value: T): Promise<T> { await this.ready(); return clone(value); }
 
+  private async adminForbidden(): Promise<never> {
+    await this.ready();
+    throw createApiError('FORBIDDEN');
+  }
+
+  listAdminContent(): Promise<AdminContentListResponseDto> { return this.adminForbidden(); }
+  createAdminContent(_body: CreateAdminContentRequestDto): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  getAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  updateAdminContent(_input: Parameters<ApiClient['updateAdminContent']>[0]): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  validateAdminContent(_contentId: string): Promise<AdminContentValidationResponseDto> { return this.adminForbidden(); }
+  publishAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  retireAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   getMe() { return this.fixture(mockApiResponses.me); }
   updateMe(_input: Parameters<ApiClient['updateMe']>[0]) { return this.fixture(mockApiResponses.me); }
   listMyLanguageProfiles() { return this.fixture(this.returnEmpty ? { data: [], meta: mockResponseMeta } : mockApiResponses.languageProfiles); }
