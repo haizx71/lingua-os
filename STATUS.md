@@ -3,6 +3,19 @@
 Version: 4.0 starter
 Phase: FRLL accepted/frozen; staging deployment hardening ready for independent review; GAP-01 Closed
 
+## Owner self-use baseline checkpoint — accepted (2026-09-13)
+
+```text
+OWNER SELF-USE BASELINE = ACCEPTED
+HEAD = 810cea19d5b45021ab7a671ab5d353b235536f75
+FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
+```
+
+- Local annotated tag: `owner-self-use-stable-2026-09-13` (not pushed).
+- Scope is the owner-operated self-use baseline only. This additive checkpoint does not claim a
+  new or broader FRLL review at this HEAD and does not alter the frozen FRLL evidence baseline in
+  ADR-023. UI work is deferred to a later, separate step.
+
 ## Current checkpoint — FRLL accepted / frozen
 
 - `FRLL = ACCEPTED` — final reviewer verdict: `FINAL FRLL ACCEPTED` after the

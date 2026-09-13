@@ -17,6 +17,18 @@ For non-trivial tasks:
 
 Approved specs and accepted ADRs are locked design by default. Do not brainstorm them again unless the task exposes a genuine unresolved gap.
 
+## Owner self-use baseline checkpoint — accepted (2026-09-13)
+
+```text
+OWNER SELF-USE BASELINE = ACCEPTED
+HEAD = 810cea19d5b45021ab7a671ab5d353b235536f75
+FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
+```
+
+- Local annotated tag: `owner-self-use-stable-2026-09-13` (not pushed).
+- This is an owner self-use checkpoint, not a new full-FRLL acceptance claim. It leaves the
+  ADR-023 FRLL evidence baseline unchanged. UI work is deferred to a later, separate step.
+
 ## Foundation
 
 ### TASK-001 — Repository/backend foundation
