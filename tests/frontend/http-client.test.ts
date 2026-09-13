@@ -122,6 +122,24 @@ describe('HttpApiClient', () => {
     expect(client.getLastEtag('language-profile')).toBe('"revision-2"');
   });
 
+  it('prefers the strong upstream ETag preserved by the same-origin proxy', async () => {
+    const fetchFn = vi.fn(async () => response(mockApiResponses.me, {
+      headers: {
+        ETag: 'W/"profile-v1"',
+        'X-Lingua-Upstream-ETag': '"profile-v1"',
+      },
+    }));
+    const client = new HttpApiClient({
+      baseUrl: '/api',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+    });
+
+    await client.getMe();
+
+    expect(client.getLastEtag('me')).toBe('"profile-v1"');
+  });
+
   it('does not change an idempotency key when the caller repeats an ambiguous mutation', async () => {
     const fetchFn = vi.fn(async () => response(mockApiResponses.languageProfile));
     const client = new HttpApiClient({ baseUrl: 'https://api.example.test', authTokenProvider: tokenProvider, fetchFn });

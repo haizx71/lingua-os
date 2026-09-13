@@ -62,6 +62,7 @@ function forwardRequestHeaders(request: Request): Headers {
 
 function forwardResponseHeaders(response: Response): Headers {
   const headers = new Headers();
+  const upstreamEtag = response.headers.get('etag');
   response.headers.forEach((value, name) => {
     const normalizedName = name.toLowerCase();
     if (HOP_BY_HOP_HEADERS.has(normalizedName)) return;
@@ -69,8 +70,13 @@ function forwardResponseHeaders(response: Response): Headers {
     // returned. Forwarding the original representation metadata makes the
     // browser attempt a second decode (ERR_CONTENT_DECODING_FAILED).
     if (normalizedName === 'content-encoding' || normalizedName === 'content-length') return;
+    if (normalizedName === 'x-lingua-upstream-etag') return;
     headers.set(name, value);
   });
+  // Vercel may weaken the public ETag while applying representation encoding.
+  // Preserve the FastAPI strong validator separately for the client to send
+  // back as the contract-required If-Match value.
+  if (upstreamEtag) headers.set('X-Lingua-Upstream-ETag', upstreamEtag);
   return headers;
 }
 

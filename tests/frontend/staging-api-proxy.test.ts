@@ -126,6 +126,7 @@ describe('production same-origin API proxy', () => {
     expect(response.headers.get('content-encoding')).toBeNull();
     expect(response.headers.get('content-length')).toBeNull();
     expect(response.headers.get('etag')).toBe('"profile-v1"');
+    expect(response.headers.get('x-lingua-upstream-etag')).toBe('"profile-v1"');
     expect(response.headers.get('cache-control')).toBe('no-store');
   });
 

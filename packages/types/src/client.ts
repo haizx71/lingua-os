@@ -254,7 +254,7 @@ export class HttpApiClient implements ApiClient {
       throw new LinguaApiError({ code: 'INTERNAL_ERROR', httpStatus: response.status });
     }
     if (params.resourceKey) {
-      const etag = response.headers.get('ETag');
+      const etag = response.headers.get('X-Lingua-Upstream-ETag') ?? response.headers.get('ETag');
       if (etag && this.actorGeneration === requestGeneration && this.currentActorId === requestActorId) {
         this.etags.set(params.resourceKey, etag);
       }
