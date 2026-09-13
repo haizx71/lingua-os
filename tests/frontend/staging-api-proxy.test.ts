@@ -103,6 +103,32 @@ describe('production same-origin API proxy', () => {
     expect(response.headers.get('content-type')).toContain('application/json');
   });
 
+  it('drops stale representation headers after the server runtime decodes the upstream body', async () => {
+    vi.stubEnv('API_INTERNAL_URL', 'https://api.internal.example.test');
+    const body = '{"data":{"id":"actor-1"},"meta":{}}';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(body, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Encoding': 'gzip',
+          'Content-Length': '999',
+          'content-type': 'application/json',
+          ETag: '"profile-v1"',
+        },
+      }),
+    );
+
+    const response = await GET(request('GET'), context('v1', 'me'));
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(body);
+    expect(response.headers.get('content-encoding')).toBeNull();
+    expect(response.headers.get('content-length')).toBeNull();
+    expect(response.headers.get('etag')).toBe('"profile-v1"');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('fails closed with a generic 503 when the server-only upstream is missing or invalid', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const missing = await GET(request('GET'), context('v1', 'me'));

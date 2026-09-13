@@ -63,7 +63,12 @@ function forwardRequestHeaders(request: Request): Headers {
 function forwardResponseHeaders(response: Response): Headers {
   const headers = new Headers();
   response.headers.forEach((value, name) => {
-    if (HOP_BY_HOP_HEADERS.has(name.toLowerCase())) return;
+    const normalizedName = name.toLowerCase();
+    if (HOP_BY_HOP_HEADERS.has(normalizedName)) return;
+    // Node's fetch decodes compressed upstream bodies before this stream is
+    // returned. Forwarding the original representation metadata makes the
+    // browser attempt a second decode (ERR_CONTENT_DECODING_FAILED).
+    if (normalizedName === 'content-encoding' || normalizedName === 'content-length') return;
     headers.set(name, value);
   });
   return headers;
