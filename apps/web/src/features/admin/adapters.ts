@@ -1,9 +1,11 @@
 import type {
   AdminContentDto,
   AdminContentValidationDto,
+  AdminCatalogConceptDto,
   ApiClient,
   CreateAdminContentRequestDto,
   UpdateAdminContentRequestDto,
+  PutAdminSentenceConceptRequestDto,
 } from '@lingua/types';
 
 export interface AdminSentenceViewModel {
@@ -11,6 +13,23 @@ export interface AdminSentenceViewModel {
   readonly order: number;
   readonly text: string;
   readonly conceptCount: number;
+  readonly concepts: readonly AdminSentenceConceptViewModel[];
+}
+
+export interface AdminCatalogConceptViewModel {
+  readonly id: string;
+  readonly conceptType: 'word' | 'phrase' | 'grammar' | 'skill';
+  readonly canonicalForm: string;
+  readonly partOfSpeech: string | null;
+  readonly definition: string | null;
+}
+
+export interface AdminSentenceConceptViewModel {
+  readonly concept: AdminCatalogConceptViewModel;
+  readonly startOffset: number;
+  readonly endOffset: number;
+  readonly occurrenceRole: 'target' | 'context' | 'grammar';
+  readonly surfaceText: string;
 }
 
 export interface AdminContentViewModel {
@@ -53,9 +72,27 @@ export function toAdminContentViewModel(value: AdminContentDto): AdminContentVie
     attributionText: value.attributionText,
     rightsStatement: value.rightsStatement,
     rawHash: value.rawHash,
-    sentences: value.sentences.map((sentence) => ({ ...sentence })),
+    sentences: value.sentences.map((sentence) => ({
+      ...sentence,
+      concepts: sentence.concepts.map((occurrence) => ({
+        ...occurrence,
+        concept: toAdminCatalogConceptViewModel(occurrence.concept),
+      })),
+    })),
     publishedAt: value.publishedAt ?? null,
     updatedAt: value.updatedAt,
+  };
+}
+
+export function toAdminCatalogConceptViewModel(
+  value: AdminCatalogConceptDto,
+): AdminCatalogConceptViewModel {
+  return {
+    id: value.id,
+    conceptType: value.conceptType,
+    canonicalForm: value.canonicalForm,
+    partOfSpeech: value.partOfSpeech,
+    definition: value.definition,
   };
 }
 
@@ -106,4 +143,40 @@ export async function publishAdminContent(client: ApiClient, contentId: string) 
 
 export async function retireAdminContent(client: ApiClient, contentId: string) {
   return toAdminContentViewModel((await client.retireAdminContent(contentId)).data);
+}
+
+export async function searchAdminConcepts(
+  client: ApiClient,
+  query: string,
+): Promise<readonly AdminCatalogConceptViewModel[]> {
+  return (await client.searchAdminConcepts({ query })).data.map(toAdminCatalogConceptViewModel);
+}
+
+export async function putAdminSentenceConcept(
+  client: ApiClient,
+  input: {
+    contentId: string;
+    sentenceId: string;
+    conceptId: string;
+    body: PutAdminSentenceConceptRequestDto;
+  },
+): Promise<AdminContentViewModel> {
+  return toAdminContentViewModel((await client.putAdminSentenceConcept(input)).data);
+}
+
+export async function deleteAdminSentenceConcept(
+  client: ApiClient,
+  input: {
+    contentId: string;
+    sentenceId: string;
+    conceptId: string;
+    startOffset: number;
+    endOffset: number;
+  },
+): Promise<AdminContentViewModel> {
+  const { startOffset, endOffset, ...identity } = input;
+  return toAdminContentViewModel((await client.deleteAdminSentenceConcept({
+    ...identity,
+    query: { startOffset, endOffset },
+  })).data);
 }

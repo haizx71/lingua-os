@@ -43,6 +43,19 @@ class ReaderContentLevelDto(StrEnum):
     B1 = "B1"
 
 
+class AdminConceptTypeDto(StrEnum):
+    WORD = "word"
+    PHRASE = "phrase"
+    GRAMMAR = "grammar"
+    SKILL = "skill"
+
+
+class AdminOccurrenceRoleDto(StrEnum):
+    TARGET = "target"
+    CONTEXT = "context"
+    GRAMMAR = "grammar"
+
+
 class ResponseMetaDto(ApiModel):
     request_id: UUID
     api_version: Literal["1.0"] = "1.0"
@@ -99,6 +112,34 @@ class AdminSentencePreviewDto(ApiModel):
     order: int = Field(ge=0)
     text: str = Field(min_length=1, max_length=5_000)
     concept_count: int = Field(ge=0)
+    concepts: list[AdminSentenceConceptDto] = Field(max_length=100)
+
+
+class AdminCatalogConceptDto(ApiModel):
+    id: UUID
+    concept_type: AdminConceptTypeDto
+    canonical_form: str = Field(min_length=1, max_length=500)
+    part_of_speech: str | None = Field(max_length=100)
+    definition: str | None = Field(max_length=2_000)
+
+
+class AdminSentenceConceptDto(ApiModel):
+    concept: AdminCatalogConceptDto
+    start_offset: int = Field(ge=0)
+    end_offset: int = Field(ge=1)
+    occurrence_role: AdminOccurrenceRoleDto
+    surface_text: str = Field(min_length=1, max_length=5_000)
+
+
+class PutAdminSentenceConceptRequestDto(ApiModel):
+    start_offset: int = Field(ge=0)
+    end_offset: int = Field(ge=1)
+    occurrence_role: AdminOccurrenceRoleDto
+
+
+class AdminConceptSearchResponseDto(ApiModel):
+    data: list[AdminCatalogConceptDto] = Field(max_length=50)
+    meta: ResponseMetaDto
 
 
 class AdminContentDto(ApiModel):

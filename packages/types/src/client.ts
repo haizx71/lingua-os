@@ -3,6 +3,7 @@ import type {
   AdminContentListResponseDto,
   AdminContentResponseDto,
   AdminContentValidationResponseDto,
+  AdminConceptSearchResponseDto,
   AssessmentSessionResponseDto,
   BrainConceptListResponseDto,
   BrainConceptResponseDto,
@@ -35,6 +36,7 @@ import type {
   UpdateLanguageProfileRequestDto,
   UpdateMeRequestDto,
   UpdateAdminContentRequestDto,
+  PutAdminSentenceConceptRequestDto,
 } from './api/dtos';
 import {
   createApiError,
@@ -66,6 +68,9 @@ export interface ApiClient {
   validateAdminContent(contentId: string): Promise<AdminContentValidationResponseDto>;
   publishAdminContent(contentId: string): Promise<AdminContentResponseDto>;
   retireAdminContent(contentId: string): Promise<AdminContentResponseDto>;
+  searchAdminConcepts(query: OperationQuery<'searchAdminConcepts'>): Promise<AdminConceptSearchResponseDto>;
+  putAdminSentenceConcept(input: { contentId: string; sentenceId: string; conceptId: string; body: PutAdminSentenceConceptRequestDto }): Promise<AdminContentResponseDto>;
+  deleteAdminSentenceConcept(input: { contentId: string; sentenceId: string; conceptId: string; query: OperationQuery<'deleteAdminSentenceConcept'> }): Promise<AdminContentResponseDto>;
   getMe(): Promise<MeResponseDto>;
   updateMe(input: { body: UpdateMeRequestDto; headers: OperationHeaders<'updateMe'> }): Promise<MeResponseDto>;
   listMyLanguageProfiles(): Promise<LanguageProfilesResponseDto>;
@@ -288,6 +293,9 @@ export class HttpApiClient implements ApiClient {
   validateAdminContent(contentId: string) { return this.request<AdminContentValidationResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/validate` }); }
   publishAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/publish` }); }
   retireAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/retire` }); }
+  searchAdminConcepts(query: OperationQuery<'searchAdminConcepts'>) { return this.request<AdminConceptSearchResponseDto>({ method: 'GET', path: '/v1/admin/concepts/search', query }); }
+  putAdminSentenceConcept(input: Parameters<ApiClient['putAdminSentenceConcept']>[0]) { return this.request<AdminContentResponseDto>({ method: 'PUT', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}/sentences/${encodeURIComponent(input.sentenceId)}/concepts/${encodeURIComponent(input.conceptId)}`, body: input.body }); }
+  deleteAdminSentenceConcept(input: Parameters<ApiClient['deleteAdminSentenceConcept']>[0]) { return this.request<AdminContentResponseDto>({ method: 'DELETE', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}/sentences/${encodeURIComponent(input.sentenceId)}/concepts/${encodeURIComponent(input.conceptId)}`, query: input.query }); }
 
   getMe() { return this.request<MeResponseDto>({ method: 'GET', path: '/v1/me', resourceKey: 'me' }); }
   updateMe(input: Parameters<ApiClient['updateMe']>[0]) { return this.request<MeResponseDto>({ method: 'PATCH', path: '/v1/me', body: input.body, headers: input.headers, resourceKey: 'me' }); }
@@ -383,6 +391,9 @@ export class MockApiClient implements ApiClient {
   validateAdminContent(_contentId: string): Promise<AdminContentValidationResponseDto> { return this.adminForbidden(); }
   publishAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   retireAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  searchAdminConcepts(_query: OperationQuery<'searchAdminConcepts'>): Promise<AdminConceptSearchResponseDto> { return this.adminForbidden(); }
+  putAdminSentenceConcept(_input: Parameters<ApiClient['putAdminSentenceConcept']>[0]): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  deleteAdminSentenceConcept(_input: Parameters<ApiClient['deleteAdminSentenceConcept']>[0]): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   getMe() { return this.fixture(mockApiResponses.me); }
   updateMe(_input: Parameters<ApiClient['updateMe']>[0]) { return this.fixture(mockApiResponses.me); }
   listMyLanguageProfiles() { return this.fixture(this.returnEmpty ? { data: [], meta: mockResponseMeta } : mockApiResponses.languageProfiles); }

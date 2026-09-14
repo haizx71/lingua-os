@@ -547,7 +547,9 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByTestId('assessment-audio-player')).toBeInTheDocument());
 
-      fireEvent.click(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' }));
+      });
       await waitFor(() => expect(screen.getByRole('button', { name: 'Tạm dừng đoạn âm thanh bài nghe' })).toBeInTheDocument());
 
       fireEvent.click(screen.getAllByRole('button', { name: /Cuộc hẹn/i })[0]);
@@ -596,7 +598,9 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       const playBtn = screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' });
       playBtn.focus();
       expect(document.activeElement).toBe(playBtn);
-      fireEvent.click(playBtn);
+      await act(async () => {
+        fireEvent.click(playBtn);
+      });
       await waitFor(() => expect(screen.getByRole('button', { name: 'Tạm dừng đoạn âm thanh bài nghe' })).toBeInTheDocument());
     } finally {
       window.location = new URL('http://localhost/') as unknown as Location;
@@ -636,7 +640,9 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' })).toBeInTheDocument());
 
-      fireEvent.click(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' }));
+      });
       await waitFor(() => expect(screen.getByText(/Không thể phát âm thanh/i)).toBeInTheDocument());
       expect(screen.getByRole('button', { name: /Cuộc hẹn/i })).toBeEnabled();
     } finally {

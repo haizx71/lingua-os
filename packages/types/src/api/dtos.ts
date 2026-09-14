@@ -57,6 +57,8 @@ export type BrainConceptDetailDto = ApiSchema<'BrainConceptDetail'>;
 export type ProgressOverviewDto = ApiSchema<'ProgressOverview'>;
 export type AdminContentDto = ApiSchema<'AdminContent'>;
 export type AdminContentValidationDto = ApiSchema<'AdminContentValidation'>;
+export type AdminCatalogConceptDto = ApiSchema<'AdminCatalogConcept'>;
+export type AdminSentenceConceptDto = ApiSchema<'AdminSentenceConcept'>;
 
 export type MeResponseDto = ApiSchema<'MeResponse'>;
 export type LanguageProfilesResponseDto = ApiSchema<'LanguageProfilesResponse'>;
@@ -80,6 +82,7 @@ export type ProgressOverviewResponseDto = ApiSchema<'ProgressOverviewResponse'>;
 export type AdminContentListResponseDto = ApiSchema<'AdminContentListResponse'>;
 export type AdminContentResponseDto = ApiSchema<'AdminContentResponse'>;
 export type AdminContentValidationResponseDto = ApiSchema<'AdminContentValidationResponse'>;
+export type AdminConceptSearchResponseDto = ApiSchema<'AdminConceptSearchResponse'>;
 
 export type UpdateMeRequestDto = ApiSchema<'UpdateMeRequest'>;
 export type CreateLanguageProfileRequestDto = ApiSchema<'CreateLanguageProfileRequest'>;
@@ -92,6 +95,7 @@ export type StartAssessmentRequestDto = ApiSchema<'StartAssessmentRequest'>;
 export type SubmitAssessmentResponseRequestDto = ApiSchema<'SubmitAssessmentResponseRequest'>;
 export type CreateAdminContentRequestDto = ApiSchema<'CreateAdminContentRequest'>;
 export type UpdateAdminContentRequestDto = ApiSchema<'UpdateAdminContentRequest'>;
+export type PutAdminSentenceConceptRequestDto = ApiSchema<'PutAdminSentenceConceptRequest'>;
 
 export type OperationQuery<Name extends keyof operations> = operations[Name] extends {
   parameters: { query?: infer Query };

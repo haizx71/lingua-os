@@ -1,7 +1,27 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; TASK-ADMIN-001 owner content authoring complete; GAP-01 Closed
+Phase: FRLL accepted/frozen; TASK-ADMIN-002 manual concept mapping complete; GAP-01 Closed
+
+## Current checkpoint — TASK-ADMIN-002 complete (2026-09-14)
+
+- The owner can select an exact UTF-16 sentence span, search the authoritative English catalog, add
+  an existing concept with an occurrence role, remove the exact occurrence and reload the persisted
+  result from `/admin/content/[id]`.
+- Three owner-only contract operations were added: catalog search plus idempotent PUT/DELETE of an
+  exact sentence-concept occurrence. The backend validates content, sentence ownership, concept
+  eligibility and offsets, rejects overlaps and immutable published/retired structure, and rebuilds
+  `content_concepts` in the same transaction.
+- Readiness remains the existing publication rule: every sentence needs at least one catalog mapping.
+  The UI reports ready versus missing sentences and never fabricates concepts, POS values, CEFR claims
+  or semantic correctness.
+- Existing `sentence_concepts` and `content_concepts` schema was sufficient. No migration, learner
+  event, Memory/FSRS, competence or other learner-state write was introduced.
+- Verification: generated TypeScript freshness and OpenAPI contract tests PASS; Ruff format/lint and
+  mypy PASS; backend 510/510 PASS with focused Admin 9/9; focused Admin frontend 8/8; frontend/static
+  acceptance 676 PASS with 4 external-credential live FRLL tests intentionally skipped across 55
+  files using one worker; TypeScript, ESLint, Storybook, production build and `git diff --check` PASS.
+- No deployment or remote push was performed.
 
 ## Current checkpoint — TASK-ADMIN-001 complete (2026-09-13)
 

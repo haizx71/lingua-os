@@ -28,11 +28,30 @@ class AdminValidationIssue:
 
 
 @dataclass(frozen=True)
+class AdminCatalogConceptProjection:
+    id: UUID
+    concept_type: str
+    canonical_form: str
+    part_of_speech: str | None
+    definition: str | None
+
+
+@dataclass(frozen=True)
+class AdminSentenceConceptProjection:
+    concept: AdminCatalogConceptProjection
+    start_offset: int
+    end_offset: int
+    occurrence_role: str
+    surface_text: str
+
+
+@dataclass(frozen=True)
 class AdminSentenceProjection:
     id: UUID
     order: int
     text: str
     concept_count: int
+    concepts: tuple[AdminSentenceConceptProjection, ...]
 
 
 @dataclass(frozen=True)

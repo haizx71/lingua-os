@@ -15,9 +15,11 @@ import psycopg
 from psycopg import Connection
 
 from lingua_api.admin.domain import (
+    AdminCatalogConceptProjection,
     AdminContentProjection,
     AdminInvalidState,
     AdminNotFound,
+    AdminSentenceConceptProjection,
     AdminSentenceProjection,
     AdminValidationError,
     AdminValidationIssue,
@@ -133,6 +135,161 @@ class PostgresAdminContentStore:
 
     def get(self, content_id: UUID) -> AdminContentProjection:
         with self.connect() as connection:
+            return self._get(connection, content_id)
+
+    def search_concepts(
+        self, query: str, *, limit: int
+    ) -> tuple[AdminCatalogConceptProjection, ...]:
+        normalized = normalize_match_text(query)
+        if not normalized:
+            raise AdminValidationError("concept search query must contain searchable text")
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""
+                WITH matched AS (
+                    SELECT concept.id, lexeme.normalized_form AS matched_form
+                    FROM concepts AS concept
+                    JOIN lexemes AS lexeme ON lexeme.concept_id = concept.id
+                    WHERE concept.language_code = 'en'
+                      AND lexeme.normalized_form LIKE %s ESCAPE '\\'
+                      AND {allowed_record_sql("concept.source_record_id")}
+                      AND {allowed_record_sql("lexeme.source_record_id")}
+                    UNION
+                    SELECT concept.id, form.normalized_form
+                    FROM concepts AS concept
+                    JOIN lexemes AS lexeme ON lexeme.concept_id = concept.id
+                    JOIN lexeme_forms AS form ON form.lexeme_id = lexeme.id
+                    WHERE concept.language_code = 'en'
+                      AND form.normalized_form LIKE %s ESCAPE '\\'
+                      AND {allowed_record_sql("concept.source_record_id")}
+                      AND {allowed_record_sql("lexeme.source_record_id")}
+                      AND {allowed_record_sql("form.source_record_id")}
+                    UNION
+                    SELECT concept.id, concept.canonical_key
+                    FROM concepts AS concept
+                    WHERE concept.language_code = 'en'
+                      AND concept.concept_type IN ('grammar', 'skill')
+                      AND concept.canonical_key LIKE %s ESCAPE '\\'
+                      AND {allowed_record_sql("concept.source_record_id")}
+                )
+                SELECT concept.id, concept.concept_type,
+                       COALESCE(canonical.lemma, concept.canonical_key),
+                       canonical.part_of_speech, sense.definition,
+                       min(matched.matched_form)
+                FROM matched
+                JOIN concepts AS concept ON concept.id = matched.id
+                LEFT JOIN LATERAL (
+                    SELECT lexeme.id, lexeme.lemma, lexeme.part_of_speech
+                    FROM lexemes AS lexeme
+                    WHERE lexeme.concept_id = concept.id
+                      AND {allowed_record_sql("lexeme.source_record_id")}
+                    ORDER BY lexeme.normalized_form, lexeme.id LIMIT 1
+                ) AS canonical ON true
+                LEFT JOIN LATERAL (
+                    SELECT word_sense.definition
+                    FROM word_senses AS word_sense
+                    WHERE word_sense.lexeme_id = canonical.id
+                      AND {allowed_record_sql("word_sense.source_record_id")}
+                    ORDER BY word_sense.sense_order, word_sense.id LIMIT 1
+                ) AS sense ON true
+                GROUP BY concept.id, concept.concept_type, canonical.lemma,
+                         canonical.part_of_speech, sense.definition
+                ORDER BY (min(matched.matched_form) = %s) DESC,
+                         min(matched.matched_form), concept.id
+                LIMIT %s
+                """,
+                (
+                    f"{_escape_like(normalized)}%",
+                    f"{_escape_like(normalized)}%",
+                    f"{_escape_like(normalized)}%",
+                    normalized,
+                    limit,
+                ),
+            ).fetchall()
+            return tuple(_catalog_concept(row[:5]) for row in rows)
+
+    def put_sentence_concept(
+        self,
+        content_id: UUID,
+        sentence_id: UUID,
+        concept_id: UUID,
+        *,
+        start_offset: int,
+        end_offset: int,
+        occurrence_role: str,
+        now: datetime,
+    ) -> AdminContentProjection:
+        with self.connect() as connection:
+            current, sentence_text = self._mapping_context(
+                connection, content_id, sentence_id, concept_id
+            )
+            surface_text = _utf16_slice(sentence_text, start_offset, end_offset)
+            if not surface_text.strip():
+                raise AdminValidationError("concept occurrence must contain visible text")
+            existing = connection.execute(
+                """
+                SELECT occurrence_role FROM sentence_concepts
+                WHERE sentence_id = %s AND concept_id = %s
+                  AND start_offset = %s AND end_offset = %s
+                """,
+                (sentence_id, concept_id, start_offset, end_offset),
+            ).fetchone()
+            if existing == (occurrence_role,):
+                return current
+            overlap = connection.execute(
+                """
+                SELECT 1 FROM sentence_concepts
+                WHERE sentence_id = %s
+                  AND start_offset < %s AND end_offset > %s
+                  AND NOT (concept_id = %s AND start_offset = %s AND end_offset = %s)
+                LIMIT 1
+                """,
+                (sentence_id, end_offset, start_offset, concept_id, start_offset, end_offset),
+            ).fetchone()
+            if overlap is not None:
+                raise AdminValidationError("concept occurrence overlaps an existing mapping")
+            connection.execute(
+                """
+                INSERT INTO sentence_concepts
+                    (sentence_id, concept_id, language_code, start_offset, end_offset,
+                     occurrence_role)
+                VALUES (%s, %s, 'en', %s, %s, %s)
+                ON CONFLICT (sentence_id, concept_id, start_offset, end_offset)
+                DO UPDATE SET occurrence_role = EXCLUDED.occurrence_role
+                """,
+                (sentence_id, concept_id, start_offset, end_offset, occurrence_role),
+            )
+            self._finish_mapping_change(connection, content_id, now=now)
+            connection.commit()
+            return self._get(connection, content_id)
+
+    def delete_sentence_concept(
+        self,
+        content_id: UUID,
+        sentence_id: UUID,
+        concept_id: UUID,
+        *,
+        start_offset: int,
+        end_offset: int,
+        now: datetime,
+    ) -> AdminContentProjection:
+        with self.connect() as connection:
+            current, sentence_text = self._mapping_context(
+                connection, content_id, sentence_id, concept_id
+            )
+            _utf16_slice(sentence_text, start_offset, end_offset)
+            cursor = connection.execute(
+                """
+                DELETE FROM sentence_concepts
+                WHERE sentence_id = %s AND concept_id = %s
+                  AND start_offset = %s AND end_offset = %s
+                """,
+                (sentence_id, concept_id, start_offset, end_offset),
+            )
+            if cursor.rowcount == 0:
+                return current
+            self._finish_mapping_change(connection, content_id, now=now)
+            connection.commit()
             return self._get(connection, content_id)
 
     def update(
@@ -325,6 +482,84 @@ class PostgresAdminContentStore:
             )
             connection.commit()
             return self._get(connection, content_id)
+
+    def _mapping_context(
+        self,
+        connection: Connection[tuple[object, ...]],
+        content_id: UUID,
+        sentence_id: UUID,
+        concept_id: UUID,
+    ) -> tuple[AdminContentProjection, str]:
+        current = self._get(connection, content_id, lock=True)
+        if current.status in {"published", "retired"}:
+            raise AdminInvalidState("published or retired content concepts cannot be edited")
+        sentence = connection.execute(
+            """
+            SELECT sentence.text
+            FROM content_segments AS segment
+            JOIN sentences AS sentence ON sentence.id = segment.sentence_id
+            WHERE segment.content_id = %s AND segment.sentence_id = %s
+            """,
+            (content_id, sentence_id),
+        ).fetchone()
+        if sentence is None:
+            raise AdminNotFound("admin content sentence was not found")
+        concept = connection.execute(
+            f"""
+            SELECT concept.id
+            FROM concepts AS concept
+            WHERE concept.id = %s AND concept.language_code = 'en'
+              AND {allowed_record_sql("concept.source_record_id")}
+              AND (
+                  concept.concept_type IN ('grammar', 'skill')
+                  OR EXISTS (
+                      SELECT 1 FROM lexemes AS lexeme
+                      WHERE lexeme.concept_id = concept.id
+                        AND {allowed_record_sql("lexeme.source_record_id")}
+                  )
+              )
+            """,
+            (concept_id,),
+        ).fetchone()
+        if concept is None:
+            raise AdminNotFound("catalog concept was not found")
+        return current, str(sentence[0])
+
+    @staticmethod
+    def _finish_mapping_change(
+        connection: Connection[tuple[object, ...]], content_id: UUID, *, now: datetime
+    ) -> None:
+        connection.execute("DELETE FROM content_concepts WHERE content_id = %s", (content_id,))
+        connection.execute(
+            """
+            INSERT INTO content_concepts
+                (content_id, concept_id, language_code, occurrence_count)
+            SELECT %s, occurrence.concept_id, 'en', count(*)::integer
+            FROM content_segments AS segment
+            JOIN sentence_concepts AS occurrence ON occurrence.sentence_id = segment.sentence_id
+            WHERE segment.content_id = %s
+            GROUP BY occurrence.concept_id
+            """,
+            (content_id, content_id),
+        )
+        connection.execute(
+            """
+            UPDATE source_records AS record
+            SET review_status = 'normalized', quality_score = NULL, reviewed_at = NULL
+            FROM content_items AS item
+            WHERE item.id = %s AND record.id = item.source_record_id
+            """,
+            (content_id,),
+        )
+        connection.execute(
+            """
+            UPDATE content_items
+            SET publication_status = 'normalized', quality_score = NULL,
+                reviewed_at = NULL, updated_at = %s
+            WHERE id = %s
+            """,
+            (now, content_id),
+        )
 
     @staticmethod
     def _sentences(body: str) -> tuple[str, ...]:
@@ -538,17 +773,69 @@ class PostgresAdminContentStore:
         metadata = cast(dict[str, object], row[9])
         sentence_rows = connection.execute(
             """
-            SELECT sentence.id, segment.order_index, sentence.text,
-                   count(occurrence.concept_id)::integer
+            SELECT sentence.id, segment.order_index, sentence.text
             FROM content_segments AS segment
             JOIN sentences AS sentence ON sentence.id = segment.sentence_id
-            LEFT JOIN sentence_concepts AS occurrence ON occurrence.sentence_id = sentence.id
             WHERE segment.content_id = %s
-            GROUP BY sentence.id, segment.order_index, sentence.text
             ORDER BY segment.order_index
             """,
             (content_id,),
         ).fetchall()
+        sentence_projections: list[AdminSentenceProjection] = []
+        for value in sentence_rows:
+            sentence_id = _uuid(value[0])
+            sentence_text = str(value[2])
+            occurrence_rows = connection.execute(
+                f"""
+                SELECT concept.id, concept.concept_type,
+                       COALESCE(canonical.lemma, concept.canonical_key),
+                       canonical.part_of_speech, sense.definition,
+                       occurrence.start_offset, occurrence.end_offset,
+                       occurrence.occurrence_role
+                FROM sentence_concepts AS occurrence
+                JOIN concepts AS concept ON concept.id = occurrence.concept_id
+                LEFT JOIN LATERAL (
+                    SELECT lexeme.id, lexeme.lemma, lexeme.part_of_speech
+                    FROM lexemes AS lexeme
+                    WHERE lexeme.concept_id = concept.id
+                      AND {allowed_record_sql("lexeme.source_record_id")}
+                    ORDER BY lexeme.normalized_form, lexeme.id LIMIT 1
+                ) AS canonical ON true
+                LEFT JOIN LATERAL (
+                    SELECT word_sense.definition
+                    FROM word_senses AS word_sense
+                    WHERE word_sense.lexeme_id = canonical.id
+                      AND {allowed_record_sql("word_sense.source_record_id")}
+                    ORDER BY word_sense.sense_order, word_sense.id LIMIT 1
+                ) AS sense ON true
+                WHERE occurrence.sentence_id = %s
+                ORDER BY occurrence.start_offset, occurrence.end_offset, concept.id
+                """,
+                (sentence_id,),
+            ).fetchall()
+            concepts = tuple(
+                AdminSentenceConceptProjection(
+                    concept=_catalog_concept(occurrence[:5]),
+                    start_offset=int(cast(int, occurrence[5])),
+                    end_offset=int(cast(int, occurrence[6])),
+                    occurrence_role=str(occurrence[7]),
+                    surface_text=_utf16_slice(
+                        sentence_text,
+                        int(cast(int, occurrence[5])),
+                        int(cast(int, occurrence[6])),
+                    ),
+                )
+                for occurrence in occurrence_rows
+            )
+            sentence_projections.append(
+                AdminSentenceProjection(
+                    sentence_id,
+                    int(cast(int, value[1])),
+                    sentence_text,
+                    len(concepts),
+                    concepts,
+                )
+            )
         return AdminContentProjection(
             id=_uuid(row[0]),
             title=str(row[1]),
@@ -565,15 +852,7 @@ class PostgresAdminContentStore:
             rights_statement=str(metadata["rightsStatement"]),
             source_record_key=str(row[7]),
             raw_hash=str(row[8]),
-            sentences=tuple(
-                AdminSentenceProjection(
-                    _uuid(value[0]),
-                    int(cast(int, value[1])),
-                    str(value[2]),
-                    int(cast(int, value[3])),
-                )
-                for value in sentence_rows
-            ),
+            sentences=tuple(sentence_projections),
             published_at=cast(datetime | None, row[12]),
             created_at=cast(datetime, row[13]),
             updated_at=cast(datetime, row[14]),
@@ -597,6 +876,32 @@ def _raw_hash(values: dict[str, str]) -> str:
     return hashlib.sha256(
         json.dumps(values, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def _catalog_concept(row: tuple[object, ...]) -> AdminCatalogConceptProjection:
+    return AdminCatalogConceptProjection(
+        id=_uuid(row[0]),
+        concept_type=str(row[1]),
+        canonical_form=str(row[2]),
+        part_of_speech=None if row[3] is None else str(row[3]),
+        definition=None if row[4] is None else str(row[4]),
+    )
+
+
+def _utf16_slice(value: str, start_offset: int, end_offset: int) -> str:
+    if start_offset < 0 or end_offset <= start_offset:
+        raise AdminValidationError("concept occurrence offsets are invalid")
+    encoded = value.encode("utf-16-le")
+    if end_offset * 2 > len(encoded):
+        raise AdminValidationError("concept occurrence exceeds the sentence boundary")
+    try:
+        return encoded[start_offset * 2 : end_offset * 2].decode("utf-16-le")
+    except UnicodeDecodeError as error:
+        raise AdminValidationError("concept occurrence splits a Unicode character") from error
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _text_hash(value: str) -> str:

@@ -24,6 +24,8 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/admin/content/{contentId}/validate",
         "/v1/admin/content/{contentId}/publish",
         "/v1/admin/content/{contentId}/retire",
+        "/v1/admin/concepts/search",
+        "/v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}",
         "/v1/me",
         "/v1/me/languages",
         "/v1/me/languages/{languageProfileId}",
@@ -56,6 +58,12 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
 def test_admin_runtime_metadata_preserves_the_owner_content_contract() -> None:
     generated = app.openapi()
     operations = (
+        (
+            "/v1/admin/concepts/search",
+            "get",
+            "searchAdminConcepts",
+            {"200", "401", "403", "422", "500"},
+        ),
         ("/v1/admin/content", "get", "listAdminContent", {"200", "401", "403", "422", "500"}),
         (
             "/v1/admin/content",
@@ -91,6 +99,18 @@ def test_admin_runtime_metadata_preserves_the_owner_content_contract() -> None:
             "/v1/admin/content/{contentId}/retire",
             "post",
             "retireAdminContent",
+            {"200", "401", "403", "404", "409", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}",
+            "put",
+            "putAdminSentenceConcept",
+            {"200", "401", "403", "404", "409", "422", "500"},
+        ),
+        (
+            "/v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}",
+            "delete",
+            "deleteAdminSentenceConcept",
             {"200", "401", "403", "404", "409", "422", "500"},
         ),
     )

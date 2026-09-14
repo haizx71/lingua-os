@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    readonly "/v1/admin/concepts/search": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Search accepted English catalog concepts for owner authoring */
+        readonly get: operations["searchAdminConcepts"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/v1/admin/content": {
         readonly parameters: {
             readonly query?: never;
@@ -59,6 +76,31 @@ export interface paths {
         /** Validate first-party provenance and Reader publication dependencies */
         readonly post: operations["validateAdminContent"];
         readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+                readonly sentenceId: components["parameters"]["SentenceId"];
+                readonly conceptId: components["parameters"]["ConceptId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        /**
+         * Add or update one exact catalog-concept occurrence in an unpublished sentence
+         * @description The UTF-16 half-open span is explicit and the same request is idempotent.
+         */
+        readonly put: operations["putAdminSentenceConcept"];
+        readonly post?: never;
+        /** Remove one exact catalog-concept occurrence from an unpublished sentence */
+        readonly delete: operations["deleteAdminSentenceConcept"];
         readonly options?: never;
         readonly head?: never;
         readonly patch?: never;
@@ -1329,12 +1371,36 @@ export interface components {
             readonly attributionText?: string;
             readonly rightsStatement?: string;
         };
+        readonly AdminCatalogConcept: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @enum {string} */
+            readonly conceptType: "word" | "phrase" | "grammar" | "skill";
+            readonly canonicalForm: string;
+            readonly partOfSpeech: string | null;
+            readonly definition: string | null;
+        };
+        readonly AdminSentenceConcept: {
+            readonly concept: components["schemas"]["AdminCatalogConcept"];
+            readonly startOffset: number;
+            readonly endOffset: number;
+            /** @enum {string} */
+            readonly occurrenceRole: "target" | "context" | "grammar";
+            readonly surfaceText: string;
+        };
+        readonly PutAdminSentenceConceptRequest: {
+            readonly startOffset: number;
+            readonly endOffset: number;
+            /** @enum {string} */
+            readonly occurrenceRole: "target" | "context" | "grammar";
+        };
         readonly AdminSentencePreview: {
             /** Format: uuid */
             readonly id: string;
             readonly order: number;
             readonly text: string;
             readonly conceptCount: number;
+            readonly concepts: readonly components["schemas"]["AdminSentenceConcept"][];
         };
         readonly AdminContent: {
             /** Format: uuid */
@@ -1378,6 +1444,10 @@ export interface components {
         };
         readonly AdminContentValidationResponse: {
             readonly data: components["schemas"]["AdminContentValidation"];
+            readonly meta: components["schemas"]["ResponseMeta"];
+        };
+        readonly AdminConceptSearchResponse: {
+            readonly data: readonly components["schemas"]["AdminCatalogConcept"][];
             readonly meta: components["schemas"]["ResponseMeta"];
         };
         readonly SavedConceptItem: {
@@ -1711,6 +1781,33 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly searchAdminConcepts: {
+        readonly parameters: {
+            readonly query: {
+                readonly query: string;
+                readonly limit?: number;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Bounded owner-only catalog matches; no learner profile is required. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminConceptSearchResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
     readonly listAdminContent: {
         readonly parameters: {
             readonly query?: never;
@@ -1841,6 +1938,73 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminContentValidationResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly putAdminSentenceConcept: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+                readonly sentenceId: components["parameters"]["SentenceId"];
+                readonly conceptId: components["parameters"]["ConceptId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PutAdminSentenceConceptRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Updated content detail and recomputed publication readiness. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly deleteAdminSentenceConcept: {
+        readonly parameters: {
+            readonly query: {
+                readonly startOffset: number;
+                readonly endOffset: number;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+                readonly sentenceId: components["parameters"]["SentenceId"];
+                readonly conceptId: components["parameters"]["ConceptId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Updated content detail; deleting an absent exact occurrence is idempotent. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
                 };
             };
             readonly 401: components["responses"]["Unauthenticated"];

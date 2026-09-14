@@ -35,6 +35,22 @@ learner-state write, learner-domain change, deployment or push was performed. Ve
 backend tests and 677/677 frontend/acceptance tests (55 files, sequential worker execution), contract
 freshness, OpenAPI validation, Ruff, mypy, TypeScript, ESLint, production build and diff check PASS.*
 
+### TASK-ADMIN-002 — Admin manual concept mapping
+Owner: CODEX
+Status: DONE
+Dependencies: TASK-ADMIN-001
+
+Allow the owner to map exact UTF-16 sentence spans in unpublished first-party content to existing
+canonical English catalog concepts. The owner-only API supports catalog search plus idempotent add and
+remove operations, rebuilds aggregate `content_concepts` transactionally, and preserves the locked
+validation/publication gate. The minimal `/admin/content/[id]` editor shows current mappings, offsets,
+roles and an explicit ready/missing summary; it never creates fallback concepts. Existing
+`sentence_concepts` and `content_concepts` tables were reused with no migration and no learner-state,
+Memory/FSRS, competence or learning-event mutation. Verification: 510/510 backend tests; focused Admin
+backend 9/9 and frontend 8/8; frontend/static acceptance 676 PASS with 4 credential-gated live FRLL
+tests skipped across 55 files using one worker; generated contract freshness, OpenAPI contract tests,
+Ruff, mypy, TypeScript, ESLint, Storybook, production build and diff check PASS.*
+
 ## Owner self-use baseline checkpoint — accepted (2026-09-13)
 
 ```text

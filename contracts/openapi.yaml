@@ -52,6 +52,31 @@ tags:
   - name: Admin
     description: Owner-only first-party content authoring; access is controlled by server-side actor UUID allowlist.
 paths:
+  /v1/admin/concepts/search:
+    get:
+      tags: [Admin]
+      operationId: searchAdminConcepts
+      summary: Search accepted English catalog concepts for owner authoring
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 120 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Bounded owner-only catalog matches; no learner profile is required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminConceptSearchResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /v1/admin/content:
     get:
       tags: [Admin]
@@ -142,6 +167,59 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AdminContentValidationResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+      - $ref: '#/components/parameters/SentenceId'
+      - $ref: '#/components/parameters/ConceptId'
+    put:
+      tags: [Admin]
+      operationId: putAdminSentenceConcept
+      summary: Add or update one exact catalog-concept occurrence in an unpublished sentence
+      description: The UTF-16 half-open span is explicit and the same request is idempotent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutAdminSentenceConceptRequest' }
+      responses:
+        '200':
+          description: Updated content detail and recomputed publication readiness.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Admin]
+      operationId: deleteAdminSentenceConcept
+      summary: Remove one exact catalog-concept occurrence from an unpublished sentence
+      parameters:
+        - name: startOffset
+          in: query
+          required: true
+          schema: { type: integer, minimum: 0 }
+        - name: endOffset
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Updated content detail; deleting an absent exact occurrence is idempotent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2084,15 +2162,53 @@ components:
         sourceVersion: { type: string, minLength: 1, maxLength: 100 }
         attributionText: { type: string, minLength: 1, maxLength: 1000 }
         rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+    AdminCatalogConcept:
+      type: object
+      additionalProperties: false
+      required: [id, conceptType, canonicalForm, partOfSpeech, definition]
+      properties:
+        id: { type: string, format: uuid }
+        conceptType: { type: string, enum: [word, phrase, grammar, skill] }
+        canonicalForm: { type: string, minLength: 1, maxLength: 500 }
+        partOfSpeech:
+          oneOf:
+            - { type: string, maxLength: 100 }
+            - { type: 'null' }
+        definition:
+          oneOf:
+            - { type: string, maxLength: 2000 }
+            - { type: 'null' }
+    AdminSentenceConcept:
+      type: object
+      additionalProperties: false
+      required: [concept, startOffset, endOffset, occurrenceRole, surfaceText]
+      properties:
+        concept: { $ref: '#/components/schemas/AdminCatalogConcept' }
+        startOffset: { type: integer, minimum: 0 }
+        endOffset: { type: integer, minimum: 1 }
+        occurrenceRole: { type: string, enum: [target, context, grammar] }
+        surfaceText: { type: string, minLength: 1, maxLength: 5000 }
+    PutAdminSentenceConceptRequest:
+      type: object
+      additionalProperties: false
+      required: [startOffset, endOffset, occurrenceRole]
+      properties:
+        startOffset: { type: integer, minimum: 0 }
+        endOffset: { type: integer, minimum: 1 }
+        occurrenceRole: { type: string, enum: [target, context, grammar] }
     AdminSentencePreview:
       type: object
       additionalProperties: false
-      required: [id, order, text, conceptCount]
+      required: [id, order, text, conceptCount, concepts]
       properties:
         id: { type: string, format: uuid }
         order: { type: integer, minimum: 0 }
         text: { type: string, minLength: 1, maxLength: 5000 }
         conceptCount: { type: integer, minimum: 0 }
+        concepts:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/AdminSentenceConcept' }
     AdminContent:
       type: object
       additionalProperties: false
@@ -2157,6 +2273,16 @@ components:
       required: [data, meta]
       properties:
         data: { $ref: '#/components/schemas/AdminContentValidation' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
+    AdminConceptSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/AdminCatalogConcept' }
         meta: { $ref: '#/components/schemas/ResponseMeta' }
     SavedConceptItem:
       type: object

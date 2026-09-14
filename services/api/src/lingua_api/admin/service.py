@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from lingua_api.admin.domain import AdminContentProjection, AdminContentValidationProjection
+from lingua_api.admin.domain import (
+    AdminCatalogConceptProjection,
+    AdminContentProjection,
+    AdminContentValidationProjection,
+)
 from lingua_api.admin.store import PostgresAdminContentStore
 from lingua_api.memory.clock import Clock, SystemClock
 
@@ -19,6 +23,11 @@ class AdminContentApplication:
 
     def get_content(self, content_id: UUID) -> AdminContentProjection:
         return self._store.get(content_id)
+
+    def search_concepts(
+        self, query: str, *, limit: int
+    ) -> tuple[AdminCatalogConceptProjection, ...]:
+        return self._store.search_concepts(query, limit=limit)
 
     def create_content(self, values: dict[str, str]) -> AdminContentProjection:
         return self._store.create(values, now=self._clock.now())
@@ -35,3 +44,41 @@ class AdminContentApplication:
 
     def retire_content(self, content_id: UUID) -> AdminContentProjection:
         return self._store.retire(content_id, now=self._clock.now())
+
+    def put_sentence_concept(
+        self,
+        content_id: UUID,
+        sentence_id: UUID,
+        concept_id: UUID,
+        *,
+        start_offset: int,
+        end_offset: int,
+        occurrence_role: str,
+    ) -> AdminContentProjection:
+        return self._store.put_sentence_concept(
+            content_id,
+            sentence_id,
+            concept_id,
+            start_offset=start_offset,
+            end_offset=end_offset,
+            occurrence_role=occurrence_role,
+            now=self._clock.now(),
+        )
+
+    def delete_sentence_concept(
+        self,
+        content_id: UUID,
+        sentence_id: UUID,
+        concept_id: UUID,
+        *,
+        start_offset: int,
+        end_offset: int,
+    ) -> AdminContentProjection:
+        return self._store.delete_sentence_concept(
+            content_id,
+            sentence_id,
+            concept_id,
+            start_offset=start_offset,
+            end_offset=end_offset,
+            now=self._clock.now(),
+        )

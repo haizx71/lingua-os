@@ -94,6 +94,16 @@ def _create(api: AdminApi, **overrides: object) -> dict[str, Any]:
     return cast(dict[str, Any], response.json()["data"])
 
 
+def _table_counts(database_url: str, tables: tuple[str, ...]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    with psycopg.connect(database_url) as connection:
+        for table in tables:
+            row = connection.execute(f"SELECT count(*) FROM {table}").fetchone()
+            assert row is not None
+            result[table] = row[0]
+    return result
+
+
 def test_admin_auth_is_anonymous_401_non_owner_403_and_invalid_config_fail_closed(
     admin_api: AdminApi,
 ) -> None:
@@ -121,6 +131,10 @@ def test_create_list_inspect_update_and_deterministic_sentence_preview(admin_api
         "word03 word04!",
     ]
     assert [sentence["conceptCount"] for sentence in created["sentences"]] == [2, 2]
+    assert [
+        (occurrence["surfaceText"], occurrence["startOffset"], occurrence["endOffset"])
+        for occurrence in created["sentences"][0]["concepts"]
+    ] == [("word01", 0, 6), ("word02", 7, 13)]
 
     listed = admin_api.client.get("/v1/admin/content", headers=_headers())
     inspected = admin_api.client.get(f"/v1/admin/content/{created['id']}", headers=_headers())
@@ -187,6 +201,209 @@ def test_unmapped_sentence_reports_validation_issue_instead_of_fake_concept(
         ).status_code
         == 409
     )
+
+
+def test_owner_can_search_catalog_and_non_owner_cannot_use_admin_search(
+    admin_api: AdminApi,
+) -> None:
+    response = admin_api.client.get(
+        "/v1/admin/concepts/search", params={"query": "word01"}, headers=_headers()
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["data"] == [
+        {
+            "id": "30000000-0000-4000-8000-000000000001",
+            "conceptType": "word",
+            "canonicalForm": "word01",
+            "partOfSpeech": "noun",
+            "definition": "Synthetic fixture definition 1",
+        }
+    ]
+    assert (
+        admin_api.client.get(
+            "/v1/admin/concepts/search",
+            params={"query": "word01"},
+            headers=_headers("learner-token"),
+        ).status_code
+        == 403
+    )
+    with psycopg.connect(admin_api.database_url) as connection:
+        connection.execute(
+            """
+            INSERT INTO concepts
+                (id, language_code, concept_type, canonical_key, source_record_id)
+            VALUES ('30000000-0000-4000-8000-000000000099', 'en', 'grammar',
+                    'grammar_fixture', '21000000-0000-4000-8000-000000000001')
+            """
+        )
+        connection.commit()
+    grammar = admin_api.client.get(
+        "/v1/admin/concepts/search",
+        params={"query": "grammar_fixture"},
+        headers=_headers(),
+    )
+    assert grammar.status_code == 200
+    assert grammar.json()["data"] == [
+        {
+            "id": "30000000-0000-4000-8000-000000000099",
+            "conceptType": "grammar",
+            "canonicalForm": "grammar_fixture",
+            "partOfSpeech": None,
+            "definition": None,
+        }
+    ]
+
+
+def test_manual_mapping_is_idempotent_persistent_removable_and_actor_neutral(
+    admin_api: AdminApi,
+) -> None:
+    created = _create(admin_api, body="Words can change.")
+    content_id = created["id"]
+    sentence_id = created["sentences"][0]["id"]
+    concept_id = "30000000-0000-4000-8000-000000000001"
+    path = f"/v1/admin/content/{content_id}/sentences/{sentence_id}/concepts/{concept_id}"
+    learner_tables = (
+        "user_saved_concepts",
+        "user_saved_content",
+        "user_saved_sentences",
+        "learning_events",
+        "exposure_events",
+        "review_events",
+        "review_items",
+        "fsrs_states",
+        "user_concept_states",
+        "user_skill_states",
+        "user_language_projection_heads",
+        "user_content_progress",
+        "reader_mutation_results",
+        "reader_exposure_concepts",
+        "today_plans",
+        "today_plan_activities",
+        "today_activity_review_items",
+        "assessment_attempts",
+        "assessment_attempt_items",
+        "assessment_responses",
+        "assessment_results",
+        "assessment_idempotency_log",
+        "profile_mutation_results",
+        "concept_save_intents",
+    )
+    before = _table_counts(admin_api.database_url, learner_tables)
+
+    added = admin_api.client.put(
+        path,
+        json={"startOffset": 0, "endOffset": 5, "occurrenceRole": "target"},
+        headers=_headers(),
+    )
+    assert added.status_code == 200, added.text
+    occurrence = added.json()["data"]["sentences"][0]["concepts"][0]
+    assert occurrence == {
+        "concept": {
+            "id": concept_id,
+            "conceptType": "word",
+            "canonicalForm": "word01",
+            "partOfSpeech": "noun",
+            "definition": "Synthetic fixture definition 1",
+        },
+        "startOffset": 0,
+        "endOffset": 5,
+        "occurrenceRole": "target",
+        "surfaceText": "Words",
+    }
+
+    duplicate = admin_api.client.put(
+        path,
+        json={"startOffset": 0, "endOffset": 5, "occurrenceRole": "target"},
+        headers=_headers(),
+    )
+    reloaded = admin_api.client.get(f"/v1/admin/content/{content_id}", headers=_headers())
+    assert duplicate.status_code == reloaded.status_code == 200
+    assert duplicate.json()["data"]["sentences"][0]["conceptCount"] == 1
+    assert reloaded.json()["data"]["sentences"][0]["concepts"] == [occurrence]
+
+    validation = admin_api.client.post(
+        f"/v1/admin/content/{content_id}/validate", headers=_headers()
+    )
+    assert validation.status_code == 200
+    assert validation.json()["data"]["isValid"] is True
+
+    published = admin_api.client.post(f"/v1/admin/content/{content_id}/publish", headers=_headers())
+    assert published.status_code == 200
+
+    after = _table_counts(admin_api.database_url, learner_tables)
+    assert after == before
+
+
+def test_manual_mapping_rejects_invalid_or_foreign_identity_and_published_mutation(
+    admin_api: AdminApi,
+) -> None:
+    first = _create(admin_api, body="Words can change.")
+    second = _create(admin_api, body="Another sentence here.")
+    concept_id = "30000000-0000-4000-8000-000000000001"
+    invalid_concept = str(uuid.uuid4())
+    foreign = (
+        f"/v1/admin/content/{first['id']}/sentences/"
+        f"{second['sentences'][0]['id']}/concepts/{concept_id}"
+    )
+    body = {"startOffset": 0, "endOffset": 5, "occurrenceRole": "target"}
+    assert (
+        admin_api.client.put(foreign, json=body, headers=_headers("learner-token")).status_code
+        == 403
+    )
+    assert admin_api.client.put(foreign, json=body, headers=_headers()).status_code == 404
+    assert (
+        admin_api.client.put(
+            f"/v1/admin/content/{first['id']}/sentences/"
+            f"{first['sentences'][0]['id']}/concepts/{invalid_concept}",
+            json=body,
+            headers=_headers(),
+        ).status_code
+        == 404
+    )
+    invalid_span = admin_api.client.put(
+        f"/v1/admin/content/{first['id']}/sentences/"
+        f"{first['sentences'][0]['id']}/concepts/{concept_id}",
+        json={"startOffset": 0, "endOffset": 999, "occurrenceRole": "target"},
+        headers=_headers(),
+    )
+    assert invalid_span.status_code == 422
+
+    published = _create(admin_api)
+    admin_api.client.post(f"/v1/admin/content/{published['id']}/validate", headers=_headers())
+    admin_api.client.post(f"/v1/admin/content/{published['id']}/publish", headers=_headers())
+    published_path = (
+        f"/v1/admin/content/{published['id']}/sentences/"
+        f"{published['sentences'][0]['id']}/concepts/{concept_id}"
+    )
+    assert admin_api.client.put(published_path, json=body, headers=_headers()).status_code == 409
+    assert (
+        admin_api.client.delete(
+            published_path,
+            params={"startOffset": 0, "endOffset": 6},
+            headers=_headers(),
+        ).status_code
+        == 409
+    )
+
+
+def test_manual_mapping_can_be_removed_before_validation(admin_api: AdminApi) -> None:
+    created = _create(admin_api, body="Words can change.")
+    content_id = created["id"]
+    sentence_id = created["sentences"][0]["id"]
+    concept_id = "30000000-0000-4000-8000-000000000001"
+    path = f"/v1/admin/content/{content_id}/sentences/{sentence_id}/concepts/{concept_id}"
+    body = {"startOffset": 0, "endOffset": 5, "occurrenceRole": "target"}
+    assert admin_api.client.put(path, json=body, headers=_headers()).status_code == 200
+    removed = admin_api.client.delete(
+        path, params={"startOffset": 0, "endOffset": 5}, headers=_headers()
+    )
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["data"]["sentences"][0]["conceptCount"] == 0
+    assert removed.json()["data"]["sentences"][0]["concepts"] == []
+    repeated = admin_api.client.delete(
+        path, params={"startOffset": 0, "endOffset": 5}, headers=_headers()
+    )
+    assert repeated.status_code == 200
 
 
 def test_valid_content_publishes_is_reader_visible_immutable_and_retirable(
