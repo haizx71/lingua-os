@@ -3,25 +3,29 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Button,
-  Card,
   Badge,
-  ConceptChip,
-  Progress,
-  LoadingState,
+  Button,
   EmptyState,
   ErrorState,
   InlineAlert,
+  LoadingState,
 } from '@lingua/ui';
 import {
-  Sparkles,
-  Clock,
   ArrowRight,
   BookOpen,
-  RotateCcw,
-  Volume2,
+  CalendarDays,
   CheckCircle2,
+  ChevronRight,
+  Clock,
   Flame,
+  Headphones,
+  RotateCcw,
+  Search,
+  Sparkles,
+  Star,
+  Target,
+  Trophy,
+  Volume2,
 } from 'lucide-react';
 import {
   isApiErrorCode,
@@ -80,41 +84,49 @@ function getCompletedActionLabel(type: LearningActivityType): string {
   }
 }
 
-function renderActivityIcon(type: LearningActivityType) {
+function activityIcon(type: LearningActivityType) {
+  const base = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl';
   switch (type) {
     case 'review':
-      return (
-        <div className="w-10 h-10 rounded-xl bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <RotateCcw className="w-5 h-5" />
-        </div>
-      );
+      return <span className={`${base} bg-[var(--status-warning-bg)] text-[var(--status-warning)]`}><RotateCcw className="h-5 w-5" /></span>;
     case 'read':
-      return (
-        <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <BookOpen className="w-5 h-5" />
-        </div>
-      );
+      return <span className={`${base} bg-[var(--surface-blue)] text-[var(--action-primary)]`}><BookOpen className="h-5 w-5" /></span>;
     case 'listen':
-      return (
-        <div className="w-10 h-10 rounded-xl bg-[var(--status-info-bg)] text-[var(--status-info)] border border-[var(--status-info-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Volume2 className="w-5 h-5" />
-        </div>
-      );
-    case 'learn':
+      return <span className={`${base} bg-[var(--surface-lilac)] text-[var(--accent-purple)]`}><Volume2 className="h-5 w-5" /></span>;
     default:
-      return (
-        <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] text-[var(--action-primary)] border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Sparkles className="w-5 h-5" />
-        </div>
-      );
+      return <span className={`${base} bg-[var(--accent-teal-soft)] text-[var(--accent-teal-strong)]`}><Sparkles className="h-5 w-5" /></span>;
   }
+}
+
+function LearnerIllustration() {
+  return (
+    <div aria-hidden className="relative h-36 w-40 shrink-0 sm:h-40 sm:w-48">
+      <div className="absolute bottom-3 left-1/2 h-6 w-32 -translate-x-1/2 rounded-full bg-[#5a718b]/10 blur-sm" />
+      <div className="absolute left-1/2 top-2 h-[72px] w-[72px] -translate-x-1/2 rounded-[38%_44%_42%_45%] bg-[#26385d] shadow-sm" />
+      <div className="absolute left-1/2 top-[15px] h-[60px] w-[57px] -translate-x-1/2 rounded-[45%_45%_48%_48%] bg-[#f3c3a4]">
+        <span className="absolute left-[14px] top-[28px] h-1.5 w-1.5 rounded-full bg-[#273451]" />
+        <span className="absolute right-[14px] top-[28px] h-1.5 w-1.5 rounded-full bg-[#273451]" />
+        <span className="absolute left-1/2 top-[42px] h-1.5 w-3 -translate-x-1/2 rounded-b-full border-b-2 border-[#b96f68]" />
+      </div>
+      <div className="absolute left-1/2 top-[69px] h-[65px] w-[94px] -translate-x-1/2 rounded-[32px_32px_22px_22px] bg-[#4f72db] shadow-[inset_0_-8px_0_rgba(0,0,0,0.05)]" />
+      <div className="absolute left-[35px] top-[87px] h-12 w-5 rotate-[22deg] rounded-full bg-[#f3c3a4]" />
+      <div className="absolute right-[34px] top-[87px] h-12 w-5 -rotate-[22deg] rounded-full bg-[#f3c3a4]" />
+      <div className="absolute bottom-[4px] left-1/2 h-[47px] w-[72px] -translate-x-1/2 rotate-[-4deg] rounded-xl border-4 border-white bg-[#dff4ef] shadow-[0_8px_16px_rgba(38,45,67,0.12)]">
+        <span className="absolute left-2 top-2 h-1.5 w-9 rounded-full bg-[#70c9b9]/70" />
+        <span className="absolute left-2 top-5 h-1.5 w-12 rounded-full bg-[#80a0e7]/55" />
+      </div>
+      <Headphones className="absolute left-1/2 top-[1px] h-[81px] w-[81px] -translate-x-1/2 text-[#f4c45e]" strokeWidth={2.2} />
+      <Star className="absolute right-1 top-5 h-5 w-5 fill-[#f4c45e] text-[#f4c45e]" />
+      <Sparkles className="absolute left-1 top-16 h-5 w-5 text-[var(--accent-teal)]" />
+    </div>
+  );
 }
 
 export function TodayDashboard({
   initialPlan,
   initialTargetMinutes,
   initialCompletedMinutes,
-  initialStreakDays = 5,
+  initialStreakDays = 7,
   initialMemoryHealth = 87,
   forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
@@ -123,7 +135,6 @@ export function TodayDashboard({
 }: TodayDashboardProps) {
   const authContext = useOptionalAuth();
   const isAuthOrConfigured = Boolean(authContext?.isConfigured || apiClient);
-
   const {
     plan: livePlan,
     isLoading,
@@ -134,51 +145,31 @@ export function TodayDashboard({
     actionError,
     alertMessage,
     refetch,
-  } = useTodayPlan({
-    apiClient,
-    initialPlan,
-  });
+  } = useTodayPlan({ apiClient, initialPlan });
 
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
 
-  useEffect(() => {
-    setLocalForcedState(forcedState);
-  }, [forcedState]);
+  useEffect(() => setLocalForcedState(forcedState), [forcedState]);
 
   const handleRetry = () => {
-    if (localForcedState === 'error') {
-      setLocalForcedState('success');
-    }
+    if (localForcedState === 'error') setLocalForcedState('success');
     void refetch();
   };
 
-  // Backward-compatible fallback for unconfigured test harnesses (e.g. tier 1 synchronous render)
   const effectivePlan = useMemo(() => {
     if (livePlan) return livePlan;
-    if (localForcedState === 'success') {
-      return mapTodayPlanToViewModel(mockTodayPlanResponse.data);
-    }
-    if (!isAuthOrConfigured && !localForcedState) {
-      return mapTodayPlanToViewModel(mockTodayPlanResponse.data);
-    }
+    if (localForcedState === 'success') return mapTodayPlanToViewModel(mockTodayPlanResponse.data);
+    if (!isAuthOrConfigured && !localForcedState) return mapTodayPlanToViewModel(mockTodayPlanResponse.data);
     return null;
   }, [livePlan, localForcedState, isAuthOrConfigured]);
 
-  // Handle forcedStates or error/loading states
   if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
     return <LoadingState message="Đang tải kế hoạch học tập hôm nay..." />;
   }
 
   if (localForcedState === 'error' || (error && !localForcedState)) {
     const code: ApiErrorCode = forcedErrorCode || (error && isApiErrorCode(error.message) ? error.message : 'INTERNAL_ERROR');
-    return (
-      <ErrorState
-        code={code}
-        title="Không thể tải kế hoạch học tập"
-        description="Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại sau giây lát."
-        onRetry={handleRetry}
-      />
-    );
+    return <ErrorState code={code} title="Không thể tải kế hoạch học tập" description="Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại sau giây lát." onRetry={handleRetry} />;
   }
 
   if (isSetupRequired && !localForcedState) {
@@ -187,219 +178,164 @@ export function TodayDashboard({
         title="Cần thiết lập múi giờ học tập"
         description="Hồ sơ học tập của bạn chưa có múi giờ hợp lệ để hệ thống xây dựng kế hoạch hôm nay."
         actionLabel="Thiết lập lộ trình học"
-        onAction={() => {
-          window.location.href = '/onboarding';
-        }}
+        onAction={() => { window.location.href = '/onboarding'; }}
       />
     );
   }
 
   if (localForcedState === 'empty' || !effectivePlan || effectivePlan.activities.length === 0) {
-    return (
-      <EmptyState
-        title="Không có bài học nào cần ôn hôm nay"
-        description="Bạn đã hoàn thành tất cả các mục tiêu học tập hôm nay hoặc chưa cấu hình lộ trình."
-        actionLabel="Khám phá bài đọc mới"
-      />
-    );
+    return <EmptyState title="Không có bài học nào cần ôn hôm nay" description="Bạn đã hoàn thành tất cả các mục tiêu học tập hôm nay hoặc chưa cấu hình lộ trình." actionLabel="Khám phá bài đọc mới" />;
   }
 
-  // Authoritative server-provided numbers
   const targetMinutes = initialTargetMinutes ?? effectivePlan.targetMinutes;
   const completedMinutes = initialCompletedMinutes ?? effectivePlan.completedMinutes;
-  const progressPercent =
-    targetMinutes > 0 ? Math.min(100, Math.round((completedMinutes / targetMinutes) * 100)) : 0;
+  const progressPercent = targetMinutes > 0 ? Math.min(100, Math.round((completedMinutes / targetMinutes) * 100)) : 0;
   const completedActivitiesCount = effectivePlan.completedActivitiesCount;
   const totalActivitiesCount = effectivePlan.totalActivitiesCount;
+  const nextActivity = effectivePlan.activities.find((activity) => !activity.completed) ?? effectivePlan.activities[0];
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
-              Kế hoạch hôm nay
-            </span>
-            <Badge variant="primary" size="sm">
-              {targetMinutes} phút
-            </Badge>
-            <div className="flex items-center gap-1 text-xs text-[var(--status-warning)] font-medium ml-1">
-              <Flame className="w-3.5 h-3.5 fill-[var(--status-warning)] text-[var(--status-warning)]" />
-              <span>Chuỗi {initialStreakDays} ngày</span>
-            </div>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
-            Chào buổi sáng, Learner!
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
-            LINGUA OS đã chọn {effectivePlan.activities.length} hoạt động tối ưu nhất dựa trên trí nhớ và mục tiêu của bạn.
-          </p>
-        </div>
-        <Link href="/review" className="w-full sm:w-auto">
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full sm:w-auto min-h-[48px] px-6"
-            rightIcon={<ArrowRight className="w-4 h-4" />}
-          >
-            Bắt đầu học ngay
-          </Button>
-        </Link>
-      </header>
+    <div className="mx-auto w-full max-w-[1240px]">
+      <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-white/70 px-4 py-3 shadow-sm backdrop-blur md:mb-6">
+        <Search className="h-4 w-4 text-[var(--text-muted)]" />
+        <input aria-label="Tìm bài học hoặc từ vựng" placeholder="Tìm bài học, từ vựng hoặc chủ đề..." className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
+        <span className="hidden rounded-lg bg-[var(--surface-subtle)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)] sm:block">LINGUA SEARCH</span>
+      </div>
 
-      {/* Action Error Alert */}
-      {actionError && (
-        <InlineAlert variant="danger" title="Lỗi hoàn thành hoạt động">
-          {actionError.message}
-        </InlineAlert>
+      {(actionError || alertMessage) && (
+        <div className="mb-5 space-y-2">
+          {actionError && <InlineAlert variant="danger" title="Lỗi hoàn thành hoạt động">{actionError.message}</InlineAlert>}
+          {alertMessage && <InlineAlert variant="success" title="Cập nhật">{alertMessage}</InlineAlert>}
+        </div>
       )}
 
-      {/* Inline Feedback Alert */}
-      {alertMessage && (
-        <InlineAlert variant="success" title="Cập nhật">
-          {alertMessage}
-        </InlineAlert>
-      )}
-
-      {/* Progress & Alert Banner */}
-      <Card variant="subtle" padding="md" className="space-y-3">
-        <div className="flex justify-between items-center text-sm font-medium">
-          <span className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[var(--action-primary)]" />
-            <span>
-              Tiến độ học hôm nay: {completedMinutes} / {targetMinutes} phút
-            </span>
-          </span>
-          <span className="text-xs text-[var(--text-muted)]">
-            {completedActivitiesCount > 0
-              ? `${completedActivitiesCount} / ${totalActivitiesCount} hoàn thành`
-              : `${totalActivitiesCount} bài tập`}
-          </span>
-        </div>
-        <Progress
-          value={progressPercent}
-          max={100}
-          size="md"
-          variant="primary"
-          label={`Tiến độ học hôm nay: ${completedMinutes} / ${targetMinutes} phút`}
-        />
-      </Card>
-
-      {/* Primary Activities Timeline — SERVER ORDER STRICTLY PRESERVED */}
-      <section aria-labelledby="timeline-heading" className="space-y-4">
-        <h2 id="timeline-heading" className="text-lg font-semibold text-[var(--text-primary)]">
-          Danh sách hoạt động
-        </h2>
-
-        {effectivePlan.activities.map((activity: TodayActivityViewModel) => (
-          <Card
-            key={activity.id}
-            variant="interactive"
-            padding="md"
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-          >
-            <div className="flex items-start gap-3.5">
-              {renderActivityIcon(activity.type)}
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-base text-[var(--text-primary)]">
-                    {activity.title}
-                  </h3>
-                  {activity.completed ? (
-                    <Badge variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
-                      Đã xong
-                    </Badge>
-                  ) : (
-                    <Badge variant={activity.badgeVariant} size="sm">
-                      {activity.badgeLabel}
-                    </Badge>
-                  )}
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_290px]">
+        <div className="min-w-0 space-y-6">
+          <section className="relative overflow-hidden rounded-[28px] border border-[#d9e5f6] bg-gradient-to-br from-[#eef7ff] via-[#f2f8ff] to-[#edf8f3] px-6 py-5 shadow-[var(--shadow-card)] sm:px-8 sm:py-6">
+            <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/50" />
+            <div className="absolute bottom-0 left-[42%] h-24 w-24 rounded-full bg-[var(--accent-teal)]/10 blur-2xl" />
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-xl">
+                <span className="lingua-kicker text-[var(--action-primary)]">Hôm nay</span>
+                <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)] sm:text-[30px]">Good afternoon, Hải!</h1>
+                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-secondary)]">A new language. A brighter you tomorrow. Chỉ cần tiếp tục đúng hoạt động mà Language Brain đã chọn.</p>
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <Link href={nextActivity?.targetUrl ?? '/review'}>
+                    <Button variant="primary" size="lg" className="min-h-11 rounded-2xl px-5" rightIcon={<ArrowRight className="h-4 w-4" />}>Tiếp tục học</Button>
+                  </Link>
+                  <span className="text-xs font-medium text-[var(--text-secondary)]">{effectivePlan.activities.length} hoạt động được ưu tiên cho bạn</span>
                 </div>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">
-                  {activity.reasonText}
-                </p>
+              </div>
+              <LearnerIllustration />
+            </div>
+          </section>
+
+          <section aria-label="Tóm tắt hôm nay" className="grid gap-3 sm:grid-cols-3">
+            <div className="lingua-card flex items-center gap-3 p-4">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><Target className="h-5 w-5" /></span>
+              <div><div className="text-xs font-medium text-[var(--text-muted)]">Mục tiêu hôm nay</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedMinutes}/{targetMinutes} phút</div></div>
+            </div>
+            <div className="lingua-card flex items-center gap-3 p-4">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--status-warning-bg)] text-[var(--status-warning)]"><Flame className="h-5 w-5 fill-current" /></span>
+              <div><div className="text-xs font-medium text-[var(--text-muted)]">Chuỗi học tập</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{initialStreakDays} ngày</div></div>
+            </div>
+            <div className="lingua-card flex items-center gap-3 p-4">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Trophy className="h-5 w-5" /></span>
+              <div><div className="text-xs font-medium text-[var(--text-muted)]">Thành tích</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedActivitiesCount}/{totalActivitiesCount} hoàn thành</div></div>
+            </div>
+          </section>
+
+          <section aria-labelledby="learning-progress-heading" className="lingua-card overflow-hidden p-5 sm:p-6 lg:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="lingua-kicker text-[var(--accent-teal-strong)]">Language Brain</div>
+                <h2 id="learning-progress-heading" className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-[var(--text-primary)] sm:text-2xl">Your Learning Progress</h2>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">Một cái nhìn nhanh về nhịp học và độ bền trí nhớ hôm nay.</p>
+              </div>
+              <Link href="/progress" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-[var(--action-primary)] hover:bg-[var(--surface-blue)]">Xem chi tiết <ChevronRight className="h-3.5 w-3.5" /></Link>
+            </div>
+
+            <div className="mt-6 grid items-center gap-7 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <div className="mx-auto flex flex-col items-center">
+                <div className="relative flex h-44 w-44 items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--accent-teal) ${progressPercent * 3.6}deg, #e8ece8 0deg)` }}>
+                  <div className="absolute inset-[13px] rounded-full bg-white shadow-[inset_0_0_0_1px_var(--border-subtle)]" />
+                  <div className="relative z-10 text-center">
+                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Today</div>
+                    <div className="mt-1 text-4xl font-black tracking-[-0.06em] text-[var(--text-primary)]">{progressPercent}%</div>
+                    <div className="mt-1 text-xs font-semibold text-[var(--accent-teal-strong)]">{completedMinutes}/{targetMinutes} min</div>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-full bg-[var(--surface-blue)] px-3 py-1 text-xs font-extrabold text-[var(--action-primary)]">CEFR journey • B1</div>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  ['Daily goal', progressPercent, 'var(--action-primary)'],
+                  ['Memory health', initialMemoryHealth, 'var(--accent-teal)'],
+                  ['Activities', totalActivitiesCount > 0 ? Math.round((completedActivitiesCount / totalActivitiesCount) * 100) : 0, 'var(--accent-purple)'],
+                ].map(([label, value, color]) => (
+                  <div key={String(label)}>
+                    <div className="mb-1.5 flex items-center justify-between text-xs"><span className="font-semibold text-[var(--text-secondary)]">{label}</span><span className="font-extrabold text-[var(--text-primary)]">{value}%</span></div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-subtle)]"><div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${value}%`, background: String(color) }} /></div>
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="rounded-2xl bg-[var(--accent-teal-soft)] p-3"><div className="text-[11px] font-semibold text-[var(--text-muted)]">Memory</div><div className="mt-1 text-lg font-extrabold text-[var(--accent-teal-strong)]">{initialMemoryHealth}%</div></div>
+                  <div className="rounded-2xl bg-[var(--surface-warm)] p-3"><div className="text-[11px] font-semibold text-[var(--text-muted)]">Today plan</div><div className="mt-1 text-lg font-extrabold text-[var(--text-primary)]">{totalActivitiesCount} tasks</div></div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
-              <Link href={activity.targetUrl}>
-                <Button
-                  variant={
-                    activity.completed
-                      ? 'secondary'
-                      : activity.type === 'review'
-                        ? 'primary'
-                        : 'outline'
-                  }
-                  size="sm"
-                  onClick={() => onActivityStart?.(activity.id)}
-                >
-                  {activity.completed
-                    ? getCompletedActionLabel(activity.type)
-                    : getPendingActionLabel(activity.type)}
-                </Button>
-              </Link>
-              {!activity.completed && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isCompleting(activity.id)}
-                  onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)}
-                  aria-label={`Hoàn thành hoạt động ${activity.title}`}
-                >
-                  {isCompleting(activity.id) ? 'Đang hoàn thành...' : 'Hoàn thành'}
-                </Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </section>
+          </section>
 
-      {/* Language Brain Preview Snapshot */}
-      <section aria-labelledby="brain-snapshot-heading" className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <h2 id="brain-snapshot-heading" className="text-base font-semibold text-[var(--text-primary)]">
-            Trạng thái Language Brain
-          </h2>
-          <Link href="/brain" className="text-xs text-[var(--action-primary)] hover:underline flex items-center gap-1 font-medium">
-            <span>Xem toàn bộ 483 từ</span>
-            <ArrowRight className="w-3 h-3" />
-          </Link>
+          <section aria-labelledby="timeline-heading" className="lingua-card p-5 sm:p-6">
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div><div className="lingua-kicker">Kế hoạch cá nhân</div><h2 id="timeline-heading" className="mt-1 text-lg font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Today's Activity</h2></div>
+              <span className="text-xs font-semibold text-[var(--text-muted)]">Giữ nguyên thứ tự ưu tiên từ server</span>
+            </div>
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {effectivePlan.activities.map((activity: TodayActivityViewModel) => (
+                <div key={activity.id} className="flex flex-col gap-3 py-4 first:pt-1 last:pb-1 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    {activityIcon(activity.type)}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-sm font-bold text-[var(--text-primary)]">{activity.title}</h3>
+                        {activity.completed ? <Badge variant="success" size="sm" icon={<CheckCircle2 className="h-3 w-3" />}>Đã xong</Badge> : <Badge variant={activity.badgeVariant} size="sm">{activity.badgeLabel}</Badge>}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{activity.reasonText}</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-center">
+                    <Link href={activity.targetUrl}><Button variant={activity.completed ? 'secondary' : activity.type === 'review' ? 'primary' : 'outline'} size="sm" onClick={() => onActivityStart?.(activity.id)}>{activity.completed ? getCompletedActionLabel(activity.type) : getPendingActionLabel(activity.type)}</Button></Link>
+                    {!activity.completed && <Button variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang hoàn thành...' : 'Hoàn thành'}</Button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
 
-        <Card padding="md" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--status-info-bg)] text-[var(--action-primary)] flex items-center justify-center border border-[var(--status-info-border)]">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="font-semibold text-sm text-[var(--text-primary)]">
-                  Sức khỏe trí nhớ: {initialMemoryHealth}%
-                </div>
-                <div className="text-xs text-[var(--text-secondary)]">
-                  Trạng thái ổn định cao. 23 từ cần ôn lại hôm nay để duy trì độ nhớ.
-                </div>
-              </div>
+        <aside aria-label="Hành trình học tập" className="space-y-4 2xl:sticky 2xl:top-8 2xl:self-start">
+          <section className="rounded-[26px] border border-[#efe5d3] bg-[var(--surface-warm)] p-5 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between"><div><div className="lingua-kicker text-[#9b773f]">My Journey</div><h2 className="mt-1 text-lg font-extrabold text-[var(--text-primary)]">Keep going, Hải</h2></div><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--status-warning)] shadow-sm"><CalendarDays className="h-5 w-5" /></span></div>
+            <div className="mt-5 space-y-3">
+              <div className="rounded-2xl bg-white/80 p-3.5"><div className="flex items-center justify-between text-xs"><span className="font-semibold text-[var(--text-secondary)]">Weekly rhythm</span><span className="font-extrabold text-[var(--text-primary)]">{initialStreakDays} days</span></div><div className="mt-3 flex gap-1.5">{Array.from({ length: 7 }).map((_, index) => <span key={index} className={`h-7 flex-1 rounded-lg ${index < Math.min(initialStreakDays, 7) ? 'bg-[var(--accent-teal)]' : 'bg-[var(--surface-subtle)]'}`} />)}</div></div>
+              <Link href="/brain" className="flex items-center gap-3 rounded-2xl bg-white/80 p-3.5 transition-transform hover:-translate-y-0.5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-teal-soft)] text-[var(--accent-teal-strong)]"><Sparkles className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-bold text-[var(--text-primary)]">Language Brain</span><span className="block text-[11px] text-[var(--text-secondary)]">Memory health {initialMemoryHealth}%</span></span><ChevronRight className="h-4 w-4 text-[var(--text-muted)]" /></Link>
             </div>
-            <div className="flex gap-2">
-              <Link href="/review">
-                <Button variant="primary" size="sm">
-                  Ôn tập ngay
-                </Button>
-              </Link>
-            </div>
-          </div>
+          </section>
 
-          <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center gap-2">
-            <span className="text-xs text-[var(--text-muted)] mr-1">Từ vựng gần đây đang được theo dõi:</span>
-            <ConceptChip status="learning" isDue={true} term="perseverance" size="sm" />
-            <ConceptChip status="learning" term="resilience" size="sm" />
-            <ConceptChip status="mastered" term="effortless" size="sm" />
-            <ConceptChip status="weak" term="meticulous" size="sm" />
-          </div>
-        </Card>
-      </section>
+          <section className="lingua-card p-5">
+            <div className="lingua-kicker">Featured Content</div>
+            <div className="mt-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--surface-blue)] to-[var(--surface-lilac)] p-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--action-primary)] shadow-sm"><BookOpen className="h-5 w-5" /></span>
+              <h3 className="mt-4 text-sm font-extrabold text-[var(--text-primary)]">Đọc một chút, nhớ lâu hơn</h3>
+              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Khám phá nội dung phù hợp trình độ và gặp lại từ vựng trong ngữ cảnh thật.</p>
+              <Link href="/library" className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-[var(--action-primary)]">Mở thư viện <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+            <Link href="/read" className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] p-3 transition-colors hover:bg-[var(--surface-subtle)]"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Headphones className="h-4 w-4" /></span><span className="flex-1 text-xs font-bold text-[var(--text-primary)]">Reader & contextual learning</span><ChevronRight className="h-4 w-4 text-[var(--text-muted)]" /></Link>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
