@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -14,11 +15,16 @@ ALLOWED_POS = {
     "noun", "verb", "adjective", "adverb", "pronoun", "determiner",
     "preposition", "conjunction", "interjection", "numeral", "modal", "particle",
 }
+ALLOWED_SOURCE_DECISIONS = {
+    "FIRST_PARTY", "PRIMARY_CANDIDATE", "REFERENCE_ONLY",
+    "CANDIDATE_QUARANTINE", "REJECT_MVP",
+}
 FORBIDDEN_LEARNER_FIELDS = {
     "mastery", "competence", "fsrs", "fsrsState", "dueAt", "reviewItemId",
     "saved", "known", "learningIntent", "hasLearningIntent", "statusEvidence",
     "exposureCount", "todayCompleted", "learnerStatus",
 }
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class ValidationError(Exception):
@@ -40,7 +46,50 @@ def walk_forbidden(value: object, path: str = "$") -> None:
             walk_forbidden(child, f"{path}[{index}]")
 
 
-def validate(path: Path) -> dict[str, object]:
+def validate_registry(path: Path) -> dict[str, str]:
+    registry = json.loads(path.read_text(encoding="utf-8"))
+    if registry.get("schemaVersion") != "knowledge-source-registry.v1":
+        fail("source registry has unsupported schemaVersion")
+    policy = registry.get("decisionPolicy")
+    if not isinstance(policy, dict) or set(policy) != ALLOWED_SOURCE_DECISIONS:
+        fail("source registry decisionPolicy must enumerate the five V1 decisions")
+    sources = registry.get("sources")
+    if not isinstance(sources, list) or not sources:
+        fail("source registry must contain sources")
+
+    decisions: dict[str, str] = {}
+    for index, source in enumerate(sources):
+        where = f"sourceRegistry.sources[{index}]"
+        if not isinstance(source, dict):
+            fail(f"{where}: source must be an object")
+        source_id = source.get("id")
+        decision = source.get("decision")
+        if not isinstance(source_id, str) or not source_id:
+            fail(f"{where}: id is required")
+        if source_id in decisions:
+            fail(f"{where}: duplicate source id {source_id!r}")
+        if decision not in ALLOWED_SOURCE_DECISIONS:
+            fail(f"{where}: invalid decision {decision!r}")
+        decisions[source_id] = decision
+
+        evidence = source.get("evidence")
+        if isinstance(evidence, dict):
+            reported_sha = evidence.get("reportedSha256")
+            if reported_sha is not None and (
+                not isinstance(reported_sha, str) or SHA256_RE.fullmatch(reported_sha) is None
+            ):
+                fail(f"{where}: reportedSha256 must be a lowercase SHA-256")
+            if evidence.get("checksumStatus") == "verified_lingua":
+                fail(
+                    f"{where}: no external source is independently LINGUA-verified in this branch yet"
+                )
+
+    if decisions.get("lingua-first-party") != "FIRST_PARTY":
+        fail("source registry must define lingua-first-party as FIRST_PARTY")
+    return decisions
+
+
+def validate_inventory(path: Path, source_decisions: dict[str, str]) -> dict[str, object]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if data.get("schemaVersion") != "first-party-starter-inventory.v1":
         fail("unsupported schemaVersion")
@@ -48,8 +97,9 @@ def validate(path: Path) -> dict[str, object]:
         fail("starter inventory must remain candidate until an explicit production gate")
     if data.get("languageCode") != "en" or data.get("interfaceLanguageCode") != "vi":
         fail("inventory is bounded to English-for-Vietnamese V1")
-    if data.get("sourceRegistryId") != "lingua-first-party":
-        fail("starter inventory must be first-party")
+    registry_id = data.get("sourceRegistryId")
+    if registry_id != "lingua-first-party" or source_decisions.get(str(registry_id)) != "FIRST_PARTY":
+        fail("starter inventory must reference the FIRST_PARTY registry source")
     concepts = data.get("concepts")
     if not isinstance(concepts, list) or not concepts:
         fail("concepts must be a non-empty list")
@@ -178,18 +228,25 @@ def validate(path: Path) -> dict[str, object]:
         "types": dict(sorted(types.items())),
         "prerequisiteEdges": sum(len(v) for v in edges.values()),
         "uniqueExamples": len(set(examples)),
+        "sourceRegistryId": registry_id,
         "result": "PASS",
     }
 
 
 def main() -> int:
-    path = Path(
+    inventory_path = Path(
         sys.argv[1]
         if len(sys.argv) > 1
         else "knowledge/first_party_starter_inventory.v1.json"
     )
+    registry_path = Path(
+        sys.argv[2]
+        if len(sys.argv) > 2
+        else "knowledge/source_registry.v1.json"
+    )
     try:
-        summary = validate(path)
+        source_decisions = validate_registry(registry_path)
+        summary = validate_inventory(inventory_path, source_decisions)
     except (OSError, json.JSONDecodeError, ValidationError) as error:
         print(f"KNOWLEDGE STARTER VALIDATION: FAIL: {error}", file=sys.stderr)
         return 1
