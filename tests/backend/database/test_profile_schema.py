@@ -141,7 +141,9 @@ def test_profile_mutation_results_are_not_browser_readable_or_writable(
                 "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(actor_id),)
             )
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
-                session.execute("SELECT idempotency_key FROM profile_mutation_results").fetchall()
+                session.execute(
+                    "SELECT idempotency_key FROM public.profile_mutation_results"
+                ).fetchall()
 
 
 def test_profile_replay_snapshot_is_append_only(
