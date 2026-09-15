@@ -37,10 +37,7 @@ class PostgresProgressStore:
     ) -> ProgressOverviewProjection:
         with self._brain.snapshot(actor=actor) as snapshot:
             profile_id = self._brain.resolve_profile(snapshot, language_profile_id)
-            profile_daily_minutes, profile_created_at, time_zone = self._profile_context(
-                snapshot, profile_id
-            )
-            del profile_daily_minutes
+            profile_created_at, time_zone = self._profile_context(snapshot, profile_id)
             zone = _zone(time_zone)
             window_end = snapshot.as_of.astimezone(zone).date()
             window_start = window_end - timedelta(days=window_days - 1)
@@ -73,9 +70,7 @@ class PostgresProgressStore:
                 seconds, activities, daily_target = today.get(cursor, (0, 0, 0))
                 minutes = 0 if seconds <= 0 else math.ceil(seconds / 60)
                 exposure_count = exposed.get(cursor, 0)
-                reviewed_count, correct_count, strengthened_count = review.get(
-                    cursor, (0, 0, 0)
-                )
+                reviewed_count, correct_count, strengthened_count = review.get(cursor, (0, 0, 0))
                 daily_activity.append(
                     ProgressDayProjection(
                         date=cursor,
@@ -123,12 +118,10 @@ class PostgresProgressStore:
             )
 
     @staticmethod
-    def _profile_context(
-        snapshot: BrainSnapshot, profile_id: UUID
-    ) -> tuple[int, datetime, str]:
+    def _profile_context(snapshot: BrainSnapshot, profile_id: UUID) -> tuple[datetime, str]:
         row = snapshot.connection.execute(
             """
-            SELECT language.daily_minutes, language.created_at, learner.time_zone
+            SELECT language.created_at, learner.time_zone
             FROM user_languages AS language
             JOIN learner_profiles AS learner ON learner.user_id = language.user_id
             JOIN users AS app_user ON app_user.id = language.user_id
@@ -137,10 +130,9 @@ class PostgresProgressStore:
             """,
             (profile_id, snapshot.actor.id),
         ).fetchone()
-        if row is None or row[2] is None:
+        if row is None or row[1] is None:
             raise BrainNotFound("product-ready learner progress context was not found")
-        created_at = _datetime(row[1])
-        return int(cast(int, row[0])), created_at, str(row[2])
+        return _datetime(row[0]), str(row[1])
 
     @staticmethod
     def _today_days(
