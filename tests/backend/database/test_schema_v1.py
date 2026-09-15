@@ -193,11 +193,12 @@ def test_empty_database_migration_is_reproducible_and_reversible(
             "0007",
             "0008",
             "0009",
+            "0010",
         ]
         assert migrate_up(isolated_url, migrations_dir) == []
 
-        assert migrate_down(isolated_url, migrations_dir, steps=1) == ["0009"]
-        assert migrate_up(isolated_url, migrations_dir) == ["0009"]
+        assert migrate_down(isolated_url, migrations_dir, steps=1) == ["0010"]
+        assert migrate_up(isolated_url, migrations_dir) == ["0010"]
 
         copied_migrations = tmp_path / "migrations"
         shutil.copytree(migrations_dir, copied_migrations)
@@ -262,7 +263,7 @@ def test_schema_contains_required_tables_rls_and_timestamptz(
         (list(USER_OWNED_TABLES),),
     ).fetchall()
     assert {row[0] for row in privilege_rows} == USER_OWNED_TABLES
-    assert all(row[1] is True and row[2] is False for row in privilege_rows)
+    assert all(row[1] is False and row[2] is False for row in privilege_rows)
 
     timestamp_types = db_connection.execute(
         """
@@ -446,7 +447,7 @@ def test_published_content_requires_approved_usable_provenance(
         )
 
 
-def test_rls_allows_only_the_authenticated_owner(migrated_postgres_url: str) -> None:
+def test_browser_roles_cannot_query_domain_tables(migrated_postgres_url: str) -> None:
     owner_id = uuid.uuid4()
     other_id = uuid.uuid4()
     with psycopg.connect(migrated_postgres_url) as admin:
@@ -454,14 +455,13 @@ def test_rls_allows_only_the_authenticated_owner(migrated_postgres_url: str) -> 
         _seed_user(admin, other_id)
         admin.commit()
 
-    with psycopg.connect(migrated_postgres_url) as owner_session:
-        owner_session.execute("SET ROLE authenticated")
-        owner_session.execute(
+    with psycopg.connect(migrated_postgres_url) as authenticated_session:
+        authenticated_session.execute("SET ROLE authenticated")
+        authenticated_session.execute(
             "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(owner_id),)
         )
-        visible_ids = {row[0] for row in owner_session.execute("SELECT id FROM users").fetchall()}
-        assert owner_id in visible_ids
-        assert other_id not in visible_ids
+        with pytest.raises(errors.InsufficientPrivilege):
+            authenticated_session.execute("SELECT id FROM users").fetchall()
 
     with psycopg.connect(migrated_postgres_url) as anonymous_session:
         anonymous_session.execute("SET ROLE anon")
