@@ -6,6 +6,7 @@ import type {
   BrainSummaryDto,
   ConceptDetailDto,
   ContentDetailDto,
+  LibraryItemDto,
   MeProfileDto,
   LanguageProfileDto,
   StartingLevelEstimateDto,
@@ -14,13 +15,14 @@ import type {
   TodayActivityDto,
   ConfidenceBand,
 } from '../api/dtos';
-import type { CEFRLevel } from '../enums';
+import { isConceptStatus, type CEFRLevel } from '../enums';
 import type {
   BrainConceptViewModel,
   BrainSummaryViewModel,
   DictionaryConceptViewModel,
   ProgressSummaryViewModel,
   ReaderPassageViewModel,
+  LibraryItemViewModel,
   ReaderTokenViewModel,
   ReviewCardViewModel,
   TodayActivityViewModel,
@@ -36,6 +38,71 @@ const activityRoutes = {
 
 function percent(value: number): number {
   return Math.round(value * 100);
+}
+
+export function mapLibraryItemToViewModel(item: LibraryItemDto): LibraryItemViewModel {
+  if (!item || typeof item !== 'object' || typeof item.savedAt !== 'string'
+    || !item.savedAt || Number.isNaN(Date.parse(item.savedAt))) {
+    throw new Error('Invalid Library item');
+  }
+  if (item.itemType === 'concept') {
+    if (!item.concept || typeof item.concept.id !== 'string' || !item.concept.id
+      || typeof item.concept.canonicalForm !== 'string' || !item.concept.canonicalForm
+      || !isConceptStatus(item.concept.status) || typeof item.concept.isDue !== 'boolean') {
+      throw new Error('Invalid Library concept');
+    }
+    return {
+      id: item.concept.id,
+      itemType: 'concept',
+      savedAt: item.savedAt,
+      canonicalForm: item.concept.canonicalForm,
+      ...(item.concept.partOfSpeech ? { partOfSpeech: item.concept.partOfSpeech } : {}),
+      ...(item.concept.ipa ? { ipa: item.concept.ipa } : {}),
+      ...(item.concept.level ? { level: item.concept.level.code } : {}),
+      status: item.concept.status,
+      isDue: item.concept.isDue,
+    };
+  }
+  if (item.itemType === 'sentence') {
+    if (!item.sentence || typeof item.sentence.id !== 'string' || !item.sentence.id
+      || typeof item.sentence.text !== 'string' || !item.sentence.text) {
+      throw new Error('Invalid Library sentence');
+    }
+    return {
+      id: item.sentence.id,
+      itemType: 'sentence',
+      savedAt: item.savedAt,
+      text: item.sentence.text,
+      ...(item.sentence.translation ? { translation: item.sentence.translation } : {}),
+      ...(item.sentence.audioUrl ? { audioUrl: item.sentence.audioUrl } : {}),
+    };
+  }
+  if (item.itemType === 'content') {
+    if (!item.content || typeof item.content.id !== 'string' || !item.content.id
+      || typeof item.content.title !== 'string' || !item.content.title
+      || !Number.isInteger(item.content.estimatedMinutes) || item.content.estimatedMinutes < 0
+      || item.content.estimatedMinutes > 1440
+      || typeof item.content.knownConceptRatio !== 'number'
+      || !Number.isFinite(item.content.knownConceptRatio)
+      || item.content.knownConceptRatio < 0 || item.content.knownConceptRatio > 1) {
+      throw new Error('Invalid Library content');
+    }
+    return {
+      id: item.content.id,
+      itemType: 'content',
+      savedAt: item.savedAt,
+      title: item.content.title,
+      ...(item.content.excerpt ? { excerpt: item.content.excerpt } : {}),
+      ...(item.content.difficultyLabel ? { level: item.content.difficultyLabel } : {}),
+      estimatedMinutes: item.content.estimatedMinutes,
+      knownConceptPercent: percent(item.content.knownConceptRatio),
+      ...(item.content.attribution ? { attribution: item.content.attribution } : {}),
+      ...(item.content.readingProgress
+        ? { progressPercent: item.content.readingProgress.progressPercent }
+        : {}),
+    };
+  }
+  throw new Error('Unsupported Library item type');
 }
 
 export function mapTodayActivityToViewModel(activity: TodayActivityDto): TodayActivityViewModel {

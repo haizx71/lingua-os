@@ -2,8 +2,8 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import DictionaryPage from '@/app/dictionary/page';
-import LibraryPage from '@/app/library/page';
 import { DictionaryView } from '@/features/dictionary/DictionaryView';
+import { LibraryView } from '@/features/library/LibraryView';
 import { defaultDictionaryConcepts } from '@/fixtures/dictionaryFixture';
 import { mapConceptDetailToDictionaryViewModel, mockGrammarConceptDetail } from '@lingua/types';
 import { renderWithProviders } from '../harness/test-render';
@@ -49,7 +49,7 @@ describe('Tier 1: Feature 10 - Library & Dictionary', () => {
   });
 
   it('test_library_renders_header_and_empty_state_guidance', () => {
-    renderWithProviders(<LibraryPage />);
+    renderWithProviders(<LibraryView forcedState="empty" />);
 
     expect(screen.getByText('Content & Sentences')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: /Thư viện của bạn/i })).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('Tier 1: Feature 10 - Library & Dictionary', () => {
   });
 
   it('test_library_empty_state_action_button_renders_properly', () => {
-    renderWithProviders(<LibraryPage />);
+    renderWithProviders(<LibraryView forcedState="empty" />);
 
     const ctaBtn = screen.getByRole('button', { name: /Đọc bài trong Reader/i });
     expect(ctaBtn).toBeInTheDocument();

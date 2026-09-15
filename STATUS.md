@@ -1,7 +1,27 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; TASK-READ-001 Reader live integration complete; GAP-01 Closed
+Phase: FRLL accepted/frozen; TASK-LIBRARY-001 Library live integration complete; GAP-01 Closed
+
+## Current checkpoint — TASK-LIBRARY-001 complete (2026-09-15)
+
+- `/library` now loads all saved concept, sentence and content items through the frozen
+  `GET /v1/library/items` cursor contract. It preserves server order, canonical IDs, saved timestamps
+  and useful metadata through the explicit DTO → adapter → view-model → React boundary.
+- Pagination fails closed on malformed metadata, duplicate identities or repeated cursors; partial
+  collections are never presented as complete authority. Empty backend state contains no live fixture
+  fallback.
+- Concept, sentence and content removal uses the existing canonical DELETE operations. Mutations are
+  duplicate-suppressed and server-confirmed; failures keep the row visible and map to safe UI errors.
+- Application actor epoch and per-request sequencing protect load, pagination, removal, catch and
+  finally paths across logout/login, Actor A/B transitions and same-actor newer requests. Library
+  reads and client-side filtering perform no learner-state write or scheduling/competence logic.
+- Verification: focused Library 20/20 PASS; full frontend/static/live acceptance 714/714 PASS across
+  57 files with disposable actor cleanup; backend 510/510 PASS on PostgreSQL; Ruff format/lint,
+  strict mypy, generated-contract freshness, workspace typecheck, ESLint, Next.js production build
+  and `git diff --check` PASS. No shared UI component/story changed, so Storybook was not required.
+- Zero diff under `contracts/`, `services/`, `database/`, migrations and generated OpenAPI types.
+  No deployment or remote push was performed.
 
 ## Current checkpoint — TASK-READ-001 complete (2026-09-15)
 

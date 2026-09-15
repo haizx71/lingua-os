@@ -92,6 +92,44 @@ export interface ReaderPassageViewModel {
   readonly attribution?: ReaderAttributionViewModel;
 }
 
+interface LibraryItemBaseViewModel {
+  readonly id: string;
+  readonly savedAt: string;
+}
+
+export interface LibraryConceptItemViewModel extends LibraryItemBaseViewModel {
+  readonly itemType: 'concept';
+  readonly canonicalForm: string;
+  readonly partOfSpeech?: string;
+  readonly ipa?: string;
+  readonly level?: string;
+  readonly status: ConceptStatus;
+  readonly isDue: boolean;
+}
+
+export interface LibrarySentenceItemViewModel extends LibraryItemBaseViewModel {
+  readonly itemType: 'sentence';
+  readonly text: string;
+  readonly translation?: string;
+  readonly audioUrl?: string;
+}
+
+export interface LibraryContentItemViewModel extends LibraryItemBaseViewModel {
+  readonly itemType: 'content';
+  readonly title: string;
+  readonly excerpt?: string;
+  readonly level?: string;
+  readonly estimatedMinutes: number;
+  readonly knownConceptPercent: number;
+  readonly attribution?: ReaderAttributionViewModel;
+  readonly progressPercent?: number;
+}
+
+export type LibraryItemViewModel =
+  | LibraryConceptItemViewModel
+  | LibrarySentenceItemViewModel
+  | LibraryContentItemViewModel;
+
 export interface DictionaryConceptViewModel {
   readonly id: string;
   readonly term: string;

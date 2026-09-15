@@ -346,6 +346,26 @@ database, migration or generated-type change was required. Verification: 12/12 f
 backend on PostgreSQL, Ruff, mypy, TypeScript, ESLint, contract freshness, production build and diff
 check PASS. See `reviews/TASK-READ-001-reader-live-integration.md`.*
 
+### TASK-LIBRARY-001 — Library live integration
+Owner: CODEX
+Status: DONE
+Dependencies: TASK-008, TASK-008A, TASK-009, TASK-017, TASK-READ-001
+
+Replace the default `/library` fixture/local-state flow with the authoritative Library API while
+preserving the approved presentation and learner-state boundaries.
+*Completed and verified: `/library` now traverses every opaque cursor page from
+`GET /v1/library/items`, validates each complete response before committing it, preserves server
+order and canonical concept/sentence/content identity, and maps transport DTOs through dedicated
+view models. All three removal operations use their existing canonical DELETE endpoints, suppress
+duplicate clicks, preserve rows on failure and accept only server-confirmed results. Same-actor
+request sequencing plus application actor epoch guards prevent stale load, pagination, mutation,
+error and finally paths from contaminating a newer request or Actor B. Empty live collections no
+longer display fixture rows, and Library reads/filtering create no learner-state writes. No OpenAPI,
+backend, database, migration or generated-type change was required. Verification: 20/20 focused
+Library tests, 714/714 full frontend/static/live acceptance tests across 57 files, 510/510 backend
+tests on PostgreSQL, Ruff format/lint, mypy, generated-contract freshness, TypeScript, ESLint,
+production build and diff check PASS. See `reviews/TASK-LIBRARY-001-library-live-integration.md`.*
+
 ### TASK-010 — Today Engine heuristic v1
 Owner: CODEX
 Status: DONE
