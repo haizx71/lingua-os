@@ -260,9 +260,9 @@ def test_concept_save_intents_browser_roles_are_locked_out(migrated_postgres_url
             "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(owner_id),)
         )
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            authenticated_session.execute("SELECT id FROM concept_save_intents").fetchall()
+            authenticated_session.execute("SELECT id FROM public.concept_save_intents").fetchall()
 
     with psycopg.connect(migrated_postgres_url) as anon_session:
         anon_session.execute("SET ROLE anon")
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            anon_session.execute("SELECT id FROM concept_save_intents").fetchall()
+            anon_session.execute("SELECT id FROM public.concept_save_intents").fetchall()
