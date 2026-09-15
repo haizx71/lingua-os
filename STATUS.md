@@ -1,7 +1,28 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; TASK-ADMIN-002 manual concept mapping complete; GAP-01 Closed
+Phase: FRLL accepted/frozen; TASK-READ-001 Reader live integration complete; GAP-01 Closed
+
+## Current checkpoint — TASK-READ-001 complete (2026-09-15)
+
+- `/read` now uses the frozen live chain `GET /v1/me` → `GET /v1/content/recommended` →
+  `GET /v1/content/{contentId}` with no default product fixture fallback.
+- The UI renders all authoritative segments/sentences in server order, canonical annotated concepts,
+  attribution, real audio availability, Library save state and server-provided reading progress.
+- Concept inspection uses `GET /v1/concepts/{conceptId}` and records lookup exposure without
+  client-supplied concept authority. Explicit read completion records exposure and advances the
+  owned progress projection. Sentence/content saves stay non-activating; only explicit concept
+  Save/Learn uses `PUT /v1/library/concepts/{conceptId}`.
+- Ambiguous progress retries reuse one stable idempotency key, duplicate clicks are suppressed,
+  and same-actor plus Actor A/B request sequencing prevents stale commits. Resume state is
+  `SERVER_PERSISTED`; no localStorage/sessionStorage progress authority exists.
+- Verification: focused Reader 12/12 PASS; focused Reader/HTTP/contract/regression 105/105 PASS;
+  frontend/static acceptance 690/690 PASS across 52 files; backend 510/510 PASS on PostgreSQL;
+  Ruff format/lint, strict mypy, generated-contract freshness, workspace typecheck, ESLint,
+  Next.js production build and `git diff --check` PASS. Shared UI/story files were unchanged, so
+  Storybook rebuild was not required.
+- Zero diff under `contracts/`, `services/`, `database/`, migrations and generated OpenAPI types.
+  No deployment or remote push was performed.
 
 ## Current checkpoint — TASK-ADMIN-002 complete (2026-09-14)
 
@@ -583,9 +604,10 @@ FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
 - Private staging deployment hardening is implementation-complete and awaits
   independent deployment review plus external Supabase hosted Auth URL setup;
   do not deploy or push as part of this change.
-- TASK-008A is DONE. Do not start another task without explicit authorization.
+- TASK-008A and TASK-READ-001 are DONE. Do not start another task without explicit authorization.
 - TASK-017 hardening is accepted and DONE (see completed evidence above).
 - TASK-017A is DONE and verified (458/458 backend, 338/338 frontend).
 - TASK-007 is ACCEPTED and DONE; FRLL F1 is READY_FOR_INDEPENDENT_REVIEW, not FRLL acceptance. R1 remains required and was not started in F1.
-- Reader resume position, synchronized preferences, saved-sentence notes, configurable learner
-  new-concept budget, data export and account deletion remain future schema/contract decisions.
+- Synchronized preferences, saved-sentence notes, configurable learner new-concept budget, data
+  export and account deletion remain future schema/contract decisions. Reader resume position is
+  now connected to the existing server-owned reading-progress contract.

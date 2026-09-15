@@ -16,6 +16,8 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../harness/test-render';
 import { MockApiService } from '../harness/mock-api-service';
 import { defaultReviewQueue } from '@/fixtures/reviewFixture';
+import { defaultReaderPassage } from '@/fixtures/readerFixture';
+import { MockApiClient } from '@lingua/types';
 import { AppShell } from '@/components/navigation/AppShell';
 
 // Feature Components
@@ -313,7 +315,15 @@ describe('Tier 5 Suite 3: State Machine Invariants & Multi-Route Concurrency', (
 
   it('test_interactive_reader_word_inspector_and_saving_lifecycle', async () => {
     const handleSaveWord = vi.fn();
-    renderWithProviders(<InteractiveReader onSaveWord={handleSaveWord} />);
+    const readerApi = new MockApiClient();
+    const saveConcept = vi.spyOn(readerApi, 'saveConceptToLibrary');
+    renderWithProviders(
+      <InteractiveReader
+        apiClient={readerApi}
+        passage={defaultReaderPassage}
+        onSaveWord={handleSaveWord}
+      />
+    );
 
     // Tap on token 'appointment'
     const wordBtn = screen.getByRole('button', { name: 'appointment' });
@@ -322,10 +332,12 @@ describe('Tier 5 Suite 3: State Machine Invariants & Multi-Route Concurrency', (
     // Inspector dialog opens
     const dialog = screen.getByRole('dialog', { name: 'Chi tiết từ vựng' });
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByText('Cuộc hẹn chính thức (với bác sĩ, đối tác)')).toBeInTheDocument();
+    expect(screen.getByText(defaultReaderPassage.sentences[0].tokens.find(
+      (token) => token.raw === 'appointment'
+    )?.translationVi ?? '')).toBeInTheDocument();
 
-    // 'appointment' is initially in savedWords -> displays 'Đã lưu vào Brain'
-    expect(screen.getByText('Đã lưu vào Brain')).toBeInTheDocument();
+    // A fixture-rendered concept still requires explicit learner intent before save.
+    expect(screen.getByRole('button', { name: /Lưu vào ôn tập/i })).toBeInTheDocument();
 
     // Tap on token 'available'
     const availableBtn = screen.getByRole('button', { name: 'available' });
@@ -335,10 +347,13 @@ describe('Tier 5 Suite 3: State Machine Invariants & Multi-Route Concurrency', (
     const saveBtn = screen.getByRole('button', { name: /Lưu vào ôn tập/i });
     fireEvent.click(saveBtn);
 
-    expect(handleSaveWord).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByText(/Đã lưu "available" vào Language Brain/i)
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveConcept).toHaveBeenCalledTimes(1);
+      expect(handleSaveWord).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByText(/Đã lưu "available" vào Language Brain/i)
+      ).toBeInTheDocument();
+    });
 
     // Close dialog
     const closeBtn = screen.getByRole('button', { name: 'Đóng bảng tra từ' });

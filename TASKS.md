@@ -325,7 +325,26 @@ ensuring saved concept authority is complete across all cursor pages before comm
 while strictly suppressing the active "Lưu để học" CTA for unconfirmed concepts; accessible retry mechanism
 (`retryReconciliation`); and actor lifecycle isolation (`TEST-009-PAGE-08`). Verified with 21 invariant tests in
 `tests/frontend/task009-concept-discovery-save.test.tsx` (402/402 frontend tests passing). Zero backend or contract changes.
-Full Reader UI integration remains pending subsequent slices.*
+The remaining full Reader integration is completed by TASK-READ-001 below.*
+
+### TASK-READ-001 — Reader live integration
+Owner: CODEX
+Status: DONE
+Dependencies: TASK-008, TASK-008A, TASK-009, TASK-017
+
+Replace the default `/read` fixture with the authoritative published-content Reader flow while
+preserving the approved UI and learner-state boundaries.
+*Completed and verified: `/read` now loads the active English language profile, recommended
+published content and full content detail through `ApiClient`; renders authoritative segment and
+sentence order, attribution, audio availability, saved state and server reading progress; resolves
+annotated concepts by canonical ID; records explicit lookup/read exposure; persists sentence,
+content and concept saves through their frozen mutations; and restores progress from server data
+without local resume authority. Stable idempotency keys cover ambiguous retries, duplicate clicks
+are suppressed, and same-actor plus Actor A/B stale results are dropped. No OpenAPI, backend,
+database, migration or generated-type change was required. Verification: 12/12 focused live Reader,
+105/105 focused Reader/transport/contract regression, 690/690 frontend/static acceptance, 510/510
+backend on PostgreSQL, Ruff, mypy, TypeScript, ESLint, contract freshness, production build and diff
+check PASS. See `reviews/TASK-READ-001-reader-live-integration.md`.*
 
 ### TASK-010 — Today Engine heuristic v1
 Owner: CODEX

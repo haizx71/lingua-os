@@ -5,93 +5,83 @@ import Link from 'next/link';
 import {
   Button,
   Card,
-  Badge,
   ConceptChip,
   LoadingState,
   EmptyState,
   ErrorState,
   InlineAlert,
 } from '@lingua/ui';
-import {
-  BookOpen,
-  Sparkles,
-  Volume2,
-  Bookmark,
-  Check,
-  Plus,
-  ArrowRight,
-  HelpCircle,
-  X,
-} from 'lucide-react';
-import { type ConceptStatus, type ApiErrorCode } from '@lingua/types';
-import { defaultReaderPassage, type ReaderPassage, type TokenItem } from '../../fixtures/readerFixture';
+import { Bookmark, Check, Plus, Volume2, X } from 'lucide-react';
+import { type ApiClient, type ApiErrorCode } from '@lingua/types';
+import type { ReaderPassage, TokenItem } from '../../fixtures/readerFixture';
+import { useReaderSession } from './useReaderSession';
 
 export interface InteractiveReaderProps {
-  passage?: ReaderPassage;
-  forcedState?: 'loading' | 'empty' | 'error' | 'success';
-  forcedErrorCode?: ApiErrorCode;
-  onSaveWord?: (token: TokenItem) => void;
+  readonly apiClient?: ApiClient;
+  readonly passage?: ReaderPassage;
+  readonly forcedState?: 'loading' | 'empty' | 'error' | 'success';
+  readonly forcedErrorCode?: ApiErrorCode;
+  readonly onSaveWord?: (token: TokenItem) => void;
 }
 
 export function InteractiveReader({
-  passage = defaultReaderPassage,
+  apiClient,
+  passage: initialPassage,
   forcedState = 'success',
   forcedErrorCode = 'INTERNAL_ERROR',
   onSaveWord,
 }: InteractiveReaderProps) {
-  const [selectedToken, setSelectedToken] = useState<TokenItem | null>(null);
-  const [savedWords, setSavedWords] = useState<Set<string>>(new Set(['appointment']));
-  const [showSavedNotification, setShowSavedNotification] = useState<string | null>(null);
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
-  const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
+  const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [savedWordNotice, setSavedWordNotice] = useState<string | null>(null);
+  const reader = useReaderSession({
+    ...(apiClient ? { apiClient } : {}),
+    ...(initialPassage ? { initialPassage } : {}),
+    enabled: presentationState === 'success',
+  });
 
-  const handleWordClick = (token: TokenItem) => {
-    setSelectedToken(token);
-  };
+  const status = presentationState === 'success' ? reader.status : presentationState;
+  const passage = reader.passage;
 
-  const handleSaveConcept = (token: TokenItem) => {
-    setSavedWords((prev) => new Set(prev).add(token.raw));
-    setShowSavedNotification(`Đã lưu "${token.raw}" vào Language Brain để lên lịch ôn FSRS.`);
-    onSaveWord?.(token);
-  };
-
-  const handlePlayFullAudio = () => {
-    setIsPlayingAudio(true);
-    setTimeout(() => setIsPlayingAudio(false), 1200);
-  };
-
-  if (currentState === 'loading') {
-    return <LoadingState message="Đang tải và phân tích văn bản đọc..." count={3} />;
+  if (status === 'loading') {
+    return <LoadingState message="Đang tải bài đọc đã xuất bản..." count={3} />;
   }
 
-  if (currentState === 'error') {
+  if (status === 'error') {
     return (
       <ErrorState
-        code={errorCode}
+        code={reader.error?.code ?? forcedErrorCode}
         title="Không thể tải bài đọc"
-        description="Đã xảy ra lỗi khi kết nối với máy chủ nội dung. Vui lòng thử lại."
-        onRetry={() => setCurrentState('success')}
-      />
-    );
-  }
-
-  if (currentState === 'empty' || !passage || passage.sentences.length === 0) {
-    return (
-      <EmptyState
-        title="Chưa có bài đọc nào"
-        description="Không tìm thấy bài đọc nào phù hợp với trình độ hiện tại của bạn."
-        actionLabel="Khám phá Thư viện bài đọc"
-        onAction={() => {
-          window.location.href = '/library';
+        description="Không thể kết nối kho nội dung lúc này. Vui lòng thử lại."
+        onRetry={() => {
+          if (presentationState !== 'success') setPresentationState('success');
+          else reader.retry();
         }}
       />
     );
   }
 
+  if (status === 'empty' || !passage || passage.sentences.length === 0) {
+    return (
+      <EmptyState
+        title="Chưa có bài đọc nào"
+        description="Chưa có nội dung đã xuất bản phù hợp với hồ sơ học hiện tại."
+        actionLabel="Mở Thư viện"
+        onAction={() => { window.location.href = '/library'; }}
+      />
+    );
+  }
+
+  const handlePlayFullAudio = () => {
+    if (!passage.audioUrl) return;
+    setIsPlayingAudio(true);
+    window.setTimeout(() => setIsPlayingAudio(false), 1200);
+  };
+
+  const selectedToken = reader.selectedToken;
+
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
@@ -101,109 +91,153 @@ export function InteractiveReader({
             Đọc & Tiếp nạp ngôn ngữ
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
-            Đọc hiểu câu trong ngữ cảnh thật. Chạm vào bất kỳ từ nào để tra nghĩa và lưu vào Language Brain.
+            Đọc trong ngữ cảnh thật. Mở từ được chú thích để tra cứu; chỉ nút Lưu vào ôn tập mới tạo ý định học.
           </p>
         </div>
-        <Link href="/library">
-          <Button variant="outline" size="md" leftIcon={<Bookmark className="w-4 h-4" />}>
-            Bài đọc đã lưu
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={passage.isSaved ? 'secondary' : 'outline'}
+            size="md"
+            leftIcon={passage.isSaved ? <Check className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+            onClick={() => void reader.saveContent()}
+            disabled={passage.isSaved || reader.busyKeys.has(`content:${passage.id}`)}
+          >
+            {passage.isSaved ? 'Bài đọc đã lưu' : 'Lưu bài đọc'}
           </Button>
-        </Link>
+          <Link href="/library">
+            <Button variant="outline" size="md">Mở Thư viện</Button>
+          </Link>
+        </div>
       </header>
 
-      {/* Notification if saved */}
-      {showSavedNotification && (
-        <InlineAlert variant="success" title="Đã lưu từ vựng">
-          {showSavedNotification}
+      {reader.actionError && (
+        <InlineAlert variant="danger" title={reader.actionError.message}>
+          Thao tác chưa được xác nhận. Anh có thể thử lại mà không tạo thêm trạng thái học.
         </InlineAlert>
       )}
 
-      {/* Reading Passage Card */}
+      {savedWordNotice && (
+        <InlineAlert variant="success" title={savedWordNotice}>
+          Từ vựng đã được thêm bằng ý định học rõ ràng của người học.
+        </InlineAlert>
+      )}
+
+      {passage.progress && (
+        <InlineAlert variant={passage.progress.isCompleted ? 'success' : 'info'} title={`Tiến độ ${passage.progress.progressPercent}%`}>
+          {passage.progress.isCompleted
+            ? 'Bài đọc đã hoàn thành.'
+            : `Tiếp tục từ đoạn ${Math.max(1, passage.segments.findIndex((segment) => segment.id === passage.progress?.currentSegmentId) + 1)}`}
+        </InlineAlert>
+      )}
+
       <Card variant="default" padding="lg" className="space-y-6">
-        {/* Title & Metadata */}
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
+        <div className="flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
           <div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">
-              {passage.title}
-            </h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">{passage.title}</h2>
             <span className="text-xs text-[var(--text-muted)] font-medium">
               CEFR {passage.level} • {passage.wordCount} từ • Tỷ lệ từ quen: {passage.familiarityRate}%
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="min-h-[44px] min-w-[44px] rounded-full hover:bg-[var(--surface-subtle)]"
-            aria-label="Nghe toàn bài"
-            onClick={handlePlayFullAudio}
-          >
-            <Volume2
-              className={`w-5 h-5 text-[var(--action-primary)] ${
-                isPlayingAudio ? 'animate-pulse' : ''
-              }`}
-            />
-          </Button>
+          {passage.audioUrl && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="min-h-[44px] min-w-[44px] rounded-full hover:bg-[var(--surface-subtle)]"
+              aria-label="Nghe toàn bài"
+              onClick={handlePlayFullAudio}
+            >
+              <Volume2 className={`w-5 h-5 text-[var(--action-primary)] ${isPlayingAudio ? 'animate-pulse' : ''}`} />
+            </Button>
+          )}
         </div>
 
-        {/* Study Sentence 1 */}
-        <div className="text-base sm:text-lg leading-relaxed text-[var(--text-primary)] space-y-3 font-serif sm:font-sans">
-          <p className="text-lg sm:text-xl">
-            I would like to make an{' '}
-            <button
-              type="button"
-              onClick={() =>
-                handleWordClick({
-                  raw: 'appointment',
-                  lemma: 'appointment',
-                  isTarget: true,
-                  status: 'mastered',
-                  ipa: '/əˈpɔɪnt.mənt/',
-                  pos: 'noun',
-                  translationVi: 'Cuộc hẹn chính thức (với bác sĩ, đối tác)',
-                  explanationEn: 'An arrangement to meet someone at a particular time and place.',
-                })
-              }
-              className="bg-[var(--status-info-bg)] border-b-2 border-[var(--action-primary)] font-semibold px-1 rounded cursor-pointer hover:bg-[var(--surface-subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-            >
-              appointment
-            </button>{' '}
-            with Dr. Watson for tomorrow morning if he is{' '}
-            <button
-              type="button"
-              onClick={() =>
-                handleWordClick({
-                  raw: 'available',
-                  lemma: 'available',
-                  isTarget: true,
-                  status: 'weak',
-                  ipa: '/əˈveɪ.lə.bəl/',
-                  pos: 'adjective',
-                  translationVi: 'Có sẵn, rảnh rỗi',
-                  explanationEn: 'Able to be used or can easily be found / free to meet.',
-                })
-              }
-              className="bg-[var(--status-warning-bg)] border-b-2 border-[var(--status-warning)] font-semibold px-1 rounded cursor-pointer hover:bg-[var(--status-warning-bg)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-            >
-              available
-            </button>
-            .
-          </p>
-          <p className="text-sm text-[var(--text-secondary)] font-sans italic">
-            (Bản dịch: Tôi muốn đặt một cuộc hẹn với bác sĩ Watson vào sáng mai nếu ông ấy có thời gian.)
-          </p>
+        <div className="space-y-8">
+          {passage.segments.map((segment, segmentIndex) => {
+            const finalSegment = segmentIndex === passage.segments.length - 1;
+            const segmentBusy = reader.busyKeys.has(`segment:${passage.id}:${segment.id}:${finalSegment}`);
+            return (
+              <section
+                key={segment.id}
+                id={`reader-segment-${segment.id}`}
+                data-testid="reader-segment"
+                data-segment-id={segment.id}
+                className="space-y-4 scroll-mt-6"
+              >
+                {segment.sentences.map((sentence) => {
+                  const sentenceSaved = reader.savedSentenceIds.has(sentence.id);
+                  const sentenceNumber = passage.sentences.findIndex((item) => item.id === sentence.id) + 1;
+                  return (
+                    <article
+                      key={sentence.id}
+                      data-testid="reader-sentence"
+                      data-sentence-id={sentence.id}
+                      className="space-y-3"
+                    >
+                      <p className="text-lg sm:text-xl leading-relaxed text-[var(--text-primary)] font-serif sm:font-sans">
+                        {sentence.tokens.map((token, tokenIndex) => token.conceptId ? (
+                          <button
+                            key={`${sentence.id}:${tokenIndex}`}
+                            type="button"
+                            onClick={() => void reader.inspectToken(token)}
+                            className="bg-[var(--status-info-bg)] border-b-2 border-[var(--action-primary)] font-semibold px-1 rounded cursor-pointer hover:bg-[var(--surface-subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                          >
+                            {token.raw}
+                          </button>
+                        ) : (
+                          <React.Fragment key={`${sentence.id}:${tokenIndex}`}>{token.raw}</React.Fragment>
+                        ))}
+                      </p>
+                      {sentence.translationVi && (
+                        <p className="text-sm text-[var(--text-secondary)] font-sans italic">
+                          (Bản dịch: {sentence.translationVi})
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {sentence.targetConcepts.length > 0 && (
+                            <span className="text-xs text-[var(--text-muted)] font-medium">Từ vựng mục tiêu trong câu:</span>
+                          )}
+                          {sentence.targetConcepts.map((concept) => (
+                            <ConceptChip key={`${sentence.id}:${concept.term}`} status={concept.status} term={concept.term} size="sm" />
+                          ))}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
+                          leftIcon={sentenceSaved ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+                          disabled={sentenceSaved || reader.busyKeys.has(`sentence:${sentence.id}`)}
+                          onClick={() => void reader.saveSentence(sentence.id)}
+                        >
+                          {sentenceSaved ? 'Đã lưu câu' : 'Lưu câu'}
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+                <div className="flex justify-end border-t border-[var(--border-subtle)] pt-3">
+                  <Button
+                    variant={finalSegment ? 'primary' : 'outline'}
+                    size="sm"
+                    disabled={segmentBusy}
+                    onClick={() => void reader.completeSegment(segment.id, finalSegment)}
+                  >
+                    {finalSegment ? 'Hoàn thành bài đọc' : `Đã đọc đoạn ${segmentIndex + 1}`}
+                  </Button>
+                </div>
+              </section>
+            );
+          })}
         </div>
 
-        {/* Target Concepts Row */}
-        <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-[var(--border-subtle)]">
-          <span className="text-xs text-[var(--text-muted)] font-medium">
-            Từ vựng mục tiêu trong câu:
-          </span>
-          <ConceptChip status="mastered" term="appointment" size="sm" />
-          <ConceptChip status="weak" term="available" size="sm" />
-        </div>
+        {passage.attribution && (
+          <footer className="border-t border-[var(--border-subtle)] pt-4 text-xs text-[var(--text-muted)]">
+            <p>{passage.attribution.attributionText}</p>
+            <p>{passage.attribution.sourceName} • {passage.attribution.licenseCode}</p>
+          </footer>
+        )}
       </Card>
 
-      {/* Word Inspector Modal / Drawer when a token is tapped */}
       {selectedToken && (
         <div
           role="dialog"
@@ -213,12 +247,8 @@ export function InteractiveReader({
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-[var(--text-primary)]">
-                  {selectedToken.raw}
-                </h3>
-                {selectedToken.status && (
-                  <ConceptChip status={selectedToken.status} term={selectedToken.raw} size="sm" />
-                )}
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">{selectedToken.lemma ?? selectedToken.raw}</h3>
+                {selectedToken.status && <ConceptChip status={selectedToken.status} term={selectedToken.raw} size="sm" />}
               </div>
               {(selectedToken.ipa || selectedToken.pos) && (
                 <p className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
@@ -226,28 +256,20 @@ export function InteractiveReader({
                 </p>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSelectedToken(null)}
-              aria-label="Đóng bảng tra từ"
-            >
+            <Button variant="ghost" size="icon" onClick={reader.closeInspector} aria-label="Đóng bảng tra từ">
               <X className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="mt-3 text-sm text-[var(--text-secondary)]">
-            <p className="font-medium text-[var(--text-primary)]">
-              {selectedToken.translationVi}
-            </p>
-            {selectedToken.explanationEn && (
-              <p className="text-xs text-[var(--text-muted)] mt-1">{selectedToken.explanationEn}</p>
-            )}
+          <div className="mt-3 text-sm text-[var(--text-secondary)]" aria-busy={reader.inspecting}>
+            {reader.inspecting && <p className="text-xs text-[var(--text-muted)]">Đang tải chi tiết từ vựng...</p>}
+            {selectedToken.translationVi && <p className="font-medium text-[var(--text-primary)]">{selectedToken.translationVi}</p>}
+            {selectedToken.explanationEn && <p className="text-xs text-[var(--text-muted)] mt-1">{selectedToken.explanationEn}</p>}
           </div>
 
           <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex justify-end gap-2">
-            {savedWords.has(selectedToken.raw) ? (
-              <Button variant="secondary" size="sm" leftIcon={<Check className="w-3.5 h-3.5" />}>
+            {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
+              <Button variant="secondary" size="sm" leftIcon={<Check className="w-3.5 h-3.5" />} disabled>
                 Đã lưu vào Brain
               </Button>
             ) : (
@@ -255,7 +277,13 @@ export function InteractiveReader({
                 variant="primary"
                 size="sm"
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
-                onClick={() => handleSaveConcept(selectedToken)}
+                disabled={!selectedToken.conceptId || reader.inspecting || reader.busyKeys.has(`concept:${selectedToken.conceptId}`)}
+                onClick={() => void reader.saveConcept(selectedToken).then((saved) => {
+                  if (saved) {
+                    setSavedWordNotice(`Đã lưu "${selectedToken.raw}" vào Language Brain`);
+                    onSaveWord?.(selectedToken);
+                  }
+                })}
               >
                 Lưu vào ôn tập
               </Button>

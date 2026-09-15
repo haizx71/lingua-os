@@ -200,6 +200,7 @@ export function mapBrainConceptDetailToViewModel(
 
 function tokensForSentence(
   sentence: ContentDetailDto['segments'][number]['sentences'][number],
+  segmentId: string,
   conceptDetails: ReadonlyMap<string, ConceptDetailDto>
 ): readonly ReaderTokenViewModel[] {
   const annotations = [...sentence.concepts].sort((left, right) => left.startOffset - right.startOffset);
@@ -214,6 +215,10 @@ function tokensForSentence(
       lemma: annotation.canonicalForm,
       isTarget: true,
       conceptId: annotation.conceptId,
+      segmentId,
+      sentenceId: sentence.id,
+      startOffset: annotation.startOffset,
+      endOffset: annotation.endOffset,
       status: annotation.status,
       ...(detail?.ipa ? { ipa: detail.ipa } : {}),
       ...(detail?.partOfSpeech ? { pos: detail.partOfSpeech } : {}),
@@ -231,17 +236,16 @@ export function mapContentToReaderPassage(
   concepts: readonly ConceptDetailDto[] = []
 ): ReaderPassageViewModel {
   const details = new Map(concepts.map((concept) => [concept.id, concept]));
-  const sentences = content.segments.flatMap((segment) => segment.sentences);
-  return {
-    id: content.summary.id,
-    title: content.summary.title,
-    level: content.summary.difficultyLabel ?? 'Phù hợp',
-    wordCount: content.totalWords,
-    familiarityRate: percent(content.summary.knownConceptRatio),
-    sentences: sentences.map((sentence) => ({
+  const segments = content.segments.map((segment) => ({
+    id: segment.id,
+    order: segment.order,
+    text: segment.text,
+    sentences: segment.sentences.map((sentence) => ({
       id: sentence.id,
+      order: sentence.order,
+      segmentId: segment.id,
       text: sentence.text,
-      tokens: tokensForSentence(sentence, details),
+      tokens: tokensForSentence(sentence, segment.id, details),
       translationVi: sentence.translation ?? '',
       ...(sentence.audioUrl ? { audioUrl: sentence.audioUrl } : {}),
       targetConcepts: sentence.concepts.map((concept) => ({
@@ -249,6 +253,27 @@ export function mapContentToReaderPassage(
         status: concept.status,
       })),
     })),
+  }));
+  const sentences = segments.flatMap((segment) => segment.sentences);
+  return {
+    id: content.summary.id,
+    title: content.summary.title,
+    level: content.summary.difficultyLabel ?? 'Phù hợp',
+    wordCount: content.totalWords,
+    familiarityRate: percent(content.summary.knownConceptRatio),
+    isSaved: content.summary.isSaved,
+    ...(content.audioUrl ? { audioUrl: content.audioUrl } : {}),
+    segments,
+    sentences,
+    ...(content.summary.readingProgress ? {
+      progress: {
+        currentSegmentId: content.summary.readingProgress.currentSegmentId,
+        furthestSegmentId: content.summary.readingProgress.furthestSegmentId,
+        progressPercent: content.summary.readingProgress.progressPercent,
+        isCompleted: content.summary.readingProgress.isCompleted,
+      },
+    } : {}),
+    ...(content.summary.attribution ? { attribution: content.summary.attribution } : {}),
   };
 }
 

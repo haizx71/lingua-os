@@ -6,7 +6,6 @@ export const PERSISTENCE_GAPS = Object.freeze({
   reducedMotion: 'LOCAL_ONLY',
   audioAutoplay: 'LOCAL_ONLY',
   playbackSpeed: 'LOCAL_ONLY',
-  readerResumePosition: 'NOT_YET_PERSISTED',
   savedSentenceNotes: 'NOT_YET_PERSISTED',
   reminderPreferences: 'DEFERRED',
   newConceptBudget: 'DEFERRED',

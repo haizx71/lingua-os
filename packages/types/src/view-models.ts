@@ -35,6 +35,10 @@ export interface ReaderTokenViewModel {
   readonly lemma?: string;
   readonly isTarget?: boolean;
   readonly conceptId?: string;
+  readonly segmentId?: string;
+  readonly sentenceId?: string;
+  readonly startOffset?: number;
+  readonly endOffset?: number;
   readonly status?: ConceptStatus;
   readonly ipa?: string;
   readonly pos?: string;
@@ -44,11 +48,34 @@ export interface ReaderTokenViewModel {
 
 export interface ReaderSentenceViewModel {
   readonly id: string;
+  readonly order: number;
+  readonly segmentId: string;
   readonly text: string;
   readonly tokens: readonly ReaderTokenViewModel[];
   readonly translationVi: string;
   readonly audioUrl?: string;
   readonly targetConcepts: readonly { term: string; status: ConceptStatus }[];
+}
+
+export interface ReaderSegmentViewModel {
+  readonly id: string;
+  readonly order: number;
+  readonly text: string;
+  readonly sentences: readonly ReaderSentenceViewModel[];
+}
+
+export interface ReaderProgressViewModel {
+  readonly currentSegmentId: string;
+  readonly furthestSegmentId: string;
+  readonly progressPercent: number;
+  readonly isCompleted: boolean;
+}
+
+export interface ReaderAttributionViewModel {
+  readonly sourceName: string;
+  readonly licenseCode: string;
+  readonly attributionText: string;
+  readonly sourceUrl?: string;
 }
 
 export interface ReaderPassageViewModel {
@@ -57,7 +84,12 @@ export interface ReaderPassageViewModel {
   readonly level: string;
   readonly wordCount: number;
   readonly familiarityRate: number;
+  readonly isSaved: boolean;
+  readonly audioUrl?: string;
+  readonly segments: readonly ReaderSegmentViewModel[];
   readonly sentences: readonly ReaderSentenceViewModel[];
+  readonly progress?: ReaderProgressViewModel;
+  readonly attribution?: ReaderAttributionViewModel;
 }
 
 export interface DictionaryConceptViewModel {

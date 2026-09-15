@@ -354,4 +354,87 @@ describe('HttpApiClient', () => {
     expect(capturedUrl).not.toContain('userId');
     expect(result.data.reviewItemId).toBe(mockApiResponses.reviewAnswer.data.reviewItemId);
   });
+
+  it('TASK-READ-001 transport records lookup exposure without client-supplied concept authority', async () => {
+    let capturedUrl = '';
+    let capturedInit: RequestInit | undefined;
+    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(input);
+      capturedInit = init;
+      return response(mockApiResponses.readerExposure);
+    });
+    const client = new HttpApiClient({
+      baseUrl: '/api',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+      actorId: 'reader-actor',
+    });
+    const idempotencyKey = '11111111-2222-4333-8444-555555555556';
+
+    await client.recordReaderExposure({
+      body: {
+        languageProfileId: '00000000-0000-4000-8000-000000000001',
+        contentId: '00000000-0000-4000-8000-000000000002',
+        segmentId: '00000000-0000-4000-8000-000000000003',
+        sentenceId: '00000000-0000-4000-8000-000000000004',
+        startOffset: 2,
+        endOffset: 8,
+        exposureType: 'lookup',
+      },
+      headers: { 'Idempotency-Key': idempotencyKey },
+    });
+
+    expect(capturedUrl).toBe('/api/v1/reader/exposures');
+    expect(capturedInit?.method).toBe('POST');
+    expect(capturedInit?.headers).toMatchObject({
+      Authorization: 'Bearer access-token',
+      'Idempotency-Key': idempotencyKey,
+      'Content-Type': 'application/json',
+    });
+    const body = JSON.parse(String(capturedInit?.body)) as Record<string, unknown>;
+    expect(body).toMatchObject({ exposureType: 'lookup', startOffset: 2, endOffset: 8 });
+    expect(body).not.toHaveProperty('conceptId');
+    expect(body).not.toHaveProperty('userId');
+  });
+
+  it('TASK-READ-001 transport updates the exact content progress resource and preserves its key', async () => {
+    let capturedUrl = '';
+    let capturedInit: RequestInit | undefined;
+    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(input);
+      capturedInit = init;
+      return response(mockApiResponses.readingProgress);
+    });
+    const client = new HttpApiClient({
+      baseUrl: '/api',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+      actorId: 'reader-actor',
+    });
+    const contentId = '00000000-0000-4000-8000-000000000002';
+    const idempotencyKey = '11111111-2222-4333-8444-555555555557';
+
+    await client.updateReaderProgress({
+      contentId,
+      body: {
+        languageProfileId: '00000000-0000-4000-8000-000000000001',
+        currentSegmentId: '00000000-0000-4000-8000-000000000003',
+        isCompleted: false,
+      },
+      headers: { 'Idempotency-Key': idempotencyKey },
+    });
+
+    expect(capturedUrl).toBe(`/api/v1/reader/progress/${contentId}`);
+    expect(capturedInit?.method).toBe('PUT');
+    expect(capturedInit?.headers).toMatchObject({
+      Authorization: 'Bearer access-token',
+      'Idempotency-Key': idempotencyKey,
+      'Content-Type': 'application/json',
+    });
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      languageProfileId: '00000000-0000-4000-8000-000000000001',
+      currentSegmentId: '00000000-0000-4000-8000-000000000003',
+      isCompleted: false,
+    });
+  });
 });

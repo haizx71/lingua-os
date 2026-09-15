@@ -14,7 +14,6 @@ import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
 import { TabletRail } from '@/components/navigation/TabletRail';
 import TodayPage from '@/app/today/page';
 import ReviewPage from '@/app/review/page';
-import ReadPage from '@/app/read/page';
 import BrainPage from '@/app/brain/page';
 import ProgressPage from '@/app/progress/page';
 import LibraryPage from '@/app/library/page';
@@ -37,6 +36,8 @@ import {
 import { assertEmptyState, assertErrorState, assertLoadingState } from './harness/state-helpers';
 import { assertTouchTargetSize, assertProgressbarA11y } from './harness/a11y-helpers';
 import { defaultReviewQueue } from '@/fixtures/reviewFixture';
+import { defaultReaderPassage } from '@/fixtures/readerFixture';
+import { MockApiClient } from '@lingua/types';
 
 vi.mock('next/link', () => ({
   default: ({ children, href, 'aria-current': ariaCurrent, ...rest }: any) => (
@@ -186,9 +187,17 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
     expect(screen.getByText('Đã hoàn thành toàn bộ hàng đợi ôn tập!')).toBeInTheDocument();
   });
 
-  it('executes Interactive Reader word inspection and saves word to Brain', () => {
+  it('executes Interactive Reader word inspection and saves word to Brain', async () => {
     const onSaveWord = vi.fn();
-    renderWithProviders(<InteractiveReader onSaveWord={onSaveWord} />);
+    const readerApi = new MockApiClient();
+    const saveConcept = vi.spyOn(readerApi, 'saveConceptToLibrary');
+    renderWithProviders(
+      <InteractiveReader
+        apiClient={readerApi}
+        passage={defaultReaderPassage}
+        onSaveWord={onSaveWord}
+      />
+    );
 
     // Click target word 'appointment'
     const wordBtn = screen.getByRole('button', { name: 'appointment' });
@@ -206,10 +215,13 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
     const saveBtn = screen.getByRole('button', { name: /Lưu vào ôn tập/i });
     fireEvent.click(saveBtn);
 
-    expect(onSaveWord).toHaveBeenCalledWith(
-      expect.objectContaining({ raw: 'available', isTarget: true })
-    );
-    expect(screen.getByText(/Đã lưu "available" vào Language Brain/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveConcept).toHaveBeenCalledTimes(1);
+      expect(onSaveWord).toHaveBeenCalledWith(
+        expect.objectContaining({ raw: 'available', isTarget: true })
+      );
+      expect(screen.getByText(/Đã lưu "available" vào Language Brain/i)).toBeInTheDocument();
+    });
   });
 
   it('executes Language Brain CEFR and Status filtering', () => {

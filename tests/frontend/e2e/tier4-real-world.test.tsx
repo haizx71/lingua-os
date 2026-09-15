@@ -6,11 +6,12 @@ import { MockApiService } from '../harness/mock-api-service';
 import { AppShell } from '@/components/navigation/AppShell';
 import TodayPage from '@/app/today/page';
 import ReviewPage from '@/app/review/page';
-import ReadPage from '@/app/read/page';
 import BrainPage from '@/app/brain/page';
 import ProgressPage from '@/app/progress/page';
 import DictionaryPage from '@/app/dictionary/page';
 import { mockDiagnosticQuestions, mockDiagnosticResult } from '../harness/contract-fixtures';
+import { InteractiveReader } from '@/features/read/InteractiveReader';
+import { defaultReaderPassage } from '@/fixtures/readerFixture';
 
 vi.mock('next/link', () => ({
   default: ({ children, href, 'aria-current': ariaCurrent, ...rest }: any) => (
@@ -60,7 +61,7 @@ describe('Tier 4: Real-World Application Workload Scenarios', () => {
     // Step 3: Learner moves to Reader to read today's passage
     rerender(
       <AppShell currentPath="/read">
-        <ReadPage />
+        <InteractiveReader passage={defaultReaderPassage} />
       </AppShell>
     );
     expect(screen.getByRole('heading', { level: 2, name: /Making an Appointment/i })).toBeInTheDocument();

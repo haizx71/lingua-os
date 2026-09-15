@@ -25,6 +25,9 @@ import type {
   ProgressOverviewResponseDto,
   ReaderAnalyzeRequestDto,
   ReaderAnalyzeResponseDto,
+  ReaderExposureRequestDto,
+  ReaderExposureResponseDto,
+  ReadingProgressResponseDto,
   ReviewAnswerRequestDto,
   ReviewAnswerResponseDto,
   ReviewQueueResponseDto,
@@ -35,6 +38,7 @@ import type {
   TodayPlanResponseDto,
   UpdateLanguageProfileRequestDto,
   UpdateMeRequestDto,
+  UpdateReaderProgressRequestDto,
   UpdateAdminContentRequestDto,
   PutAdminSentenceConceptRequestDto,
 } from './api/dtos';
@@ -83,6 +87,8 @@ export interface ApiClient {
   getConcept(conceptId: string): Promise<ConceptResponseDto>;
   searchDictionary(query: OperationQuery<'searchDictionary'>): Promise<DictionarySearchResponseDto>;
   analyzeReaderText(body: ReaderAnalyzeRequestDto): Promise<ReaderAnalyzeResponseDto>;
+  recordReaderExposure(input: { body: ReaderExposureRequestDto; headers: OperationHeaders<'recordReaderExposure'> }): Promise<ReaderExposureResponseDto>;
+  updateReaderProgress(input: { contentId: string; body: UpdateReaderProgressRequestDto; headers: OperationHeaders<'updateReaderProgress'> }): Promise<ReadingProgressResponseDto>;
   saveReaderSentence(input: { body: SaveSentenceRequestDto; headers: OperationHeaders<'saveReaderSentence'> }): Promise<LibraryMutationResponseDto>;
   listRecommendedContent(query?: OperationQuery<'listRecommendedContent'>): Promise<ContentRecommendationsResponseDto>;
   getContent(contentId: string): Promise<ContentResponseDto>;
@@ -309,6 +315,8 @@ export class HttpApiClient implements ApiClient {
   getConcept(conceptId: string) { return this.request<ConceptResponseDto>({ method: 'GET', path: `/v1/concepts/${encodeURIComponent(conceptId)}` }); }
   searchDictionary(query: OperationQuery<'searchDictionary'>) { return this.request<DictionarySearchResponseDto>({ method: 'GET', path: '/v1/dictionary/search', query: query as Record<string, QueryValue> }); }
   analyzeReaderText(body: ReaderAnalyzeRequestDto) { return this.request<ReaderAnalyzeResponseDto>({ method: 'POST', path: '/v1/reader/analyze', body }); }
+  recordReaderExposure(input: Parameters<ApiClient['recordReaderExposure']>[0]) { return this.request<ReaderExposureResponseDto>({ method: 'POST', path: '/v1/reader/exposures', body: input.body, headers: input.headers }); }
+  updateReaderProgress(input: Parameters<ApiClient['updateReaderProgress']>[0]) { return this.request<ReadingProgressResponseDto>({ method: 'PUT', path: `/v1/reader/progress/${encodeURIComponent(input.contentId)}`, body: input.body, headers: input.headers }); }
   saveReaderSentence(input: Parameters<ApiClient['saveReaderSentence']>[0]) { return this.request<LibraryMutationResponseDto>({ method: 'POST', path: '/v1/reader/save-sentence', body: input.body, headers: input.headers }); }
   listRecommendedContent(query?: OperationQuery<'listRecommendedContent'>) { return this.request<ContentRecommendationsResponseDto>({ method: 'GET', path: '/v1/content/recommended', query: query as Record<string, QueryValue> | undefined }); }
   getContent(contentId: string) { return this.request<ContentResponseDto>({ method: 'GET', path: `/v1/content/${encodeURIComponent(contentId)}` }); }
@@ -406,6 +414,8 @@ export class MockApiClient implements ApiClient {
   getConcept(_conceptId: string) { return this.fixture(mockApiResponses.concept); }
   searchDictionary(_query: OperationQuery<'searchDictionary'>) { return this.fixture(this.returnEmpty ? emptyCursorResponse<DictionarySearchResponseDto['data']>() : mockApiResponses.dictionary); }
   analyzeReaderText(_body: ReaderAnalyzeRequestDto) { return this.fixture(mockApiResponses.readerAnalysis); }
+  recordReaderExposure(_input: Parameters<ApiClient['recordReaderExposure']>[0]) { return this.fixture(mockApiResponses.readerExposure); }
+  updateReaderProgress(_input: Parameters<ApiClient['updateReaderProgress']>[0]) { return this.fixture(mockApiResponses.readingProgress); }
   saveReaderSentence(input: Parameters<ApiClient['saveReaderSentence']>[0]) { return this.libraryMutation(input.body.sentenceId, 'sentence', true); }
   listRecommendedContent(_query?: OperationQuery<'listRecommendedContent'>) { return this.fixture(this.returnEmpty ? emptyCursorResponse<ContentRecommendationsResponseDto['data']>() : mockApiResponses.recommendations); }
   getContent(_contentId: string) { return this.fixture(mockApiResponses.content); }

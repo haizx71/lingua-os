@@ -401,20 +401,21 @@ describe('TASK-005 transport, cursor, and algorithm boundaries', () => {
     expect('updateSettings' in client).toBe(false);
   });
 
-  it('implements all 29 authoritative OpenAPI operations at the mock boundary', () => {
+  it('implements all 31 authoritative OpenAPI operations at the mock boundary', () => {
     const client = new MockApiClient() as unknown as Record<string, unknown>;
     const methods = [
       'getMe', 'updateMe', 'listMyLanguageProfiles', 'createMyLanguageProfile',
       'updateMyLanguageProfile', 'getTodayPlan', 'completeTodayActivity',
       'listReviewQueue', 'answerReviewItem', 'getConcept', 'searchDictionary',
       'analyzeReaderText', 'saveReaderSentence', 'listRecommendedContent', 'getContent',
+      'recordReaderExposure', 'updateReaderProgress',
       'listLibraryItems', 'saveConceptToLibrary', 'removeConceptFromLibrary',
       'saveContentToLibrary', 'removeContentFromLibrary', 'saveSentenceToLibrary',
       'removeSentenceFromLibrary', 'startStartingLevelAssessment',
       'getStartingLevelAssessment', 'submitStartingLevelResponse', 'getBrainSummary',
       'listBrainConcepts', 'getBrainConcept', 'getProgressOverview',
     ];
-    expect(methods).toHaveLength(29);
+    expect(methods).toHaveLength(31);
     for (const method of methods) expect(client[method], method).toEqual(expect.any(Function));
   });
 
@@ -619,7 +620,6 @@ describe('TASK-005 errors and persistence gaps', () => {
       reducedMotion: 'LOCAL_ONLY',
       audioAutoplay: 'LOCAL_ONLY',
       playbackSpeed: 'LOCAL_ONLY',
-      readerResumePosition: 'NOT_YET_PERSISTED',
       savedSentenceNotes: 'NOT_YET_PERSISTED',
       reminderPreferences: 'DEFERRED',
       newConceptBudget: 'DEFERRED',

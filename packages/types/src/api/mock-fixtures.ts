@@ -27,6 +27,8 @@ import type {
   MemorySnapshotDto,
   ProgressOverviewResponseDto,
   ReaderAnalyzeResponseDto,
+  ReaderExposureResponseDto,
+  ReadingProgressResponseDto,
   ResponseMetaDto,
   ReviewAnswerResponseDto,
   ReviewQueueResponseDto,
@@ -506,6 +508,32 @@ export const mockReaderAnalyzeResponse = {
   meta: mockResponseMeta,
 } as const satisfies ReaderAnalyzeResponseDto;
 
+export const mockReaderExposureResponse = {
+  data: {
+    exposureId: MOCK_IDS.analysis,
+    contentId: MOCK_IDS.content,
+    segmentId: MOCK_IDS.segment,
+    exposureType: 'read',
+    acceptedConceptCount: 2,
+    occurredAt: '2026-08-22T03:00:00Z',
+    recordedAt: '2026-08-22T03:00:01Z',
+  },
+  meta: mockResponseMeta,
+} as const satisfies ReaderExposureResponseDto;
+
+export const mockReadingProgressResponse = {
+  data: {
+    contentId: MOCK_IDS.content,
+    currentSegmentId: MOCK_IDS.segment,
+    furthestSegmentId: MOCK_IDS.segment,
+    progressPercent: 0,
+    isCompleted: false,
+    startedAt: '2026-08-22T03:00:00Z',
+    lastOpenedAt: '2026-08-22T03:00:00Z',
+  },
+  meta: mockResponseMeta,
+} as const satisfies ReadingProgressResponseDto;
+
 export const mockContentSummary = {
   id: MOCK_IDS.content,
   contentType: 'article',
@@ -804,6 +832,8 @@ export const mockApiResponses = Object.freeze({
   concept: mockConceptResponse,
   dictionary: mockDictionarySearchResponse,
   readerAnalysis: mockReaderAnalyzeResponse,
+  readerExposure: mockReaderExposureResponse,
+  readingProgress: mockReadingProgressResponse,
   recommendations: mockContentRecommendationsResponse,
   content: mockContentResponse,
   library: mockLibraryItemsResponse,
