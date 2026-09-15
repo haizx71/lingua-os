@@ -1,0 +1,428 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lingua.invalid/schemas/knowledge/normalized-candidate.v1.schema.json",
+  "title": "LINGUA OS Normalized Knowledge Candidate V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "candidateId",
+    "reviewState",
+    "sourceDecision",
+    "source",
+    "concept"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "normalized-knowledge-candidate.v1"
+    },
+    "candidateId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "reviewState": {
+      "enum": ["parsed", "needs_review", "approved", "rejected"]
+    },
+    "sourceDecision": {
+      "enum": ["PRIMARY_CANDIDATE", "FIRST_PARTY", "REFERENCE_ONLY", "CANDIDATE_QUARANTINE", "REJECT_MVP"]
+    },
+    "applyEligible": {
+      "type": "boolean",
+      "default": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "source": {
+      "$ref": "#/$defs/sourceRef"
+    },
+    "concept": {
+      "$ref": "#/$defs/conceptCandidate"
+    },
+    "levelEvidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/levelEvidence"
+      },
+      "default": []
+    },
+    "topicEvidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/topicEvidence"
+      },
+      "default": []
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relationCandidate"
+      },
+      "default": []
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exampleCandidate"
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registryId",
+        "release",
+        "artifactSha256",
+        "recordKey",
+        "transformVersion"
+      ],
+      "properties": {
+        "registryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "release": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "artifactUrl": {
+          "type": ["string", "null"],
+          "format": "uri"
+        },
+        "artifactSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "recordKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "rawRowNumber": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "rawPayloadSha256": {
+          "anyOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "transformVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "conceptCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "languageCode",
+        "conceptType",
+        "canonicalKey",
+        "canonicalForm",
+        "classificationReason"
+      ],
+      "properties": {
+        "languageCode": {
+          "const": "en"
+        },
+        "conceptType": {
+          "enum": ["word", "phrase", "grammar", "skill"]
+        },
+        "canonicalKey": {
+          "type": "string",
+          "pattern": "^(word|phrase|grammar|skill):[^\\s].*$",
+          "maxLength": 500
+        },
+        "canonicalForm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "normalizedForm": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "partOfSpeech": {
+          "type": ["string", "null"],
+          "enum": [
+            "noun",
+            "verb",
+            "adjective",
+            "adverb",
+            "pronoun",
+            "determiner",
+            "preposition",
+            "conjunction",
+            "interjection",
+            "numeral",
+            "modal",
+            "particle",
+            null
+          ]
+        },
+        "sourcePartOfSpeech": {
+          "type": ["string", "null"],
+          "maxLength": 120
+        },
+        "sourcePosSubtype": {
+          "type": ["string", "null"],
+          "maxLength": 120
+        },
+        "classificationReason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "needsReview": {
+          "type": "boolean",
+          "default": false
+        },
+        "forms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/formCandidate"
+          },
+          "default": []
+        },
+        "meanings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/meaningCandidate"
+          },
+          "default": []
+        },
+        "primaryLevel": {
+          "oneOf": [
+            {"$ref": "#/$defs/primaryLevel"},
+            {"type": "null"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "conceptType": {"enum": ["word", "phrase"]}
+            }
+          },
+          "then": {
+            "required": ["normalizedForm", "partOfSpeech"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "conceptType": {"enum": ["grammar", "skill"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "partOfSpeech": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "formCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "normalizedForm", "formType", "derivation"],
+      "properties": {
+        "form": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "normalizedForm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "formType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "derivation": {
+          "enum": ["canonical", "rule", "source-variant", "manual"]
+        },
+        "needsReview": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "meaningCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["meaningId", "english", "reviewState", "provenance"],
+      "properties": {
+        "meaningId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "english": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "vietnameseCandidate": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "vietnameseReviewed": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "reviewState": {
+          "enum": ["parsed", "needs_review", "approved", "rejected"]
+        },
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["registryId", "recordKey"],
+            "properties": {
+              "registryId": {"type": "string", "minLength": 1},
+              "recordKey": {"type": "string", "minLength": 1},
+              "senseId": {"type": ["string", "null"]}
+            }
+          }
+        }
+      }
+    },
+    "primaryLevel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework", "level", "confidence", "rationale"],
+      "properties": {
+        "framework": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "level": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "levelEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registryId", "rawLevel", "normalizedLevel", "confidence", "recordKey"],
+      "properties": {
+        "registryId": {"type": "string", "minLength": 1},
+        "recordKey": {"type": "string", "minLength": 1},
+        "rawLevel": {"type": "string", "minLength": 1},
+        "normalizedLevel": {"type": "string", "minLength": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "notes": {"type": ["string", "null"], "maxLength": 1000}
+      }
+    },
+    "topicEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registryId", "rawTopic", "recordKey"],
+      "properties": {
+        "registryId": {"type": "string", "minLength": 1},
+        "recordKey": {"type": "string", "minLength": 1},
+        "rawTopic": {"type": "string", "minLength": 1},
+        "mappedTopicSlug": {"type": ["string", "null"], "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "needsReview": {"type": "boolean", "default": true}
+      }
+    },
+    "relationCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetCanonicalKey", "relationType", "reviewState", "provenance"],
+      "properties": {
+        "targetCanonicalKey": {"type": "string", "minLength": 1, "maxLength": 500},
+        "relationType": {"enum": ["synonym", "antonym", "prerequisite", "family", "related"]},
+        "weight": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "reviewState": {"enum": ["parsed", "needs_review", "approved", "rejected"]},
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "exampleCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exampleId", "text", "normalizedText", "reviewState", "rights", "occurrences"],
+      "properties": {
+        "exampleId": {"type": "string", "minLength": 1, "maxLength": 300},
+        "text": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "normalizedText": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "vietnameseTranslation": {"type": ["string", "null"], "maxLength": 4000},
+        "intendedLevel": {"type": ["string", "null"], "maxLength": 40},
+        "reviewState": {"enum": ["parsed", "needs_review", "approved", "rejected"]},
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["registryId", "usagePolicy"],
+          "properties": {
+            "registryId": {"type": "string", "minLength": 1},
+            "usagePolicy": {"enum": ["allowed", "restricted", "prohibited", "unknown"]},
+            "attributionRequired": {"type": "boolean"}
+          }
+        },
+        "occurrences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/occurrence"
+          }
+        }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalKey", "startOffsetUtf16", "endOffsetUtf16", "role"],
+      "properties": {
+        "canonicalKey": {"type": "string", "minLength": 1, "maxLength": 500},
+        "startOffsetUtf16": {"type": "integer", "minimum": 0},
+        "endOffsetUtf16": {"type": "integer", "minimum": 1},
+        "role": {"enum": ["target", "context", "grammar"]}
+      }
+    }
+  }
+}
