@@ -1,75 +1,94 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import Link from 'next/link';
+import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import {
-  Button,
-  Card,
   Badge,
-  Progress,
-  LoadingState,
+  Card,
   EmptyState,
   ErrorState,
+  LoadingState,
   componentMotionNumeric,
   usePrefersReducedMotion,
 } from '@lingua/ui';
-import {
-  TrendingUp,
-  Calendar,
-  Zap,
-  CheckCircle2,
-  Clock,
-  Award,
-  Sparkles,
-  BookOpen,
-  RotateCcw,
-  Volume2,
-  Search,
-} from 'lucide-react';
-import { type ApiErrorCode } from '@lingua/types';
-import { defaultProgressSummary, type ProgressSummaryData } from '../../fixtures/progressFixture';
+import { Calendar, Clock, ShieldCheck, Sparkles } from 'lucide-react';
+import type { ApiErrorCode, ProgressSummaryViewModel, UiErrorState } from '@lingua/types';
+import type { ProgressSummaryData } from '../../fixtures/progressFixture';
+import { useProgress, type ProgressLoadStatus, type ProgressWindow } from './useProgress';
 
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(useGSAP);
-}
+if (typeof window !== 'undefined') gsap.registerPlugin(useGSAP);
 
 export interface ProgressAnalyticsProps {
+  /** Story/test-only presentation override. Production callers should omit this. */
   initialData?: ProgressSummaryData;
+  /** Story/test-only state override. Production callers should omit this. */
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
 }
 
-export function ProgressAnalytics({
-  initialData = defaultProgressSummary,
-  forcedState = 'success',
+interface ProgressViewProps {
+  readonly data: ProgressSummaryViewModel | null;
+  readonly status: ProgressLoadStatus;
+  readonly error: UiErrorState | null;
+  readonly window: ProgressWindow;
+  setWindow(window: ProgressWindow): void;
+  retry(): void;
+}
+
+export function ProgressAnalytics(props: ProgressAnalyticsProps) {
+  if (props.initialData !== undefined || props.forcedState !== undefined) {
+    return <ControlledProgressAnalytics {...props} />;
+  }
+  return <LiveProgressAnalytics />;
+}
+
+function LiveProgressAnalytics() {
+  const progress = useProgress();
+  return <ProgressView {...progress} />;
+}
+
+function ControlledProgressAnalytics({
+  initialData,
+  forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
 }: ProgressAnalyticsProps) {
-  const [data] = useState<ProgressSummaryData>(initialData);
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
-  const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
-  const [timeWindow, setTimeWindow] = useState<'7d' | '30d'>('7d');
+  const [window, setWindow] = useState<ProgressWindow>('7d');
+  const status = forcedState ?? (initialData ? 'success' : 'empty');
+  const error: UiErrorState | null =
+    status === 'error'
+      ? {
+          code: forcedErrorCode,
+          message: 'Không thể tải dữ liệu tiến độ.',
+          retryable: true,
+        }
+      : null;
+  return (
+    <ProgressView
+      data={initialData ?? null}
+      status={status}
+      error={error}
+      window={window}
+      setWindow={setWindow}
+      retry={() => undefined}
+    />
+  );
+}
+
+function ProgressView({ data, status, error, window, setWindow, retry }: ProgressViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  // Coordinated staggered entrance on mount & timeWindow toggle
   useGSAP(
     () => {
-      if (currentState !== 'success') return;
-
+      if (status !== 'success' || !data) return;
       if (prefersReducedMotion) {
         gsap.set('.analytics-bar-fill', { scaleX: 1, opacity: 1, clearProps: 'transform,opacity' });
         return;
       }
-
       gsap.fromTo(
         '.analytics-bar-fill',
-        {
-          scaleX: 0,
-          opacity: 0.3,
-        },
+        { scaleX: 0, opacity: 0.3 },
         {
           scaleX: 1,
           opacity: 1,
@@ -82,30 +101,21 @@ export function ProgressAnalytics({
         }
       );
     },
-    { dependencies: [timeWindow, currentState, prefersReducedMotion], scope: containerRef }
+    { dependencies: [window, status, data, prefersReducedMotion], scope: containerRef }
   );
 
-  const handleRetry = () => {
-    setCurrentState('loading');
-    setTimeout(() => {
-      setCurrentState('success');
-    }, 400);
-  };
-
-  if (currentState === 'loading') {
-    return <LoadingState message="Đang phân tích đường cong ghi nhớ và dữ liệu tiến độ..." count={4} />;
+  if (status === 'loading') {
+    return <LoadingState message="Đang tổng hợp bằng chứng học tập..." count={4} />;
   }
-
-  if (currentState === 'error') {
-    return <ErrorState code={errorCode} onRetry={handleRetry} />;
+  if (status === 'error') {
+    return <ErrorState code={error?.code ?? 'INTERNAL_ERROR'} onRetry={error?.retryable ? retry : undefined} />;
   }
-
-  if (currentState === 'empty') {
+  if (status === 'empty' || !data) {
     return (
       <EmptyState
-        title="Chưa có dữ liệu tiến độ"
-        description="Hãy hoàn thành bài học đầu tiên hôm nay để hệ thống tổng hợp báo cáo tiến độ học tập cho bạn."
-        actionLabel="Học ngay hôm nay"
+        title="Chưa có bằng chứng tiến độ"
+        description="Sau khi hoàn thành hoạt động Today, Reader hoặc Review, dữ liệu thực tế sẽ xuất hiện tại đây."
+        actionLabel="Mở Today"
         onAction={() => {
           window.location.href = '/today';
         }}
@@ -113,200 +123,81 @@ export function ProgressAnalytics({
     );
   }
 
+  const maxMinutes = Math.max(1, ...data.history7d.map((point) => point.minutesSpent));
+
   return (
-    <div ref={containerRef} className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div ref={containerRef} className="max-w-4xl space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
-            Learning Evidence & Trends
+            Learning Evidence
           </span>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] mt-1">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
             Tiến độ học thực tế
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
-            Đo lường sự tiến bộ dựa trên bằng chứng ghi nhớ thực tế, không dựa trên điểm thưởng hay XP ảo.
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Chỉ hiển thị dữ liệu đã được backend ghi nhận; không dùng XP, điểm thưởng hoặc số liệu demo.
           </p>
         </div>
-
-        {/* Time Window Switcher */}
-        <div className="flex items-center gap-1 bg-[var(--surface-subtle)] p-1 rounded-xl self-start sm:self-auto border border-[var(--border-subtle)]">
-          <button
-            type="button"
-            onClick={() => setTimeWindow('7d')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              timeWindow === '7d'
-                ? 'bg-[var(--surface)] text-[var(--action-primary)] shadow-sm font-semibold'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            7 ngày qua
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimeWindow('30d')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              timeWindow === '30d'
-                ? 'bg-[var(--surface)] text-[var(--action-primary)] shadow-sm font-semibold'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            30 ngày qua
-          </button>
+        <div className="flex self-start rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-1 sm:self-auto">
+          {(['7d', '30d'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setWindow(value)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                window === value
+                  ? 'bg-[var(--surface)] font-semibold text-[var(--action-primary)] shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              {value === '7d' ? '7 ngày' : '30 ngày'}
+            </button>
+          ))}
         </div>
       </header>
 
-      {/* Weekly Highlights Card */}
-      <Card variant="default" padding="lg" className="space-y-4">
-        <h2 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[var(--action-primary)]" />
-          <span>Bằng chứng tuần này</span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)]">
-            <span className="text-xs text-[var(--text-secondary)] font-medium">
-              Từ mới đã tiếp nạp
-            </span>
-            <div className="text-xl font-bold text-[var(--action-primary)] mt-1">+{data.newWordsAcquired} từ</div>
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">Qua các bài đọc Reader</p>
-          </div>
-          <div className="p-4 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)]">
-            <span className="text-xs text-[var(--text-secondary)] font-medium">
-              Từ đã củng cố vững chắc
-            </span>
-            <div className="text-xl font-bold text-[var(--status-success)] mt-1">+{data.wordsSolidified} từ</div>
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">Đạt chuẩn trí nhớ dài hạn</p>
-          </div>
-          <div className="p-4 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)]">
-            <span className="text-xs text-[var(--text-secondary)] font-medium">
-              Ngày học thành công
-            </span>
-            <div className="text-xl font-bold text-[var(--action-primary)] mt-1">{data.activeDaysCount} / {data.weeklyTargetDays} ngày</div>
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">Đạt mục tiêu học hàng ngày</p>
-          </div>
-        </div>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="Ngày đạt mục tiêu" value={`${data.activeDaysCount}/${data.weeklyTargetDays}`} icon={<Calendar className="h-4 w-4" />} />
+        <MetricCard label="Thời gian hoàn thành" value={`${data.totalStudyMinutes} phút`} icon={<Clock className="h-4 w-4" />} />
+        <MetricCard label="Khái niệm đã tiếp xúc" value={String(data.newWordsAcquired)} icon={<Sparkles className="h-4 w-4" />} />
+        <MetricCard label="Khái niệm đã củng cố" value={String(data.wordsSolidified)} icon={<ShieldCheck className="h-4 w-4" />} />
+      </div>
 
-      {/* Starting Level Estimate & Confidence (ADR-009) */}
       <Card variant="default" padding="lg" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
-              Định vị năng lực (ADR-009)
-            </span>
-            <h3 className="text-lg font-bold text-[var(--text-primary)] mt-0.5">
-              Ước lượng khởi điểm: A2 Elementary
-            </h3>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">
-              Độ tin cậy: Vừa • Dựa trên 582 bằng chứng tiếp xúc và tỷ lệ nhớ {data.retentionScore}%
+            <h2 className="font-semibold text-[var(--text-primary)]">Sức khỏe trí nhớ hiện tại</h2>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              Tỷ lệ memory item đang active và chưa quá hạn tại thời điểm tổng hợp.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="success" size="md">
-              Tỷ lệ duy trì: {data.retentionScore}%
-            </Badge>
-            <Link href="/onboarding">
-              <Button variant="outline" size="sm">
-                Kiểm tra lại
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Level Progression Stepper */}
-        <div className="grid grid-cols-6 gap-2 pt-2 text-center text-xs font-medium">
-          {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => {
-            const isCurrent = lvl === 'A2';
-            const isCompleted = lvl === 'A1';
-            return (
-              <div
-                key={lvl}
-                className={`p-2.5 rounded-xl border transition-all ${
-                  isCurrent
-                    ? 'bg-[var(--status-info-bg)] border-[var(--action-primary)] text-[var(--action-primary)] font-bold'
-                    : isCompleted
-                    ? 'bg-[var(--status-success-bg)] border-[var(--status-success-border)] text-[var(--status-success)]'
-                    : 'bg-[var(--surface-subtle)] border-[var(--border-subtle)] text-[var(--text-muted)]'
-                }`}
-              >
-                <div>{lvl}</div>
-                <div className="text-[10px] mt-0.5 font-normal">
-                  {isCurrent ? 'Hiện tại' : isCompleted ? 'Đã đạt' : 'Mục tiêu'}
-                </div>
-              </div>
-            );
-          })}
+          <Badge variant="success" size="md">{data.retentionScore}%</Badge>
         </div>
       </Card>
 
-      {/* Study Time Breakdown by Activity */}
-      <Card variant="default" padding="lg" className="space-y-4">
-        <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[var(--action-primary)]" />
-          <span>
-            Thời gian học theo hoạt động ({timeWindow === '7d' ? 'Tuần này: 160 phút' : '30 ngày: 640 phút'})
-          </span>
-        </h3>
+      <Card variant="default" padding="lg" className="space-y-5">
+        <div>
+          <h2 className="font-semibold text-[var(--text-primary)]">Hoạt động theo ngày</h2>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            Cột là số phút hoàn thành thực tế. Phần trăm là tỷ lệ Review đúng trong ngày, không phải Memory Health.
+          </p>
+        </div>
         <div className="space-y-3">
-          {[
-            {
-              id: 'fsrs',
-              icon: RotateCcw,
-              iconColor: 'text-[var(--status-warning)]',
-              barVariant: 'bg-[var(--status-warning)]',
-              title: 'Ôn tập thông minh (FSRS)',
-              timeText: timeWindow === '7d' ? '45 phút (28%)' : '180 phút (28%)',
-              percentage: 28,
-            },
-            {
-              id: 'reader',
-              icon: BookOpen,
-              iconColor: 'text-[var(--action-primary)]',
-              barVariant: 'bg-[var(--action-primary)]',
-              title: 'Đọc hiểu ngữ cảnh (Reader)',
-              timeText: timeWindow === '7d' ? '60 phút (38%)' : '245 phút (38%)',
-              percentage: 38,
-            },
-            {
-              id: 'listening',
-              icon: Volume2,
-              iconColor: 'text-[var(--status-info)]',
-              barVariant: 'bg-[var(--status-info)]',
-              title: 'Luyện nghe phản xạ câu',
-              timeText: timeWindow === '7d' ? '30 phút (19%)' : '125 phút (19%)',
-              percentage: 19,
-            },
-            {
-              id: 'dict',
-              icon: Search,
-              iconColor: 'text-[var(--status-success)]',
-              barVariant: 'bg-[var(--status-success)]',
-              title: 'Khám phá từ mới & Tra từ điển',
-              timeText: timeWindow === '7d' ? '25 phút (15%)' : '90 phút (15%)',
-              percentage: 15,
-            },
-          ].map((activity) => {
-            const Icon = activity.icon;
+          {data.history7d.map((point, index) => {
+            const width = Math.round((point.minutesSpent / maxMinutes) * 100);
             return (
-              <div key={activity.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${activity.iconColor}`} />
-                    <span className="text-[var(--text-secondary)]">{activity.title}</span>
+              <div key={`${point.dayLabel}-${index}`} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-medium text-[var(--text-secondary)]">{point.dayLabel}</span>
+                  <span className="text-[var(--text-primary)]">
+                    {point.minutesSpent} phút · Review đúng {point.retentionPercent}%
                   </span>
-                  <span className="font-semibold text-[var(--text-primary)]">{activity.timeText}</span>
                 </div>
-                <div
-                  role="progressbar"
-                  aria-valuenow={activity.percentage}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`${activity.title}: ${activity.timeText}`}
-                  className="w-full h-2 bg-[var(--surface-subtle)] rounded-full overflow-hidden border border-[var(--border-subtle)]"
-                >
+                <div className="h-2 overflow-hidden rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
                   <div
-                    className={`analytics-bar-fill h-full rounded-full will-change-transform ${activity.barVariant}`}
-                    style={{ width: `${activity.percentage}%` }}
+                    className="analytics-bar-fill h-full rounded-full bg-[var(--action-primary)] will-change-transform"
+                    style={{ width: `${width}%` }}
                   />
                 </div>
               </div>
@@ -318,3 +209,14 @@ export function ProgressAnalytics({
   );
 }
 
+function MetricCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+  return (
+    <Card variant="default" padding="md" className="space-y-2">
+      <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
+        <span className="text-[var(--action-primary)]">{icon}</span>
+        {label}
+      </div>
+      <div className="text-xl font-bold text-[var(--text-primary)]">{value}</div>
+    </Card>
+  );
+}
