@@ -22,8 +22,10 @@ export interface AuthContextValue {
   signUp(email: string, password: string): Promise<{ session: Session | null; user: User | null }>;
   requestPasswordReset(email: string): Promise<void>;
   resendSignupConfirmation(email: string): Promise<void>;
-  updatePassword(password: string): Promise<User>;
+  updateEmail(email: string): Promise<User>;
+  updatePassword(password: string, currentPassword?: string): Promise<User>;
   signOut(): Promise<void>;
+  signOutEverywhere(): Promise<void>;
   refreshSession(): Promise<void>;
   clearError(): void;
 }
@@ -167,10 +169,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
     }
   }, [client]);
 
-  const updatePassword = useCallback(async (password: string): Promise<User> => {
+  const updateEmail = useCallback(async (email: string): Promise<User> => {
     if (!client) throw new Error('Supabase Auth chưa được cấu hình.');
     setError(null);
-    const { data, error: updateError } = await client.auth.updateUser({ password });
+    const { data, error: updateError } = await client.auth.updateUser({ email });
+    if (updateError || !data.user) {
+      const errorObj = authError(updateError, 'Email update failed');
+      setError(errorObj);
+      throw errorObj;
+    }
+    setUser(data.user);
+    setSession((current) => (current ? { ...current, user: data.user } : current));
+    return data.user;
+  }, [client]);
+
+  const updatePassword = useCallback(async (password: string, currentPassword?: string): Promise<User> => {
+    if (!client) throw new Error('Supabase Auth chưa được cấu hình.');
+    setError(null);
+    const attributes = currentPassword ? { password, currentPassword } : { password };
+    const { data, error: updateError } = await client.auth.updateUser(attributes);
     if (updateError || !data.user) {
       const errorObj = authError(updateError, 'Password update failed');
       setError(errorObj);
@@ -181,13 +198,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
     return data.user;
   }, [client]);
 
-  const signOut = useCallback(async (): Promise<void> => {
+  const performSignOut = useCallback(async (scope: 'local' | 'global'): Promise<void> => {
     if (!client) {
       updateSessionState(null);
       return;
     }
     try {
-      const { error: signOutError } = await client.auth.signOut();
+      const { error: signOutError } = await client.auth.signOut({ scope });
       if (signOutError) {
         const errorObj = authError(signOutError, 'Sign out failed');
         setError(errorObj);
@@ -210,6 +227,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
       }
     }
   }, [client, updateSessionState]);
+
+  const signOut = useCallback(async (): Promise<void> => performSignOut('local'), [performSignOut]);
+  const signOutEverywhere = useCallback(async (): Promise<void> => performSignOut('global'), [performSignOut]);
 
   const refreshSession = useCallback(async (): Promise<void> => {
     if (!client) {
@@ -295,8 +315,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
       signUp,
       requestPasswordReset,
       resendSignupConfirmation,
+      updateEmail,
       updatePassword,
       signOut,
+      signOutEverywhere,
       refreshSession,
       clearError,
     }),
@@ -315,8 +337,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, customClie
       signUp,
       requestPasswordReset,
       resendSignupConfirmation,
+      updateEmail,
       updatePassword,
       signOut,
+      signOutEverywhere,
       refreshSession,
       clearError,
     ]
