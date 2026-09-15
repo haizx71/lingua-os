@@ -6,7 +6,6 @@ from dataclasses import dataclass
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-
 from lingua_api.auth import AccessTokenInvalid
 from lingua_api.main import create_app
 from lingua_api.memory.domain import AuthenticatedActor
