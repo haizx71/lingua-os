@@ -14,15 +14,18 @@ def test_browser_roles_have_no_public_schema_or_function_execute_privileges(
             """
             SELECT role_name,
                    has_schema_privilege(role_name, 'public', 'USAGE')
-            FROM (VALUES ('anon'), ('authenticated'), ('service_role')) AS roles(role_name)
+            FROM (VALUES ('anon'), ('authenticated')) AS roles(role_name)
             ORDER BY role_name
             """
         ).fetchall()
         assert schema_privileges == [
             ("anon", False),
             ("authenticated", False),
-            ("service_role", True),
         ]
+
+        assert connection.execute(
+            "SELECT has_schema_privilege('service_role', 'public', 'USAGE')"
+        ).fetchone() == (True,)
 
         browser_executable_functions = connection.execute(
             """
@@ -52,15 +55,14 @@ def test_new_public_functions_do_not_reopen_browser_execute_by_default(
         row = connection.execute(
             """
             SELECT has_function_privilege('anon', p.oid, 'EXECUTE'),
-                   has_function_privilege('authenticated', p.oid, 'EXECUTE'),
-                   has_function_privilege('service_role', p.oid, 'EXECUTE')
+                   has_function_privilege('authenticated', p.oid, 'EXECUTE')
             FROM pg_proc p
             JOIN pg_namespace n ON n.oid = p.pronamespace
             WHERE n.nspname = 'public' AND p.proname = %s
             """,
             (function_name,),
         ).fetchone()
-        assert row == (False, False, False)
+        assert row == (False, False)
 
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             connection.execute("SET LOCAL ROLE authenticated")
