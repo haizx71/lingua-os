@@ -53,7 +53,7 @@ function ControlledProgressAnalytics({
   forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
 }: ProgressAnalyticsProps) {
-  const [window, setWindow] = useState<ProgressWindow>('7d');
+  const [timeWindow, setWindow] = useState<ProgressWindow>('7d');
   const status = forcedState ?? (initialData ? 'success' : 'empty');
   const error: UiErrorState | null =
     status === 'error'
@@ -68,14 +68,14 @@ function ControlledProgressAnalytics({
       data={initialData ?? null}
       status={status}
       error={error}
-      window={window}
+      window={timeWindow}
       setWindow={setWindow}
       retry={() => undefined}
     />
   );
 }
 
-function ProgressView({ data, status, error, window, setWindow, retry }: ProgressViewProps) {
+function ProgressView({ data, status, error, window: timeWindow, setWindow, retry }: ProgressViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -101,7 +101,7 @@ function ProgressView({ data, status, error, window, setWindow, retry }: Progres
         }
       );
     },
-    { dependencies: [window, status, data, prefersReducedMotion], scope: containerRef }
+    { dependencies: [timeWindow, status, data, prefersReducedMotion], scope: containerRef }
   );
 
   if (status === 'loading') {
@@ -146,7 +146,7 @@ function ProgressView({ data, status, error, window, setWindow, retry }: Progres
               type="button"
               onClick={() => setWindow(value)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                window === value
+                timeWindow === value
                   ? 'bg-[var(--surface)] font-semibold text-[var(--action-primary)] shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
