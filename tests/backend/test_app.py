@@ -4,7 +4,7 @@ from lingua_api.main import app
 client = TestClient(app)
 
 
-def test_health_reports_the_api_is_ready() -> None:
+def test_health_reports_the_api_is_alive_with_request_correlation() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
@@ -13,6 +13,7 @@ def test_health_reports_the_api_is_ready() -> None:
         "status": "ok",
         "version": "0.1.0",
     }
+    assert response.headers["x-request-id"]
 
 
 def test_application_publishes_only_the_authorized_implemented_endpoints() -> None:
@@ -41,6 +42,7 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/brain/summary",
         "/v1/brain/concepts",
         "/v1/brain/concepts/{conceptId}",
+        "/v1/progress/overview",
         "/v1/concepts/{conceptId}",
         "/v1/dictionary/search",
         "/v1/reader/analyze",
@@ -53,6 +55,7 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/library/sentences/{sentenceId}",
     }
     assert "/health" not in published_paths
+    assert "/ready" not in published_paths
 
 
 def test_admin_runtime_metadata_preserves_the_owner_content_contract() -> None:
@@ -184,3 +187,12 @@ def test_brain_runtime_metadata_preserves_the_frozen_contract() -> None:
     assert {"mastery", "confidence"} <= set(schemas["BrainConceptSummaryDto"]["required"])
     assert {"mastery", "confidence", "memory"} <= set(schemas["BrainConceptDetailDto"]["required"])
     assert {"memoryHealth", "startingLevelEstimate"} <= set(schemas["BrainSummaryDto"]["required"])
+
+
+def test_progress_runtime_metadata_preserves_the_frozen_contract() -> None:
+    generated = app.openapi()
+    operation = generated["paths"]["/v1/progress/overview"]["get"]
+
+    assert operation["operationId"] == "getProgressOverview"
+    assert set(operation["responses"]) == {"200", "401", "404", "422", "500"}
+    assert operation["security"] == [{"bearerAuth": []}]
