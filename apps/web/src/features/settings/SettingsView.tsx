@@ -7,21 +7,11 @@ import {
   InlineAlert,
   Badge,
   LoadingState,
-  EmptyState,
   ErrorState,
 } from '@lingua/ui';
-import {
-  Settings,
-  Shield,
-  Bell,
-  Moon,
-  Sun,
-  Volume2,
-  Sliders,
-  Check,
-  Save,
-} from 'lucide-react';
+import { Save } from 'lucide-react';
 import { PERSISTENCE_GAPS, type ApiErrorCode } from '@lingua/types';
+import { AccountSecurityCard } from './AccountSecurityCard';
 
 export const SETTINGS_PERSISTENCE = Object.freeze({
   dailyTargetMinutes: 'NOT_YET_PERSISTED',
@@ -119,7 +109,6 @@ export function SettingsView({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Header */}
       <header>
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
           Preferences & Account
@@ -128,7 +117,7 @@ export function SettingsView({
           Cài đặt hệ thống
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
-          Tùy chỉnh thời gian học mỗi ngày, ngôn ngữ và tùy chọn trợ năng.
+          Tùy chỉnh việc học và quản lý bảo mật tài khoản LINGUA OS.
         </p>
       </header>
 
@@ -138,13 +127,13 @@ export function SettingsView({
         </InlineAlert>
       )}
 
-      {/* Learning Goal Settings */}
+      <AccountSecurityCard />
+
       <Card variant="default" padding="lg" className="space-y-5">
         <h2 className="text-base font-semibold text-[var(--text-primary)]">
           Mục tiêu học tập hàng ngày
         </h2>
 
-        {/* Daily Target Minutes */}
         <div className="space-y-2 py-2 border-b border-[var(--border-subtle)]">
           <div className="flex items-center justify-between">
             <div>
@@ -181,7 +170,6 @@ export function SettingsView({
           </div>
         </div>
 
-        {/* New Words Budget */}
         <div className="space-y-2 py-2">
           <div className="flex items-center justify-between">
             <div>
@@ -219,13 +207,11 @@ export function SettingsView({
         </div>
       </Card>
 
-      {/* Interface & Accessibility Preferences */}
       <Card variant="default" padding="lg" className="space-y-4">
         <h3 className="text-base font-semibold text-[var(--text-primary)]">
           Giao diện & Trợ năng (A11y)
         </h3>
 
-        {/* Theme selector */}
         <div className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)]">
           <div>
             <div className="flex items-center gap-2">
@@ -256,7 +242,6 @@ export function SettingsView({
           </div>
         </div>
 
-        {/* Reduced motion toggle */}
         <div className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)]">
           <div>
             <div className="flex items-center gap-2">
@@ -282,7 +267,6 @@ export function SettingsView({
           </button>
         </div>
 
-        {/* Audio Autoplay */}
         <div className="flex items-center justify-between py-2">
           <div>
             <div className="flex items-center gap-2">
@@ -309,7 +293,6 @@ export function SettingsView({
         </div>
       </Card>
 
-      {/* Save Button */}
       <div className="flex justify-end pt-2">
         <Button
           variant="primary"
