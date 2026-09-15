@@ -22,6 +22,7 @@ import {
   Maximize2,
   Minimize2,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import {
   isApiErrorCode,
@@ -127,7 +128,6 @@ export function ReviewSession({
     };
   }, []);
 
-  // Lateral slide progression between queue cards (150ms slide distance, opacity: 0 -> 1)
   useGSAP(
     () => {
       if (isInitialMount.current) {
@@ -158,7 +158,6 @@ export function ReviewSession({
     { dependencies: [currentIndex, prefersReducedMotion], scope: sessionCardRef }
   );
 
-  // Keyboard shortcut listener (1: Again, 2: Hard, 3: Good, 4: Easy, Space: Reveal)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
@@ -241,205 +240,129 @@ export function ReviewSession({
 
   if (localForcedState === 'empty' || isFinished || (!isLoading && queue.length === 0)) {
     return (
-      <div className="space-y-6 max-w-2xl mx-auto py-8">
+      <div className="mx-auto max-w-2xl space-y-6 py-8">
         <EmptyState
           title="Đã hoàn thành toàn bộ hàng đợi ôn tập!"
           description="FSRS không ghi nhận từ nào đến hạn cần ôn ngay bây giờ."
-          icon={<CheckCircle2 className="w-10 h-10 text-[var(--status-success)]" />}
+          icon={<CheckCircle2 className="h-10 w-10 text-[var(--status-success)]" />}
           actionLabel="Đọc bài mới trong Reader"
           onAction={() => {
             window.location.href = '/read';
           }}
         />
-        <div className="text-center pt-2">
+        <div className="pt-2 text-center">
           <Link href="/today">
-            <Button variant="outline" size="md">
-              Về trang Hôm nay
-            </Button>
+            <Button variant="outline" size="md">Về trang Hôm nay</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  if (!currentCard) {
-    return null;
-  }
+  if (!currentCard) return null;
 
   const displayDueCount = remainingDueCount !== null ? remainingDueCount : 23;
   const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : 23;
   const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
 
   return (
-    <div aria-busy={isSubmitting} className={`space-y-6 max-w-2xl mx-auto ${focusMode ? 'py-4' : ''}`}>
-      {/* Session Header */}
-      <header className="flex items-center justify-between">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
-            Smart Review (FSRS)
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-            Hàng đợi ôn tập
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="warning" size="md">
-            {displayDueCount} từ đến hạn
-          </Badge>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setFocusMode(!focusMode)}
-            aria-label={focusMode ? 'Tắt chế độ tập trung' : 'Bật chế độ tập trung'}
-            title={focusMode ? 'Tắt Focus Mode' : 'Bật Focus Mode'}
-          >
-            {focusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </Button>
+    <div aria-busy={isSubmitting} className={`mx-auto w-full max-w-3xl space-y-5 sm:space-y-6 ${focusMode ? 'py-3' : ''}`}>
+      <header className="relative overflow-hidden rounded-[28px] border border-[#dfe7f4] bg-gradient-to-br from-[var(--surface-blue)] via-white to-[var(--surface-lilac)] p-5 shadow-[var(--shadow-card)] sm:p-6">
+        <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/70" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="lingua-kicker text-[var(--action-primary)]">Smart Review • FSRS</span>
+              <Sparkles className="h-3.5 w-3.5 text-[var(--accent-teal)]" />
+            </div>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)]">Hàng đợi ôn tập</h1>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Tập trung vào một khái niệm mỗi lần; lịch ôn vẫn do FSRS quyết định.</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge variant="warning" size="md">{displayDueCount} từ đến hạn</Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setFocusMode(!focusMode)}
+              aria-label={focusMode ? 'Tắt chế độ tập trung' : 'Bật chế độ tập trung'}
+              title={focusMode ? 'Tắt Focus Mode' : 'Bật Focus Mode'}
+            >
+              {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Queue Progress */}
-      <Card variant="subtle" padding="sm" className="space-y-1">
-        <Progress
-          value={progressValue}
-          max={100}
-          label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`}
-          showValueText
-          size="sm"
-        />
+      <Card variant="subtle" padding="sm" className="rounded-2xl bg-white/75">
+        <Progress value={progressValue} max={100} label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`} showValueText size="sm" />
       </Card>
 
-      {/* Action Error / Ambiguous failure banner with retry */}
       {recoveryAlert}
 
-      {/* Inline Rating Feedback */}
       {!actionError && lastFeedback && (
-        <InlineAlert variant="info" title="Hệ thống FSRS">
-          {lastFeedback}
-        </InlineAlert>
+        <InlineAlert variant="info" title="Hệ thống FSRS">{lastFeedback}</InlineAlert>
       )}
 
-      {/* Main Flashcard Card with Lateral Progression Container */}
       <div ref={sessionCardRef}>
-        <Card
-          padding="lg"
-          className="text-center relative space-y-6 border-[var(--border-subtle)] shadow-sm"
-        >
-          {/* Top Badges / Card State */}
-          <div className="flex items-center justify-between">
-            <Badge variant="neutral" size="sm">
-              Thẻ {currentIndex + 1} / {queue.length}
-            </Badge>
+        <Card padding="none" className="relative overflow-hidden border-[var(--border-subtle)] shadow-[var(--shadow-card-hover)]">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-warm)]/55 px-5 py-4 sm:px-7">
+            <Badge variant="neutral" size="sm">Thẻ {currentIndex + 1} / {queue.length}</Badge>
             <ConceptChip status={currentCard.status} isDue={currentCard.isDue} term={currentCard.term} size="sm" />
           </div>
 
-          {/* Word Prompt & Pronunciation */}
-          <div className="space-y-3 py-6">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
+          <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
+            <span className="lingua-kicker text-[var(--accent-teal-strong)]">
               {currentCard.pos ? 'Từ vựng tiếng Anh' : 'Khái niệm tiếng Anh'}
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--text-primary)]">
-              {currentCard.term}
-            </h2>
+            <h2 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[var(--text-primary)] sm:text-5xl">{currentCard.term}</h2>
             {(currentCard.ipa || currentCard.pos) && (
-              <p className="text-sm text-[var(--text-secondary)] font-mono">
-                {[currentCard.ipa, currentCard.pos ? `(${currentCard.pos})` : undefined]
-                  .filter(Boolean)
-                  .join(' ')}
+              <p className="mt-2 font-mono text-sm text-[var(--text-secondary)]">
+                {[currentCard.ipa, currentCard.pos ? `(${currentCard.pos})` : undefined].filter(Boolean).join(' ')}
               </p>
             )}
 
-            <div className="flex justify-center pt-2">
+            <div className="mt-4 flex justify-center">
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="icon"
-                className="min-h-[44px] min-w-[44px] rounded-full hover:bg-[var(--surface-subtle)]"
+                className="min-h-[46px] min-w-[46px] rounded-2xl"
                 aria-label="Phát âm từ"
                 disabled={!currentCard.audioUrl}
                 onClick={handleAudioPlay}
               >
-                <Volume2
-                  className={`w-5 h-5 text-[var(--action-primary)] ${
-                    isAudioPlaying && !prefersReducedMotion ? 'animate-bounce' : ''
-                  }`}
-                />
+                <Volume2 className={`h-5 w-5 text-[var(--action-primary)] ${isAudioPlaying && !prefersReducedMotion ? 'animate-bounce' : ''}`} />
               </Button>
             </div>
 
-            {/* Context Sentence */}
-            <div className="pt-3 px-4 max-w-md mx-auto text-xs sm:text-sm text-[var(--text-secondary)] italic bg-[var(--surface-subtle)] p-3 rounded-xl">
-              "{currentCard.contextSentence}"
+            <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/70 px-5 py-4 text-sm italic leading-6 text-[var(--text-secondary)]">
+              “{currentCard.contextSentence}”
               {isAnswerRevealed && (
-                <p className="not-italic text-[var(--text-muted)] mt-1">
-                  ({currentCard.contextTranslationVi})
-                </p>
+                <p className="mt-2 not-italic text-[var(--text-muted)]">({currentCard.contextTranslationVi})</p>
               )}
             </div>
+
+            {!isAnswerRevealed && (
+              <div className="mt-7">
+                <Button variant="primary" size="md" onClick={() => setIsAnswerRevealed(true)} className="px-6">
+                  Hiện đáp án & nghĩa (Space)
+                </Button>
+              </div>
+            )}
+
+            {isAnswerRevealed && (
+              <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--status-info-border)] bg-[var(--status-info-bg)] px-5 py-4 text-sm font-bold leading-6 text-[var(--text-primary)]">
+                {currentCard.meaningVi}
+              </div>
+            )}
           </div>
 
-          {/* Answer Reveal Toggle Button */}
-          {!isAnswerRevealed && (
-            <div className="pt-2">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => setIsAnswerRevealed(true)}
-                className="px-6"
-              >
-                Hiện đáp án & nghĩa (Space)
-              </Button>
-            </div>
-          )}
-
-          {/* Revealed Meaning */}
-          {isAnswerRevealed && (
-            <div className="p-4 bg-[var(--status-info-bg)] border border-[var(--status-info-border)] rounded-xl text-sm font-medium text-[var(--text-primary)]">
-              {currentCard.meaningVi}
-            </div>
-          )}
-
-          {/* Action / Rating Buttons */}
-          <div className="space-y-3 pt-4 border-t border-[var(--border-subtle)]">
-            <p className="text-xs text-[var(--text-secondary)]">
-              Đánh giá mức độ ghi nhớ của bạn để FSRS tối ưu lịch ôn:
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isSubmitting || Boolean(pendingRetryOperation)}
-                className="border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)] min-h-[44px]"
-                onClick={() => void submitRating('again')}
-              >
-                Quên (Again)
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isSubmitting || Boolean(pendingRetryOperation)}
-                className="border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] min-h-[44px]"
-                onClick={() => void submitRating('hard')}
-              >
-                Khó (Hard)
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isSubmitting || Boolean(pendingRetryOperation)}
-                className="border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-subtle)] min-h-[44px]"
-                onClick={() => void submitRating('good')}
-              >
-                Tốt (Good)
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isSubmitting || Boolean(pendingRetryOperation)}
-                className="border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)] min-h-[44px]"
-                onClick={() => void submitRating('easy')}
-              >
-                Dễ (Easy)
-              </Button>
+          <div className="border-t border-[var(--border-subtle)] bg-white px-5 py-5 sm:px-7">
+            <p className="mb-3 text-center text-xs text-[var(--text-secondary)]">Đánh giá mức độ ghi nhớ để FSRS tối ưu lịch ôn:</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]" onClick={() => void submitRating('again')}>Quên (Again)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]" onClick={() => void submitRating('hard')}>Khó (Hard)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-blue)]" onClick={() => void submitRating('good')}>Tốt (Good)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)]" onClick={() => void submitRating('easy')}>Dễ (Easy)</Button>
             </div>
           </div>
         </Card>
