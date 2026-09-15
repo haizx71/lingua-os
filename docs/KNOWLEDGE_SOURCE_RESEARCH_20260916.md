@@ -1,146 +1,157 @@
 # Knowledge Source Research — 2026-09-16
 
-This file records source/license research for the LINGUA OS English-for-Vietnamese A0–B1 knowledge catalog. It is a research artifact, not legal advice and not an approval to ingest data. Re-check upstream terms at ingestion time.
+Status: research artifact; no dataset import approved.  
+Scope: English for Vietnamese learners, approximately Pre-A1/A0–B1.  
+Rule: re-check upstream terms, exact release, checksum and attribution at ingestion time. This document is not legal advice.
 
-## Decision legend
+## Decision classes
 
-- `PRIMARY_CANDIDATE`: suitable for the first production pipeline, subject to record-level QA and required attribution.
-- `REFERENCE_ONLY`: useful for curriculum/research validation, but do not copy/import its protected data into production.
-- `CANDIDATE_QUARANTINE`: potentially useful later; requires additional license/quality review before production use.
-- `REJECT_MVP`: intentionally excluded from the first production knowledge pack.
+- `PRIMARY_CANDIDATE`: clean enough to design the first production pipeline around, subject to pinned release + record QA + attribution.
+- `REFERENCE_ONLY`: may guide human curriculum/review decisions, but protected data must not be copied into the production catalog.
+- `CANDIDATE_QUARANTINE`: useful but has share-alike, mixed provenance, redistribution, quality or schema questions that must be resolved first.
+- `REJECT_MVP`: deliberately excluded from the first production knowledge pack.
+
+## Cleanest first-production source stack
+
+The smallest source stack with the best current rights/provenance fit is:
+
+1. **CEFR-J Wordlist 1.6 / Grammar Profile** — curriculum/level evidence, with proper TUFS/Tono Lab acknowledgement.
+2. **Open English WordNet 2025** — English senses, definitions and semantic relations under CC BY 4.0.
+3. **PanLex** — English↔Vietnamese translation candidates under CC0; candidates still require sense-aware human review.
+4. **LINGUA-authored material** — Vietnamese learner explanations, example sentences, translations, phrase/collocation teaching units and first real Reader micro-content.
+
+Everything else should initially be treated as corroborating research or quarantined enrichment rather than silently mixed into one catalog.
 
 ## Source matrix
 
-| Source | Main value | Rights / access finding | Decision | LINGUA OS use |
+| Source | Value | Rights/access finding | Decision | Intended use |
 |---|---|---|---|---|
-| Council of Europe CEFR + Companion Volume | Communicative can-do framework | Official reference; CEFR is language-independent and not a ready-made word list | REFERENCE_ONLY | Frame levels/can-do outcomes; never claim a word is officially CEFR-certified by the Council of Europe |
-| CEFR-J Wordlist 1.6 | English vocabulary level prior | Tono Laboratory/TUFS states research and commercial use is free with proper acknowledgement | PRIMARY_CANDIDATE | Primary A1–B1 level prior; record exact release and citation |
-| CEFR-J Grammar Profile | Grammar item level prior | CEFR-J/Open Language Profiles permits research/commercial use with citation; repository copy is older and partly Japanese | PRIMARY_CANDIDATE | Candidate grammar curriculum, manually normalized/reviewed |
-| NGSL | General-English usefulness/frequency | Project describes lists as free to use, including commercially; exact per-list Creative Commons terms must be captured at ingestion | PRIMARY_CANDIDATE | Usefulness/frequency evidence; never treat as CEFR level authority |
-| Open English WordNet 2025 | Senses, definitions, semantic relations | CC BY 4.0 | PRIMARY_CANDIDATE | Filter to selected curriculum; human-edit learner-safe teaching layer; retain attribution |
-| PanLex | Cross-lingual lexical equivalence | PanLex snapshots/Lite/Swadesh data are CC0 1.0 | PRIMARY_CANDIDATE | Vietnamese translation candidates/cross-checks only; human sense review required |
-| CMU Pronouncing Dictionary | US-English pronunciation forms | Princeton/CMU terms permit use/copy/modify/distribute without fee subject to notices; acknowledgement expected | CANDIDATE_QUARANTINE | Future pronunciation source after a first-class pronunciation schema/contract exists |
-| Mozilla Common Voice | Speech/audio research | Dataset is CC0, but current Mozilla Data Collective terms forbid identity attempts and state datasets must not be re-hosted/re-shared | CANDIDATE_QUARANTINE | ASR/listening research only until learner-facing redistribution is explicitly cleared |
-| English Profile / EVP / EGP | Sense/grammar level validation | Valuable searchable reference; no bulk-reuse license established for this project | REFERENCE_ONLY | Human cross-check of ambiguous level/sense decisions; no scraping or dataset copy |
-| EFLLex / CEFRLex English | CEFR-level lexical frequency distributions | CC BY-NC-SA 4.0 | REFERENCE_ONLY | Research comparison only; unsuitable as production commercial data source |
-| ICNALE | Asian/Vietnamese learner evidence | Terms prohibit reproduction/redistribution; Vietnamese WEP data exists in 2026 | REFERENCE_ONLY | Use published aggregate findings and online research insights; never ship learner texts |
-| EFCAMDAT | Large learner corpus/error analysis | Current Cambridge licence limits access to academic private study/non-commercial research and tightly controls derivatives | REFERENCE_ONLY | Research literature only; no production corpus import |
-| Wiktionary via Wiktextract/Kaikki | Forms, glosses, translations, pronunciation | Parser code MIT; extracted Wiktionary content remains under Wiktionary content licences (CC BY-SA/GFDL) | CANDIDATE_QUARANTINE | Later enrichment only after share-alike/provenance design; never treat parser licence as data licence |
-| Tatoeba | Example/translation candidates | Default sentences CC BY 2.0; some originals CC0; translations are derivative and have additional constraints; audio licensing varies | CANDIDATE_QUARANTINE | Per-record licensed candidate examples only, not first production source |
-| UniMorph English | Inflectional morphology | English resource is share-alike licensed | CANDIDATE_QUARANTINE | Later form validation; first pack should use deterministic/manual forms |
-| ConceptNet | Broad semantic/common-sense graph | CC BY-SA 4.0 data | REJECT_MVP | Too broad/noisy for authoritative prerequisite graph; optional offline candidate generation later |
-| SyntagNet | Sense-aware collocations | CC BY-NC-SA 4.0 | REJECT_MVP | Non-commercial restriction; do not import into production catalog |
-| LanguageTool | Grammar/style checking engine | Core is LGPL 2.1+ | CANDIDATE_QUARANTINE | Optional Admin QA tool, not curriculum authority and not MVP runtime dependency |
-| wordfreq | Frequency estimates | library Apache-2.0; bundled data CC BY-SA 4.0 with complex upstream attribution | REJECT_MVP | Do not export/copy into our DB for V1; NGSL path is cleaner |
-| Leipzig Corpora Collection | Frequency/co-occurrence/example research | website query data has non-commercial limits; downloadable text corpora are stated CC BY; source material is web-derived | CANDIDATE_QUARANTINE | Possible offline aggregate co-occurrence statistics after source-specific legal review; not first learner-facing sentence source |
-| Universal Dependencies English-EWT | Syntax annotation/research | annotations CC BY-SA; underlying texts have mixed provenance/rights | REFERENCE_ONLY | Learn feature definitions and parser evaluation; do not republish sentences |
-| Project Gutenberg | Public-domain literature | Rights vary by jurisdiction/title and prose is often stylistically old for A0–B1 | REJECT_MVP | Not needed for first modern learner pack |
+| Council of Europe CEFR + Companion Volume | Communicative proficiency framework | Official reference; CEFR is language-independent and there is no official Council-of-Europe English word list | REFERENCE_ONLY | Can-do framing and proficiency terminology; never claim official word certification |
+| CEFR-J Wordlist 1.6 | English lemma/POS level prior | Copyright Tono Laboratory/TUFS; documented as usable for research and commercial purposes with proper acknowledgement | PRIMARY_CANDIDATE | Primary A1–B1 level prior; pin exact 1.6 artifact/checksum |
+| CEFR-J Grammar Profile | Grammar level prior | Same CEFR-J commercial-use-with-citation position; public OLP mirror is older/partially Japanese | PRIMARY_CANDIDATE | Manually normalize reviewed grammar units; preserve original IDs/version |
+| CEFR-J x 28 | Can-do phrase methodology and multilingual/Vietnamese adaptation research | TUFS publicly describes English levelled phrase lists and 28-language resources including Vietnamese, but no production redistribution licence has been established for this project | REFERENCE_ONLY | Strong methodology reference; do not copy Vietnamese translations/phrase data without explicit rights confirmation |
+| Open English WordNet 2025 | Senses, glosses, semantic relations | CC BY 4.0; current project also requires manual validation for contributions | PRIMARY_CANDIDATE | Candidate English meanings/relations filtered to curriculum; preserve attribution |
+| PanLex | Cross-lingual equivalence | Database snapshots/Lite/Swadesh are CC0 1.0 | PRIMARY_CANDIDATE | Vietnamese translation candidates/cross-check; human sense review before learner-facing text |
+| NGSL 1.2 and related NGSL lists | General-English usefulness/frequency | Official project permits commercial use, but lists such as NGSL-GR and NGSL-S are CC BY-SA 4.0 | CANDIDATE_QUARANTINE | Research/ranking signal first; do not copy rankings/list data into core catalog until share-alike handling is explicitly approved |
+| KELLY English list | Frequency + CEFR prior | English KELLY distribution is CC BY-NC-SA 2.0 on the Leeds page | REFERENCE_ONLY | Independent research cross-check only; no commercial production import |
+| English Vocabulary/Grammar Profile | Sense/grammar level validation | Valuable searchable reference; no bulk redistribution licence established here | REFERENCE_ONLY | Human cross-check of ambiguous level/sense decisions; no scraping/bulk copy |
+| EFLLex / CEFRLex English | Frequency distributions by level | CC BY-NC-SA 4.0 | REFERENCE_ONLY | Research comparison only |
+| Open Multilingual Wordnet / Vietnamese WordNet projects | Vietnamese lexical research | Per-resource licences vary; some Vietnamese mirrors explicitly inherit Wiktionary/other upstream rights | CANDIDATE_QUARANTINE | Research candidate only until exact upstream lineage is verified; PanLex is cleaner for V1 |
+| CMU Pronouncing Dictionary | US-English pronunciation | Broad use/copy/modify/distribute permission subject to notices/acknowledgement | CANDIDATE_QUARANTINE | Future pronunciation data only after a first-class pronunciation schema/API exists |
+| Mozilla Common Voice | Speech/ASR research | Dataset CC0, but current Mozilla Data Collective terms restrict identity attempts and re-host/re-share behavior | CANDIDATE_QUARANTINE | Model/evaluation research; not automatic learner-facing hosted audio |
+| Wiktionary via Wiktextract/Kaikki | Forms/glosses/translations/pronunciation | Parser/software licence does not replace Wiktionary CC BY-SA/GFDL content obligations | CANDIDATE_QUARANTINE | Later enrichment only after share-alike/provenance design |
+| Tatoeba | Sentence/translation candidates | Default sentences CC BY 2.0; some originals CC0; translation/audio rights vary per item | CANDIDATE_QUARANTINE | Per-record future candidate; first pack uses original LINGUA sentences |
+| UniMorph English | Inflectional morphology | Share-alike dataset | CANDIDATE_QUARANTINE | Later validation; first pack uses deterministic/reviewed forms |
+| Leipzig Corpora Collection | Frequency/co-occurrence research | Website query data has non-commercial limits; downloadable corpora are described as CC BY but originate from varied web material | CANDIDATE_QUARANTINE | Aggregate research after source-specific review; not first sentence source |
+| UniversalCEFR and mixed CEFR corpora | Text-level difficulty research | Collection combines corpora with heterogeneous licences, many non-commercial | REFERENCE_ONLY | Research/evaluation only; do not train/import blindly from a wrapper dataset licence |
+| ICNALE | Vietnamese/Asian learner-corpus evidence | Terms prohibit reproduction/redistribution; current project material includes Vietnamese learners | REFERENCE_ONLY | Aggregate SLA/error research only; never ship learner texts |
+| EFCAMDAT | Large CEFR-aligned learner corpus | Current Cambridge agreement limits use to academic/private study/non-commercial research with derivative restrictions | REFERENCE_ONLY | Research literature only |
+| Universal Dependencies English-EWT | Syntax/parsing research | Annotation licence is share-alike; underlying text provenance is mixed | REFERENCE_ONLY | Parser/feature evaluation; do not republish source sentences |
+| LanguageTool | Grammar/style QA engine | Core LGPL 2.1+ | CANDIDATE_QUARANTINE | Optional Admin authoring QA; not curriculum authority or core runtime dependency |
+| wordfreq | Frequency estimates | Code and bundled data have different licences; data includes CC BY-SA and multiple upstream sources; data snapshot is effectively sunset around 2021 | REJECT_MVP | Avoid exporting/copying data into V1 catalog; use cleaner evidence sources |
+| ConceptNet | Broad semantic graph | CC BY-SA 4.0 | REJECT_MVP | Too broad/noisy for authoritative prerequisite graph |
+| SyntagNet | Sense-aware collocations | CC BY-NC-SA 4.0 | REJECT_MVP | Non-commercial restriction |
+| generated-english-phrasal-verbs (WithEnglishWeCan) | Large phrasal-verb list | Repository says MIT, but the root contains generated output without a sufficiently explicit upstream data provenance chain | CANDIDATE_QUARANTINE | Do not ingest merely because repository says MIT; verify generation sources first |
+| Project Gutenberg | Literature | Public-domain status is title/jurisdiction sensitive and much prose is stylistically poor for A0–B1 modern learner content | REJECT_MVP | Not needed for first micro-content pack |
 
-## High-confidence findings
+## Rights/provenance rules discovered during research
 
-### CEFR should not become a fake word certificate
+### 1. Repository licence is not data licence
 
-The Council of Europe describes CEFR through communicative proficiency descriptors and explicitly expects contextual adaptation. CEFR-J, English Profile and other language-specific resources map English material onto that framework. Therefore store a mapping as sourced pedagogical evidence, not as an assertion that the Council of Europe officially assigned that lexical item.
+A parser or application being MIT/Apache/GPL says nothing by itself about the licence of dictionary/corpus data that it packages or generates. Example: Wiktextract code does not erase Wiktionary share-alike obligations. Every production record needs a traceable data-source lineage.
 
-Official CEFR descriptor portal:
-https://www.coe.int/en/web/common-european-framework-reference-languages/cefr-descriptors
+### 2. Aggregator licence cannot launder upstream rights
 
-### CEFR-J is unusually well matched to our first pack
+A dataset wrapper may advertise a permissive licence while containing material sourced from British Council, commercial publishers, news corpora, Wiktionary or other sources with different terms. LINGUA OS must verify the upstream source chain, not trust the wrapper badge.
 
-Official CEFR-J announced Wordlist 1.6 on 2020-03-24. The Open Language Profiles mirror documents that CEFR-J vocabulary/grammar datasets may be used for research and commercial purposes without charge when properly cited.
+Importer rule: `wrapper licence + upstream lineage + transform rights + output obligation` must all pass before a source becomes `PRIMARY_CANDIDATE`.
 
-Official project/resources:
-https://www.cefr-j.org/
+### 3. Commercial permission does not mean “no obligations”
 
-Open Language Profiles mirror / terms:
-https://github.com/openlanguageprofiles/olp-en-cefrj
+CC BY-SA permits commercial use but can impose attribution/share-alike conditions on adaptations. That is materially different from CC0 or CC BY. To keep the first catalog operationally simple, share-alike datasets remain quarantined until we deliberately define how resulting data is segregated, attributed and redistributed.
 
-Important limitation: CEFR-J was developed in a Japanese EFL context. Treat it as a strong level prior, not universal learner truth. Vietnamese learner evidence and the user's own observed performance must override population priors.
+### 4. Research papers are evidence, not content
 
-### EFLLex is scientifically useful but unsuitable for our production dataset
+A paper being open access does not mean its stimuli, corpus or cited examples can be copied into the product. Extract conclusions and methodology; do not copy protected learning content unless separately licensed.
 
-EFLLex has 15,280 lemma/POS entries with normalized frequency distributions across A1–C1 learning materials, but the download is CC BY-NC-SA 4.0. It is useful for research cross-checks, not for a potentially commercial production catalog.
+## Curriculum findings
 
-https://cental.uclouvain.be/cefrlex/efllex/
+### CEFR is a capability framework, not a word certificate
 
-### PanLex is the cleanest open bilingual candidate found so far
+Use CEFR/CEFR-J mappings as sourced pedagogical evidence. Never display a claim equivalent to “the Council of Europe officially says this word is A2.” Language-specific resources make those mappings.
 
-PanLex releases its database snapshots, PanLex Lite and Swadesh lists under CC0 1.0. Vietnamese (`vie-000`) is represented. PanLex aggregates lexical equivalence from many sources, so candidate quality still needs sense-aware review even though the PanLex release itself is CC0.
+### CEFR-J is the best current level prior for V1
 
-https://panlex.org/license
+The project reports Wordlist 1.6 and a Grammar Profile. Open Language Profiles documents commercial/research use with citation for the CEFR-J vocabulary/grammar datasets. CEFR-J was designed for Japanese EFL conditions, so it remains a prior rather than universal truth.
 
-### Common Voice licence is permissive but distribution terms matter
+### CEFR-J x 28 is especially interesting for Vietnamese methodology
 
-Current Common Voice terms make datasets available under CC0, but Mozilla Data Collective also asks/requires that datasets not be re-hosted/re-shared and forbids attempts to identify speakers. This makes Common Voice attractive for model/evaluation research, but not an automatic source of learner-facing audio assets that we host ourselves.
+TUFS extends the framework across 28 languages, explicitly including Vietnamese, and publishes examples of levelled vocabulary / Can-Do phrase resources. This is excellent evidence for how to build multilingual pedagogical resources, but it is **not** currently approved as a data source because redistribution rights for the Vietnamese phrase/vocabulary assets have not been established here.
 
-https://commonvoice.mozilla.org/terms
+## Vietnamese learner evidence
 
-### Learner corpora are evidence, not content sources
+Population research supports giving extra authoring/review attention to several recurring areas:
 
-ICNALE now includes a Vietnamese WEP cohort (438 participants in the March 2026 table across A2–B2+), but its terms prohibit reproducing or redistributing part or all of the data. EFCAMDAT's current licence is restricted to academic private study/non-commercial research and tightly controlled derivatives. Their value for LINGUA OS is aggregate SLA/error research, not production learner content.
-
-ICNALE:
-https://language.sakura.ne.jp/icnale/
-
-EFCAMDAT:
-https://ef-lab.mml.cam.ac.uk/EFCAMDAT.html
-
-## Vietnamese learner priorities supported by research
-
-The catalog should include stronger early coverage and better examples for areas repeatedly reported in Vietnamese EFL research, while keeping these as population priors only:
-
-- final consonants and multi-consonant codas;
-- English /θ/ and /ð/;
-- word stress;
-- selected vowel contrasts;
+- final consonants and consonant clusters;
+- /θ/ and /ð/;
+- word stress and selected vowel contrasts;
+- prepositions;
 - verb tense/aspect;
 - articles;
-- prepositions;
-- plurals and agreement;
-- verb–noun/adjective–noun collocations.
+- plural and subject–verb agreement;
+- verb–noun, adjective–noun and other collocations.
 
-No learner should be marked weak in these areas merely because their L1 is Vietnamese. The Language Brain's actual evidence is authoritative.
+Recent Vietnamese EFL collocation studies report persistent problems with word combinations and L1 transfer. A 2024 classroom study also reports frequent preposition and tense difficulties among its participants. These findings are **authoring priors only**. They must never create an individual learner weakness or competence state without actual learner evidence.
 
-## Learning-science implications
+## Learning-science findings relevant to the catalog
 
-### Vocabulary breadth and coverage
+### Contextual diversity
 
-Nation's work supports high lexical coverage for comfortable comprehension and highlights the importance of high-frequency vocabulary. Use this to drive content-fit and curriculum coverage, not to turn an arbitrary coverage percentage into a mastery rule.
-
-### Four strands
-
-Nation's four-strands framework argues for roughly balanced meaning-focused input, meaning-focused output, language-focused learning and fluency development. The knowledge catalog should therefore support phrases, grammar and productive prompts rather than being optimized only for flashcard recognition. This research does not change the current Today algorithm in this task.
-
-### Spacing/retrieval
-
-Meta-analytic evidence supports distributed practice for vocabulary learning. LINGUA OS already delegates scheduling to the accepted FSRS memory engine; knowledge ingestion must not implement a second scheduler.
-
-### Corrective feedback
-
-Meta-analytic evidence supports corrective feedback. Future activity design can attach targeted explanations/contrast notes to concepts, but such metadata must not be treated as evidence that the learner has mastered the concept.
+A 2026 systematic review/meta-analysis of 20 studies found a positive behavioral effect of contextual diversity on word learning (reported pooled Cohen's d about 0.44), while noting that only a small subset directly targeted L2 learning. Practical implication: prefer multiple genuinely different contexts for a concept over repeated near-duplicate sentences, but do not turn this into a hard mastery formula yet.
 
 ### Formulaic language
 
-Recent SLA research continues to support formulaic sequences as important learning units. This supports keeping `phrase` as a first-class concept type and prioritizing useful phrasal verbs/collocations/discourse frames rather than teaching vocabulary only as isolated words.
+Current L2 work continues to support formulaic sequences as important productive units. This reinforces the existing first-class `phrase` concept type. Phrasal verbs, collocations and discourse frames should not be reduced to independent mastery of their component words.
 
-## Repository-specific architecture findings
+### Receptive vs productive learning
 
-The current repo already models much of the needed data, but four gaps must be respected rather than hacked around:
+Meta-analytic work shows task/instruction alignment matters: productive instruction better supports productive outcomes and receptive instruction better supports receptive outcomes. This supports LINGUA OS's existing separation of recognition/listening/production competence; the catalog must not collapse them into one mastery state.
 
-1. Dictionary/Brain choose a single best framework mapping. Avoid ambiguous multiple level rows.
-2. Word-sense level distinctions from external profiles cannot map cleanly to the current one-concept/one-FSRS-lineage structure. V1 must use a small curated sense bundle per lemma/POS.
-3. Grammar and skill concepts lack a first-class explanation projection because definitions currently flow through lexical senses. Do not create fake lexemes to bypass this.
-4. Pronunciation is present in the architecture spec but not as an implemented learner-facing schema/API entity. Keep pronunciation research separate until a bounded task is approved.
+### L1 + visual support and glosses
 
-## Research backlog
+A 2025 meta-analysis found immediate vocabulary-learning advantages for combined L1 + picture conditions, and a 2024 second-round meta-analysis found useful effects of glossing, especially for beginners/recognition. This suggests future learner-facing concept details may benefit from concise Vietnamese support and carefully selected visuals. It does **not** justify adding an image schema/UI in this knowledge task while parallel UI work is active.
 
-Before any large import, still verify:
+### Spacing
 
-- exact NGSL per-list licence text/version and attribution wording;
-- official CEFR-J Wordlist 1.6 file checksum and stable download path;
-- best safe subset/matching strategy from CEFR-J to Open English WordNet;
-- PanLex source-quality filtering strategy for English–Vietnamese candidate translations;
-- whether first-party Vietnamese definitions should be authored manually or generated as drafts and human-reviewed;
-- deterministic form generation rules for the first A0–B1 pack;
-- minimum concept count needed for the first 16 real micro-articles;
-- content-fit thresholds using real self-use data rather than invented constants.
+Spacing/retrieval evidence remains relevant, but LINGUA OS already delegates memory scheduling to its accepted FSRS implementation. The Knowledge System must never introduce a second scheduler.
+
+## Open-source product/repository lessons
+
+- **Learning With Texts / Lute / LinguaCafe:** useful pattern is keeping vocabulary connected to the exact reading context and letting reading history inform suggestions. LINGUA OS already has a stronger server-authoritative concept/exposure model; borrow the principle, not their “mark known” semantics.
+- **LibreLingo:** useful pattern is structured, reviewable course content and validation before publishing. The main repository is archived, so it should not become a dependency.
+- **Open Spaced Repetition / FSRS:** confirms the project is already on the correct scheduler family. Do not fork or reimplement it inside the Knowledge System.
+- **Open English WordNet:** notably states that automatically generated contributions are not accepted without manual validation. This is aligned with our human-review gate for learner-facing language knowledge.
+- **LinguaCafe:** its attribution section is a useful example of treating software/data licences separately. LINGUA OS should keep source-level attribution/provenance first-class rather than burying it in package metadata.
+
+## Repository-specific guardrails for LINGUA OS
+
+1. Dictionary/Brain currently choose one best framework mapping; V1 should write at most one primary proficiency mapping per concept.
+2. Same-lemma/POS sense splitting does not fit cleanly with the current one-concept/one-FSRS-lineage architecture. Use a small curated core-sense bundle per lexical concept for V1.
+3. Grammar/skill concepts currently lack the same lexical-definition projection as word/phrase concepts. Do not invent fake lexemes.
+4. Pronunciation has no current first-class learner-facing schema/API. Keep pronunciation data out of persistence until a bounded task approves it.
+5. `family`, `synonym`, `related` or `prerequisite` edges are knowledge relations only. **No relation may transfer mastery, competence, Save/Learn intent or FSRS state to another concept.**
+6. Multiple examples should favor contextual diversity, but context diversity is a content-quality/recommendation signal, not competence evidence.
+
+## Updated research backlog
+
+Before implementing an importer:
+
+- retrieve official CEFR-J Wordlist 1.6 from the authoritative source path and pin checksum/version;
+- verify exact CEFR-J 1.6 attribution text from the artifact itself;
+- define deterministic CEFR-J ↔ Open English WordNet matching with ambiguity reports;
+- define PanLex English↔Vietnamese candidate filtering and manual approval workflow;
+- decide whether all Vietnamese definitions are first-party authored or machine-drafted + mandatory human review;
+- define regular/irregular `lexeme_forms` rules without importing share-alike morphology data;
+- generate the missing-concept report from the first 16 original micro-articles before choosing catalog size;
+- independently review every `PRIMARY_CANDIDATE` source and the no-learner-state importer boundary;
+- only after that, build preview-only import and validate on disposable PostgreSQL before any Supabase staging write.
