@@ -257,6 +257,16 @@ def _register_error_handlers(application: FastAPI) -> None:
         del error
         return _error(request, 422, "VALIDATION_ERROR", "The content request is invalid.")
 
+    @application.exception_handler(AuthConfigurationError)
+    async def auth_unavailable(request: Request, error: AuthConfigurationError) -> JSONResponse:
+        del error
+        return _error(
+            request,
+            503,
+            "SERVICE_UNAVAILABLE",
+            "Authentication service is temporarily unavailable.",
+        )
+
     @application.exception_handler(AccessTokenInvalid)
     async def unauthenticated(request: Request, error: AccessTokenInvalid) -> JSONResponse:
         del error
