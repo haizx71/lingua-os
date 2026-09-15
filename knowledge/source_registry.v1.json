@@ -4,258 +4,49 @@
   "scope": "English for Vietnamese Pre-A1/A0-B1 knowledge research",
   "notice": "Research registry only. Re-check exact release, checksum, upstream lineage and rights before ingestion. This is not legal advice.",
   "decisionPolicy": {
-    "PRIMARY_CANDIDATE": "May be used to design the first production pipeline after pinned-release QA and required attribution.",
+    "FIRST_PARTY": "LINGUA-authored original candidate content. Still requires normal human/content review before production.",
+    "PRIMARY_CANDIDATE": "May design the first production pipeline after pinned-release QA and required attribution.",
     "REFERENCE_ONLY": "May inform human decisions; protected data is not copied into production.",
     "CANDIDATE_QUARANTINE": "Potentially useful but blocked on share-alike, provenance, redistribution, quality or schema review.",
     "REJECT_MVP": "Excluded from the first production knowledge pack."
   },
   "sources": [
-    {
-      "id": "cefr-official",
-      "name": "Council of Europe CEFR / Companion Volume",
-      "url": "https://www.coe.int/en/web/common-european-framework-reference-languages/cefr-descriptors",
-      "roles": ["framework", "can-do-reference"],
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Framework and can-do terminology only; never present CEFR as an official word-level certifier."
-    },
-    {
-      "id": "cefr-j-wordlist-1.6",
-      "name": "CEFR-J Wordlist Version 1.6",
-      "url": "http://www.cefr-j.org/download.html#cefrj_wordlist",
-      "roles": ["vocabulary-level-prior", "topic-prior"],
-      "rights": "Copyright Tono Laboratory, Tokyo University of Foreign Studies; documented for research and commercial use with proper acknowledgement.",
-      "decision": "PRIMARY_CANDIDATE",
-      "productionUse": "Primary A1-B1 lemma/POS level prior; pin authoritative artifact, version and checksum."
-    },
-    {
-      "id": "cefr-j-grammar",
-      "name": "CEFR-J Grammar Profile",
-      "url": "https://github.com/openlanguageprofiles/olp-en-cefrj",
-      "roles": ["grammar-level-prior"],
-      "rights": "CEFR-J/Open Language Profiles documents research/commercial use with citation; mirror release must be distinguished from current official release.",
-      "decision": "PRIMARY_CANDIDATE",
-      "productionUse": "Normalize selected A1-B1 grammar units manually and preserve upstream IDs/version."
-    },
-    {
-      "id": "cefr-j-x28",
-      "name": "TUFS CEFR-J x 28",
-      "url": "https://www.tufs.ac.jp/english/education/program/sgu/cefr-j_28.html",
-      "roles": ["multilingual-methodology", "can-do-phrase-reference", "vietnamese-adaptation-reference"],
-      "rights": "Public project/sample resources found; production redistribution rights for the Vietnamese phrase/vocabulary assets were not established in this review.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Use methodology and structure as research reference; do not copy Vietnamese phrase/vocabulary data without explicit rights confirmation."
-    },
-    {
-      "id": "oewn-2025",
-      "name": "Open English WordNet 2025",
-      "url": "https://en-word.net/downloads",
-      "roles": ["sense", "definition", "semantic-relation"],
-      "rights": "CC BY 4.0",
-      "decision": "PRIMARY_CANDIDATE",
-      "productionUse": "Filter to selected curriculum; human-review learner-facing meanings/relations; retain attribution and source IDs."
-    },
-    {
-      "id": "panlex",
-      "name": "PanLex",
-      "url": "https://panlex.org/license",
-      "roles": ["translation-candidate", "cross-lingual-check"],
-      "rights": "PanLex Database snapshots, Lite and Swadesh lists released under CC0 1.0.",
-      "decision": "PRIMARY_CANDIDATE",
-      "productionUse": "English-Vietnamese equivalence candidates only; human sense review required before learner-facing Vietnamese text."
-    },
-    {
-      "id": "ngsl",
-      "name": "New General Service List 1.2 and related NGSL lists",
-      "url": "https://www.newgeneralservicelist.com/",
-      "roles": ["frequency", "usefulness", "coverage-reference"],
-      "rights": "Official project permits commercial use; several lists are CC BY-SA 4.0, creating attribution/share-alike obligations for adaptations.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Research/ranking signal first. Do not copy list/rank data into the core catalog until share-alike handling is explicitly approved."
-    },
-    {
-      "id": "kelly-en",
-      "name": "KELLY English frequency/CEFR list",
-      "url": "https://ssharoff.github.io/kelly/",
-      "roles": ["frequency-reference", "cefr-cross-check"],
-      "rights": "English/Leeds distribution is CC BY-NC-SA 2.0.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Independent research cross-check only; no commercial production import."
-    },
-    {
-      "id": "english-profile",
-      "name": "English Vocabulary Profile / English Grammar Profile",
-      "url": "https://www.englishprofile.org/",
-      "roles": ["sense-level-validation", "grammar-validation"],
-      "rights": "Search/reference access is useful; no bulk redistribution licence established for this project.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Human validation of ambiguous decisions; no scraping or bulk copy."
-    },
-    {
-      "id": "efllex",
-      "name": "EFLLex",
-      "url": "https://cental.uclouvain.be/cefrlex/efllex/",
-      "roles": ["cefr-lexical-frequency-research"],
-      "rights": "CC BY-NC-SA 4.0",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Research comparison only."
-    },
-    {
-      "id": "open-multilingual-wordnet-vi",
-      "name": "Vietnamese/Open Multilingual WordNet candidates",
-      "url": "https://globalwordnet.github.io/resources/wordnets-in-the-world",
-      "roles": ["vietnamese-lexical-research"],
-      "rights": "Per-resource licences and upstream provenance vary; public Vietnamese mirrors may inherit Wiktionary or other rights.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Research only until exact Vietnamese resource and lineage are verified; PanLex remains the cleaner V1 bilingual candidate."
-    },
-    {
-      "id": "cmudict",
-      "name": "CMU Pronouncing Dictionary",
-      "url": "https://github.com/cmusphinx/cmudict",
-      "roles": ["pronunciation-candidate", "us-english"],
-      "rights": "Broad use/copy/modify/distribute permission subject to notices/acknowledgement.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Wait for an approved first-class pronunciation schema/API."
-    },
-    {
-      "id": "common-voice",
-      "name": "Mozilla Common Voice",
-      "url": "https://commonvoice.mozilla.org/terms",
-      "roles": ["speech-research", "asr-evaluation"],
-      "rights": "CC0 dataset with current Mozilla Data Collective terms including no identity attempts and distribution/re-host constraints.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Research/model evaluation only until learner-facing audio redistribution is explicitly cleared."
-    },
-    {
-      "id": "wiktionary-wiktextract",
-      "name": "Wiktionary via Wiktextract / Kaikki",
-      "url": "https://kaikki.org/",
-      "roles": ["forms-candidate", "gloss-candidate", "translation-candidate", "pronunciation-candidate"],
-      "rights": "Parser code licence does not replace Wiktionary content licences; content is governed by Wiktionary share-alike/GFDL terms.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Later enrichment only after share-alike/provenance design."
-    },
-    {
-      "id": "tatoeba",
-      "name": "Tatoeba",
-      "url": "https://tatoeba.org/",
-      "roles": ["sentence-candidate", "translation-candidate", "audio-candidate"],
-      "rights": "Default sentence redistribution CC BY 2.0; some eligible originals CC0; translation and audio rights require item-level handling.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Per-record candidate examples later; first production pack uses original LINGUA-authored sentences."
-    },
-    {
-      "id": "unimorph-eng",
-      "name": "UniMorph English",
-      "url": "https://github.com/unimorph/eng",
-      "roles": ["morphology-candidate"],
-      "rights": "Share-alike licensed dataset.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Later form validation; first pack prefers deterministic/manual forms."
-    },
-    {
-      "id": "leipzig-corpora",
-      "name": "Leipzig Corpora Collection",
-      "url": "https://wortschatz.uni-leipzig.de/en/usage",
-      "roles": ["frequency-candidate", "cooccurrence-candidate"],
-      "rights": "Query data and downloadable-corpus terms differ; source documents originate from varied web material.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Possible aggregate research after source-specific review; not first learner-facing sentence source."
-    },
-    {
-      "id": "universal-cefr",
-      "name": "UniversalCEFR / mixed CEFR corpora",
-      "url": "https://huggingface.co/UniversalCEFR",
-      "roles": ["text-level-cefr-research"],
-      "rights": "Collection aggregates datasets with heterogeneous licences; many are non-commercial and/or source-restricted.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Research/evaluation only; never trust a wrapper licence to override upstream rights."
-    },
-    {
-      "id": "icnale",
-      "name": "ICNALE",
-      "url": "https://language.sakura.ne.jp/icnale/",
-      "roles": ["learner-corpus-research", "vietnamese-l1-research"],
-      "rights": "Terms prohibit reproduction/redistribution of part or all of the data.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Use aggregate published research findings only; never ship learner texts."
-    },
-    {
-      "id": "efcamdat",
-      "name": "EF-Cambridge Open Language Database",
-      "url": "https://ef-lab.mml.cam.ac.uk/EFCAMDAT.html",
-      "roles": ["learner-error-research"],
-      "rights": "Academic/private-study/non-commercial agreement with derivative restrictions.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Research literature only."
-    },
-    {
-      "id": "ud-english-ewt",
-      "name": "Universal Dependencies English-EWT",
-      "url": "https://github.com/UniversalDependencies/UD_English-EWT",
-      "roles": ["syntax-research", "parser-evaluation"],
-      "rights": "Share-alike annotations; underlying texts have mixed provenance.",
-      "decision": "REFERENCE_ONLY",
-      "productionUse": "Use to inform/evaluate deterministic complexity features; do not republish source sentences."
-    },
-    {
-      "id": "languagetool",
-      "name": "LanguageTool",
-      "url": "https://github.com/languagetool-org/languagetool",
-      "roles": ["admin-qa-candidate", "grammar-checking"],
-      "rights": "Core LGPL 2.1 or later.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Optional authoring QA only, never curriculum authority or core runtime dependency."
-    },
-    {
-      "id": "wordfreq",
-      "name": "wordfreq",
-      "url": "https://github.com/rspeer/wordfreq",
-      "roles": ["frequency-research"],
-      "rights": "Code and bundled data have different licences; data aggregates many upstream sources and includes share-alike obligations; data snapshot is effectively sunset around 2021.",
-      "decision": "REJECT_MVP",
-      "productionUse": "Do not export/copy its frequency data into V1 catalog."
-    },
-    {
-      "id": "conceptnet",
-      "name": "ConceptNet",
-      "url": "https://conceptnet.io/",
-      "roles": ["relation-candidate"],
-      "rights": "CC BY-SA 4.0 data.",
-      "decision": "REJECT_MVP",
-      "productionUse": "Do not use as authoritative prerequisite graph."
-    },
-    {
-      "id": "syntagnet",
-      "name": "SyntagNet",
-      "url": "https://github.com/x-englishwordnet/syntagnet",
-      "roles": ["collocation-research"],
-      "rights": "CC BY-NC-SA 4.0.",
-      "decision": "REJECT_MVP",
-      "productionUse": "No commercial production import."
-    },
-    {
-      "id": "generated-phrasal-verbs",
-      "name": "WithEnglishWeCan/generated-english-phrasal-verbs",
-      "url": "https://github.com/WithEnglishWeCan/generated-english-phrasal-verbs",
-      "roles": ["phrasal-verb-candidate"],
-      "rights": "Repository states MIT, but generated output lacks a sufficiently explicit upstream source/provenance chain in the root repository review.",
-      "decision": "CANDIDATE_QUARANTINE",
-      "productionUse": "Do not ingest until generation sources and data rights are independently verified."
-    },
-    {
-      "id": "project-gutenberg",
-      "name": "Project Gutenberg",
-      "url": "https://www.gutenberg.org/",
-      "roles": ["literature-research"],
-      "rights": "Public-domain status varies by title and jurisdiction; text style is often a poor fit for modern Pre-A1-B1 micro-content.",
-      "decision": "REJECT_MVP",
-      "productionUse": "Not needed for the first modern learner-content pack."
-    }
+    {"id":"lingua-first-party","name":"LINGUA OS first-party authored knowledge","url":"repo://knowledge","roles":["original-example","vietnamese-support","curriculum-candidate"],"rights":"Project-owned original text; repository/project terms apply.","decision":"FIRST_PARTY","productionUse":"Preferred V1 learner-facing examples and Vietnamese support after human review."},
+    {"id":"cefr-official","name":"Council of Europe CEFR / Companion Volume","url":"https://www.coe.int/en/web/common-european-framework-reference-languages/cefr-descriptors","roles":["framework","can-do-reference"],"decision":"REFERENCE_ONLY","productionUse":"Framework/can-do terminology only; never present CEFR as an official word-level certifier."},
+    {"id":"cefr-j-wordlist-1.6","name":"CEFR-J Wordlist Version 1.6","url":"https://www.cefr-j.org/data/CEFRJ_wordlist_ver1.6.zip","roles":["vocabulary-level-prior","topic-prior"],"rights":"Copyright Tono Laboratory, Tokyo University of Foreign Studies; official/project documentation permits research/educational/commercial use with proper acknowledgement.","decision":"PRIMARY_CANDIDATE","productionUse":"Primary A1-B1 lemma/POS level prior after LINGUA independently pins official artifact.","evidence":{"releaseDate":"2020-03-24","reportedRows":7801,"reportedSha256":"c837d2c00ab8954ed8db48e79afd8ef37099570295fec36950dbf9322303a37a","reportedSizeBytes":1089155,"checksumStatus":"observed_external_not_lingua_verified","observedColumns":["headword","pos","CEFR","CoreInventory 1","CoreInventory 2","Threshold"]}},
+    {"id":"cefr-j-grammar","name":"CEFR-J Grammar Profile","url":"https://github.com/openlanguageprofiles/olp-en-cefrj","roles":["grammar-level-prior"],"rights":"CEFR-J/Open Language Profiles documents research/commercial use with citation; repository grammar file is 20180315.","decision":"PRIMARY_CANDIDATE","productionUse":"Normalize selected A1-B1 grammar units manually; preserve upstream IDs/version; never fabricate examples for abstract source labels."},
+    {"id":"cefr-j-x28","name":"TUFS CEFR-J x 28","url":"https://www.tufs.ac.jp/english/education/program/sgu/cefr-j_28.html","roles":["multilingual-methodology","can-do-phrase-reference","vietnamese-adaptation-reference"],"rights":"Public project/sample resources found; production redistribution rights for Vietnamese phrase/vocabulary assets not established.","decision":"REFERENCE_ONLY","productionUse":"Methodology/structure research only; no copying of Vietnamese assets without explicit rights confirmation."},
+    {"id":"cefr-sp","name":"CEFR-based Sentence Profile research dataset/method","url":"https://aclanthology.org/2022.lrec-1.45/","roles":["sentence-difficulty-research","cefr-text-research"],"rights":"Research reference; dataset/text redistribution terms must be checked separately.","decision":"REFERENCE_ONLY","productionUse":"Use findings to design multi-signal text difficulty; do not copy sentences into product content."},
+    {"id":"oewn-2025","name":"Open English WordNet 2025","url":"https://en-word.net/downloads","roles":["sense","definition","semantic-relation"],"rights":"CC BY 4.0","decision":"PRIMARY_CANDIDATE","productionUse":"Filter to selected curriculum; human-review sense matching/learner-facing meanings; retain attribution/source IDs."},
+    {"id":"panlex","name":"PanLex","url":"https://panlex.org/license","roles":["translation-candidate","cross-lingual-check"],"rights":"PanLex Database snapshots, Lite and Swadesh lists released under CC0 1.0.","decision":"PRIMARY_CANDIDATE","productionUse":"English-Vietnamese equivalence candidates only; human sense review required."},
+    {"id":"ngsl","name":"New General Service List 1.2 and related NGSL lists","url":"https://www.newgeneralservicelist.com/","roles":["frequency","usefulness","coverage-reference"],"rights":"Official .com project permits commercial use; NGSL-family lists are distributed under CC BY-SA 4.0.","decision":"CANDIDATE_QUARANTINE","productionUse":"Research/ranking signal first; no raw list/rank import until ShareAlike handling is approved.","evidence":{"ngsl12ArtifactUrl":"https://www.newgeneralservicelist.com/s/NGSL_12_stats.csv","reportedSha256":"2098bab8955a120a9766c6282a51d7d578c6cb0a7d946600d2ffb73ba25a0b44","reportedSizeBytes":62566,"checksumStatus":"observed_external_not_lingua_verified","reportedRows":2809}},
+    {"id":"kelly-en","name":"KELLY English frequency/CEFR list","url":"https://ssharoff.github.io/kelly/","roles":["frequency-reference","cefr-cross-check"],"rights":"English/Leeds distribution is CC BY-NC-SA 2.0.","decision":"REFERENCE_ONLY","productionUse":"Independent research cross-check only; no commercial production import."},
+    {"id":"english-profile","name":"English Vocabulary Profile / English Grammar Profile","url":"https://www.englishprofile.org/","roles":["sense-level-validation","grammar-validation"],"rights":"Reference/search access useful; no bulk redistribution licence established for this project.","decision":"REFERENCE_ONLY","productionUse":"Human cross-check of ambiguous decisions; no scraping/bulk copy."},
+    {"id":"british-council-core-inventory","name":"British Council / Eaquals Core Inventory of General English","url":"https://www.britishcouncil.org/research-insight/validating-core-inventory-general-english","roles":["curriculum-cross-check","validation-research"],"rights":"Reference/research use only unless exact asset rights are separately established.","decision":"REFERENCE_ONLY","productionUse":"Cross-check grammar/functions/topics; do not treat its level assignments as infallible or copy protected inventory text."},
+    {"id":"efllex","name":"EFLLex","url":"https://cental.uclouvain.be/cefrlex/efllex/","roles":["cefr-lexical-frequency-research"],"rights":"CC BY-NC-SA 4.0","decision":"REFERENCE_ONLY","productionUse":"Research comparison only."},
+    {"id":"open-multilingual-wordnet-vi","name":"Vietnamese/Open Multilingual WordNet candidates","url":"https://globalwordnet.github.io/resources/wordnets-in-the-world","roles":["vietnamese-lexical-research"],"rights":"Per-resource licences/upstream provenance vary.","decision":"CANDIDATE_QUARANTINE","productionUse":"Research only until exact Vietnamese resource and lineage are verified; PanLex is cleaner for V1."},
+    {"id":"cmudict","name":"CMU Pronouncing Dictionary","url":"https://github.com/cmusphinx/cmudict","roles":["pronunciation-candidate","us-english"],"rights":"Broad use/copy/modify/distribute permission subject to notices/acknowledgement.","decision":"CANDIDATE_QUARANTINE","productionUse":"Wait for approved first-class pronunciation schema/API."},
+    {"id":"ipa-dict","name":"open-dict-data/ipa-dict","url":"https://github.com/open-dict-data/ipa-dict","roles":["pronunciation-research","variant-research"],"rights":"Repository default MIT but third-party language datasets retain upstream licences; en_US/en_UK/Vietnamese lineages differ.","decision":"CANDIDATE_QUARANTINE","productionUse":"Useful pronunciation research; never assume repo-level MIT covers every language dataset; wait for pronunciation schema."},
+    {"id":"common-voice","name":"Mozilla Common Voice","url":"https://commonvoice.mozilla.org/terms","roles":["speech-research","asr-evaluation"],"rights":"CC0 dataset with current Mozilla Data Collective terms including privacy/redistribution constraints.","decision":"CANDIDATE_QUARANTINE","productionUse":"Research/model evaluation only until learner-facing audio redistribution is explicitly cleared."},
+    {"id":"wiktionary-wiktextract","name":"Wiktionary via Wiktextract / Kaikki","url":"https://kaikki.org/","roles":["forms-candidate","gloss-candidate","translation-candidate","pronunciation-candidate"],"rights":"Parser code licence does not replace Wiktionary content licences; content carries share-alike/GFDL obligations.","decision":"CANDIDATE_QUARANTINE","productionUse":"Later enrichment only after share-alike/provenance design."},
+    {"id":"tatoeba","name":"Tatoeba","url":"https://tatoeba.org/","roles":["sentence-candidate","translation-candidate","audio-candidate"],"rights":"Default sentence redistribution CC BY 2.0; some originals CC0; translation/audio rights require item-level handling.","decision":"CANDIDATE_QUARANTINE","productionUse":"Per-record candidates later; first production pack uses original LINGUA-authored examples."},
+    {"id":"unimorph-eng","name":"UniMorph English","url":"https://github.com/unimorph/eng","roles":["morphology-candidate"],"rights":"Share-alike licensed dataset.","decision":"CANDIDATE_QUARANTINE","productionUse":"Later form validation; first pack prefers deterministic/manual forms."},
+    {"id":"leipzig-corpora","name":"Leipzig Corpora Collection","url":"https://wortschatz.uni-leipzig.de/en/usage","roles":["frequency-candidate","cooccurrence-candidate"],"rights":"Query/download terms differ; source documents originate from varied web material.","decision":"CANDIDATE_QUARANTINE","productionUse":"Possible aggregate research after source-specific review; not first learner-facing source."},
+    {"id":"universal-cefr","name":"UniversalCEFR / mixed CEFR corpora","url":"https://huggingface.co/UniversalCEFR","roles":["text-level-cefr-research"],"rights":"Collection aggregates datasets with heterogeneous licences; many are non-commercial/source-restricted.","decision":"REFERENCE_ONLY","productionUse":"Research/evaluation only; wrapper licence never overrides upstream rights."},
+    {"id":"icnale","name":"ICNALE","url":"https://language.sakura.ne.jp/icnale/","roles":["learner-corpus-research","vietnamese-l1-research"],"rights":"Terms prohibit reproduction/redistribution of part or all of the data.","decision":"REFERENCE_ONLY","productionUse":"Use aggregate published research findings only; never ship learner texts."},
+    {"id":"efcamdat","name":"EF-Cambridge Open Language Database","url":"https://ef-lab.mml.cam.ac.uk/EFCAMDAT.html","roles":["learner-error-research"],"rights":"Academic/private-study/non-commercial agreement with derivative restrictions.","decision":"REFERENCE_ONLY","productionUse":"Research literature only."},
+    {"id":"ud-english-ewt","name":"Universal Dependencies English-EWT","url":"https://github.com/UniversalDependencies/UD_English-EWT","roles":["syntax-research","parser-evaluation"],"rights":"Share-alike annotations; underlying texts have mixed provenance.","decision":"REFERENCE_ONLY","productionUse":"Inform/evaluate deterministic complexity features; do not republish source sentences."},
+    {"id":"languagetool","name":"LanguageTool","url":"https://github.com/languagetool-org/languagetool","roles":["admin-qa-candidate","grammar-checking"],"rights":"Core LGPL 2.1 or later.","decision":"CANDIDATE_QUARANTINE","productionUse":"Optional authoring QA only; never curriculum authority/core runtime dependency."},
+    {"id":"wordfreq","name":"wordfreq","url":"https://github.com/rspeer/wordfreq","roles":["frequency-research"],"rights":"Code/data have different licences; bundled data aggregates many upstream sources; frequency snapshot effectively ends around 2021.","decision":"REJECT_MVP","productionUse":"Do not export/copy frequency data into V1 catalog."},
+    {"id":"conceptnet","name":"ConceptNet","url":"https://conceptnet.io/","roles":["relation-candidate"],"rights":"CC BY-SA 4.0 data.","decision":"REJECT_MVP","productionUse":"Do not use as authoritative prerequisite graph."},
+    {"id":"syntagnet","name":"SyntagNet","url":"https://github.com/x-englishwordnet/syntagnet","roles":["collocation-research"],"rights":"CC BY-NC-SA 4.0.","decision":"REJECT_MVP","productionUse":"No commercial production import."},
+    {"id":"generated-phrasal-verbs","name":"WithEnglishWeCan/generated-english-phrasal-verbs","url":"https://github.com/WithEnglishWeCan/generated-english-phrasal-verbs","roles":["phrasal-verb-candidate"],"rights":"Repository states MIT, but generated output lacks sufficiently explicit upstream source/provenance chain in root review.","decision":"CANDIDATE_QUARANTINE","productionUse":"Do not ingest until generation sources/data rights independently verified."},
+    {"id":"project-gutenberg","name":"Project Gutenberg","url":"https://www.gutenberg.org/","roles":["literature-research"],"rights":"Public-domain status varies by title/jurisdiction; style often poor fit for modern Pre-A1-B1 micro-content.","decision":"REJECT_MVP","productionUse":"Not needed for first modern learner-content pack."}
   ],
   "globalGuardrails": [
     "Repository/software licence does not automatically license embedded or generated language data.",
     "Aggregator/wrapper licence never overrides upstream content rights.",
+    "Third-party observed hashes/counts are cross-check evidence, not a LINGUA-verified source snapshot.",
     "Share-alike sources require an explicit segregation/attribution/redistribution decision before production import.",
     "Research papers inform pedagogy; their stimuli/examples are not copied unless separately licensed.",
     "Knowledge relations never transfer Save/Learn intent, FSRS state, competence or mastery between concepts."
