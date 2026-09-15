@@ -59,6 +59,10 @@ function payloadTooLargeResponse(): NextResponse {
   return errorResponse(413, 'PAYLOAD_TOO_LARGE', 'The request body is too large.');
 }
 
+function invalidRequestBodyResponse(): NextResponse {
+  return errorResponse(400, 'VALIDATION_ERROR', 'The request body could not be read.');
+}
+
 function forwardRequestHeaders(request: Request): Headers {
   const headers = new Headers();
   const tunneledIfMatch = request.headers.get('x-lingua-if-match');
@@ -94,9 +98,9 @@ function forwardResponseHeaders(response: Response): Headers {
   return headers;
 }
 
-async function boundedRequestBody(request: Request): Promise<ArrayBuffer | undefined | NextResponse> {
+async function boundedRequestBody(request: Request): Promise<Uint8Array | undefined | NextResponse> {
   const method = request.method.toUpperCase();
-  if (method === 'GET' || method === 'HEAD') return undefined;
+  if (method === 'GET' || method === 'HEAD' || request.body === null) return undefined;
 
   const declaredLength = request.headers.get('content-length');
   if (declaredLength) {
@@ -106,8 +110,37 @@ async function boundedRequestBody(request: Request): Promise<ArrayBuffer | undef
     }
   }
 
-  const body = await request.arrayBuffer();
-  if (body.byteLength > MAX_REQUEST_BODY_BYTES) return payloadTooLargeResponse();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || value.byteLength === 0) continue;
+
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+        await reader.cancel('request body exceeds proxy limit');
+        return payloadTooLargeResponse();
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return invalidRequestBodyResponse();
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (totalBytes === 0) return undefined;
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
   return body;
 }
 
