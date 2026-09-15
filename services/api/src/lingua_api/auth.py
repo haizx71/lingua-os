@@ -8,6 +8,7 @@ from uuid import UUID
 
 import jwt
 from jwt import InvalidTokenError, PyJWKClient
+from jwt.exceptions import PyJWKClientConnectionError
 
 from lingua_api.memory.domain import AuthenticatedActor
 
@@ -21,7 +22,7 @@ class AccessTokenForbidden(RuntimeError):
 
 
 class AuthConfigurationError(RuntimeError):
-    """The server cannot verify credentials because auth is not configured."""
+    """The server cannot verify credentials because auth is not configured or reachable."""
 
 
 class AccessTokenVerifier(Protocol):
@@ -64,6 +65,10 @@ class SupabaseJwtVerifier:
     def verify(self, token: str) -> AuthenticatedActor:
         try:
             signing_key = self._signing_keys.get_signing_key_from_jwt(token)
+        except PyJWKClientConnectionError as error:
+            raise AuthConfigurationError("Supabase JWKS endpoint is unavailable") from error
+
+        try:
             claims = jwt.decode(
                 token,
                 cast(Any, signing_key.key),
