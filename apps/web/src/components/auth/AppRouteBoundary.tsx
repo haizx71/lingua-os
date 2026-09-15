@@ -7,18 +7,12 @@ import { AppShell } from '../navigation/AppShell';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useProductReadiness } from '../../hooks/useProductReadiness';
 
-const publicRoutes = new Set(['/', '/auth']);
+const publicRoutes = new Set(['/', '/auth', '/auth/reset-password']);
 
 /**
- * Keeps the public auth entry separate from authenticated product surfaces.
- * Enforces authoritative product readiness before allowing access to product routes.
- *
- * Route gating truth table:
- * - unauthenticated + protected route -> /auth
- * - authenticated + unready + protected route (non-/onboarding) -> /onboarding
- * - authenticated + ready + /auth -> /today
- * - authenticated + ready + /onboarding (without explicit ?mode=assessment) -> /today
- * - bootstrap error -> render error with retry; NEVER redirect to /onboarding (avoids loop)
+ * Keeps public auth/recovery surfaces separate from authenticated product routes.
+ * Product routes still require authoritative backend readiness; recovery is exempt
+ * so an authenticated password-recovery session cannot be redirected into onboarding.
  */
 export interface AppRouteBoundaryProps {
   readonly children: React.ReactNode;
@@ -53,7 +47,8 @@ export function AppRouteBoundary({
   const effectivePathname = pathname ?? '/';
   const { authState, isConfigured } = useAuth();
   const isAdminRoute = effectivePathname === '/admin' || effectivePathname.startsWith('/admin/');
-  const readiness = useProductReadiness(undefined, !isAdminRoute);
+  const isRecoveryRoute = effectivePathname === '/auth/reset-password';
+  const readiness = useProductReadiness(undefined, !isAdminRoute && !isRecoveryRoute);
   const isPublicRoute = publicRoutes.has(effectivePathname);
   const isOnboardingRoute = effectivePathname === '/onboarding';
 
@@ -66,15 +61,11 @@ export function AppRouteBoundary({
     }
 
     if (authState === 'authenticated') {
-      if (isAdminRoute) return;
-      if (readiness.status === 'loading' || readiness.status === 'error') {
-        return;
-      }
+      if (isAdminRoute || isRecoveryRoute) return;
+      if (readiness.status === 'loading' || readiness.status === 'error') return;
 
       if (readiness.status === 'not_ready') {
-        if (!isOnboardingRoute) {
-          effectiveRouter.replace('/onboarding');
-        }
+        if (!isOnboardingRoute) effectiveRouter.replace('/onboarding');
         return;
       }
 
@@ -87,13 +78,21 @@ export function AppRouteBoundary({
           const hasAssessmentIntent =
             typeof window !== 'undefined' &&
             new URLSearchParams(window.location.search).get('mode') === 'assessment';
-          if (!hasAssessmentIntent) {
-            effectiveRouter.replace('/today');
-          }
+          if (!hasAssessmentIntent) effectiveRouter.replace('/today');
         }
       }
     }
-  }, [authState, effectivePathname, effectiveRouter, isAdminRoute, isConfigured, isOnboardingRoute, isPublicRoute, readiness.status]);
+  }, [
+    authState,
+    effectivePathname,
+    effectiveRouter,
+    isAdminRoute,
+    isConfigured,
+    isOnboardingRoute,
+    isPublicRoute,
+    isRecoveryRoute,
+    readiness.status,
+  ]);
 
   if (!isPublicRoute && !isConfigured) {
     return (
@@ -145,6 +144,8 @@ export function AppRouteBoundary({
     }
   }
 
-  if (isPublicRoute) return <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">{children}</main>;
+  if (isPublicRoute) {
+    return <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">{children}</main>;
+  }
   return <AppShell>{children}</AppShell>;
 }
