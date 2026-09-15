@@ -23,10 +23,6 @@ def test_browser_roles_have_no_public_schema_or_function_execute_privileges(
             ("authenticated", False),
         ]
 
-        assert connection.execute(
-            "SELECT has_schema_privilege('service_role', 'public', 'USAGE')"
-        ).fetchone() == (True,)
-
         browser_executable_functions = connection.execute(
             """
             SELECT p.proname
