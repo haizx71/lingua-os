@@ -5,11 +5,17 @@ from __future__ import annotations
 from typing import Annotated, Any, cast
 from uuid import UUID
 
+import psycopg
 from fastapi import APIRouter, Header, Path, Query, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic.json_schema import SkipJsonSchema
 
-from lingua_api.auth import AccessTokenForbidden, AccessTokenInvalid, AccessTokenVerifier
+from lingua_api.auth import (
+    AccessTokenForbidden,
+    AccessTokenInvalid,
+    AccessTokenVerifier,
+    AuthConfigurationError,
+)
 from lingua_api.competence.domain import CompetenceProjection, CompetenceScoreProjection
 from lingua_api.memory.domain import AuthenticatedActor, ReviewRating, ReviewSubmission
 from lingua_api.review.domain import (
@@ -63,7 +69,33 @@ def authenticated_actor(
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise AccessTokenInvalid("bearer credential is required")
     verifier = cast(AccessTokenVerifier, request.app.state.token_verifier)
-    return verifier.verify(credentials.credentials)
+    actor = verifier.verify(credentials.credentials)
+    _require_live_auth_identity(request, actor)
+    return actor
+
+
+def _require_live_auth_identity(request: Request, actor: AuthenticatedActor) -> None:
+    """Reject still-cryptographically-valid JWTs after the Supabase user is deleted.
+
+    Supabase access tokens remain valid until their expiry. The application database is
+    connected to the same Supabase project, so auth.users is the authoritative revocation
+    check for destructive account lifecycle events. Test/unit apps without a database URL
+    keep the verifier-only boundary.
+    """
+
+    database_url = cast(str | None, getattr(request.app.state, "database_url", None))
+    if database_url is None:
+        return
+    try:
+        with psycopg.connect(database_url, connect_timeout=3) as connection:
+            exists = connection.execute(
+                "SELECT EXISTS (SELECT 1 FROM auth.users WHERE id = %s)",
+                (actor.id,),
+            ).fetchone()
+    except psycopg.Error as error:
+        raise AuthConfigurationError("authenticated identity could not be checked") from error
+    if exists != (True,):
+        raise AccessTokenInvalid("authenticated identity no longer exists")
 
 
 def queue_actor(
