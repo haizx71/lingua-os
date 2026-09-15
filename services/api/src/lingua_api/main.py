@@ -126,7 +126,9 @@ def create_app(
     resolved_cursor_secret = cursor_secret or _cursor_secret_from_environment()
     application.state.database_url = resolved_database_url
     application.state.cursor_secret_configured = resolved_cursor_secret is not None
-    application.state.auth_configured = token_verifier is not None or bool(os.getenv("SUPABASE_URL"))
+    application.state.auth_configured = token_verifier is not None or bool(
+        os.getenv("SUPABASE_URL")
+    )
     application.state.token_verifier = token_verifier or _token_verifier_from_environment()
     application.state.admin_actor_policy = AdminActorPolicy.from_environment_value(
         admin_user_ids if admin_user_ids is not None else os.getenv("LINGUA_ADMIN_USER_IDS")
