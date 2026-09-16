@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MobileBottomNav } from './MobileBottomNav';
+import { MobileTopBar } from './MobileTopBar';
 import { TabletRail } from './TabletRail';
 import { DesktopSidebar } from './DesktopSidebar';
 
@@ -27,11 +28,14 @@ export function AppShell({ children, focusMode = false, currentPath }: AppShellP
       <DesktopSidebar currentPath={currentPath} />
       <TabletRail currentPath={currentPath} />
 
-      <main className="min-h-[100dvh] min-w-0 flex-1 overflow-x-clip pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pl-20 md:pb-10 xl:pl-[17.5rem]">
-        <div className="mx-auto w-full min-w-0 max-w-[1540px] px-3 py-3 sm:px-6 sm:py-6 lg:px-8 xl:px-10 xl:py-8">
-          {children}
-        </div>
-      </main>
+      <div className="min-w-0 flex-1 md:pl-20 xl:pl-[17.5rem]">
+        <MobileTopBar currentPath={currentPath} />
+        <main className="min-h-[calc(100dvh-3.5rem)] min-w-0 overflow-x-clip pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:min-h-[100dvh] md:pb-10">
+          <div className="mx-auto w-full min-w-0 max-w-[1540px] px-3 py-3 sm:px-6 sm:py-6 lg:px-8 xl:px-10 xl:py-8">
+            {children}
+          </div>
+        </main>
+      </div>
 
       <MobileBottomNav currentPath={currentPath} />
     </div>
