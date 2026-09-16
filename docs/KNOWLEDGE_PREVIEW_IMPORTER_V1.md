@@ -4,107 +4,132 @@ Status: **implemented as research tooling; no apply mode; no database access**
 
 ## Purpose
 
-`knowledge/preview_import.py` turns candidate packs plus audit artifacts into a deterministic, inspectable import plan. It cannot write PostgreSQL/Supabase and intentionally contains no `apply` subcommand.
+`knowledge/preview_import.py` turns first-party candidate packs plus independent evidence audits into a deterministic, inspectable import plan. It cannot write PostgreSQL/Supabase and intentionally contains no `apply` command, database URL, service-role credential, migration path or network write.
 
-This is the safety boundary between research artifacts and a future production importer.
+This is the safety boundary between knowledge research and any future catalog importer.
 
-## Inputs
+## Current evidence contract
 
-Required:
+Current level audit: `knowledge/level_audit_115.v3.json`.
 
-- one or more `--pack` candidate JSON files;
-- `--level-audit <audit.json>` using `knowledge-level-audit-115.v1` or the current `knowledge-level-audit-115.v2`;
-- `--grammar-audit knowledge/grammar_audit_8.v1.json`.
+V3 delegates non-lexical evidence rather than pretending one word-list can certify every concept type:
+
+- grammar: `knowledge/grammar_audit_8.v1.json`;
+- phrases: `knowledge/phrase_audit_17.v1.json`;
+- communicative skills: `knowledge/skill_audit_8.v1.json`.
+
+For V3, phrase and skill audit inputs are mandatory whenever candidate packs contain those concept types. Their key sets must exactly equal the corresponding source-pack key sets.
+
+Historical level audit V1/V2 remain readable for research comparison, but the current 115-pack workflow should use V3 because V1/V2 contained the audit-only key `phrase:because-simple-reason` instead of the real starter key `phrase:what-time`.
+
+## CLI inputs
+
+Required for the current 115-pack preview:
+
+- one or more `--pack <candidate.json>`;
+- `--level-audit knowledge/level_audit_115.v3.json`;
+- `--grammar-audit knowledge/grammar_audit_8.v1.json`;
+- `--phrase-audit knowledge/phrase_audit_17.v1.json`;
+- `--skill-audit knowledge/skill_audit_8.v1.json`.
 
 Optional:
 
-- `--catalog-snapshot <json>`: a read-only exported snapshot with schema `knowledge-catalog-snapshot.v1`;
-- `--output <json>`: write the preview report to a local file.
+- `--catalog-snapshot <json>`: read-only snapshot with schema `knowledge-catalog-snapshot.v1`;
+- `--output <json>`: local preview report path.
 
-There is no database URL argument and no network operation.
+There is no apply flag. Supplying `--apply` is rejected by `argparse`.
 
 ## Output
 
 Schema: `knowledge-import-preview.v1`.
 
-For each concept:
+Per concept:
 
-- `WOULD_INSERT` when no canonical key exists in the supplied snapshot;
-- `WOULD_NOOP_EXISTING` when stable identity matches;
-- `BLOCK_COLLISION` when the same key has a conflicting type/form/POS.
+- `WOULD_INSERT`: canonical key absent from supplied snapshot;
+- `WOULD_NOOP_EXISTING`: same stable key/type/form/POS identity already exists;
+- `BLOCK_COLLISION`: same key exists with conflicting stable identity.
 
-The report also emits source-pack hashes, exact level/grammar audit schema IDs, level-disposition counts, separate blocker/warning lists, a deterministic `planSha256`, and `applySupported: false` **always**.
+The report also records source-pack hashes, exact audit schema IDs, disposition counts, separate blockers/warnings, deterministic `planSha256`, and `applySupported: false` **always**.
 
-A clean future report may set `productionCandidateEligible: true`, but this V1 tool still cannot apply anything.
+A future clean plan may set `productionCandidateEligible: true`; this script still will not apply it.
 
-## V2 blocker versus warning policy
+## Review semantics
 
-The first audit pass treated every level mismatch as a blocker. The current V2 audit distinguishes difficulty risk from conservative sequencing.
+Top-level level-audit severity supports `blocker`, `warning`, `info`, and `delegated`.
 
-**Blockers** include earlier-than-reference placement, material source disagreement, canonical identity/POS mismatches, unresolved phrase/skill evidence, grammar records that are not production-approved, catalog identity collisions, A0 stretch decisions awaiting review, and production lexical authority that is not `LINGUA_VERIFIED`.
+- **blocker**: early placement, source disagreement, identity/POS issue, or another unresolved difficulty/identity risk;
+- **warning**: conservative later placement or independent support where sources differ;
+- **info**: non-blocking evidence state;
+- **delegated**: the level audit deliberately hands authority to grammar/phrase/skill audit.
 
-**Warnings** include LINGUA teaching an item later than a reference and a proposed band that gained independent secondary-source support even though the first reference differed.
+Type-specific audits then independently gate production. A grammar, phrase or skill record with `productionApproved != true` adds a review blocker even when its evidence supports the proposed curriculum band. Evidence sufficiency and human production approval are intentionally separate states.
 
-Teaching later is conservative, so it should not block a future import by itself. Teaching earlier may increase learner difficulty and therefore remains review-gated.
-
-Audit V2 can provide explicit group severity (`blocker`, `warning`, `info`, `delegated`). Explicit V2 severity wins over the legacy disposition fallback, so review policy lives in inspectable data rather than hidden control flow.
+This means “we found good evidence” never silently becomes “write to catalog”.
 
 ## Fail-closed structural checks
 
 Preview fails immediately for:
 
 - duplicate canonical keys across packs;
+- level audit keys that do not exactly match all candidate keys;
+- grammar/phrase/skill audit keys that do not exactly match their candidate type;
+- missing V3 phrase/skill audit when those types exist;
+- malformed audit schemas or duplicate audit records;
 - invalid concept type/key prefix;
 - missing or blank `canonicalForm`;
-- unsupported curriculum bands (only internal `LINGUA_A0/A1/A2/B1` are accepted by this V1 pack contract);
-- word concepts without a non-empty POS;
-- non-word concepts that incorrectly carry a POS;
+- unsupported curriculum band outside `LINGUA_A0/A1/A2/B1`;
+- word without POS or non-word with a POS;
 - non-candidate pack/review state;
 - non-first-party example rights in these first-party packs;
-- blank English or Vietnamese example text;
-- forbidden learner-state fields anywhere in the candidate pack;
+- blank English/Vietnamese examples;
+- forbidden learner-state fields anywhere in the pack;
 - unknown/self/cyclic prerequisite edges;
-- incomplete or extra level-audit records;
-- incomplete or extra grammar-audit records;
-- malformed/duplicate catalog snapshot identities;
-- malformed V2 severity values.
+- malformed catalog snapshot or duplicate catalog identities;
+- unsupported explicit severity.
 
-Review disagreements instead produce a deterministic plan with `status: BLOCKED_REVIEW`, allowing a reviewer to inspect exactly what would happen without weakening the gate.
+Review disagreements produce a valid deterministic `BLOCKED_REVIEW` plan rather than hiding the proposed diff.
 
-## Current 115-concept expectation
+## Current blocker shape
 
-With an empty catalog snapshot, all 115 current candidate concepts remain structurally previewable as `WOULD_INSERT`, but the plan must remain `BLOCKED_REVIEW` because:
+All 115 concepts should be structurally previewable once V3 and all three type audits are supplied, but production remains blocked because:
 
-- the official CEFR-J 1.6 artifact is not yet independently downloaded and hash-verified by LINGUA;
-- the lexical review queue still includes `far`, `booking`, `cash`, `left`, `right`, `environment`, and `need`;
-- 17 phrase concepts still need phrase/function evidence;
-- 8 skill concepts still need can-do/function review;
-- all 8 grammar concepts have evidence reviews but intentionally remain `productionApproved: false` until human curriculum sign-off.
+- CEFR-J 1.6 is still not a LINGUA-owned independently hash-verified binary snapshot;
+- `far` has a canonical POS/identity mismatch awaiting atomic correction;
+- `booking`, `cash`, `environment`, and `need` still need explicit curriculum decisions;
+- `ask-basic-directions` needs scope narrowing/splitting between A1 location questions and A2 route-direction interaction;
+- `make-a-plan` still needs exact collocation review;
+- all grammar/phrase/skill records intentionally remain `productionApproved: false` until human sign-off.
 
-That is intentional. **Previewability is not import approval.**
+`left` and `right` are no longer unresolved blockers: Oxford A1 evidence supports the current directional noun proposals.
 
 ## `far` identity handling
 
-The source pack currently contains `word:far:adjective`, but the V2 audit found that its intended example/sense is adverbial and proposes `word:far:adverb` at A2.
+Current source pack: `word:far:adjective`, A2, example `The airport is far from here.`
 
-The preview importer does not silently rewrite canonical identities. The audit marks the current concept `IDENTITY_MODEL_REVIEW_REQUIRED`, which blocks production until the source pack and every coverage/reference artifact are migrated together. This avoids an orphaned key and prevents a level mismatch from being hidden by normalization.
+Evidence review shows the intended distance use is adverbial. Proposed future atomic migration:
 
-## Tests
+`word:far:adverb` / `partOfSpeech=adverb` / `LINGUA_A2`.
 
-`knowledge/tests/test_preview_import.py` now covers no-apply behavior, unverified-authority blocking, synthetic candidate-ready behavior while `applySupported=false`, duplicate/prerequisite errors, nested learner-state-field rejection, catalog identity collision/no-op, blocker dispositions, later-than-reference warning semantics, V2 explicit severity, blank canonical forms, invalid curriculum bands, word/non-word POS contracts, bilingual examples, grammar production-approval gating, and CLI rejection of `--apply`.
+The preview importer never rewrites identities. Until the support pack and all coverage/audit references are changed together, the current identity remains blocked.
 
-An isolated Python stdlib unit run of the exact current importer/test pair in the assistant workspace completed **18/18 PASS**. This is not a substitute for the repository's full validation suite after checkout/merge.
+## Test status
 
-## Future apply task
+The test suite now includes legacy behavior plus V3 cases for mandatory phrase/skill audit inputs, exact type-audit coverage, type-specific human approval gates, severity handling, structural concept validation, catalog collision/no-op, learner-state-field rejection and CLI rejection of `--apply`.
 
-A future bounded task may implement transactional apply only after:
+The earlier 18/18 isolated result applied to the preceding importer revision. After the V3 phrase/skill gate expansion, the updated GitHub tests still require an independent local/CI execution before any new pass count is claimed.
 
-1. CEFR-J 1.6 source snapshot is independently pinned by LINGUA;
-2. the V2 lexical review queue is resolved;
-3. source-pack identity correction for `far` is complete and all coverage keys are consistent;
-4. grammar/phrase/skill review is explicitly approved;
-5. current master schema/catalog anchors are re-audited after parallel sessions merge;
-6. preview against staging's read-only catalog snapshot shows an acceptable diff;
-7. an independent reviewer approves the exact plan hash.
+## Future apply boundary
 
-Do **not** add apply behavior to `preview_import.py`. Build a separate, narrowly reviewed transactional importer boundary later.
+Do **not** add apply behavior to `preview_import.py`.
+
+A separate transactional importer may be designed only after:
+
+1. CEFR-J 1.6 source snapshot is independently pinned and hashed by LINGUA;
+2. V3 lexical blocker queue is resolved;
+3. `far` identity migration is atomic across pack/coverage/audit artifacts;
+4. grammar/phrase/skill records receive explicit human sign-off;
+5. current master schema/catalog anchors are re-audited after parallel work merges;
+6. preview against a read-only staging catalog snapshot shows the intended diff;
+7. an independent reviewer approves the exact `planSha256`.
+
+Even that future importer must remain catalog-only and must never create learner Save/Learn intent, FSRS state, competence, exposure, Today completion or other learner state.
