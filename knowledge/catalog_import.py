@@ -9,6 +9,7 @@ Today completion, saved items, learner status, or learner progress.
 from __future__ import annotations
 
 import argparse
+import builtins
 import hashlib
 import json
 import os
@@ -76,23 +77,33 @@ def utf16_offset(value: str, codepoint_index: int) -> int:
 
 
 def example_span(concept_type: str, canonical_form: str, text: str) -> dict[str, Any]:
-    """Return a deterministic UTF-16 annotation without inventing lexical matches.
-
-    Grammar examples legitimately span the whole sentence. Skills use whole-sentence
-    context. Words/phrases are marked as target only when the canonical form occurs at
-    token boundaries; inflected/non-literal examples fall back to whole-sentence context.
-    """
+    """Return a deterministic UTF-16 annotation without inventing lexical matches."""
     if not text.strip():
         raise ImportError("example text must be non-empty")
     end_all = utf16_length(text)
     if concept_type == "grammar":
-        return {"startOffset": 0, "endOffset": end_all, "occurrenceRole": "grammar", "matchKind": "whole_sentence"}
+        return {
+            "startOffset": 0,
+            "endOffset": end_all,
+            "occurrenceRole": "grammar",
+            "matchKind": "whole_sentence",
+        }
     if concept_type == "skill":
-        return {"startOffset": 0, "endOffset": end_all, "occurrenceRole": "context", "matchKind": "whole_sentence"}
+        return {
+            "startOffset": 0,
+            "endOffset": end_all,
+            "occurrenceRole": "context",
+            "matchKind": "whole_sentence",
+        }
     pattern = re.compile(rf"(?<!\w){re.escape(canonical_form)}(?!\w)", re.IGNORECASE)
     match = pattern.search(text)
     if match is None:
-        return {"startOffset": 0, "endOffset": end_all, "occurrenceRole": "context", "matchKind": "no_exact_surface_match"}
+        return {
+            "startOffset": 0,
+            "endOffset": end_all,
+            "occurrenceRole": "context",
+            "matchKind": "no_exact_surface_match",
+        }
     return {
         "startOffset": utf16_offset(text, match.start()),
         "endOffset": utf16_offset(text, match.end()),
@@ -298,109 +309,354 @@ def _fetchone(cur: Any, sql: str, params: tuple[Any, ...]) -> tuple[Any, ...] | 
     return cur.fetchone()
 
 
+def _metadata_for(plan: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
+    metadata = dict(row["sourceMetadata"])
+    metadata["candidateSha256"] = plan["candidateSha256"]
+    metadata["planSha256"] = plan["planSha256"]
+    return metadata
+
+
 def _assert_preflight(cur: Any, plan: dict[str, Any]) -> None:
     source = plan["source"]
     rows = plan["rows"]
+    concept_ids = [row["conceptId"] for row in rows]
 
     cur.execute("select code from public.languages where code in ('en','vi') order by code")
     if [str(row[0]) for row in cur.fetchall()] != ["en", "vi"]:
         raise ImportError("staging must contain both en and vi languages")
 
-    cur.execute("select id::text, code from public.proficiency_levels where id = any(%s::uuid[])", (list(LEVEL_IDS.values()),))
+    cur.execute("select id::text,code from public.proficiency_levels where id = any(%s::uuid[])", (list(LEVEL_IDS.values()),))
     actual_levels = {str(code): str(level_id) for level_id, code in cur.fetchall()}
     expected_levels = {LEVEL_CODES[band]: level_id for band, level_id in LEVEL_IDS.items()}
     if actual_levels != expected_levels:
         raise ImportError(f"proficiency level identity drift: {actual_levels}")
 
-    license_row = _fetchone(cur, "select id::text,name,usage_policy,attribution_required from public.licenses where code=%s", (LICENSE_CODE,))
-    if license_row is not None and (str(license_row[0]) != source["licenseId"] or str(license_row[1]) != LICENSE_NAME or str(license_row[2]) != "allowed" or bool(license_row[3])):
+    license_row = _fetchone(
+        cur,
+        "select id::text,code,name,usage_policy,attribution_required from public.licenses where code=%s or id=%s",
+        (LICENSE_CODE, source["licenseId"]),
+    )
+    if license_row is not None and tuple(map(str, license_row[:4])) != (source["licenseId"], LICENSE_CODE, LICENSE_NAME, "allowed"):
         raise ImportError("license identity/policy collision")
+    if license_row is not None and bool(license_row[4]):
+        raise ImportError("first-party license must not require attribution")
 
-    source_row = _fetchone(cur, "select id::text,license_id::text,source_type,attribution_text from public.data_sources where name=%s and source_version=%s", (SOURCE_NAME, SOURCE_VERSION))
-    if source_row is not None and (str(source_row[0]) != source["sourceId"] or str(source_row[1]) != source["licenseId"] or str(source_row[2]) != "internal" or str(source_row[3]) != SOURCE_ATTRIBUTION):
+    source_row = _fetchone(
+        cur,
+        "select id::text,name,source_version,license_id::text,source_type,attribution_text from public.data_sources where (name=%s and source_version=%s) or id=%s",
+        (SOURCE_NAME, SOURCE_VERSION, source["sourceId"]),
+    )
+    expected_source = (source["sourceId"], SOURCE_NAME, SOURCE_VERSION, source["licenseId"], "internal", SOURCE_ATTRIBUTION)
+    if source_row is not None and tuple(map(str, source_row)) != expected_source:
         raise ImportError("data source identity/provenance collision")
 
     keys = [row["canonicalKey"] for row in rows]
-    cur.execute("select canonical_key,id::text,source_record_id::text from public.concepts where language_code='en' and canonical_key = any(%s)", (keys,))
-    existing_concepts = {str(key): (str(cid), str(srid)) for key, cid, srid in cur.fetchall()}
+    cur.execute(
+        "select canonical_key,concept_type,id::text,source_record_id::text from public.concepts where language_code='en' and (canonical_key = any(%s) or id = any(%s::uuid[]))",
+        (keys, concept_ids),
+    )
+    found_concepts: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
+    for key, ctype, cid, srid in cur.fetchall():
+        found_concepts[str(key)].append((str(ctype), str(cid), str(srid)))
     for row in rows:
-        existing = existing_concepts.get(row["canonicalKey"])
-        if existing is not None and existing != (row["conceptId"], row["sourceRecordId"]):
+        found = found_concepts.get(row["canonicalKey"], [])
+        expected = (row["conceptType"], row["conceptId"], row["sourceRecordId"])
+        if found and found != [expected]:
             raise ImportError(f"concept identity/provenance collision: {row['canonicalKey']}")
+    expected_keys = set(keys)
+    for key, values in found_concepts.items():
+        if key not in expected_keys:
+            raise ImportError(f"concept UUID collision with unrelated key: {key}")
 
     source_record_ids = [row["sourceRecordId"] for row in rows]
-    cur.execute("select id::text,source_id::text,source_record_key,raw_hash from public.source_records where id = any(%s::uuid[])", (source_record_ids,))
-    by_source_record_id = {str(rid): (str(sid), str(key), str(raw_hash)) for rid, sid, key, raw_hash in cur.fetchall()}
+    cur.execute(
+        "select id::text,source_id::text,source_record_key,raw_hash,transform_version,quality_score,review_status,reviewed_at,metadata from public.source_records where id = any(%s::uuid[])",
+        (source_record_ids,),
+    )
+    existing_records = {str(record[0]): record[1:] for record in cur.fetchall()}
     for row in rows:
-        existing = by_source_record_id.get(row["sourceRecordId"])
-        expected = (source["sourceId"], row["canonicalKey"], row["rawHash"])
-        if existing is not None and existing != expected:
-            raise ImportError(f"source record id collision: {row['canonicalKey']}")
+        existing = existing_records.get(row["sourceRecordId"])
+        if existing is None:
+            continue
+        sid, key, raw_hash, transform, quality, status, reviewed_at, metadata = existing
+        expected_metadata = _metadata_for(plan, row)
+        if (
+            str(sid) != source["sourceId"]
+            or str(key) != row["canonicalKey"]
+            or str(raw_hash) != row["rawHash"]
+            or str(transform) != source["transformVersion"]
+            or float(quality) != 1.0
+            or str(status) != source["reviewStatus"]
+            or reviewed_at is not None
+            or metadata != expected_metadata
+        ):
+            raise ImportError(f"source record content collision: {row['canonicalKey']}")
 
     if source_row is not None:
-        cur.execute("select source_record_key,raw_hash,id::text from public.source_records where source_id=%s and source_record_key = any(%s)", (source["sourceId"], keys))
-        history: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        for key, raw_hash, rid in cur.fetchall():
-            history[str(key)].append((str(raw_hash), str(rid)))
-        for row in rows:
-            for raw_hash, rid in history.get(row["canonicalKey"], []):
-                if raw_hash == row["rawHash"] and rid != row["sourceRecordId"]:
-                    raise ImportError(f"source record unique-key collision: {row['canonicalKey']}")
+        cur.execute(
+            "select source_record_key,raw_hash,id::text from public.source_records where source_id=%s and source_record_key = any(%s)",
+            (source["sourceId"], keys),
+        )
+        for key, raw_hash, record_id in cur.fetchall():
+            row = next(item for item in rows if item["canonicalKey"] == str(key))
+            if str(raw_hash) == row["rawHash"] and str(record_id) != row["sourceRecordId"]:
+                raise ImportError(f"source record unique-key collision: {key}")
 
+    topic_ids = [topic["topicId"] for topic in plan["topics"]]
     topic_slugs = [topic["slug"] for topic in plan["topics"]]
-    cur.execute("select slug,id::text from public.topics where slug = any(%s)", (topic_slugs,))
-    existing_topics = {str(slug): str(tid) for slug, tid in cur.fetchall()}
+    cur.execute(
+        "select id::text,slug,name,source_record_id::text from public.topics where slug = any(%s) or id = any(%s::uuid[])",
+        (topic_slugs, topic_ids),
+    )
+    existing_topics = {str(slug): (str(tid), str(name), str(srid)) for tid, slug, name, srid in cur.fetchall()}
     for topic in plan["topics"]:
         existing = existing_topics.get(topic["slug"])
-        if existing is not None and existing != topic["topicId"]:
-            raise ImportError(f"topic identity collision: {topic['slug']}")
+        expected = (topic["topicId"], topic["name"], topic["sourceRecordId"])
+        if existing is not None and existing != expected:
+            raise ImportError(f"topic identity/provenance collision: {topic['slug']}")
+    for slug, value in existing_topics.items():
+        if slug not in set(topic_slugs) and value[0] in set(topic_ids):
+            raise ImportError(f"topic UUID collision with unrelated slug: {slug}")
 
     lexical_rows = [row for row in rows if "lexemeId" in row]
+    lexeme_ids = [row["lexemeId"] for row in lexical_rows]
     normalized_forms = sorted({row["normalizedForm"] for row in lexical_rows})
-    cur.execute("select normalized_form,part_of_speech,id::text,concept_id::text,source_record_id::text from public.lexemes where language_code='en' and normalized_form = any(%s)", (normalized_forms,))
-    existing_lexemes = {(str(form), None if pos is None else str(pos)): (str(lid), str(cid), str(srid)) for form, pos, lid, cid, srid in cur.fetchall()}
-    for row in lexical_rows:
-        identity = (row["normalizedForm"], row["partOfSpeech"])
+    cur.execute(
+        "select normalized_form,part_of_speech,id::text,concept_id::text,source_record_id::text from public.lexemes where language_code='en' and (normalized_form = any(%s) or id = any(%s::uuid[]))",
+        (normalized_forms, lexeme_ids),
+    )
+    existing_lexemes = {
+        (str(form), None if pos is None else str(pos)): (str(lid), str(cid), str(srid))
+        for form, pos, lid, cid, srid in cur.fetchall()
+    }
+    expected_lexeme_ids = set(lexeme_ids)
+    expected_lexeme_identity = {(row["normalizedForm"], row["partOfSpeech"]): row for row in lexical_rows}
+    for identity, row in expected_lexeme_identity.items():
         existing = existing_lexemes.get(identity)
         expected = (row["lexemeId"], row["conceptId"], row["sourceRecordId"])
         if existing is not None and existing != expected:
             raise ImportError(f"lexeme identity collision: {row['canonicalKey']}")
+    for identity, value in existing_lexemes.items():
+        if identity not in expected_lexeme_identity and value[0] in expected_lexeme_ids:
+            raise ImportError(f"lexeme UUID collision with unrelated identity: {identity}")
+
+    sense_ids = [row["senseId"] for row in lexical_rows]
+    cur.execute(
+        "select id::text,lexeme_id::text,sense_order,definition,definition_language_code,translated_definition,translation_language_code,source_record_id::text from public.word_senses where id = any(%s::uuid[]) or (lexeme_id = any(%s::uuid[]) and sense_order=1)",
+        (sense_ids, lexeme_ids),
+    )
+    senses = list(cur.fetchall())
+    by_lexeme = defaultdict(list)
+    for item in senses:
+        by_lexeme[str(item[1])].append(item)
+    for row in lexical_rows:
+        found = by_lexeme.get(row["lexemeId"], [])
+        if not found:
+            continue
+        if len(found) != 1:
+            raise ImportError(f"word sense collision: {row['canonicalKey']}")
+        sid, lexeme_id, sense_order, definition, def_lang, translated, trans_lang, srid = found[0]
+        expected = (row["senseId"], row["lexemeId"], 1, row["vietnameseSupport"], "vi", None, None, row["sourceRecordId"])
+        actual = (str(sid), str(lexeme_id), int(sense_order), str(definition), str(def_lang), translated, trans_lang, str(srid))
+        if actual != expected:
+            raise ImportError(f"word sense content collision: {row['canonicalKey']}")
+    expected_sense_ids = set(sense_ids)
+    for item in senses:
+        if str(item[0]) in expected_sense_ids and str(item[1]) not in set(lexeme_ids):
+            raise ImportError("word sense UUID collision")
+
+    cur.execute(
+        "select concept_id::text,level_id::text,confidence,source_record_id::text from public.framework_mappings where concept_id = any(%s::uuid[])",
+        (concept_ids,),
+    )
+    mappings_by_concept: dict[str, list[tuple[str, float, str]]] = defaultdict(list)
+    for cid, level_id, confidence, srid in cur.fetchall():
+        mappings_by_concept[str(cid)].append((str(level_id), float(confidence), str(srid)))
+    for row in rows:
+        found = mappings_by_concept.get(row["conceptId"], [])
+        expected = (row["levelId"], 1.0, row["sourceRecordId"])
+        if found and found != [expected]:
+            raise ImportError(f"framework mapping collision: {row['canonicalKey']}")
 
     sentence_ids = [row["sentenceId"] for row in rows]
-    cur.execute("select id::text,text,normalized_text,source_record_id::text from public.sentences where id = any(%s::uuid[])", (sentence_ids,))
-    existing_sentences = {str(sid): (str(text), str(normalized), str(srid)) for sid, text, normalized, srid in cur.fetchall()}
+    cur.execute(
+        "select id::text,text,normalized_text,quality_score,source_record_id::text from public.sentences where id = any(%s::uuid[])",
+        (sentence_ids,),
+    )
+    existing_sentences = {str(sid): (str(text), str(normalized), float(quality), str(srid)) for sid, text, normalized, quality, srid in cur.fetchall()}
     for row in rows:
-        expected = (row["example"]["en"], row["sentenceNormalizedText"], row["sourceRecordId"])
+        expected = (row["example"]["en"], row["sentenceNormalizedText"], 1.0, row["sourceRecordId"])
         existing = existing_sentences.get(row["sentenceId"])
         if existing is not None and existing != expected:
-            raise ImportError(f"sentence identity collision: {row['canonicalKey']}")
+            raise ImportError(f"sentence identity/content collision: {row['canonicalKey']}")
 
     translation_ids = [row["sentenceTranslationId"] for row in rows]
-    cur.execute("select id::text,sentence_id::text,target_language_code,text,source_record_id::text from public.sentence_translations where id = any(%s::uuid[])", (translation_ids,))
-    existing_translations = {str(tid): (str(sid), str(lang), str(text), str(srid)) for tid, sid, lang, text, srid in cur.fetchall()}
+    cur.execute(
+        "select id::text,sentence_id::text,target_language_code,text,source_record_id::text from public.sentence_translations where id = any(%s::uuid[]) or sentence_id = any(%s::uuid[])",
+        (translation_ids, sentence_ids),
+    )
+    translations_by_sentence: dict[str, list[tuple[str, str, str, str]]] = defaultdict(list)
+    for tid, sid, lang, text, srid in cur.fetchall():
+        translations_by_sentence[str(sid)].append((str(tid), str(lang), str(text), str(srid)))
     for row in rows:
-        expected = (row["sentenceId"], "vi", row["example"]["vi"], row["sourceRecordId"])
-        existing = existing_translations.get(row["sentenceTranslationId"])
-        if existing is not None and existing != expected:
-            raise ImportError(f"sentence translation identity collision: {row['canonicalKey']}")
+        found = translations_by_sentence.get(row["sentenceId"], [])
+        expected = (row["sentenceTranslationId"], "vi", row["example"]["vi"], row["sourceRecordId"])
+        if found and found != [expected]:
+            raise ImportError(f"sentence translation collision: {row['canonicalKey']}")
+
+    cur.execute(
+        "select sentence_id::text,concept_id::text,start_offset,end_offset,occurrence_role from public.sentence_concepts where sentence_id = any(%s::uuid[])",
+        (sentence_ids,),
+    )
+    annotations_by_sentence: dict[str, list[tuple[str, int, int, str]]] = defaultdict(list)
+    for sid, cid, start, end, role in cur.fetchall():
+        annotations_by_sentence[str(sid)].append((str(cid), int(start), int(end), str(role)))
+    for row in rows:
+        annotation = row["sentenceConcept"]
+        expected = (row["conceptId"], annotation["startOffset"], annotation["endOffset"], annotation["occurrenceRole"])
+        found = annotations_by_sentence.get(row["sentenceId"], [])
+        if found and found != [expected]:
+            raise ImportError(f"sentence concept annotation collision: {row['canonicalKey']}")
+
+    cur.execute(
+        "select source_concept_id::text,target_concept_id::text,weight,source_record_id::text from public.concept_relations where relation_type='prerequisite' and source_concept_id = any(%s::uuid[])",
+        (concept_ids,),
+    )
+    existing_relations = {
+        (str(source_id), str(target_id)): (None if weight is None else float(weight), str(srid))
+        for source_id, target_id, weight, srid in cur.fetchall()
+    }
+    expected_relations = {
+        (relation["sourceConceptId"], relation["targetConceptId"]): (float(relation["weight"]), relation["sourceRecordId"])
+        for relation in plan["relations"]
+    }
+    for identity, value in existing_relations.items():
+        if identity not in expected_relations or value != expected_relations[identity]:
+            raise ImportError(f"prerequisite relation collision: {identity[0]} -> {identity[1]}")
 
 
 def _insert_source_records(cur: Any, plan: dict[str, Any]) -> None:
     source = plan["source"]
     for row in plan["rows"]:
-        metadata = dict(row["sourceMetadata"])
-        metadata["candidateSha256"] = plan["candidateSha256"]
-        metadata["planSha256"] = plan["planSha256"]
         cur.execute(
             "insert into public.source_records(id,source_id,source_record_key,raw_hash,transform_version,quality_score,review_status,reviewed_at,metadata) values (%s,%s,%s,%s,%s,1,%s,NULL,%s::jsonb) on conflict (source_id,source_record_key,raw_hash) do nothing",
-            (row["sourceRecordId"], source["sourceId"], row["canonicalKey"], row["rawHash"], source["transformVersion"], source["reviewStatus"], json.dumps(metadata, ensure_ascii=False)),
+            (
+                row["sourceRecordId"],
+                source["sourceId"],
+                row["canonicalKey"],
+                row["rawHash"],
+                source["transformVersion"],
+                source["reviewStatus"],
+                json.dumps(_metadata_for(plan, row), ensure_ascii=False),
+            ),
         )
+
+
+def _assert_post_apply(cur: Any, plan: dict[str, Any]) -> None:
+    rows = plan["rows"]
+    concept_ids = [row["conceptId"] for row in rows]
+    sentence_ids = [row["sentenceId"] for row in rows]
+
+    cur.execute(
+        "select canonical_key,id::text,source_record_id::text from public.concepts where language_code='en' and id = any(%s::uuid[])",
+        (concept_ids,),
+    )
+    actual_concepts = {str(key): (str(cid), str(srid)) for key, cid, srid in cur.fetchall()}
+    expected_concepts = {row["canonicalKey"]: (row["conceptId"], row["sourceRecordId"]) for row in rows}
+    if actual_concepts != expected_concepts:
+        raise ImportError("post-apply concept/provenance verification failed")
+
+    cur.execute(
+        "select id::text,review_status,transform_version,reviewed_at from public.source_records where id = any(%s::uuid[])",
+        ([row["sourceRecordId"] for row in rows],),
+    )
+    source_records = list(cur.fetchall())
+    if len(source_records) != 108 or any(str(status) != STAGING_REVIEW_STATUS or str(transform) != TRANSFORM_VERSION or reviewed_at is not None for _, status, transform, reviewed_at in source_records):
+        raise ImportError("post-apply staging provenance boundary verification failed")
+
+    cur.execute(
+        "select concept_id::text,level_id::text,confidence,source_record_id::text from public.framework_mappings where concept_id = any(%s::uuid[])",
+        (concept_ids,),
+    )
+    actual_mappings = {(str(cid), str(level)): (float(confidence), str(srid)) for cid, level, confidence, srid in cur.fetchall()}
+    expected_mappings = {(row["conceptId"], row["levelId"]): (1.0, row["sourceRecordId"]) for row in rows}
+    if actual_mappings != expected_mappings:
+        raise ImportError("post-apply framework mapping verification failed")
+
+    lexical_rows = [row for row in rows if "lexemeId" in row]
+    cur.execute(
+        "select id::text,lexeme_id::text,sense_order,definition,definition_language_code,source_record_id::text from public.word_senses where lexeme_id = any(%s::uuid[])",
+        ([row["lexemeId"] for row in lexical_rows],),
+    )
+    actual_senses = {
+        str(lexeme_id): (str(sense_id), int(order), str(definition), str(language), str(srid))
+        for sense_id, lexeme_id, order, definition, language, srid in cur.fetchall()
+    }
+    expected_senses = {
+        row["lexemeId"]: (row["senseId"], 1, row["vietnameseSupport"], "vi", row["sourceRecordId"])
+        for row in lexical_rows
+    }
+    if actual_senses != expected_senses:
+        raise ImportError("post-apply lexical sense verification failed")
+
+    cur.execute(
+        "select id::text,text,normalized_text,source_record_id::text from public.sentences where id = any(%s::uuid[])",
+        (sentence_ids,),
+    )
+    actual_sentences = {str(sid): (str(text), str(normalized), str(srid)) for sid, text, normalized, srid in cur.fetchall()}
+    expected_sentences = {row["sentenceId"]: (row["example"]["en"], row["sentenceNormalizedText"], row["sourceRecordId"]) for row in rows}
+    if actual_sentences != expected_sentences:
+        raise ImportError("post-apply sentence verification failed")
+
+    cur.execute(
+        "select id::text,sentence_id::text,target_language_code,text,source_record_id::text from public.sentence_translations where sentence_id = any(%s::uuid[])",
+        (sentence_ids,),
+    )
+    actual_translations = {str(sid): (str(tid), str(lang), str(text), str(srid)) for tid, sid, lang, text, srid in cur.fetchall()}
+    expected_translations = {row["sentenceId"]: (row["sentenceTranslationId"], "vi", row["example"]["vi"], row["sourceRecordId"]) for row in rows}
+    if actual_translations != expected_translations:
+        raise ImportError("post-apply sentence translation verification failed")
+
+    cur.execute(
+        "select sentence_id::text,concept_id::text,start_offset,end_offset,occurrence_role from public.sentence_concepts where sentence_id = any(%s::uuid[])",
+        (sentence_ids,),
+    )
+    actual_annotations = {
+        str(sid): (str(cid), int(start), int(end), str(role))
+        for sid, cid, start, end, role in cur.fetchall()
+    }
+    expected_annotations = {
+        row["sentenceId"]: (
+            row["conceptId"],
+            row["sentenceConcept"]["startOffset"],
+            row["sentenceConcept"]["endOffset"],
+            row["sentenceConcept"]["occurrenceRole"],
+        )
+        for row in rows
+    }
+    if actual_annotations != expected_annotations:
+        raise ImportError("post-apply sentence concept annotation verification failed")
+
+    cur.execute(
+        "select source_concept_id::text,target_concept_id::text,weight,source_record_id::text from public.concept_relations where relation_type='prerequisite' and source_concept_id = any(%s::uuid[])",
+        (concept_ids,),
+    )
+    actual_relations = {
+        (str(source_id), str(target_id)): (float(weight), str(srid))
+        for source_id, target_id, weight, srid in cur.fetchall()
+    }
+    expected_relations = {
+        (relation["sourceConceptId"], relation["targetConceptId"]): (float(relation["weight"]), relation["sourceRecordId"])
+        for relation in plan["relations"]
+    }
+    if actual_relations != expected_relations:
+        raise ImportError("post-apply prerequisite relation verification failed")
 
 
 def apply_plan(plan: dict[str, Any], database_url: str) -> None:
     try:
         import psycopg  # type: ignore
-    except ImportError as exc:
+    except builtins.ImportError as exc:
         raise ImportError("apply requires psycopg; install project backend dependencies") from exc
 
     source = plan["source"]
@@ -409,47 +665,67 @@ def apply_plan(plan: dict[str, Any], database_url: str) -> None:
         with conn.transaction():
             with conn.cursor() as cur:
                 _assert_preflight(cur, plan)
-                cur.execute("insert into public.licenses(id,code,name,usage_policy,attribution_required) values (%s,%s,%s,'allowed',false) on conflict (code) do nothing", (source["licenseId"], LICENSE_CODE, LICENSE_NAME))
-                cur.execute("insert into public.data_sources(id,name,source_type,source_version,license_id,attribution_text) values (%s,%s,'internal',%s,%s,%s) on conflict (name,source_version) do nothing", (source["sourceId"], SOURCE_NAME, SOURCE_VERSION, source["licenseId"], SOURCE_ATTRIBUTION))
+                cur.execute(
+                    "insert into public.licenses(id,code,name,usage_policy,attribution_required) values (%s,%s,%s,'allowed',false) on conflict (code) do nothing",
+                    (source["licenseId"], LICENSE_CODE, LICENSE_NAME),
+                )
+                cur.execute(
+                    "insert into public.data_sources(id,name,source_type,source_version,license_id,attribution_text) values (%s,%s,'internal',%s,%s,%s) on conflict (name,source_version) do nothing",
+                    (source["sourceId"], SOURCE_NAME, SOURCE_VERSION, source["licenseId"], SOURCE_ATTRIBUTION),
+                )
                 _insert_source_records(cur, plan)
 
                 for row in rows:
-                    cur.execute("insert into public.concepts(id,language_code,concept_type,canonical_key,source_record_id) values (%s,'en',%s,%s,%s) on conflict (language_code,concept_type,canonical_key) do nothing", (row["conceptId"], row["conceptType"], row["canonicalKey"], row["sourceRecordId"]))
+                    cur.execute(
+                        "insert into public.concepts(id,language_code,concept_type,canonical_key,source_record_id) values (%s,'en',%s,%s,%s) on conflict (language_code,concept_type,canonical_key) do nothing",
+                        (row["conceptId"], row["conceptType"], row["canonicalKey"], row["sourceRecordId"]),
+                    )
 
                 for topic in plan["topics"]:
-                    cur.execute("insert into public.topics(id,slug,name,source_record_id) values (%s,%s,%s,%s) on conflict (slug) do nothing", (topic["topicId"], topic["slug"], topic["name"], topic["sourceRecordId"]))
+                    cur.execute(
+                        "insert into public.topics(id,slug,name,source_record_id) values (%s,%s,%s,%s) on conflict (slug) do nothing",
+                        (topic["topicId"], topic["slug"], topic["name"], topic["sourceRecordId"]),
+                    )
 
                 for row in rows:
-                    cur.execute("insert into public.concept_topics(concept_id,topic_id) values (%s,%s) on conflict do nothing", (row["conceptId"], row["topicId"]))
-                    cur.execute("insert into public.framework_mappings(concept_id,level_id,confidence,source_record_id) values (%s,%s,1,%s) on conflict (concept_id,level_id) do nothing", (row["conceptId"], row["levelId"], row["sourceRecordId"]))
+                    cur.execute(
+                        "insert into public.concept_topics(concept_id,topic_id) values (%s,%s) on conflict do nothing",
+                        (row["conceptId"], row["topicId"]),
+                    )
+                    cur.execute(
+                        "insert into public.framework_mappings(concept_id,level_id,confidence,source_record_id) values (%s,%s,1,%s) on conflict (concept_id,level_id) do nothing",
+                        (row["conceptId"], row["levelId"], row["sourceRecordId"]),
+                    )
                     if "lexemeId" in row:
-                        cur.execute("insert into public.lexemes(id,concept_id,language_code,lemma,normalized_form,part_of_speech,source_record_id) values (%s,%s,'en',%s,%s,%s,%s) on conflict (language_code,normalized_form,part_of_speech) do nothing", (row["lexemeId"], row["conceptId"], row["canonicalForm"], row["normalizedForm"], row["partOfSpeech"], row["sourceRecordId"]))
-                        cur.execute("insert into public.word_senses(id,lexeme_id,sense_order,definition,definition_language_code,source_record_id) values (%s,%s,1,%s,'vi',%s) on conflict (lexeme_id,sense_order) do nothing", (row["senseId"], row["lexemeId"], row["vietnameseSupport"], row["sourceRecordId"]))
-                    cur.execute("insert into public.sentences(id,language_code,text,normalized_text,quality_score,source_record_id) values (%s,'en',%s,%s,1,%s) on conflict (id) do nothing", (row["sentenceId"], row["example"]["en"], row["sentenceNormalizedText"], row["sourceRecordId"]))
-                    cur.execute("insert into public.sentence_translations(id,sentence_id,target_language_code,text,source_record_id) values (%s,%s,'vi',%s,%s) on conflict (id) do nothing", (row["sentenceTranslationId"], row["sentenceId"], row["example"]["vi"], row["sourceRecordId"]))
+                        cur.execute(
+                            "insert into public.lexemes(id,concept_id,language_code,lemma,normalized_form,part_of_speech,source_record_id) values (%s,%s,'en',%s,%s,%s,%s) on conflict (language_code,normalized_form,part_of_speech) do nothing",
+                            (row["lexemeId"], row["conceptId"], row["canonicalForm"], row["normalizedForm"], row["partOfSpeech"], row["sourceRecordId"]),
+                        )
+                        cur.execute(
+                            "insert into public.word_senses(id,lexeme_id,sense_order,definition,definition_language_code,source_record_id) values (%s,%s,1,%s,'vi',%s) on conflict (lexeme_id,sense_order) do nothing",
+                            (row["senseId"], row["lexemeId"], row["vietnameseSupport"], row["sourceRecordId"]),
+                        )
+                    cur.execute(
+                        "insert into public.sentences(id,language_code,text,normalized_text,quality_score,source_record_id) values (%s,'en',%s,%s,1,%s) on conflict (id) do nothing",
+                        (row["sentenceId"], row["example"]["en"], row["sentenceNormalizedText"], row["sourceRecordId"]),
+                    )
+                    cur.execute(
+                        "insert into public.sentence_translations(id,sentence_id,target_language_code,text,source_record_id) values (%s,%s,'vi',%s,%s) on conflict (id) do nothing",
+                        (row["sentenceTranslationId"], row["sentenceId"], row["example"]["vi"], row["sourceRecordId"]),
+                    )
                     annotation = row["sentenceConcept"]
-                    cur.execute("insert into public.sentence_concepts(sentence_id,concept_id,language_code,start_offset,end_offset,occurrence_role) values (%s,%s,'en',%s,%s,%s) on conflict do nothing", (row["sentenceId"], row["conceptId"], annotation["startOffset"], annotation["endOffset"], annotation["occurrenceRole"]))
+                    cur.execute(
+                        "insert into public.sentence_concepts(sentence_id,concept_id,language_code,start_offset,end_offset,occurrence_role) values (%s,%s,'en',%s,%s,%s) on conflict do nothing",
+                        (row["sentenceId"], row["conceptId"], annotation["startOffset"], annotation["endOffset"], annotation["occurrenceRole"]),
+                    )
 
                 for relation in plan["relations"]:
-                    cur.execute("insert into public.concept_relations(source_concept_id,target_concept_id,language_code,relation_type,weight,source_record_id) values (%s,%s,'en','prerequisite',%s,%s) on conflict (source_concept_id,target_concept_id,relation_type) do nothing", (relation["sourceConceptId"], relation["targetConceptId"], relation["weight"], relation["sourceRecordId"]))
+                    cur.execute(
+                        "insert into public.concept_relations(source_concept_id,target_concept_id,language_code,relation_type,weight,source_record_id) values (%s,%s,'en','prerequisite',%s,%s) on conflict (source_concept_id,target_concept_id,relation_type) do nothing",
+                        (relation["sourceConceptId"], relation["targetConceptId"], relation["weight"], relation["sourceRecordId"]),
+                    )
 
-                cur.execute("select canonical_key,id::text,source_record_id::text from public.concepts where language_code='en' and canonical_key = any(%s)", ([row["canonicalKey"] for row in rows],))
-                after = {str(key): (str(cid), str(srid)) for key, cid, srid in cur.fetchall()}
-                if len(after) != 108:
-                    raise ImportError(f"post-apply concept verification failed: expected 108, got {len(after)}")
-                wrong = [row["canonicalKey"] for row in rows if after.get(row["canonicalKey"]) != (row["conceptId"], row["sourceRecordId"])]
-                if wrong:
-                    raise ImportError("post-apply concept/provenance mismatch: " + ", ".join(wrong))
-
-                cur.execute("select count(*) from public.sentences where id = any(%s::uuid[])", ([row["sentenceId"] for row in rows],))
-                if int(cur.fetchone()[0]) != 108:
-                    raise ImportError("post-apply sentence verification failed")
-                cur.execute("select count(*) from public.sentence_translations where id = any(%s::uuid[])", ([row["sentenceTranslationId"] for row in rows],))
-                if int(cur.fetchone()[0]) != 108:
-                    raise ImportError("post-apply sentence translation verification failed")
-                cur.execute("select count(*) from public.concept_relations where relation_type='prerequisite' and source_concept_id = any(%s::uuid[])", ([row["conceptId"] for row in rows],))
-                if int(cur.fetchone()[0]) < plan["counts"]["prerequisiteRelations"]:
-                    raise ImportError("post-apply prerequisite relation verification failed")
+                _assert_post_apply(cur, plan)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
