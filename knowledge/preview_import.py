@@ -2,7 +2,9 @@
 """Pure, preview-only knowledge import planner for LINGUA OS.
 
 This tool never opens a database connection and intentionally has no apply mode.
-It validates candidate packs plus audit artifacts and emits a deterministic plan.
+It validates candidate packs plus independent audit artifacts and emits a
+deterministic plan. Knowledge audit V3 requires lexical, grammar, phrase and
+communicative-skill evidence to cover the exact candidate set.
 """
 from __future__ import annotations
 
@@ -20,7 +22,13 @@ ALLOWED_BANDS = {"LINGUA_A0", "LINGUA_A1", "LINGUA_A2", "LINGUA_B1"}
 ALLOWED_LEVEL_AUDIT_SCHEMAS = {
     "knowledge-level-audit-115.v1",
     "knowledge-level-audit-115.v2",
+    "knowledge-level-audit-115.v3",
 }
+CURRENT_LEVEL_AUDIT_SCHEMA = "knowledge-level-audit-115.v3"
+GRAMMAR_AUDIT_SCHEMA = "knowledge-grammar-audit-8.v1"
+PHRASE_AUDIT_SCHEMA = "knowledge-phrase-audit-17.v1"
+SKILL_AUDIT_SCHEMA = "knowledge-skill-audit-8.v1"
+
 FORBIDDEN_LEARNER_FIELDS = {
     "mastery", "competence", "fsrs", "fsrsState", "dueAt", "reviewItemId",
     "saved", "known", "learningIntent", "hasLearningIntent", "statusEvidence",
@@ -39,12 +47,6 @@ REVIEW_BLOCKING_LEVEL_DISPOSITIONS = {
 REVIEW_WARNING_LEVEL_DISPOSITIONS = {
     "LINGUA_LATER_THAN_V1_5_REFERENCE",
     "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE",
-}
-GRAMMAR_REVIEW_BLOCKING = {
-    "NO_DIRECT_PROFILE_ROW",
-    "INDIRECT_EVIDENCE_ONLY",
-    "BUNDLE_SPANS_LEVELS_REVIEW",
-    "A0_INTERNAL_SCAFFOLD_REVIEW",
 }
 
 
@@ -154,9 +156,9 @@ def validate_graph(concepts: list[dict[str, Any]]) -> None:
         raise PreviewError(f"duplicate canonicalKey across packs: {duplicates}")
     keyset = set(keys)
     edges: dict[str, list[str]] = defaultdict(list)
-    for c in concepts:
-        key = c["canonicalKey"]
-        for target in c.get("prerequisites", []):
+    for concept in concepts:
+        key = concept["canonicalKey"]
+        for target in concept.get("prerequisites", []):
             if target == key:
                 raise PreviewError(f"self prerequisite: {key}")
             if target not in keyset:
@@ -186,7 +188,7 @@ def index_audit(
     expected_schemas: str | set[str],
 ) -> dict[str, dict[str, Any]]:
     allowed = {expected_schemas} if isinstance(expected_schemas, str) else expected_schemas
-    if audit.get("schemaVersion") not in allowed:
+    if not isinstance(audit, dict) or audit.get("schemaVersion") not in allowed:
         raise PreviewError(f"audit schema must be one of {sorted(allowed)}")
 
     records = audit.get("records")
@@ -232,6 +234,28 @@ def index_audit(
     return index
 
 
+def exact_type_audit(
+    audit: dict[str, Any] | None,
+    schema: str,
+    type_name: str,
+    concepts: list[dict[str, Any]],
+    required: bool,
+) -> dict[str, dict[str, Any]]:
+    expected = {c["canonicalKey"] for c in concepts if c["conceptType"] == type_name}
+    if audit is None:
+        if required and expected:
+            raise PreviewError(f"{type_name} audit is required for {CURRENT_LEVEL_AUDIT_SCHEMA}")
+        return {}
+    index = index_audit(audit, schema)
+    if set(index) != expected:
+        missing = sorted(expected - set(index))
+        extra = sorted(set(index) - expected)
+        raise PreviewError(
+            f"{type_name} audit coverage mismatch missing={missing} extra={extra}"
+        )
+    return index
+
+
 def load_catalog_snapshot(path: Path | None) -> dict[str, dict[str, Any]]:
     if path is None:
         return {}
@@ -265,10 +289,22 @@ def _level_severity(record: dict[str, Any]) -> str:
     return "info"
 
 
+def _review_issue(
+    key: str,
+    record: dict[str, Any],
+    source: str,
+) -> dict[str, Any]:
+    disposition = record.get("disposition")
+    code = str(disposition) if disposition is not None else f"{source.upper()}_NOT_PRODUCTION_APPROVED"
+    return {"canonicalKey": key, "code": code, "source": source}
+
+
 def build_preview(
     packs: list[tuple[str, dict[str, Any]]],
     level_audit: dict[str, Any],
     grammar_audit: dict[str, Any],
+    phrase_audit: dict[str, Any] | None = None,
+    skill_audit: dict[str, Any] | None = None,
     catalog: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     catalog = catalog or {}
@@ -286,16 +322,22 @@ def build_preview(
     validate_graph(concepts)
 
     level_idx = index_audit(level_audit, ALLOWED_LEVEL_AUDIT_SCHEMAS)
-    grammar_idx = index_audit(grammar_audit, "knowledge-grammar-audit-8.v1")
     concept_keys = {c["canonicalKey"] for c in concepts}
     if set(level_idx) != concept_keys:
         missing = sorted(concept_keys - set(level_idx))
         extra = sorted(set(level_idx) - concept_keys)
         raise PreviewError(f"level audit coverage mismatch missing={missing} extra={extra}")
 
-    grammar_keys = {c["canonicalKey"] for c in concepts if c["conceptType"] == "grammar"}
-    if set(grammar_idx) != grammar_keys:
-        raise PreviewError("grammar audit does not exactly cover grammar concepts")
+    current_v3 = level_audit.get("schemaVersion") == CURRENT_LEVEL_AUDIT_SCHEMA
+    grammar_idx = exact_type_audit(
+        grammar_audit, GRAMMAR_AUDIT_SCHEMA, "grammar", concepts, required=True
+    )
+    phrase_idx = exact_type_audit(
+        phrase_audit, PHRASE_AUDIT_SCHEMA, "phrase", concepts, required=current_v3
+    )
+    skill_idx = exact_type_audit(
+        skill_audit, SKILL_AUDIT_SCHEMA, "skill", concepts, required=current_v3
+    )
 
     actions: list[dict[str, Any]] = []
     blockers: list[dict[str, Any]] = []
@@ -304,6 +346,7 @@ def build_preview(
 
     for concept in sorted(concepts, key=lambda c: c["canonicalKey"]):
         key = concept["canonicalKey"]
+        ctype = concept["conceptType"]
         audit_record = level_idx[key]
         disposition = str(audit_record.get("disposition"))
         disposition_counts[disposition] += 1
@@ -315,15 +358,18 @@ def build_preview(
         elif severity == "warning":
             warnings.append(issue)
 
-        if concept["conceptType"] == "grammar":
-            g = grammar_idx[key]
-            gdisp = str(g.get("disposition"))
-            if gdisp in GRAMMAR_REVIEW_BLOCKING or g.get("productionApproved") is not True:
-                blockers.append({
-                    "canonicalKey": key,
-                    "code": gdisp if gdisp != "None" else "GRAMMAR_NOT_PRODUCTION_APPROVED",
-                    "source": "grammar-audit",
-                })
+        if ctype == "grammar":
+            record = grammar_idx[key]
+            if record.get("productionApproved") is not True:
+                blockers.append(_review_issue(key, record, "grammar-audit"))
+        elif ctype == "phrase" and phrase_idx:
+            record = phrase_idx[key]
+            if record.get("productionApproved") is not True:
+                blockers.append(_review_issue(key, record, "phrase-audit"))
+        elif ctype == "skill" and skill_idx:
+            record = skill_idx[key]
+            if record.get("productionApproved") is not True:
+                blockers.append(_review_issue(key, record, "skill-audit"))
 
         existing = catalog.get(key)
         if existing is None:
@@ -340,7 +386,7 @@ def build_preview(
         actions.append({
             "canonicalKey": key,
             "action": action,
-            "conceptType": concept["conceptType"],
+            "conceptType": ctype,
             "curriculumBand": concept.get("curriculumBand"),
         })
 
@@ -365,6 +411,8 @@ def build_preview(
         "productionCandidateEligible": not blockers,
         "levelAuditSchema": level_audit.get("schemaVersion"),
         "grammarAuditSchema": grammar_audit.get("schemaVersion"),
+        "phraseAuditSchema": phrase_audit.get("schemaVersion") if phrase_audit else None,
+        "skillAuditSchema": skill_audit.get("schemaVersion") if skill_audit else None,
         "packs": sorted(pack_meta, key=lambda p: p["label"]),
         "counts": {
             "concepts": len(concepts),
@@ -386,6 +434,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--pack", action="append", required=True, help="candidate pack JSON; repeatable")
     parser.add_argument("--level-audit", required=True)
     parser.add_argument("--grammar-audit", required=True)
+    parser.add_argument("--phrase-audit")
+    parser.add_argument("--skill-audit")
     parser.add_argument("--catalog-snapshot")
     parser.add_argument("--output")
     return parser.parse_args(argv)
@@ -397,8 +447,10 @@ def main(argv: list[str] | None = None) -> int:
         packs = [(Path(p).name, load_json(Path(p))) for p in args.pack]
         level = load_json(Path(args.level_audit))
         grammar = load_json(Path(args.grammar_audit))
+        phrase = load_json(Path(args.phrase_audit)) if args.phrase_audit else None
+        skill = load_json(Path(args.skill_audit)) if args.skill_audit else None
         catalog = load_catalog_snapshot(Path(args.catalog_snapshot) if args.catalog_snapshot else None)
-        report = build_preview(packs, level, grammar, catalog)
+        report = build_preview(packs, level, grammar, phrase, skill, catalog)
     except PreviewError as exc:
         print(f"KNOWLEDGE IMPORT PREVIEW: FAIL: {exc}", file=sys.stderr)
         return 1
