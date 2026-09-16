@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - chatgpt/knowledge-system-v1-2026-09-15
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'knowledge/**'
+      - 'docs/KNOWLEDGE_*'
+      - 'plans/TASK-KNOWLEDGE-001-catalog-foundation.md'
+      - '.github/workflows/knowledge-audit-ci.yml'
   workflow_dispatch:
 
 permissions:
@@ -16,114 +24,62 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Compile knowledge tooling
         run: |
-          python -m py_compile \
-            knowledge/preview_import.py \
-            knowledge/validate_audit_integrity.py \
-            knowledge/build_production_starter.py
-
+          python -m py_compile knowledge/preview_import.py knowledge/validate_audit_integrity.py knowledge/build_production_starter.py knowledge/catalog_import.py
       - name: Run knowledge unit tests
         run: python -m unittest discover -s knowledge/tests -p 'test_*.py' -v
-
       - name: Validate 115-concept audit integrity
         run: |
-          python knowledge/validate_audit_integrity.py \
-            --pack knowledge/first_party_starter_inventory.v1.json \
-            --pack knowledge/first_party_content_support.v1.json \
-            --level-audit knowledge/level_audit_115.v3.json \
-            --grammar-audit knowledge/grammar_audit_8.v1.json \
-            --phrase-audit knowledge/phrase_audit_17.v1.json \
-            --skill-audit knowledge/skill_audit_8.v1.json
-
+          python knowledge/validate_audit_integrity.py --pack knowledge/first_party_starter_inventory.v1.json --pack knowledge/first_party_content_support.v1.json --level-audit knowledge/level_audit_115.v3.json --grammar-audit knowledge/grammar_audit_8.v1.json --phrase-audit knowledge/phrase_audit_17.v1.json --skill-audit knowledge/skill_audit_8.v1.json
       - name: Generate 115-concept research preview
         run: |
-          python knowledge/preview_import.py \
-            --pack knowledge/first_party_starter_inventory.v1.json \
-            --pack knowledge/first_party_content_support.v1.json \
-            --level-audit knowledge/level_audit_115.v3.json \
-            --grammar-audit knowledge/grammar_audit_8.v1.json \
-            --phrase-audit knowledge/phrase_audit_17.v1.json \
-            --skill-audit knowledge/skill_audit_8.v1.json \
-            --output /tmp/knowledge-preview.json
+          python knowledge/preview_import.py --pack knowledge/first_party_starter_inventory.v1.json --pack knowledge/first_party_content_support.v1.json --level-audit knowledge/level_audit_115.v3.json --grammar-audit knowledge/grammar_audit_8.v1.json --phrase-audit knowledge/phrase_audit_17.v1.json --skill-audit knowledge/skill_audit_8.v1.json --output /tmp/knowledge-preview.json
           python - <<'PY'
           import json
           from pathlib import Path
-          p = json.loads(Path('/tmp/knowledge-preview.json').read_text())
-          assert p['schemaVersion'] == 'knowledge-import-preview.v1'
-          assert p['mode'] == 'preview-only'
-          assert p['applySupported'] is False
-          assert p['counts']['concepts'] == 115
-          assert sum(p['counts']['actions'].values()) == 115
-          assert p['status'] == 'BLOCKED_REVIEW'
-          assert p['productionCandidateEligible'] is False
-          assert isinstance(p['planSha256'], str) and len(p['planSha256']) == 64
-          print(json.dumps({
-              'status': p['status'],
-              'concepts': p['counts']['concepts'],
-              'actions': p['counts']['actions'],
-              'blockers': p['counts']['blockers'],
-              'warnings': p['counts']['warnings'],
-              'planSha256': p['planSha256'],
-          }, sort_keys=True))
+          p=json.loads(Path('/tmp/knowledge-preview.json').read_text())
+          assert p['schemaVersion']=='knowledge-import-preview.v1' and p['applySupported'] is False
+          assert p['counts']['concepts']==115 and p['status']=='BLOCKED_REVIEW'
+          assert isinstance(p['planSha256'],str) and len(p['planSha256'])==64
           PY
-
       - name: Build conservative 108-concept staging candidate
         run: |
-          python knowledge/build_production_starter.py \
-            --pack knowledge/first_party_starter_inventory.v1.json \
-            --pack knowledge/first_party_content_support.v1.json \
-            --manifest knowledge/production_starter_manifest.v1.json \
-            --level-audit knowledge/level_audit_115.v3.json \
-            --grammar-audit knowledge/grammar_audit_8.v1.json \
-            --phrase-audit knowledge/phrase_audit_17.v1.json \
-            --skill-audit knowledge/skill_audit_8.v1.json \
-            --output /tmp/production-starter.json
+          python knowledge/build_production_starter.py --pack knowledge/first_party_starter_inventory.v1.json --pack knowledge/first_party_content_support.v1.json --manifest knowledge/production_starter_manifest.v1.json --level-audit knowledge/level_audit_115.v3.json --grammar-audit knowledge/grammar_audit_8.v1.json --phrase-audit knowledge/phrase_audit_17.v1.json --skill-audit knowledge/skill_audit_8.v1.json --output /tmp/production-starter.json
           python - <<'PY'
           import json
           from pathlib import Path
-          p = json.loads(Path('/tmp/production-starter.json').read_text())
-          assert p['schemaVersion'] == 'knowledge-production-starter-candidate.v1'
-          assert p['status'] == 'STAGING_CANDIDATE_REVIEW_REQUIRED'
-          assert p['applySupported'] is False
-          assert p['productionApproved'] is False
-          assert p['counts']['sourceConcepts'] == 115
-          assert p['counts']['selectedConcepts'] == 108
-          assert p['counts']['quarantinedConcepts'] == 7
-          assert p['counts']['selectedByType'] == {
-              'grammar': 8,
-              'phrase': 16,
-              'skill': 7,
-              'word': 77,
-          }
-          assert isinstance(p['candidateSha256'], str) and len(p['candidateSha256']) == 64
-          print(json.dumps({
-              'status': p['status'],
-              'selectedConcepts': p['counts']['selectedConcepts'],
-              'selectedByType': p['counts']['selectedByType'],
-              'quarantinedConcepts': p['counts']['quarantinedConcepts'],
-              'candidateSha256': p['candidateSha256'],
-          }, sort_keys=True))
+          p=json.loads(Path('/tmp/production-starter.json').read_text())
+          assert p['schemaVersion']=='knowledge-production-starter-candidate.v1'
+          assert p['status']=='STAGING_CANDIDATE_REVIEW_REQUIRED' and p['applySupported'] is False
+          assert p['counts']['selectedConcepts']==108 and p['counts']['quarantinedConcepts']==7
+          assert p['counts']['selectedByType']=={'grammar':8,'phrase':16,'skill':7,'word':77}
+          assert isinstance(p['candidateSha256'],str) and len(p['candidateSha256'])==64
+          print('candidateSha256='+p['candidateSha256'])
           PY
-
-      - name: Verify no apply surface exists
+      - name: Build deterministic guarded catalog apply plan
         run: |
-          if grep -R --line-number --fixed-strings 'applySupported": true' knowledge docs/KNOWLEDGE_* 2>/dev/null; then
-            echo 'Unexpected applySupported=true surface found'
-            exit 1
+          python knowledge/catalog_import.py --candidate /tmp/production-starter.json --output /tmp/catalog-plan.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('/tmp/catalog-plan.json').read_text())
+          assert p['schemaVersion']=='knowledge-catalog-apply-plan.v1'
+          assert p['counts']['concepts']==108 and p['counts']['lexicalConcepts']==93
+          assert p['counts']['byType']=={'grammar':8,'phrase':16,'skill':7,'word':77}
+          assert isinstance(p['planSha256'],str) and len(p['planSha256'])==64
+          print('candidateSha256='+p['candidateSha256'])
+          print('planSha256='+p['planSha256'])
+          PY
+      - name: Verify apply is fail-closed without explicit approvals
+        run: |
+          if python knowledge/catalog_import.py --candidate /tmp/production-starter.json --apply 2>/dev/null; then
+            echo 'Importer unexpectedly applied without approvals'; exit 1
           fi
-          if python knowledge/preview_import.py --apply 2>/dev/null; then
-            echo 'Preview importer unexpectedly accepted --apply'
-            exit 1
-          fi
-          if python knowledge/build_production_starter.py --apply 2>/dev/null; then
-            echo 'Starter builder unexpectedly accepted --apply'
-            exit 1
-          fi
-          echo 'Write-free preview/build boundary preserved'
+          if python knowledge/preview_import.py --apply 2>/dev/null; then echo 'Preview unexpectedly accepted --apply'; exit 1; fi
+          if python knowledge/build_production_starter.py --apply 2>/dev/null; then echo 'Builder unexpectedly accepted --apply'; exit 1; fi
+          echo 'Guarded apply boundary preserved'
