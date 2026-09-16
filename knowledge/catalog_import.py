@@ -23,7 +23,8 @@ PLAN_SCHEMA = "knowledge-catalog-apply-plan.v1"
 SOURCE_NAME = "LINGUA First-Party Knowledge Starter"
 SOURCE_VERSION = "2026-09-16.v1"
 LICENSE_CODE = "LINGUA-FIRST-PARTY"
-TRANSFORM_VERSION = "knowledge-catalog-import.v1"
+TRANSFORM_VERSION = "knowledge-catalog-import.v2"
+STAGING_REVIEW_STATUS = "review_pending"
 NS = uuid.UUID("4b47b8d6-0d44-4dc7-91c2-3d97f56e6040")
 LEVEL_IDS = {
     "LINGUA_A0": "00000000-0000-4000-8100-000000000000",
@@ -137,6 +138,7 @@ def build_plan(candidate: dict[str, Any]) -> dict[str, Any]:
             "sourceName": SOURCE_NAME,
             "sourceVersion": SOURCE_VERSION,
             "transformVersion": TRANSFORM_VERSION,
+            "reviewStatus": STAGING_REVIEW_STATUS,
         },
         "counts": {"concepts": len(rows), "topics": len(topics), "lexicalConcepts": counts["word"] + counts["phrase"], "byType": dict(sorted(counts.items()))},
         "rows": rows,
@@ -167,7 +169,10 @@ def apply_plan(plan: dict[str, Any], database_url: str) -> None:
                 cur.execute("insert into public.licenses(id,code,name,usage_policy,attribution_required) values (%s,%s,%s,'allowed',false) on conflict (code) do nothing", (source["licenseId"], LICENSE_CODE, "LINGUA first-party authored content"))
                 cur.execute("insert into public.data_sources(id,name,source_type,source_version,license_id,attribution_text) values (%s,%s,'internal',%s,%s,%s) on conflict (name,source_version) do nothing", (source["sourceId"], SOURCE_NAME, SOURCE_VERSION, source["licenseId"], "LINGUA OS first-party authored knowledge starter"))
                 for r in rows:
-                    cur.execute("insert into public.source_records(id,source_id,source_record_key,raw_hash,transform_version,quality_score,review_status,reviewed_at,metadata) values (%s,%s,%s,%s,%s,1,'approved',now(),%s::jsonb) on conflict (source_id,source_record_key,raw_hash) do nothing", (r["sourceRecordId"], source["sourceId"], r["canonicalKey"], r["rawHash"], TRANSFORM_VERSION, json.dumps({"candidateSha256": plan["candidateSha256"], "planSha256": plan["planSha256"], "rights": "FIRST_PARTY"})))
+                    cur.execute(
+                        "insert into public.source_records(id,source_id,source_record_key,raw_hash,transform_version,quality_score,review_status,reviewed_at,metadata) values (%s,%s,%s,%s,%s,1,%s,NULL,%s::jsonb) on conflict (source_id,source_record_key,raw_hash) do nothing",
+                        (r["sourceRecordId"], source["sourceId"], r["canonicalKey"], r["rawHash"], source["transformVersion"], source["reviewStatus"], json.dumps({"candidateSha256": plan["candidateSha256"], "planSha256": plan["planSha256"], "rights": "FIRST_PARTY", "stagingCandidate": True})),
+                    )
                     cur.execute("insert into public.concepts(id,language_code,concept_type,canonical_key,source_record_id) values (%s,'en',%s,%s,%s) on conflict (language_code,concept_type,canonical_key) do nothing", (r["conceptId"], r["conceptType"], r["canonicalKey"], r["sourceRecordId"]))
                     cur.execute("insert into public.topics(id,slug,name,source_record_id) values (%s,%s,%s,%s) on conflict (slug) do nothing", (r["topicId"], r["topic"], r["topic"].replace('-', ' ').title(), r["sourceRecordId"]))
                     cur.execute("insert into public.concept_topics(concept_id,topic_id) values (%s,%s) on conflict do nothing", (r["conceptId"], r["topicId"]))
