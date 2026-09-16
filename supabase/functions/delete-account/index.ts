@@ -1,16 +1,18 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const MAX_REQUEST_BYTES = 4096;
+const MAX_EMAIL_LENGTH = 320;
+const MAX_PASSWORD_LENGTH = 1024;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
   });
 }
 
@@ -25,11 +27,19 @@ function defaultKey(raw: string | undefined): string | null {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  // Account deletion is intentionally server-to-server only. Browser traffic
+  // must use the same-origin Next.js route, so this function exposes no CORS
+  // surface and cannot be invoked directly by a hostile website.
+  if (request.headers.has("Origin")) {
+    return json({ error: "browser_direct_call_forbidden" }, 403);
   }
   if (request.method !== "POST") {
     return json({ error: "method_not_allowed" }, 405);
+  }
+
+  const contentType = request.headers.get("Content-Type") ?? "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    return json({ error: "unsupported_media_type" }, 415);
   }
 
   const authorization = request.headers.get("Authorization");
@@ -63,17 +73,50 @@ Deno.serve(async (request: Request) => {
   }
 
   let confirmationEmail = "";
+  let currentPassword = "";
   try {
-    const body = (await request.json()) as { confirmationEmail?: unknown };
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
+      return json({ error: "request_too_large" }, 413);
+    }
+
+    const body = JSON.parse(rawBody) as {
+      confirmationEmail?: unknown;
+      currentPassword?: unknown;
+    };
     confirmationEmail = typeof body.confirmationEmail === "string"
       ? body.confirmationEmail.trim().toLowerCase()
+      : "";
+    currentPassword = typeof body.currentPassword === "string"
+      ? body.currentPassword
       : "";
   } catch {
     return json({ error: "invalid_request" }, 400);
   }
 
-  if (confirmationEmail !== user.email.trim().toLowerCase()) {
+  if (
+    !confirmationEmail ||
+    confirmationEmail.length > MAX_EMAIL_LENGTH ||
+    confirmationEmail !== user.email.trim().toLowerCase()
+  ) {
     return json({ error: "confirmation_mismatch" }, 400);
+  }
+  if (!currentPassword || currentPassword.length > MAX_PASSWORD_LENGTH) {
+    return json({ error: "recent_authentication_required" }, 403);
+  }
+
+  // A valid access token alone is not sufficient for a destructive action.
+  // Reauthenticate the same identity with its current password immediately
+  // before revoking sessions and deleting the account.
+  const reauthClient = createClient(supabaseUrl, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: reauthData, error: reauthError } = await reauthClient.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (reauthError || reauthData.user?.id !== user.id) {
+    return json({ error: "recent_authentication_required" }, 403);
   }
 
   const { error: signOutError } = await userClient.auth.signOut({ scope: "global" });
