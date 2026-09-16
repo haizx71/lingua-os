@@ -52,9 +52,10 @@ class CatalogImportTests(unittest.TestCase):
         p1 = M.build_plan(candidate())
         p2 = M.build_plan(candidate())
         self.assertEqual(p1, p2)
-        self.assertEqual(p1["schemaVersion"], "knowledge-catalog-apply-plan.v2")
+        self.assertEqual(p1["schemaVersion"], "knowledge-catalog-apply-plan.v3")
         self.assertEqual(p1["counts"]["concepts"], 108)
         self.assertEqual(p1["counts"]["lexicalConcepts"], 93)
+        self.assertEqual(p1["counts"]["lexemeForms"], 0)
         self.assertEqual(p1["counts"]["sentences"], 108)
         self.assertEqual(p1["counts"]["sentenceTranslations"], 108)
         self.assertEqual(p1["counts"]["sentenceConcepts"], 108)
@@ -63,14 +64,23 @@ class CatalogImportTests(unittest.TestCase):
             p1["counts"]["byType"],
             {"grammar": 8, "phrase": 16, "skill": 7, "word": 77},
         )
-        self.assertEqual(p1["source"]["reviewStatus"], "review_pending")
-        self.assertEqual(p1["source"]["transformVersion"], "knowledge-catalog-import.v3")
+        self.assertEqual(p1["source"]["reviewStatus"], "approved")
+        self.assertEqual(
+            p1["source"]["approvalBoundary"],
+            "exact_candidate_and_plan_hashes_required",
+        )
+        self.assertEqual(p1["source"]["transformVersion"], "knowledge-catalog-import.v4")
         self.assertEqual(len(p1["rows"]), 108)
         self.assertTrue(all(row["sourceMetadata"]["concept"] for row in p1["rows"]))
 
         apply_source = "\n".join(
             inspect.getsource(fn)
-            for fn in (M._assert_preflight, M._insert_source_records, M.apply_plan, M._assert_post_apply)
+            for fn in (
+                M._assert_preflight,
+                M._insert_source_records,
+                M.apply_plan,
+                M._assert_post_apply,
+            )
         ).lower()
         for required in (
             "concept_relations",
@@ -79,6 +89,7 @@ class CatalogImportTests(unittest.TestCase):
             "sentence_concepts",
             "framework_mappings",
             "word_senses",
+            "lexeme_forms",
         ):
             self.assertIn(required, apply_source)
         for forbidden in (
@@ -91,15 +102,19 @@ class CatalogImportTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, apply_source)
 
-    def test_staging_apply_cannot_mark_source_records_approved(self):
-        apply_source = "\n".join(
-            inspect.getsource(fn)
-            for fn in (M._insert_source_records, M.apply_plan, M._assert_post_apply)
-        )
-        self.assertIn('source["reviewStatus"]', apply_source)
-        self.assertNotIn("'approved'", apply_source)
-        self.assertNotIn('"approved"', apply_source)
-        self.assertEqual(M.STAGING_REVIEW_STATUS, "review_pending")
+    def test_apply_approval_is_hash_gated_and_runtime_visible(self):
+        self.assertEqual(M.APPLY_REVIEW_STATUS, "approved")
+        plan = M.build_plan(candidate())
+        self.assertEqual(plan["source"]["reviewStatus"], "approved")
+        main_source = inspect.getsource(M.main)
+        self.assertIn("approved_candidate_sha", main_source)
+        self.assertIn("approved_plan_sha", main_source)
+        self.assertIn('plan["candidateSha256"]', main_source)
+        self.assertIn('plan["planSha256"]', main_source)
+
+        insert_source = inspect.getsource(M._insert_source_records)
+        self.assertIn("transaction_timestamp()", insert_source)
+        self.assertIn('source["reviewStatus"]', insert_source)
 
     def test_prerequisite_direction_and_count_are_preserved(self):
         c = candidate()
@@ -128,31 +143,76 @@ class CatalogImportTests(unittest.TestCase):
         with self.assertRaises(M.ImportError):
             M.build_plan(cyclic)
 
-    def test_utf16_offsets_and_nonliteral_fallback_are_honest(self):
+    def test_utf16_offsets_are_honest_and_lexical_plan_fails_closed_without_surface(self):
         exact = M.example_span("word", "phone", "😀 phone works.")
         self.assertEqual(exact["startOffset"], 3)
         self.assertEqual(exact["endOffset"], 8)
         self.assertEqual(exact["occurrenceRole"], "target")
         self.assertEqual(exact["matchKind"], "exact_surface_match")
 
-        inflected = M.example_span("word", "be", "I am tired.")
-        self.assertEqual(inflected["startOffset"], 0)
-        self.assertEqual(inflected["endOffset"], M.utf16_length("I am tired."))
-        self.assertEqual(inflected["occurrenceRole"], "context")
-        self.assertEqual(inflected["matchKind"], "no_exact_surface_match")
+        missing = M.example_span("word", "be", "I am tired.")
+        self.assertEqual(missing["occurrenceRole"], "context")
+        self.assertEqual(missing["matchKind"], "no_exact_surface_match")
 
         grammar = M.example_span("grammar", "basic be statements", "We are at home.")
         self.assertEqual(grammar["occurrenceRole"], "grammar")
         self.assertEqual(grammar["endOffset"], M.utf16_length("We are at home."))
 
+        c = candidate()
+        c["concepts"][0]["example"]["en"] = "This sentence omits the lexical target."
+        with self.assertRaises(M.ImportError):
+            M.build_plan(c)
+
+    def test_reviewed_inflected_surfaces_become_lexeme_forms_and_target_spans(self):
+        cases = {
+            "word:be:verb": ("be", "am", "I am tired."),
+            "word:choose:verb": ("choose", "chose", "I chose the cheaper ticket."),
+            "word:manage:verb": ("manage", "managed", "I managed to finish on time."),
+            "word:realize:verb": (
+                "realize",
+                "realized",
+                "I realized that I needed a better plan.",
+            ),
+            "phrase:look-for": (
+                "look for",
+                "looking for",
+                "I am looking for the ticket office.",
+            ),
+        }
+        for key, (canonical, surface, sentence) in cases.items():
+            c = candidate()
+            target = next(
+                row
+                for row in c["concepts"]
+                if row["conceptType"] == ("phrase" if key.startswith("phrase:") else "word")
+            )
+            target["canonicalKey"] = key
+            target["canonicalForm"] = canonical
+            target["partOfSpeech"] = None if key.startswith("phrase:") else "verb"
+            target["example"]["en"] = sentence
+            p = M.build_plan(c)
+            planned = next(row for row in p["rows"] if row["canonicalKey"] == key)
+            self.assertEqual(planned["reviewedExampleSurface"], surface)
+            self.assertEqual(planned["sentenceConcept"]["occurrenceRole"], "target")
+            self.assertEqual(planned["lexemeForm"]["form"], surface)
+            self.assertGreater(
+                planned["sentenceConcept"]["endOffset"],
+                planned["sentenceConcept"]["startOffset"],
+            )
+
     def test_source_metadata_preserves_first_party_candidate_payload(self):
         c = candidate()
         p = M.build_plan(c)
         row = p["rows"][0]
-        original = next(x for x in c["concepts"] if x["canonicalKey"] == row["canonicalKey"])
+        original = next(
+            x for x in c["concepts"] if x["canonicalKey"] == row["canonicalKey"]
+        )
         self.assertEqual(row["sourceMetadata"]["concept"], original)
         self.assertEqual(row["sourceMetadata"]["rights"], "FIRST_PARTY")
         self.assertTrue(row["sourceMetadata"]["stagingCandidate"])
+        self.assertEqual(
+            row["sourceMetadata"]["catalogApprovalScope"], "reviewed_staging_catalog"
+        )
 
     def test_rejects_non_first_party_or_incomplete_example(self):
         c = candidate()
@@ -178,7 +238,9 @@ class CatalogImportTests(unittest.TestCase):
         c2["concepts"][0]["vietnameseSupport"] = "nội dung khác"
         c2.pop("candidateSha256")
         c2["candidateSha256"] = M.digest(c2)
-        self.assertNotEqual(M.build_plan(c1)["planSha256"], M.build_plan(c2)["planSha256"])
+        self.assertNotEqual(
+            M.build_plan(c1)["planSha256"], M.build_plan(c2)["planSha256"]
+        )
 
 
 if __name__ == "__main__":
