@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "knowledge-production-starter-manifest.v1",
+  "status": "CANDIDATE_SELECTION_POLICY",
+  "updatedAt": "2026-09-16",
+  "purpose": "Select a conservative first-party A0-B1 catalog subset that can be independently reviewed for staging without weakening the full 115-concept research audit.",
+  "expectedSourceConcepts": 115,
+  "expectedSelectedConcepts": 108,
+  "expectedTypeCounts": {
+    "word": 77,
+    "phrase": 16,
+    "grammar": 8,
+    "skill": 7
+  },
+  "guardrails": [
+    "This manifest selects a staging candidate; it does not production-approve concepts and cannot write to a database.",
+    "All selected concepts must remain first-party candidate data with FIRST_PARTY examples.",
+    "No selected concept may depend on a quarantined concept.",
+    "A0 means internal Pre-A1 bootstrap, not official CEFR-J A0 lexical or grammar certification.",
+    "Conservative later placement may be selected with a warning; unresolved earlier placement, source disagreement and identity errors are quarantined.",
+    "Grammar, phrase and skill concepts require exact type-specific audit coverage.",
+    "Any source-pack identity drift, audit drift, new concept or count change must fail closed until this manifest is reviewed again.",
+    "No selection decision may create learner state, Save/Learn intent, FSRS state, competence, exposure or Today completion."
+  ],
+  "allowedLevelDispositions": [
+    "A0_INTERNAL_SCAFFOLD",
+    "AGREES_WITH_V1_5_REFERENCE",
+    "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE",
+    "LINGUA_LATER_THAN_V1_5_REFERENCE",
+    "GRAMMAR_AUDIT_REQUIRED",
+    "PHRASE_AUDIT_REQUIRED",
+    "SKILL_AUDIT_REQUIRED"
+  ],
+  "allowedTypeAuditDispositions": {
+    "grammar": [
+      "A0_INTERNAL_SCAFFOLD_REVIEW",
+      "SUPPORTED_WITH_FORM_VARIANCE",
+      "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE"
+    ],
+    "phrase": [
+      "A0_INTERNAL_SCAFFOLD_EXTERNAL_A1",
+      "A0_INTERNAL_REPAIR_SCAFFOLD",
+      "SUPPORTED_AT_PROPOSED_BAND",
+      "CONSERVATIVE_LATER_THAN_REFERENCE"
+    ],
+    "skill": [
+      "A0_INTERNAL_SCAFFOLD",
+      "A0_INTERNAL_REPAIR_SCAFFOLD",
+      "SUPPORTED_AT_PROPOSED_BAND",
+      "SUPPORTED_WITH_SCOPE_CONSTRAINT"
+    ]
+  },
+  "quarantine": [
+    {
+      "canonicalKey": "word:far:adjective",
+      "reason": "Canonical POS/identity does not match the intended distance use. Candidate must be atomically corrected to an adverb identity before selection."
+    },
+    {
+      "canonicalKey": "word:booking:noun",
+      "reason": "Current A2 placement is earlier than both primary and secondary lexical evidence."
+    },
+    {
+      "canonicalKey": "word:cash:noun",
+      "reason": "Current A1 placement is earlier than both cross-checks around A2."
+    },
+    {
+      "canonicalKey": "word:environment:noun",
+      "reason": "Reputable level sources materially disagree; preserve for explicit curriculum review."
+    },
+    {
+      "canonicalKey": "word:need:verb",
+      "reason": "A0 is useful survival exposure but ordinary learn-level evidence is A1+; keep out of the first import candidate until exposure-vs-learn sequencing is recorded."
+    },
+    {
+      "canonicalKey": "phrase:make-a-plan",
+      "reason": "A2 planning function is supported but exact collocation-level evidence remains under review."
+    },
+    {
+      "canonicalKey": "skill:ask-basic-directions",
+      "reason": "Current skill scope conflates an A1 simple location question with A2 route-direction interaction; narrow or split before catalog import."
+    }
+  ],
+  "reviewRequirementsBeforeApply": [
+    "Knowledge CI and cross-artifact integrity validator pass on the exact branch commit.",
+    "Generated starter candidate is deterministic and contains exactly the expected identities and type counts.",
+    "Preview against a read-only staging catalog snapshot has no identity collision.",
+    "Independent reviewer approves the exact candidate hash and preview plan hash.",
+    "A separate catalog-only transactional importer is reviewed; preview_import.py and build_production_starter.py remain write-free."
+  ]
+}
