@@ -1,8 +1,7 @@
--- Rollback only: restore the broad Supabase-generated browser grants that existed
+-- Rollback only: restore the broad Supabase-generated browser object grants that existed
 -- before 0010. This intentionally re-opens the Data API surface and should not be
--- used in normal operation.
+-- used in normal operation. Schema USAGE is unchanged by 0010 and therefore needs no rollback.
 
-GRANT USAGE ON SCHEMA public TO PUBLIC, anon, authenticated;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO PUBLIC, anon, authenticated;
