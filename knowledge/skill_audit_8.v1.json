@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "knowledge-skill-audit-8.v1",
+  "status": "EVIDENCE_REVIEW_COMPLETE_NOT_PRODUCTION_APPROVED",
+  "updatedAt": "2026-09-16",
+  "scope": {"conceptCount": 8},
+  "policy": [
+    "Communicative skills are audited against can-do/task evidence, not vocabulary levels.",
+    "A broad CEFR descriptor may support a skill family while still requiring LINGUA to define a narrower observable task boundary.",
+    "LINGUA_A0 is internal Pre-A1 scaffolding; introducing survival interaction earlier is not an official CEFR A0 assignment.",
+    "Skill evidence never changes competence, FSRS, learner status, Save/Learn intent or exposure state.",
+    "No skill is production-approved by this audit alone."
+  ],
+  "sources": [
+    {
+      "id": "cefr-companion-volume-2020",
+      "name": "Council of Europe CEFR Companion Volume",
+      "role": "primary can-do/task evidence",
+      "url": "https://rm.coe.int/common-european-framework-of-reference-for-languages-learning-teaching/16809ea0d4"
+    },
+    {
+      "id": "cefr-global-scale",
+      "name": "Council of Europe CEFR Global Scale",
+      "role": "broad level cross-check",
+      "url": "https://www.coe.int/en/web/common-european-framework-reference-languages/table-1-cefr-3.3-common-reference-levels-global-scale"
+    },
+    {
+      "id": "alte-can-do",
+      "name": "ALTE Can Do statements",
+      "role": "task/domain cross-check",
+      "url": "https://www.cambridgeenglish.org/images/28906-alte-can-do-document.pdf"
+    }
+  ],
+  "summary": {
+    "concepts": 8,
+    "productionApproved": 0,
+    "dispositions": {
+      "A0_INTERNAL_SCAFFOLD": 1,
+      "A0_INTERNAL_REPAIR_SCAFFOLD": 1,
+      "SCOPE_SPLIT_OR_NARROW_REQUIRED": 1,
+      "SUPPORTED_AT_PROPOSED_BAND": 4,
+      "SUPPORTED_WITH_SCOPE_CONSTRAINT": 1
+    }
+  },
+  "records": [
+    {
+      "canonicalKey": "skill:greet-someone",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["CEFR A1 global scale: can introduce self and others and use familiar everyday/basic expressions", "CEFR Pre-A1 general linguistic range allows isolated words/basic expressions for simple personal information"],
+      "disposition": "A0_INTERNAL_SCAFFOLD",
+      "productionApproved": false,
+      "rationale": "A minimal greeting/opening routine is appropriate internal bootstrap before formal A1 interaction. Keep the task narrow and formulaic."
+    },
+    {
+      "canonicalKey": "skill:repair-understanding",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["CEFR Asking for clarification A1: can indicate/express simply that they do not understand", "CEFR A2: can ask very simply for repetition and clarification using stock phrases"],
+      "disposition": "A0_INTERNAL_REPAIR_SCAFFOLD",
+      "productionApproved": false,
+      "rationale": "LINGUA intentionally teaches survival repair phrases before external A1/A2 descriptors. UI/curriculum must label this as internal bootstrap, not CEFR A0 certification."
+    },
+    {
+      "canonicalKey": "skill:ask-basic-directions",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": ["CEFR A1 supports following short simple directions", "CEFR Obtaining goods/services A2 explicitly supports asking and giving directions", "ALTE A1 supports understanding simple directions; A2 supports asking how to get from A to B"],
+      "disposition": "SCOPE_SPLIT_OR_NARROW_REQUIRED",
+      "productionApproved": false,
+      "rationale": "The current label conflates A1 location questions ('Where is...?') with A2 route-direction interaction. For A1, narrow to asking a simple location; keep route directions as A2."
+    },
+    {
+      "canonicalKey": "skill:order-simple-food",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": ["CEFR Obtaining goods/services A1: can ask for food/drink using basic expressions", "ALTE A1: can order a meal in a self-service/fast-food setting when supported visually or by pointing"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "A1 is supported for tightly scoped basic ordering; restaurant discussion/complaints remain later."
+    },
+    {
+      "canonicalKey": "skill:explain-simple-problem",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": ["CEFR Obtaining goods/services A2: can point out when something is wrong", "CEFR A2: can indicate the nature of a problem to a health professional, perhaps using gesture/body language"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "A2 supports short concrete problem descriptions in predictable service/travel/health situations."
+    },
+    {
+      "canonicalKey": "skill:make-simple-suggestion",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": ["CEFR A2 collaborative task interaction: can communicate with simple phrases to discuss what to do next", "CEFR B1 expands this to making/responding to suggestions with reasons and reactions"],
+      "disposition": "SUPPORTED_WITH_SCOPE_CONSTRAINT",
+      "productionApproved": false,
+      "rationale": "A2 is defensible for one short formulaic suggestion in a familiar task. Suggestions requiring justification, negotiation or comparison belong in B1+."
+    },
+    {
+      "canonicalKey": "skill:support-an-opinion",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": ["CEFR B1 global scale: can briefly give reasons and explanations for opinions and plans", "CEFR B1 collaborative interaction: can make opinions/reactions understood regarding possible solutions, giving brief reasons/explanations"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "The LINGUA skill requires an opinion plus at least one relevant reason, which maps well to B1."
+    },
+    {
+      "canonicalKey": "skill:handle-misunderstanding",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": ["CEFR B1 spoken interaction: can repeat back part of what someone said to confirm mutual understanding", "CEFR B1 Asking for clarification: can ask someone to clarify or elaborate what was just said"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "B1 is supported for recognizing a routine misunderstanding and actively clarifying/reformulating it; basic non-understanding signalling remains earlier."
+    }
+  ]
+}
