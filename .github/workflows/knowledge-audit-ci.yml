@@ -16,15 +16,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Compile knowledge tooling
         run: |
-          python -m py_compile knowledge/preview_import.py knowledge/validate_audit_integrity.py
+          python -m py_compile \
+            knowledge/preview_import.py \
+            knowledge/validate_audit_integrity.py \
+            knowledge/build_production_starter.py
+
       - name: Run knowledge unit tests
         run: python -m unittest discover -s knowledge/tests -p 'test_*.py' -v
+
       - name: Validate 115-concept audit integrity
         run: |
           python knowledge/validate_audit_integrity.py \
@@ -34,7 +41,8 @@ jobs:
             --grammar-audit knowledge/grammar_audit_8.v1.json \
             --phrase-audit knowledge/phrase_audit_17.v1.json \
             --skill-audit knowledge/skill_audit_8.v1.json
-      - name: Generate deterministic preview
+
+      - name: Generate 115-concept research preview
         run: |
           python knowledge/preview_import.py \
             --pack knowledge/first_party_starter_inventory.v1.json \
@@ -65,6 +73,45 @@ jobs:
               'planSha256': p['planSha256'],
           }, sort_keys=True))
           PY
+
+      - name: Build conservative 108-concept staging candidate
+        run: |
+          python knowledge/build_production_starter.py \
+            --pack knowledge/first_party_starter_inventory.v1.json \
+            --pack knowledge/first_party_content_support.v1.json \
+            --manifest knowledge/production_starter_manifest.v1.json \
+            --level-audit knowledge/level_audit_115.v3.json \
+            --grammar-audit knowledge/grammar_audit_8.v1.json \
+            --phrase-audit knowledge/phrase_audit_17.v1.json \
+            --skill-audit knowledge/skill_audit_8.v1.json \
+            --output /tmp/production-starter.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('/tmp/production-starter.json').read_text())
+          assert p['schemaVersion'] == 'knowledge-production-starter-candidate.v1'
+          assert p['status'] == 'STAGING_CANDIDATE_REVIEW_REQUIRED'
+          assert p['applySupported'] is False
+          assert p['productionApproved'] is False
+          assert p['counts']['sourceConcepts'] == 115
+          assert p['counts']['selectedConcepts'] == 108
+          assert p['counts']['quarantinedConcepts'] == 7
+          assert p['counts']['selectedByType'] == {
+              'grammar': 8,
+              'phrase': 16,
+              'skill': 7,
+              'word': 77,
+          }
+          assert isinstance(p['candidateSha256'], str) and len(p['candidateSha256']) == 64
+          print(json.dumps({
+              'status': p['status'],
+              'selectedConcepts': p['counts']['selectedConcepts'],
+              'selectedByType': p['counts']['selectedByType'],
+              'quarantinedConcepts': p['counts']['quarantinedConcepts'],
+              'candidateSha256': p['candidateSha256'],
+          }, sort_keys=True))
+          PY
+
       - name: Verify no apply surface exists
         run: |
           if grep -R --line-number --fixed-strings 'applySupported": true' knowledge docs/KNOWLEDGE_* 2>/dev/null; then
@@ -75,4 +122,8 @@ jobs:
             echo 'Preview importer unexpectedly accepted --apply'
             exit 1
           fi
-          echo 'Preview-only boundary preserved'
+          if python knowledge/build_production_starter.py --apply 2>/dev/null; then
+            echo 'Starter builder unexpectedly accepted --apply'
+            exit 1
+          fi
+          echo 'Write-free preview/build boundary preserved'
