@@ -30,11 +30,7 @@ def candidate():
                 "topic": f"topic-{i % 5}",
                 "vietnameseGloss": f"nghĩa {i}",
                 "vietnameseSupport": f"giải thích {i}",
-                "example": {
-                    "en": f"Example {i} with {form}.",
-                    "vi": f"Ví dụ {i}.",
-                    "rights": "FIRST_PARTY",
-                },
+                "example": {"en": f"Example {i} with {form}.", "vi": f"Ví dụ {i}.", "rights": "FIRST_PARTY"},
                 "prerequisites": [],
             })
     value = {
@@ -52,7 +48,7 @@ class CatalogImportTests(unittest.TestCase):
         p1 = M.build_plan(candidate())
         p2 = M.build_plan(candidate())
         self.assertEqual(p1, p2)
-        self.assertEqual(p1["schemaVersion"], "knowledge-catalog-apply-plan.v3")
+        self.assertEqual(p1["schemaVersion"], "knowledge-catalog-apply-plan.v2")
         self.assertEqual(p1["counts"]["concepts"], 108)
         self.assertEqual(p1["counts"]["lexicalConcepts"], 93)
         self.assertEqual(p1["counts"]["lexemeForms"], 0)
@@ -60,61 +56,37 @@ class CatalogImportTests(unittest.TestCase):
         self.assertEqual(p1["counts"]["sentenceTranslations"], 108)
         self.assertEqual(p1["counts"]["sentenceConcepts"], 108)
         self.assertEqual(p1["counts"]["prerequisiteRelations"], 0)
-        self.assertEqual(
-            p1["counts"]["byType"],
-            {"grammar": 8, "phrase": 16, "skill": 7, "word": 77},
-        )
-        self.assertEqual(p1["source"]["reviewStatus"], "approved")
-        self.assertEqual(
-            p1["source"]["approvalBoundary"],
-            "exact_candidate_and_plan_hashes_required",
-        )
-        self.assertEqual(p1["source"]["transformVersion"], "knowledge-catalog-import.v4")
+        self.assertEqual(p1["counts"]["byType"], {"grammar": 8, "phrase": 16, "skill": 7, "word": 77})
+        self.assertEqual(p1["source"]["reviewStatus"], "review_pending")
+        self.assertEqual(p1["source"]["applyReviewStatus"], "approved")
+        self.assertEqual(p1["source"]["approvalBoundary"], "exact_candidate_and_plan_hashes_required")
+        self.assertEqual(p1["source"]["transformVersion"], "knowledge-catalog-import.v3")
         self.assertEqual(len(p1["rows"]), 108)
         self.assertTrue(all(row["sourceMetadata"]["concept"] for row in p1["rows"]))
 
         apply_source = "\n".join(
             inspect.getsource(fn)
-            for fn in (
-                M._assert_preflight,
-                M._insert_source_records,
-                M.apply_plan,
-                M._assert_post_apply,
-            )
+            for fn in (M._assert_preflight, M._insert_source_records, M.apply_plan, M._assert_post_apply)
         ).lower()
-        for required in (
-            "concept_relations",
-            "sentences",
-            "sentence_translations",
-            "sentence_concepts",
-            "framework_mappings",
-            "word_senses",
-            "lexeme_forms",
-        ):
+        for required in ("concept_relations", "sentences", "sentence_translations", "sentence_concepts", "framework_mappings", "word_senses", "lexeme_forms"):
             self.assertIn(required, apply_source)
-        for forbidden in (
-            "fsrs_states",
-            "review_items",
-            "learning_events",
-            "user_concept_states",
-            "today_plans",
-            "user_saved_concepts",
-        ):
+        for forbidden in ("fsrs_states", "review_items", "learning_events", "user_concept_states", "today_plans", "user_saved_concepts"):
             self.assertNotIn(forbidden, apply_source)
 
     def test_apply_approval_is_hash_gated_and_runtime_visible(self):
+        self.assertEqual(M.STAGING_REVIEW_STATUS, "review_pending")
         self.assertEqual(M.APPLY_REVIEW_STATUS, "approved")
         plan = M.build_plan(candidate())
-        self.assertEqual(plan["source"]["reviewStatus"], "approved")
+        self.assertEqual(plan["source"]["reviewStatus"], "review_pending")
+        self.assertEqual(plan["source"]["applyReviewStatus"], "approved")
         main_source = inspect.getsource(M.main)
         self.assertIn("approved_candidate_sha", main_source)
         self.assertIn("approved_plan_sha", main_source)
         self.assertIn('plan["candidateSha256"]', main_source)
         self.assertIn('plan["planSha256"]', main_source)
-
         insert_source = inspect.getsource(M._insert_source_records)
         self.assertIn("transaction_timestamp()", insert_source)
-        self.assertIn('source["reviewStatus"]', insert_source)
+        self.assertIn('source["applyReviewStatus"]', insert_source)
 
     def test_prerequisite_direction_and_count_are_preserved(self):
         c = candidate()
@@ -134,7 +106,6 @@ class CatalogImportTests(unittest.TestCase):
         missing["concepts"][0]["prerequisites"] = ["word:missing:noun"]
         with self.assertRaises(M.ImportError):
             M.build_plan(missing)
-
         cyclic = candidate()
         first = cyclic["concepts"][0]["canonicalKey"]
         second = cyclic["concepts"][1]["canonicalKey"]
@@ -149,15 +120,12 @@ class CatalogImportTests(unittest.TestCase):
         self.assertEqual(exact["endOffset"], 8)
         self.assertEqual(exact["occurrenceRole"], "target")
         self.assertEqual(exact["matchKind"], "exact_surface_match")
-
         missing = M.example_span("word", "be", "I am tired.")
         self.assertEqual(missing["occurrenceRole"], "context")
         self.assertEqual(missing["matchKind"], "no_exact_surface_match")
-
         grammar = M.example_span("grammar", "basic be statements", "We are at home.")
         self.assertEqual(grammar["occurrenceRole"], "grammar")
         self.assertEqual(grammar["endOffset"], M.utf16_length("We are at home."))
-
         c = candidate()
         c["concepts"][0]["example"]["en"] = "This sentence omits the lexical target."
         with self.assertRaises(M.ImportError):
@@ -168,24 +136,12 @@ class CatalogImportTests(unittest.TestCase):
             "word:be:verb": ("be", "am", "I am tired."),
             "word:choose:verb": ("choose", "chose", "I chose the cheaper ticket."),
             "word:manage:verb": ("manage", "managed", "I managed to finish on time."),
-            "word:realize:verb": (
-                "realize",
-                "realized",
-                "I realized that I needed a better plan.",
-            ),
-            "phrase:look-for": (
-                "look for",
-                "looking for",
-                "I am looking for the ticket office.",
-            ),
+            "word:realize:verb": ("realize", "realized", "I realized that I needed a better plan."),
+            "phrase:look-for": ("look for", "looking for", "I am looking for the ticket office."),
         }
         for key, (canonical, surface, sentence) in cases.items():
             c = candidate()
-            target = next(
-                row
-                for row in c["concepts"]
-                if row["conceptType"] == ("phrase" if key.startswith("phrase:") else "word")
-            )
+            target = next(row for row in c["concepts"] if row["conceptType"] == ("phrase" if key.startswith("phrase:") else "word"))
             target["canonicalKey"] = key
             target["canonicalForm"] = canonical
             target["partOfSpeech"] = None if key.startswith("phrase:") else "verb"
@@ -194,32 +150,25 @@ class CatalogImportTests(unittest.TestCase):
             planned = next(row for row in p["rows"] if row["canonicalKey"] == key)
             self.assertEqual(planned["reviewedExampleSurface"], surface)
             self.assertEqual(planned["sentenceConcept"]["occurrenceRole"], "target")
+            self.assertEqual(planned["sentenceConcept"]["matchKind"], "exact_surface_match")
             self.assertEqual(planned["lexemeForm"]["form"], surface)
-            self.assertGreater(
-                planned["sentenceConcept"]["endOffset"],
-                planned["sentenceConcept"]["startOffset"],
-            )
+            self.assertGreater(planned["sentenceConcept"]["endOffset"], planned["sentenceConcept"]["startOffset"])
 
     def test_source_metadata_preserves_first_party_candidate_payload(self):
         c = candidate()
         p = M.build_plan(c)
         row = p["rows"][0]
-        original = next(
-            x for x in c["concepts"] if x["canonicalKey"] == row["canonicalKey"]
-        )
+        original = next(x for x in c["concepts"] if x["canonicalKey"] == row["canonicalKey"])
         self.assertEqual(row["sourceMetadata"]["concept"], original)
         self.assertEqual(row["sourceMetadata"]["rights"], "FIRST_PARTY")
         self.assertTrue(row["sourceMetadata"]["stagingCandidate"])
-        self.assertEqual(
-            row["sourceMetadata"]["catalogApprovalScope"], "reviewed_staging_catalog"
-        )
+        self.assertEqual(row["sourceMetadata"]["catalogApprovalScope"], "reviewed_staging_catalog")
 
     def test_rejects_non_first_party_or_incomplete_example(self):
         c = candidate()
         c["concepts"][0]["example"]["rights"] = "UNKNOWN"
         with self.assertRaises(M.ImportError):
             M.build_plan(c)
-
         c = candidate()
         c["concepts"][0]["example"]["vi"] = ""
         with self.assertRaises(M.ImportError):
@@ -238,9 +187,7 @@ class CatalogImportTests(unittest.TestCase):
         c2["concepts"][0]["vietnameseSupport"] = "nội dung khác"
         c2.pop("candidateSha256")
         c2["candidateSha256"] = M.digest(c2)
-        self.assertNotEqual(
-            M.build_plan(c1)["planSha256"], M.build_plan(c2)["planSha256"]
-        )
+        self.assertNotEqual(M.build_plan(c1)["planSha256"], M.build_plan(c2)["planSha256"])
 
 
 if __name__ == "__main__":
