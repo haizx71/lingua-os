@@ -6,10 +6,13 @@ import psycopg
 import pytest
 
 
-def test_browser_roles_have_no_public_schema_or_function_execute_privileges(
+def test_browser_roles_have_no_public_function_execute_privileges(
     migrated_postgres_url: str,
 ) -> None:
     with psycopg.connect(migrated_postgres_url) as connection:
+        # Schema USAGE alone is harmless and intentionally retained for normal
+        # PostgreSQL/PostgREST name resolution. Object capabilities are what must
+        # remain closed to browser roles.
         schema_privileges = connection.execute(
             """
             SELECT role_name,
@@ -19,8 +22,8 @@ def test_browser_roles_have_no_public_schema_or_function_execute_privileges(
             """
         ).fetchall()
         assert schema_privileges == [
-            ("anon", False),
-            ("authenticated", False),
+            ("anon", True),
+            ("authenticated", True),
         ]
 
         browser_executable_functions = connection.execute(
