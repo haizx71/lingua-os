@@ -100,7 +100,7 @@ function activityIcon(type: LearningActivityType) {
 
 function LearnerIllustration() {
   return (
-    <div aria-hidden className="relative h-36 w-40 shrink-0 sm:h-40 sm:w-48">
+    <div aria-hidden className="relative h-36 w-40 shrink-0 max-sm:absolute max-sm:-bottom-3 max-sm:-right-5 max-sm:origin-bottom-right max-sm:scale-[0.72] sm:h-40 sm:w-48">
       <div className="absolute bottom-3 left-1/2 h-6 w-32 -translate-x-1/2 rounded-full bg-[#5a718b]/10 blur-sm" />
       <div className="absolute left-1/2 top-2 h-[72px] w-[72px] -translate-x-1/2 rounded-[38%_44%_42%_45%] bg-[#26385d] shadow-sm" />
       <div className="absolute left-1/2 top-[15px] h-[60px] w-[57px] -translate-x-1/2 rounded-[45%_45%_48%_48%] bg-[#f3c3a4]">
@@ -195,9 +195,9 @@ export function TodayDashboard({
   const nextActivity = effectivePlan.activities.find((activity) => !activity.completed) ?? effectivePlan.activities[0];
 
   return (
-    <div className="mx-auto w-full max-w-[1240px]">
-      <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-white/70 px-4 py-3 shadow-sm backdrop-blur md:mb-6">
-        <Search className="h-4 w-4 text-[var(--text-muted)]" />
+    <div className="mx-auto w-full min-w-0 max-w-[1240px]">
+      <div className="mb-4 flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-white/80 px-3 py-3 shadow-sm backdrop-blur sm:px-4 md:mb-6">
+        <Search className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
         <input aria-label="Tìm bài học hoặc từ vựng" placeholder="Tìm bài học, từ vựng hoặc chủ đề..." className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
         <span className="hidden rounded-lg bg-[var(--surface-subtle)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)] sm:block">LINGUA SEARCH</span>
       </div>
@@ -209,77 +209,77 @@ export function TodayDashboard({
         </div>
       )}
 
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_290px]">
-        <div className="min-w-0 space-y-6">
-          <section className="relative overflow-hidden rounded-[28px] border border-[#d9e5f6] bg-gradient-to-br from-[#eef7ff] via-[#f2f8ff] to-[#edf8f3] px-6 py-5 shadow-[var(--shadow-card)] sm:px-8 sm:py-6">
+      <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-[#d9e5f6] bg-gradient-to-br from-[#eef7ff] via-[#f2f8ff] to-[#edf8f3] px-4 py-5 shadow-[var(--shadow-card)] sm:rounded-[28px] sm:px-8 sm:py-6">
             <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/50" />
             <div className="absolute bottom-0 left-[42%] h-24 w-24 rounded-full bg-[var(--accent-teal)]/10 blur-2xl" />
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="max-w-xl">
+            <div className="relative flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+              <div className="min-w-0 max-w-xl pr-16 sm:pr-0">
                 <span className="lingua-kicker text-[var(--action-primary)]">Hôm nay</span>
-                <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)] sm:text-[30px]">Good afternoon, Hải!</h1>
-                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-secondary)]">A new language. A brighter you tomorrow. Chỉ cần tiếp tục đúng hoạt động mà Language Brain đã chọn.</p>
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <Link href={nextActivity?.targetUrl ?? '/review'}>
-                    <Button variant="primary" size="lg" className="min-h-11 rounded-2xl px-5" rightIcon={<ArrowRight className="h-4 w-4" />}>Tiếp tục học</Button>
+                <h1 className="mt-2 text-[25px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-[30px]">Good afternoon, Hải!</h1>
+                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-secondary)] max-sm:line-clamp-2">A new language. A brighter you tomorrow. Chỉ cần tiếp tục đúng hoạt động mà Language Brain đã chọn.</p>
+                <div className="mt-4 flex min-w-0 flex-col items-start gap-2 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <Link href={nextActivity?.targetUrl ?? '/review'} className="w-full max-w-[220px] sm:w-auto">
+                    <Button variant="primary" size="lg" className="min-h-11 w-full rounded-2xl px-5 sm:w-auto" rightIcon={<ArrowRight className="h-4 w-4" />}>Tiếp tục học</Button>
                   </Link>
-                  <span className="text-xs font-medium text-[var(--text-secondary)]">{effectivePlan.activities.length} hoạt động được ưu tiên cho bạn</span>
+                  <span className="text-[11px] font-medium leading-4 text-[var(--text-secondary)] sm:text-xs">{effectivePlan.activities.length} hoạt động được ưu tiên cho bạn</span>
                 </div>
               </div>
               <LearnerIllustration />
             </div>
           </section>
 
-          <section aria-label="Tóm tắt hôm nay" className="grid gap-3 sm:grid-cols-3">
-            <div className="lingua-card flex items-center gap-3 p-4">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><Target className="h-5 w-5" /></span>
-              <div><div className="text-xs font-medium text-[var(--text-muted)]">Mục tiêu hôm nay</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedMinutes}/{targetMinutes} phút</div></div>
+          <section aria-label="Tóm tắt hôm nay" className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+            <div className="lingua-card flex min-w-[76%] snap-start items-center gap-3 p-4 sm:min-w-0">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><Target className="h-5 w-5" /></span>
+              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Mục tiêu hôm nay</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedMinutes}/{targetMinutes} phút</div></div>
             </div>
-            <div className="lingua-card flex items-center gap-3 p-4">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--status-warning-bg)] text-[var(--status-warning)]"><Flame className="h-5 w-5 fill-current" /></span>
-              <div><div className="text-xs font-medium text-[var(--text-muted)]">Chuỗi học tập</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{initialStreakDays} ngày</div></div>
+            <div className="lingua-card flex min-w-[76%] snap-start items-center gap-3 p-4 sm:min-w-0">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--status-warning-bg)] text-[var(--status-warning)]"><Flame className="h-5 w-5 fill-current" /></span>
+              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Chuỗi học tập</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{initialStreakDays} ngày</div></div>
             </div>
-            <div className="lingua-card flex items-center gap-3 p-4">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Trophy className="h-5 w-5" /></span>
-              <div><div className="text-xs font-medium text-[var(--text-muted)]">Thành tích</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedActivitiesCount}/{totalActivitiesCount} hoàn thành</div></div>
+            <div className="lingua-card flex min-w-[76%] snap-start items-center gap-3 p-4 sm:min-w-0">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Trophy className="h-5 w-5" /></span>
+              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Thành tích</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedActivitiesCount}/{totalActivitiesCount} hoàn thành</div></div>
             </div>
           </section>
 
-          <section aria-labelledby="learning-progress-heading" className="lingua-card overflow-hidden p-5 sm:p-6 lg:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+          <section aria-labelledby="learning-progress-heading" className="lingua-card min-w-0 overflow-hidden p-4 sm:p-6 lg:p-7">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
                 <div className="lingua-kicker text-[var(--accent-teal-strong)]">Language Brain</div>
                 <h2 id="learning-progress-heading" className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-[var(--text-primary)] sm:text-2xl">Your Learning Progress</h2>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">Một cái nhìn nhanh về nhịp học và độ bền trí nhớ hôm nay.</p>
+                <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Một cái nhìn nhanh về nhịp học và độ bền trí nhớ hôm nay.</p>
               </div>
-              <Link href="/progress" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-[var(--action-primary)] hover:bg-[var(--surface-blue)]">Xem chi tiết <ChevronRight className="h-3.5 w-3.5" /></Link>
+              <Link href="/progress" className="flex items-center gap-1 rounded-xl px-2 py-2 text-xs font-bold text-[var(--action-primary)] hover:bg-[var(--surface-blue)] sm:px-3">Xem chi tiết <ChevronRight className="h-3.5 w-3.5" /></Link>
             </div>
 
-            <div className="mt-6 grid items-center gap-7 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="mt-5 grid min-w-0 items-center gap-5 sm:mt-6 sm:gap-7 lg:grid-cols-[200px_minmax(0,1fr)]">
               <div className="mx-auto flex flex-col items-center">
-                <div className="relative flex h-44 w-44 items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--accent-teal) ${progressPercent * 3.6}deg, #e8ece8 0deg)` }}>
-                  <div className="absolute inset-[13px] rounded-full bg-white shadow-[inset_0_0_0_1px_var(--border-subtle)]" />
+                <div className="relative flex h-36 w-36 items-center justify-center rounded-full sm:h-44 sm:w-44" style={{ background: `conic-gradient(var(--accent-teal) ${progressPercent * 3.6}deg, #e8ece8 0deg)` }}>
+                  <div className="absolute inset-[11px] rounded-full bg-white shadow-[inset_0_0_0_1px_var(--border-subtle)] sm:inset-[13px]" />
                   <div className="relative z-10 text-center">
-                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Today</div>
-                    <div className="mt-1 text-4xl font-black tracking-[-0.06em] text-[var(--text-primary)]">{progressPercent}%</div>
-                    <div className="mt-1 text-xs font-semibold text-[var(--accent-teal-strong)]">{completedMinutes}/{targetMinutes} min</div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] sm:text-[11px]">Today</div>
+                    <div className="mt-1 text-3xl font-black tracking-[-0.06em] text-[var(--text-primary)] sm:text-4xl">{progressPercent}%</div>
+                    <div className="mt-1 text-[11px] font-semibold text-[var(--accent-teal-strong)] sm:text-xs">{completedMinutes}/{targetMinutes} min</div>
                   </div>
                 </div>
                 <div className="mt-3 rounded-full bg-[var(--surface-blue)] px-3 py-1 text-xs font-extrabold text-[var(--action-primary)]">CEFR journey • B1</div>
               </div>
 
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 {[
                   ['Daily goal', progressPercent, 'var(--action-primary)'],
                   ['Memory health', initialMemoryHealth, 'var(--accent-teal)'],
                   ['Activities', totalActivitiesCount > 0 ? Math.round((completedActivitiesCount / totalActivitiesCount) * 100) : 0, 'var(--accent-purple)'],
                 ].map(([label, value, color]) => (
-                  <div key={String(label)}>
-                    <div className="mb-1.5 flex items-center justify-between text-xs"><span className="font-semibold text-[var(--text-secondary)]">{label}</span><span className="font-extrabold text-[var(--text-primary)]">{value}%</span></div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-subtle)]"><div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${value}%`, background: String(color) }} /></div>
+                  <div key={String(label)} className="min-w-0">
+                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="font-semibold text-[var(--text-secondary)]">{label}</span><span className="font-extrabold text-[var(--text-primary)]">{value}%</span></div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-subtle)]"><div className="h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${value}%`, background: String(color) }} /></div>
                   </div>
                 ))}
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-1 sm:gap-3">
                   <div className="rounded-2xl bg-[var(--accent-teal-soft)] p-3"><div className="text-[11px] font-semibold text-[var(--text-muted)]">Memory</div><div className="mt-1 text-lg font-extrabold text-[var(--accent-teal-strong)]">{initialMemoryHealth}%</div></div>
                   <div className="rounded-2xl bg-[var(--surface-warm)] p-3"><div className="text-[11px] font-semibold text-[var(--text-muted)]">Today plan</div><div className="mt-1 text-lg font-extrabold text-[var(--text-primary)]">{totalActivitiesCount} tasks</div></div>
                 </div>
@@ -287,27 +287,27 @@ export function TodayDashboard({
             </div>
           </section>
 
-          <section aria-labelledby="timeline-heading" className="lingua-card p-5 sm:p-6">
+          <section aria-labelledby="timeline-heading" className="lingua-card min-w-0 p-4 sm:p-6">
             <div className="mb-4 flex items-end justify-between gap-4">
-              <div><div className="lingua-kicker">Kế hoạch cá nhân</div><h2 id="timeline-heading" className="mt-1 text-lg font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Today's Activity</h2></div>
-              <span className="text-xs font-semibold text-[var(--text-muted)]">Giữ nguyên thứ tự ưu tiên từ server</span>
+              <div className="min-w-0"><div className="lingua-kicker">Kế hoạch cá nhân</div><h2 id="timeline-heading" className="mt-1 text-lg font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Today's Activity</h2></div>
+              <span className="hidden text-xs font-semibold text-[var(--text-muted)] md:block">Giữ nguyên thứ tự ưu tiên từ server</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">
               {effectivePlan.activities.map((activity: TodayActivityViewModel) => (
-                <div key={activity.id} className="flex flex-col gap-3 py-4 first:pt-1 last:pb-1 sm:flex-row sm:items-center">
+                <div key={activity.id} className="flex min-w-0 flex-col gap-3 py-4 first:pt-1 last:pb-1 sm:flex-row sm:items-center">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     {activityIcon(activity.type)}
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-sm font-bold text-[var(--text-primary)]">{activity.title}</h3>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <h3 className="line-clamp-2 min-w-0 text-sm font-bold leading-5 text-[var(--text-primary)] sm:truncate">{activity.title}</h3>
                         {activity.completed ? <Badge variant="success" size="sm" icon={<CheckCircle2 className="h-3 w-3" />}>Đã xong</Badge> : <Badge variant={activity.badgeVariant} size="sm">{activity.badgeLabel}</Badge>}
                       </div>
                       <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{activity.reasonText}</p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-center">
-                    <Link href={activity.targetUrl}><Button variant={activity.completed ? 'secondary' : activity.type === 'review' ? 'primary' : 'outline'} size="sm" onClick={() => onActivityStart?.(activity.id)}>{activity.completed ? getCompletedActionLabel(activity.type) : getPendingActionLabel(activity.type)}</Button></Link>
-                    {!activity.completed && <Button variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang hoàn thành...' : 'Hoàn thành'}</Button>}
+                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:items-center sm:gap-1.5 sm:self-center">
+                    <Link href={activity.targetUrl} className="min-w-0"><Button className="w-full sm:w-auto" variant={activity.completed ? 'secondary' : activity.type === 'review' ? 'primary' : 'outline'} size="sm" onClick={() => onActivityStart?.(activity.id)}>{activity.completed ? getCompletedActionLabel(activity.type) : getPendingActionLabel(activity.type)}</Button></Link>
+                    {!activity.completed && <Button className="w-full sm:w-auto" variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang xử lý...' : 'Hoàn thành'}</Button>}
                   </div>
                 </div>
               ))}
@@ -315,16 +315,16 @@ export function TodayDashboard({
           </section>
         </div>
 
-        <aside aria-label="Hành trình học tập" className="space-y-4 2xl:sticky 2xl:top-8 2xl:self-start">
-          <section className="rounded-[26px] border border-[#efe5d3] bg-[var(--surface-warm)] p-5 shadow-[var(--shadow-card)]">
-            <div className="flex items-center justify-between"><div><div className="lingua-kicker text-[#9b773f]">My Journey</div><h2 className="mt-1 text-lg font-extrabold text-[var(--text-primary)]">Keep going, Hải</h2></div><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--status-warning)] shadow-sm"><CalendarDays className="h-5 w-5" /></span></div>
-            <div className="mt-5 space-y-3">
-              <div className="rounded-2xl bg-white/80 p-3.5"><div className="flex items-center justify-between text-xs"><span className="font-semibold text-[var(--text-secondary)]">Weekly rhythm</span><span className="font-extrabold text-[var(--text-primary)]">{initialStreakDays} days</span></div><div className="mt-3 flex gap-1.5">{Array.from({ length: 7 }).map((_, index) => <span key={index} className={`h-7 flex-1 rounded-lg ${index < Math.min(initialStreakDays, 7) ? 'bg-[var(--accent-teal)]' : 'bg-[var(--surface-subtle)]'}`} />)}</div></div>
-              <Link href="/brain" className="flex items-center gap-3 rounded-2xl bg-white/80 p-3.5 transition-transform hover:-translate-y-0.5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-teal-soft)] text-[var(--accent-teal-strong)]"><Sparkles className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-bold text-[var(--text-primary)]">Language Brain</span><span className="block text-[11px] text-[var(--text-secondary)]">Memory health {initialMemoryHealth}%</span></span><ChevronRight className="h-4 w-4 text-[var(--text-muted)]" /></Link>
+        <aside aria-label="Hành trình học tập" className="min-w-0 space-y-4 xl:sticky xl:top-8 xl:self-start">
+          <section className="rounded-[24px] border border-[#efe5d3] bg-[var(--surface-warm)] p-4 shadow-[var(--shadow-card)] sm:rounded-[26px] sm:p-5">
+            <div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="lingua-kicker text-[#9b773f]">My Journey</div><h2 className="mt-1 truncate text-lg font-extrabold text-[var(--text-primary)]">Keep going, Hải</h2></div><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--status-warning)] shadow-sm"><CalendarDays className="h-5 w-5" /></span></div>
+            <div className="mt-4 space-y-3 sm:mt-5">
+              <div className="rounded-2xl bg-white/80 p-3.5"><div className="flex items-center justify-between gap-3 text-xs"><span className="font-semibold text-[var(--text-secondary)]">Weekly rhythm</span><span className="font-extrabold text-[var(--text-primary)]">{initialStreakDays} days</span></div><div className="mt-3 flex gap-1.5">{Array.from({ length: 7 }).map((_, index) => <span key={index} className={`h-7 flex-1 rounded-lg ${index < Math.min(initialStreakDays, 7) ? 'bg-[var(--accent-teal)]' : 'bg-[var(--surface-subtle)]'}`} />)}</div></div>
+              <Link href="/brain" className="flex min-w-0 items-center gap-3 rounded-2xl bg-white/80 p-3.5 transition-transform hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-teal-soft)] text-[var(--accent-teal-strong)]"><Sparkles className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-bold text-[var(--text-primary)]">Language Brain</span><span className="block truncate text-[11px] text-[var(--text-secondary)]">Memory health {initialMemoryHealth}%</span></span><ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" /></Link>
             </div>
           </section>
 
-          <section className="lingua-card p-5">
+          <section className="lingua-card min-w-0 p-4 sm:p-5">
             <div className="lingua-kicker">Featured Content</div>
             <div className="mt-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--surface-blue)] to-[var(--surface-lilac)] p-4">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--action-primary)] shadow-sm"><BookOpen className="h-5 w-5" /></span>
@@ -332,7 +332,7 @@ export function TodayDashboard({
               <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Khám phá nội dung phù hợp trình độ và gặp lại từ vựng trong ngữ cảnh thật.</p>
               <Link href="/library" className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-[var(--action-primary)]">Mở thư viện <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
-            <Link href="/read" className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] p-3 transition-colors hover:bg-[var(--surface-subtle)]"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Headphones className="h-4 w-4" /></span><span className="flex-1 text-xs font-bold text-[var(--text-primary)]">Reader & contextual learning</span><ChevronRight className="h-4 w-4 text-[var(--text-muted)]" /></Link>
+            <Link href="/read" className="mt-3 flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--border-subtle)] p-3 transition-colors hover:bg-[var(--surface-subtle)]"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Headphones className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-xs font-bold text-[var(--text-primary)]">Reader & contextual learning</span><ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" /></Link>
           </section>
         </aside>
       </div>
