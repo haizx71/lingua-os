@@ -124,7 +124,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
       : 'Đăng nhập để tiếp tục đúng nơi Language Brain đã chuẩn bị cho anh.';
 
   return (
-    <div className="mx-auto grid min-h-[620px] w-full max-w-5xl overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-floating)] lg:grid-cols-[1.08fr_0.92fr]">
+    <div className="mx-auto grid min-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-5xl overflow-hidden rounded-[26px] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-floating)] sm:min-h-[620px] sm:rounded-[32px] lg:grid-cols-[1.08fr_0.92fr]">
       <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#eaf6ff] via-[#f5f8ff] to-[#ecf8f3] p-8 lg:flex lg:flex-col lg:justify-between xl:p-10">
         <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-white/60" />
         <div className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full bg-[var(--accent-teal)]/12 blur-2xl" />
@@ -157,15 +157,19 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
         </div>
       </section>
 
-      <div className="flex items-center bg-[var(--surface-warm)]/35 px-5 py-7 sm:px-8 lg:bg-white lg:px-10 xl:px-12">
-        <div className="mx-auto w-full max-w-md">
-          <header className="mb-7">
-            <div className="mb-5 flex items-center gap-3 lg:hidden">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--action-primary)] text-lg font-black text-white shadow-[0_8px_18px_rgba(66,103,217,0.2)]">L</span>
-              <div><div className="text-sm font-extrabold text-[var(--text-primary)]">LINGUA OS</div><div className="text-[11px] text-[var(--text-muted)]">Your language brain</div></div>
+      <div className="flex min-w-0 items-center bg-[var(--surface-warm)]/35 px-4 py-5 sm:px-8 sm:py-8 lg:bg-white lg:px-10 xl:px-12">
+        <div className="mx-auto w-full min-w-0 max-w-md">
+          <header className="mb-6 sm:mb-7">
+            <div className="mb-4 flex items-center gap-3 lg:hidden">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--action-primary)] text-lg font-black text-white shadow-[0_8px_18px_rgba(66,103,217,0.2)]">L</span>
+              <div className="min-w-0"><div className="truncate text-sm font-extrabold text-[var(--text-primary)]">LINGUA OS</div><div className="text-[11px] text-[var(--text-muted)]">Your language brain</div></div>
+            </div>
+            <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-blue)] px-3 py-1.5 text-[11px] font-bold text-[var(--action-primary)]"><BookOpen className="h-3.5 w-3.5" /> Reader</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-teal-soft)] px-3 py-1.5 text-[11px] font-bold text-[var(--accent-teal-strong)]"><Brain className="h-3.5 w-3.5" /> Language Brain</span>
             </div>
             <span className="lingua-kicker text-[var(--action-primary)]">Secure learning account</span>
-            <h1 className="mt-2 text-3xl font-black tracking-[-0.045em] text-[var(--text-primary)]">{heading}</h1>
+            <h1 className="mt-2 text-[28px] font-black leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-3xl">{heading}</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
           </header>
 
@@ -193,19 +197,19 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               </div>
             )}
 
-            <Button type="submit" variant="primary" size="lg" className="w-full" rightIcon={!submitting ? <ArrowRight className="h-4 w-4" /> : undefined} disabled={submitting || authState === 'loading'}>
+            <Button type="submit" variant="primary" size="lg" className="min-h-12 w-full" rightIcon={!submitting ? <ArrowRight className="h-4 w-4" /> : undefined} disabled={submitting || authState === 'loading'}>
               {submitting ? 'Đang xử lý...' : mode === 'signin' ? 'Đăng nhập' : mode === 'signup' ? 'Tạo tài khoản' : 'Gửi email khôi phục'}
             </Button>
           </form>
 
           {pendingVerificationEmail && (
-            <Button type="button" variant="outline" size="md" className="mt-3 w-full" disabled={resending} leftIcon={!resending ? <CheckCircle2 className="h-4 w-4" /> : undefined} onClick={() => void resendVerification()}>{resending ? 'Đang gửi lại...' : 'Gửi lại email xác minh'}</Button>
+            <Button type="button" variant="outline" size="md" className="mt-3 min-h-11 w-full" disabled={resending} leftIcon={!resending ? <CheckCircle2 className="h-4 w-4" /> : undefined} onClick={() => void resendVerification()}>{resending ? 'Đang gửi lại...' : 'Gửi lại email xác minh'}</Button>
           )}
 
           <div className="mt-6 border-t border-[var(--border-subtle)] pt-5 text-center">
-            {mode === 'signin' && <button type="button" className="text-sm font-semibold text-[var(--action-primary)] hover:underline" onClick={() => switchMode('signup')}>Chưa có tài khoản? Đăng ký</button>}
-            {mode === 'signup' && <button type="button" className="text-sm font-semibold text-[var(--action-primary)] hover:underline" onClick={() => switchMode('signin')}>Đã có tài khoản? Đăng nhập</button>}
-            {mode === 'forgot' && <button type="button" className="text-sm font-semibold text-[var(--action-primary)] hover:underline" onClick={() => switchMode('signin')}>Quay lại đăng nhập</button>}
+            {mode === 'signin' && <button type="button" className="rounded-lg px-2 py-2 text-sm font-semibold text-[var(--action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" onClick={() => switchMode('signup')}>Chưa có tài khoản? Đăng ký</button>}
+            {mode === 'signup' && <button type="button" className="rounded-lg px-2 py-2 text-sm font-semibold text-[var(--action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" onClick={() => switchMode('signin')}>Đã có tài khoản? Đăng nhập</button>}
+            {mode === 'forgot' && <button type="button" className="rounded-lg px-2 py-2 text-sm font-semibold text-[var(--action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" onClick={() => switchMode('signin')}>Quay lại đăng nhập</button>}
           </div>
         </div>
       </div>
