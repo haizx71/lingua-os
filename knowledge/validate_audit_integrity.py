@@ -20,6 +20,7 @@ TYPE_AUDITS = {
     "phrase": "knowledge-phrase-audit-17.v1",
     "skill": "knowledge-skill-audit-8.v1",
 }
+EXPECTED_TYPE_COUNTS = {"word": 82, "phrase": 17, "grammar": 8, "skill": 8}
 
 
 class AuditIntegrityError(Exception):
@@ -110,10 +111,20 @@ def disposition_counts(audit: dict[str, Any]) -> Counter[str]:
     return counts
 
 
-def validate_summary_counts(audit: dict[str, Any], schema: str) -> None:
+def validate_summary_counts(
+    audit: dict[str, Any],
+    schema: str,
+    expected_concepts: int | None = None,
+) -> None:
     summary = audit.get("summary")
     if not isinstance(summary, dict):
         return
+    if expected_concepts is not None and "concepts" in summary:
+        if summary.get("concepts") != expected_concepts:
+            raise AuditIntegrityError(
+                f"{schema}: summary concepts stale: declared={summary.get('concepts')} "
+                f"expected={expected_concepts}"
+            )
     declared = summary.get("dispositions")
     if not isinstance(declared, dict):
         return
@@ -121,7 +132,8 @@ def validate_summary_counts(audit: dict[str, Any], schema: str) -> None:
     normalized = {str(k): int(v) for k, v in declared.items()}
     if dict(sorted(actual.items())) != dict(sorted(normalized.items())):
         raise AuditIntegrityError(
-            f"{schema}: summary disposition counts stale: declared={normalized} actual={dict(actual)}"
+            f"{schema}: summary disposition counts stale: "
+            f"declared={normalized} actual={dict(actual)}"
         )
 
 
@@ -137,10 +149,10 @@ def validate(
         raise AuditIntegrityError(f"candidate concept count must be 115, got {len(concepts)}")
 
     type_counts = Counter(str(c["conceptType"]) for c in concepts.values())
-    expected_counts = {"word": 82, "phrase": 17, "grammar": 8, "skill": 8}
-    if dict(type_counts) != expected_counts:
+    if dict(type_counts) != EXPECTED_TYPE_COUNTS:
         raise AuditIntegrityError(
-            f"candidate type counts mismatch: expected={expected_counts} actual={dict(type_counts)}"
+            f"candidate type counts mismatch: expected={EXPECTED_TYPE_COUNTS} "
+            f"actual={dict(type_counts)}"
         )
 
     level_idx = audit_records(level, EXPECTED_LEVEL_SCHEMA)
@@ -150,12 +162,16 @@ def validate(
             f"missing={sorted(set(concepts)-set(level_idx))} "
             f"extra={sorted(set(level_idx)-set(concepts))}"
         )
-    validate_summary_counts(level, EXPECTED_LEVEL_SCHEMA)
+    validate_summary_counts(level, EXPECTED_LEVEL_SCHEMA, 115)
 
+    audit_by_type = {
+        "grammar": grammar,
+        "phrase": phrase,
+        "skill": skill,
+    }
     typed = {
-        "grammar": audit_records(grammar, TYPE_AUDITS["grammar"]),
-        "phrase": audit_records(phrase, TYPE_AUDITS["phrase"]),
-        "skill": audit_records(skill, TYPE_AUDITS["skill"]),
+        ctype: audit_records(audit_by_type[ctype], TYPE_AUDITS[ctype])
+        for ctype in TYPE_AUDITS
     }
     for ctype, index in typed.items():
         expected = {k for k, c in concepts.items() if c["conceptType"] == ctype}
@@ -164,10 +180,7 @@ def validate(
                 f"{ctype} audit coverage mismatch: "
                 f"missing={sorted(expected-set(index))} extra={sorted(set(index)-expected)}"
             )
-        validate_summary_counts(
-            {**{"summary": {"dispositions": dict(disposition_counts({"records": list(index.values())}))}}, "records": list(index.values())},
-            TYPE_AUDITS[ctype],
-        )
+        validate_summary_counts(audit_by_type[ctype], TYPE_AUDITS[ctype], len(expected))
 
     # V3 must delegate every non-word concept to the correct type audit.
     expected_delegated = {
@@ -198,7 +211,7 @@ def validate(
     return {
         "status": "PASS",
         "concepts": len(concepts),
-        "typeCounts": expected_counts,
+        "typeCounts": EXPECTED_TYPE_COUNTS,
         "levelAuditSchema": EXPECTED_LEVEL_SCHEMA,
         "typeAuditSchemas": TYPE_AUDITS,
         "levelDispositionCounts": dict(sorted(disposition_counts(level).items())),
