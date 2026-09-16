@@ -97,6 +97,17 @@ class PreviewTests(unittest.TestCase):
         report = M.build_preview([("p", pack([c]))], aud, grammar([c]))
         self.assertEqual(report["status"], "BLOCKED_REVIEW")
 
+    def test_grouped_level_audit_is_supported(self):
+        c = concept()
+        aud = {
+            "schemaVersion": "knowledge-level-audit-115.v1",
+            "productionAuthority": {"status": "LINGUA_VERIFIED"},
+            "groups": [{"disposition": "AGREES_WITH_V1_5_REFERENCE", "canonicalKeys": [c["canonicalKey"]]}],
+            "referenceLevelByKey": {c["canonicalKey"]: "A1"},
+        }
+        report = M.build_preview([("p", pack([c]))], aud, grammar([c]))
+        self.assertEqual(report["status"], "PREVIEW_READY")
+
     def test_cli_rejects_apply_flag(self):
         with self.assertRaises(SystemExit):
             M.parse_args(["--apply"])
