@@ -1,7 +1,16 @@
-import copy
-import unittest
+from __future__ import annotations
 
-from catalog_import import ImportError, build_plan, digest
+import copy
+import importlib.util
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+MODULE_PATH = ROOT / "knowledge" / "catalog_import.py"
+SPEC = importlib.util.spec_from_file_location("catalog_import", MODULE_PATH)
+assert SPEC and SPEC.loader
+M = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(M)
 
 
 def candidate():
@@ -28,14 +37,14 @@ def candidate():
         "counts": {"selectedConcepts": 108},
         "concepts": concepts,
     }
-    value["candidateSha256"] = digest(value)
+    value["candidateSha256"] = M.digest(value)
     return value
 
 
 class CatalogImportTests(unittest.TestCase):
     def test_plan_is_deterministic_and_catalog_only(self):
-        p1 = build_plan(candidate())
-        p2 = build_plan(candidate())
+        p1 = M.build_plan(candidate())
+        p2 = M.build_plan(candidate())
         self.assertEqual(p1, p2)
         self.assertEqual(p1["counts"]["concepts"], 108)
         self.assertEqual(p1["counts"]["lexicalConcepts"], 93)
@@ -45,26 +54,18 @@ class CatalogImportTests(unittest.TestCase):
             self.assertNotIn(forbidden, rendered)
 
     def test_rejects_non_first_party_example(self):
-        c = candidate()
-        c["concepts"][0]["example"]["rights"] = "UNKNOWN"
-        with self.assertRaises(ImportError):
-            build_plan(c)
+        c = candidate(); c["concepts"][0]["example"]["rights"] = "UNKNOWN"
+        with self.assertRaises(M.ImportError): M.build_plan(c)
 
     def test_rejects_type_count_drift(self):
-        c = candidate()
-        c["concepts"][0]["conceptType"] = "phrase"
-        c["concepts"][0]["canonicalKey"] = "phrase:changed"
-        with self.assertRaises(ImportError):
-            build_plan(c)
+        c = candidate(); c["concepts"][0]["conceptType"] = "phrase"; c["concepts"][0]["canonicalKey"] = "phrase:changed"
+        with self.assertRaises(M.ImportError): M.build_plan(c)
 
     def test_plan_hash_changes_when_content_changes(self):
-        c1 = candidate()
-        c2 = copy.deepcopy(c1)
+        c1 = candidate(); c2 = copy.deepcopy(c1)
         c2["concepts"][0]["vietnameseSupport"] = "nội dung khác"
-        c2.pop("candidateSha256")
-        c2["candidateSha256"] = digest(c2)
-        self.assertNotEqual(build_plan(c1)["planSha256"], build_plan(c2)["planSha256"])
+        c2.pop("candidateSha256"); c2["candidateSha256"] = M.digest(c2)
+        self.assertNotEqual(M.build_plan(c1)["planSha256"], M.build_plan(c2)["planSha256"])
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == "__main__": unittest.main()
