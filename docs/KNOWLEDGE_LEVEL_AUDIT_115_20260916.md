@@ -1,130 +1,124 @@
 # LINGUA OS — Level Audit of 115 Knowledge Concepts — 2026-09-16
 
-Status: **second-source review complete; not production level approval**
+Status: **coverage-corrected second-source review complete; not production level approval**
 
-Current machine-readable audit: `knowledge/level_audit_115.v2.json`.
+Current machine-readable audit: `knowledge/level_audit_115.v3.json`.
 
-`knowledge/level_audit_115.v1.json` remains an immutable first-pass artifact based primarily on the public CEFR-J v1.5 mirror. V2 adds independent cross-check evidence and a stricter blocker/warning policy rather than silently rewriting the first pass.
+Historical artifacts:
+
+- `level_audit_115.v1.json`: first pass against public CEFR-J v1.5 mirror;
+- `level_audit_115.v2.json`: added Oxford cross-checks and blocker/warning semantics;
+- `level_audit_115.v3.json`: current audit; fixes exact source-pack coverage and delegates grammar/phrase/skill evidence to type-specific audits.
 
 ## Scope
 
-The audit covers all 115 first-party candidate concepts:
+Exactly 115 first-party candidate concepts:
 
-- 82 word concepts;
-- 17 phrase concepts;
+- 82 words;
+- 17 phrases;
 - 8 grammar concepts;
-- 8 communicative skill concepts.
+- 8 communicative skills.
 
-The intended production lexical prior remains official **CEFR-J Wordlist 1.6**. Its public release metadata is recorded, but the binary is still not a LINGUA-owned verified snapshot in this environment. Therefore the overall production authority remains blocked.
+The intended production lexical prior remains official **CEFR-J Wordlist 1.6**. Public release metadata is recorded, but LINGUA has not independently downloaded and hashed the binary in this environment. Production lexical authority therefore remains `OBSERVED_EXTERNAL_ONLY`.
 
-## Important interpretation rule
+## V3 coverage correction
 
-CEFR describes proficiency/ability. Individual word or grammar labels from CEFR-J, Oxford or another learner resource are curriculum evidence, not a universal official truth and never learner-state authority.
+During exact pack/audit comparison, V1/V2 were found to contain an audit-only key `phrase:because-simple-reason` while the actual starter inventory contains `phrase:what-time`.
 
-For this reason V2 distinguishes:
+V3 fixes that defect instead of silently editing the historical evidence files. This matters because the preview importer is deliberately fail-closed: the old audit and the actual 115-concept packs should not be allowed to appear compatible when their identities differ.
 
-- **blockers**: an item is earlier than multiple references, sources materially disagree, concept identity/POS is wrong, or evidence for phrases/skills is unresolved;
-- **warnings**: LINGUA intentionally teaches an item later than a reference, or an independent source supports the proposed band even though the first source differed;
-- **internal scaffolds**: A0/Pre-A1 items used as product bootstrap without claiming an external A0 lexical certification.
+V3 also delegates:
 
-## V2 disposition totals
+- grammar → `knowledge/grammar_audit_8.v1.json`;
+- phrases → `knowledge/phrase_audit_17.v1.json`;
+- skills → `knowledge/skill_audit_8.v1.json`.
 
-All 115 concepts still have exactly one level-audit disposition:
+Word-level evidence is no longer allowed to masquerade as phrase, grammar or skill evidence.
+
+## V3 disposition totals
+
+All 115 concepts have exactly one top-level disposition:
 
 - 20 `A0_INTERNAL_SCAFFOLD`;
 - 1 `A0_STRETCH_REVIEW`;
 - 29 `AGREES_WITH_V1_5_REFERENCE`;
 - 8 `GRAMMAR_AUDIT_REQUIRED`;
 - 2 `EARLY_PLACEMENT_CONFIRMED_BY_SECOND_SOURCE`;
-- 2 `EARLY_PLACEMENT_UNRESOLVED`;
-- 2 `SUPPORTED_BY_SECONDARY_LEVEL_SOURCE`;
+- 4 `SUPPORTED_BY_SECONDARY_LEVEL_SOURCE`;
 - 1 `SOURCE_DISAGREEMENT_HUMAN_REVIEW`;
 - 1 `IDENTITY_MODEL_REVIEW_REQUIRED`;
 - 24 `LINGUA_LATER_THAN_V1_5_REFERENCE`;
-- 17 `PHRASE_REQUIRES_SEPARATE_EVIDENCE`;
-- 8 `SKILL_REQUIRES_CAN_DO_REVIEW`.
+- 17 `PHRASE_AUDIT_REQUIRED`;
+- 8 `SKILL_AUDIT_REQUIRED`.
 
-## High-value findings from the independent lexical cross-check
+Total: **115**.
 
-### `menu` — A1 proposal now has independent support
+## Main lexical findings
 
-CEFR-J v1.5 placed the matched noun at A2, while Oxford learner/topic material places `menu` in A1-oriented cooking/eating vocabulary. V2 therefore no longer treats LINGUA A1 as a hard early-placement error. It remains a warning until the production source snapshot is pinned.
+### Strongly supported corrections/cross-checks
 
-### `community` — B1 proposal now has independent support
+- `menu` A1: Oxford evidence supports the current LINGUA A1 proposal despite CEFR-J v1.5 A2.
+- `community` B1: Oxford supports the current B1 proposal despite CEFR-J v1.5 B2.
+- `left` noun A1 and `right` noun A1: Oxford 3000 supports the current directional noun proposals, so these are no longer unresolved blockers.
 
-CEFR-J v1.5 placed the matched noun at B2; Oxford learner/topic material places `community` at B1 in the people/society domain. LINGUA B1 is therefore defensible as a product proposal.
+### Real early-placement blockers
 
-### `environment` — sources disagree materially
+- `booking` noun: LINGUA A2 is earlier than both CEFR-J v1.5 and Oxford evidence. It should move later, be replaced in A2 microcontent, or receive an explicit human rationale.
+- `cash` noun: LINGUA A1 is earlier than both cross-checks around A2. Keep only with an explicit survival-language rationale, otherwise move to A2.
+- `need` verb: external evidence is not uniform, but ordinary use is still A1+ in the independent cross-check. LINGUA may expose it in A0 survival language while keeping that decision explicitly internal.
 
-CEFR-J v1.5 places the matched noun at B2, while Oxford learner/topic material for the environmental sense places it around A2. LINGUA currently proposes B1. Rather than selecting whichever source is convenient, V2 records `SOURCE_DISAGREEMENT_HUMAN_REVIEW` and preserves both signals.
+### Source disagreement
 
-### `cash` — A1 remains genuinely early
+`environment` noun: CEFR-J v1.5 and Oxford differ materially. Current LINGUA B1 sits between them. V3 preserves the disagreement for human review instead of choosing whichever source is convenient.
 
-Both the CEFR-J v1.5 comparison and Oxford learner/topic evidence support approximately A2 for the basic money sense. LINGUA A1 is therefore an explicit early-teaching proposal and remains a blocker until a human records a survival-language rationale or moves it to A2.
+### Identity bug: `far`
 
-### `booking` — strongest current lexical level concern
+The support pack currently defines `word:far:adjective` at A2 with example `The airport is far from here.` The intended distance use is adverbial. Both learner-dictionary analysis and the CEFR-J POS split show why the adjective comparison was misleading.
 
-CEFR-J v1.5 places the noun around B1 and Oxford travel/holiday learner material places it later still. The current LINGUA A2 proposal is earlier than both. This is high priority: move it later, replace it in A2 microcontent, or explicitly justify early teaching.
-
-### `need` — still an A0 stretch, but source evidence is not uniform
-
-The CEFR-J v1.5 lexical comparison exposed an A2 row (with modal-auxiliary evidence around A1), while Oxford learner-list evidence treats the common verb at A1. LINGUA may keep `need` visible in A0 survival expressions, but A0 must remain an internal bootstrap decision rather than an external lexical-level claim.
-
-## Identity bug discovered: `far`
-
-The support pack currently defines:
-
-- key: `word:far:adjective`;
-- band: `LINGUA_A2`;
-- example: `The airport is far from here.`
-
-That example uses the intended distance sense in an adverbial/predicative pattern. The POS-specific cross-check explains the apparent level conflict: CEFR-J v1.5 has adverb `far` around A2 while adjective `far` is later; Oxford's adjective analysis is also not the intended identity for this example.
-
-V2 therefore marks the current identity as `IDENTITY_MODEL_REVIEW_REQUIRED` and proposes:
+Proposed atomic correction:
 
 `word:far:adverb` / `partOfSpeech = adverb` / `LINGUA_A2`
 
-The source pack has **not** been silently rewritten in the audit. Production preview must remain blocked until the source pack and all coverage references are updated together, so no dangling canonical key can be introduced.
+The source pack has intentionally **not** been silently rewritten. The current identity remains blocked until the support pack plus every coverage/reference key can be changed together.
 
-## Earlier/later policy correction
+## Earlier versus later policy
 
-V1 treated both earlier-than-reference and later-than-reference items as import blockers. V2 corrects that policy:
+The preview policy now distinguishes curriculum risk:
 
-- teaching **earlier** than credible evidence can increase learner difficulty and needs explicit review;
-- teaching **later** is generally conservative and therefore produces a warning, not an automatic blocker.
+- teaching **earlier** than credible evidence can increase difficulty and is review-gated;
+- teaching **later** is conservative and emits a warning rather than an automatic blocker.
 
-This distinction is now implemented in the preview-only importer.
+This prevents benign conservative sequencing from being treated like an unsafe early-placement decision.
 
-## Non-word concepts
+## Type-specific review status
 
-Vocabulary evidence cannot certify phrases, grammar or communicative skills:
+### Grammar
 
-- 17 phrase concepts still require phrase/function evidence;
-- 8 grammar concepts are delegated to `knowledge/grammar_audit_8.v1.json`, now with CEFR-J plus British Council cross-checks;
-- 8 skills still require can-do/function review.
+All 8 concepts now have CEFR-J plus independent British Council evidence. None is production-approved automatically. Important scope findings include A0 as internal scaffold, A1 present-simple core, A2 consolidated past/comparative bundles, and B1 narrow first-conditional/defining-relative-clause bundles.
+
+### Phrases
+
+All 17 actual phrase keys now have a dedicated audit. Oxford Phrase List, British Council learner materials and CEFR clarification descriptors provide evidence for many of them. The audit distinguishes direct support, conservative later placement, internal A0 survival scaffolds and one unresolved collocation (`make-a-plan`).
+
+### Communicative skills
+
+All 8 skills now have can-do/task evidence. The main structural concern is `ask-basic-directions`: A1 is appropriate for a simple location question such as `Where is ...?`, while route-direction interaction is more clearly A2. The skill should therefore be narrowed or split before production approval.
 
 ## Current prioritized review queue
 
-1. Fix the `far` identity/POS mismatch before any level decision.
+1. Atomically fix `far` concept identity/POS plus coverage references.
 2. Resolve `booking` A2 versus later evidence.
 3. Resolve `cash` A1 versus A2 evidence.
-4. Resolve the exact directional identity/level of `left` and `right`.
-5. Make an explicit human curriculum decision for `environment`, where reputable sources disagree.
-6. Decide whether `need` remains A0 survival/bootstrap exposure while its normal learning band stays A1+.
+4. Make a human curriculum decision for `environment` source disagreement.
+5. Decide how `need` functions in A0 survival exposure versus normal learn-level sequencing.
+6. Narrow/split `ask-basic-directions` into A1 location question versus A2 route-direction interaction.
+7. Decide exact treatment of `make-a-plan` after collocation review.
+8. Human-sign off grammar/phrase/skill audit records rather than turning evidence into automatic approval.
 
 ## Production decision
 
 **BLOCKED_ON_CEFRJ_1_6_LINGUA_SNAPSHOT_AND_REVIEW_QUEUE**
 
-Production approval still requires:
-
-1. a LINGUA-owned download of official CEFR-J 1.6;
-2. locally computed SHA-256 plus pinned source manifest;
-3. deterministic rerun of lexical cross-checking;
-4. resolution of the V2 blocker queue, including the `far` canonical identity change;
-5. phrase and skill evidence review;
-6. grammar human sign-off;
-7. preview against a read-only catalog snapshot;
-8. independent review of the exact preview plan.
+Production approval still requires a LINGUA-owned CEFR-J 1.6 snapshot/hash, deterministic rerun of the lexical audit, resolution of the blocker queue, exact type-audit coverage, preview against a read-only catalog snapshot, and independent review of the exact preview plan hash.
 
 No audit result may mutate FSRS, competence, Save/Learn intent, exposure, Today completion or any learner state.
