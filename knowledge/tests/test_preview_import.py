@@ -61,6 +61,56 @@ def grammar(items, approved=True):
     }
 
 
+def phrase(items, approved=True):
+    ps = [c for c in items if c["conceptType"] == "phrase"]
+    return {
+        "schemaVersion": "knowledge-phrase-audit-17.v1",
+        "records": [
+            {
+                "canonicalKey": c["canonicalKey"],
+                "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+                "productionApproved": approved,
+            }
+            for c in ps
+        ],
+    }
+
+
+def skill(items, approved=True):
+    ss = [c for c in items if c["conceptType"] == "skill"]
+    return {
+        "schemaVersion": "knowledge-skill-audit-8.v1",
+        "records": [
+            {
+                "canonicalKey": c["canonicalKey"],
+                "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+                "productionApproved": approved,
+            }
+            for c in ss
+        ],
+    }
+
+
+def v3_level(items, status="LINGUA_VERIFIED"):
+    records = []
+    for c in items:
+        disposition = {
+            "grammar": "GRAMMAR_AUDIT_REQUIRED",
+            "phrase": "PHRASE_AUDIT_REQUIRED",
+            "skill": "SKILL_AUDIT_REQUIRED",
+        }.get(c["conceptType"], "AGREES_WITH_V1_5_REFERENCE")
+        records.append({
+            "canonicalKey": c["canonicalKey"],
+            "disposition": disposition,
+            "severity": "delegated" if c["conceptType"] != "word" else "info",
+        })
+    return {
+        "schemaVersion": "knowledge-level-audit-115.v3",
+        "productionAuthority": {"status": status},
+        "records": records,
+    }
+
+
 class PreviewTests(unittest.TestCase):
     def test_preview_has_no_apply_mode_and_blocks_unverified_authority(self):
         items = [concept()]
@@ -69,7 +119,7 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(report["status"], "BLOCKED_REVIEW")
         self.assertEqual(report["counts"]["actions"]["WOULD_INSERT"], 1)
 
-    def test_verified_clean_preview_can_be_candidate_ready_but_still_cannot_apply(self):
+    def test_verified_clean_legacy_preview_can_be_candidate_ready_but_cannot_apply(self):
         items = [concept()]
         report = M.build_preview(
             [("p", pack(items))],
@@ -79,6 +129,91 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(report["status"], "PREVIEW_READY")
         self.assertTrue(report["productionCandidateEligible"])
         self.assertFalse(report["applySupported"])
+
+    def test_v3_clean_preview_requires_and_records_type_audits(self):
+        items = [
+            concept(),
+            concept("grammar:test", "grammar"),
+            concept("phrase:test", "phrase"),
+            concept("skill:test", "skill"),
+        ]
+        report = M.build_preview(
+            [("p", pack(items))],
+            v3_level(items),
+            grammar(items),
+            phrase(items),
+            skill(items),
+        )
+        self.assertEqual(report["status"], "PREVIEW_READY")
+        self.assertEqual(report["levelAuditSchema"], "knowledge-level-audit-115.v3")
+        self.assertEqual(report["phraseAuditSchema"], "knowledge-phrase-audit-17.v1")
+        self.assertEqual(report["skillAuditSchema"], "knowledge-skill-audit-8.v1")
+        self.assertFalse(report["applySupported"])
+
+    def test_v3_phrase_audit_is_required_when_phrases_exist(self):
+        items = [concept("phrase:test", "phrase")]
+        with self.assertRaises(M.PreviewError):
+            M.build_preview(
+                [("p", pack(items))],
+                v3_level(items),
+                grammar(items),
+                None,
+                skill(items),
+            )
+
+    def test_v3_skill_audit_is_required_when_skills_exist(self):
+        items = [concept("skill:test", "skill")]
+        with self.assertRaises(M.PreviewError):
+            M.build_preview(
+                [("p", pack(items))],
+                v3_level(items),
+                grammar(items),
+                phrase(items),
+                None,
+            )
+
+    def test_v3_phrase_audit_must_exactly_cover_phrase_concepts(self):
+        items = [concept("phrase:test", "phrase")]
+        wrong = {
+            "schemaVersion": "knowledge-phrase-audit-17.v1",
+            "records": [{
+                "canonicalKey": "phrase:other",
+                "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+                "productionApproved": True,
+            }],
+        }
+        with self.assertRaises(M.PreviewError):
+            M.build_preview(
+                [("p", pack(items))],
+                v3_level(items),
+                grammar(items),
+                wrong,
+                skill(items),
+            )
+
+    def test_v3_phrase_not_approved_blocks(self):
+        items = [concept("phrase:test", "phrase")]
+        report = M.build_preview(
+            [("p", pack(items))],
+            v3_level(items),
+            grammar(items),
+            phrase(items, approved=False),
+            skill(items),
+        )
+        self.assertEqual(report["status"], "BLOCKED_REVIEW")
+        self.assertEqual(report["blockers"][0]["source"], "phrase-audit")
+
+    def test_v3_skill_not_approved_blocks(self):
+        items = [concept("skill:test", "skill")]
+        report = M.build_preview(
+            [("p", pack(items))],
+            v3_level(items),
+            grammar(items),
+            phrase(items),
+            skill(items, approved=False),
+        )
+        self.assertEqual(report["status"], "BLOCKED_REVIEW")
+        self.assertEqual(report["blockers"][0]["source"], "skill-audit")
 
     def test_duplicate_key_across_packs_fails(self):
         c = concept()
@@ -107,7 +242,7 @@ class PreviewTests(unittest.TestCase):
             [("p", pack([c]))],
             level([c], "LINGUA_VERIFIED"),
             grammar([c]),
-            existing,
+            catalog=existing,
         )
         self.assertEqual(report["actions"][0]["action"], "BLOCK_COLLISION")
         self.assertEqual(report["status"], "BLOCKED_REVIEW")
@@ -119,7 +254,7 @@ class PreviewTests(unittest.TestCase):
             [("p", pack([c]))],
             level([c], "LINGUA_VERIFIED"),
             grammar([c]),
-            existing,
+            catalog=existing,
         )
         self.assertEqual(report["actions"][0]["action"], "WOULD_NOOP_EXISTING")
 
