@@ -56,7 +56,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const hasValue = value !== undefined && value !== '' && value !== null;
 
     return (
-      <div className={cn('flex flex-col gap-1.5', fullWidth ? 'w-full' : 'inline-flex')}>
+      <div className={cn('flex min-w-0 flex-col gap-1.5', fullWidth ? 'w-full' : 'inline-flex')}>
         {label && (
           <label
             htmlFor={inputId}
@@ -67,11 +67,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
 
-        <div className="relative flex w-full items-center">
+        <div className="relative flex min-w-0 w-full items-center">
           {leftIcon && (
             <div
               className={cn(
-                'pointer-events-none absolute left-3 flex items-center justify-center text-[var(--text-muted)]',
+                'pointer-events-none absolute left-3 z-10 flex items-center justify-center text-[var(--text-muted)]',
                 iconSizeClasses[inputSize]
               )}
               aria-hidden="true"
@@ -89,22 +89,22 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={!!error}
             aria-describedby={describedBy}
             className={cn(
-              'w-full border bg-[var(--surface)] font-sans text-[var(--text-primary)] shadow-sm transition-[border-color,box-shadow,background-color] placeholder:text-[var(--text-muted)]',
+              'w-full min-w-0 border bg-[var(--surface)] font-sans text-[var(--text-primary)] shadow-sm transition-[border-color,box-shadow,background-color] placeholder:text-[var(--text-muted)]',
               'focus-visible:outline-none focus-visible:border-[var(--focus-ring)] focus-visible:ring-4 focus-visible:ring-[color:var(--surface-blue)]',
               'disabled:cursor-not-allowed disabled:border-[var(--border-subtle)] disabled:bg-[var(--surface-subtle)] disabled:text-[var(--text-muted)]',
               error
                 ? 'border-[var(--status-danger)] focus-visible:border-[var(--status-danger)] focus-visible:ring-[var(--status-danger-bg)]'
                 : 'border-[var(--border-default)] hover:border-[var(--border-strong)]',
-              leftIcon && (inputSize === 'sm' ? 'pl-8' : inputSize === 'lg' ? 'pl-11' : 'pl-10'),
-              (rightIcon || (clearable && hasValue) || error) &&
-                (inputSize === 'sm' ? 'pr-8' : inputSize === 'lg' ? 'pr-11' : 'pr-10'),
               sizeStyles[inputSize],
+              leftIcon && (inputSize === 'sm' ? '!pl-8' : inputSize === 'lg' ? '!pl-12' : '!pl-10'),
+              (rightIcon || (clearable && hasValue) || error) &&
+                (inputSize === 'sm' ? '!pr-8' : inputSize === 'lg' ? '!pr-12' : '!pr-10'),
               className
             )}
             {...props}
           />
 
-          <div className="absolute right-3 flex items-center gap-1.5 text-[var(--text-muted)]">
+          <div className="absolute right-3 z-10 flex items-center gap-1.5 text-[var(--text-muted)]">
             {clearable && hasValue && !disabled && (
               <button
                 type="button"
@@ -131,7 +131,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </div>
         </div>
 
-        {error && <p id={errorId} role="alert" className="text-xs font-medium text-[var(--status-danger)]">{error}</p>}
+        {error && <p id={errorId} role="alert" className="text-xs font-medium leading-5 text-[var(--status-danger)]">{error}</p>}
         {!error && helperText && <p id={helperId} className="text-xs leading-5 text-[var(--text-secondary)]">{helperText}</p>}
       </div>
     );
