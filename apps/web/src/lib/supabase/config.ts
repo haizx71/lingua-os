@@ -10,19 +10,42 @@ export interface SupabasePublicConfig {
   readonly isConfigured: boolean;
 }
 
+const SECURITY_ERROR =
+  'SECURITY INVARIANT VIOLATION: Server-only Supabase credentials cannot be exposed to the browser.';
+
 /**
- * Defensive check as additional defense-in-depth.
- * Note: Pattern checking does not guarantee detection of arbitrary secret formats;
- * the primary security boundary is strict structural isolation of NEXT_PUBLIC_* variables.
+ * Defense-in-depth against accidentally pasting a server secret into a NEXT_PUBLIC variable.
+ * Environment-name isolation remains the primary boundary, but this also recognizes modern
+ * `sb_secret_*` credentials and legacy JWT service-role keys by decoding their payload.
  */
-function assertNoServiceRole(key: string): void {
-  const prohibitedPatterns = ['service_role', 'service-role', 'serviceRole', 'secret'];
-  for (const pattern of prohibitedPatterns) {
-    if (key.toLowerCase().includes(pattern.toLowerCase())) {
-      throw new Error(
-        'SECURITY INVARIANT VIOLATION: Prohibited key pattern detected in public Supabase client configuration.'
-      );
+function assertBrowserSafeKey(key: string): void {
+  const normalized = key.trim();
+  const lower = normalized.toLowerCase();
+
+  if (
+    lower.startsWith('sb_secret_') ||
+    lower.includes('service_role') ||
+    lower.includes('service-role')
+  ) {
+    throw new Error(SECURITY_ERROR);
+  }
+
+  const segments = normalized.split('.');
+  if (segments.length !== 3) return;
+
+  try {
+    const payloadSegment = segments[1];
+    if (!payloadSegment) return;
+    const base64 = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const payload = JSON.parse(globalThis.atob(padded)) as { role?: unknown };
+    if (payload.role === 'service_role') {
+      throw new Error(SECURITY_ERROR);
     }
+  } catch (error) {
+    if (error instanceof Error && error.message === SECURITY_ERROR) throw error;
+    // A publishable value does not need to be a JWT. Malformed/non-JWT values are
+    // validated by Supabase itself; only positively identified secrets are rejected here.
   }
 }
 
@@ -40,7 +63,7 @@ export function getSupabasePublicConfig(): SupabasePublicConfig {
     '';
 
   if (supabaseAnonKey) {
-    assertNoServiceRole(supabaseAnonKey);
+    assertBrowserSafeKey(supabaseAnonKey);
   }
 
   const isConfigured = Boolean(supabaseUrl.trim() && supabaseAnonKey.trim());
@@ -51,4 +74,3 @@ export function getSupabasePublicConfig(): SupabasePublicConfig {
     isConfigured,
   };
 }
-

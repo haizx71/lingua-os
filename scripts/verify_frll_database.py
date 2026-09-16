@@ -2,7 +2,7 @@
 
 Strictly verifies that:
 1. PostgreSQL connection is operational.
-2. All 9 canonical migrations (0001..0009) are applied and valid in public.schema_migrations.
+2. All 10 canonical migrations (0001..0010) are applied and valid in public.schema_migrations.
 3. Core application schema tables exist in the public schema.
 4. Deterministic FRLL catalog anchor concept exists exactly once.
 5. Zero rows exist across all learner-derived tables (strict learner isolation).
@@ -35,6 +35,7 @@ EXPECTED_MIGRATIONS = (
     "0007_profile_language_auth_bootstrap_v1",
     "0008_starting_level_estimate_v1",
     "0009_library_concept_save_intent_v1",
+    "0010_supabase_public_data_api_lockdown_v1",
 )
 
 

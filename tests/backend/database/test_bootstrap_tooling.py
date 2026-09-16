@@ -7,9 +7,12 @@ and alignment with canonical migration and fixture registries without needing re
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 from database.migrate import discover_migrations
 from scripts.apply_frll_seed import (
@@ -93,13 +96,11 @@ def test_no_stale_or_missing_tables_in_verifier() -> None:
         for match in pattern.finditer(content):
             migration_tables.add(match.group(1).lower())
 
-    # All migration tables must be in EXPECTED_APPLICATION_TABLES
     missing_from_verifier = migration_tables - set(EXPECTED_APPLICATION_TABLES)
     assert not missing_from_verifier, (
         f"Tables created in migrations but missing from verifier: {missing_from_verifier}"
     )
 
-    # All verifier tables must either come from migrations or be schema_migrations
     unexpected_in_verifier = set(EXPECTED_APPLICATION_TABLES) - (
         migration_tables | {"schema_migrations"}
     )
@@ -107,7 +108,6 @@ def test_no_stale_or_missing_tables_in_verifier() -> None:
         f"Stale or unexpected tables in verifier: {unexpected_in_verifier}"
     )
 
-    # All learner tables must be accounted for in the expected application tables
     missing_learner_tables = set(CANONICAL_LEARNER_DERIVED_TABLES) - set(
         EXPECTED_APPLICATION_TABLES
     )
@@ -156,11 +156,15 @@ def test_verify_frll_database_fails_closed_when_database_url_missing() -> None:
 
 def test_bootstrap_ps1_fails_closed_when_database_url_missing() -> None:
     """Ensure bootstrap-frll-database.ps1 exits 1 when DATABASE_URL is absent."""
+    powershell = shutil.which("pwsh") or shutil.which("powershell")
+    if powershell is None:
+        pytest.skip("PowerShell is not installed on this platform")
+
     env = dict(os.environ)
     env.pop("DATABASE_URL", None)
 
     proc = subprocess.run(
-        ["powershell", "-NoProfile", "-File", str(BOOTSTRAP_PS1)],
+        [powershell, "-NoProfile", "-File", str(BOOTSTRAP_PS1)],
         env=env,
         capture_output=True,
         text=True,

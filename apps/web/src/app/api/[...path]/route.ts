@@ -7,6 +7,8 @@ type RouteContext = {
   params: Promise<{ path: string[] }>;
 };
 
+const MAX_REQUEST_BODY_BYTES = 1_048_576;
+
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
   'keep-alive',
@@ -33,20 +35,32 @@ function configuredApiOrigin(): URL | null {
   }
 }
 
-function unavailableResponse(): NextResponse {
+function errorResponse(status: number, code: string, message: string): NextResponse {
   return NextResponse.json(
     {
       error: {
-        code: 'SERVICE_UNAVAILABLE',
-        message: 'The API service is temporarily unavailable.',
+        code,
+        message,
         requestId: crypto.randomUUID(),
       },
     },
     {
-      status: 503,
+      status,
       headers: { 'Cache-Control': 'no-store' },
     },
   );
+}
+
+function unavailableResponse(): NextResponse {
+  return errorResponse(503, 'SERVICE_UNAVAILABLE', 'The API service is temporarily unavailable.');
+}
+
+function payloadTooLargeResponse(): NextResponse {
+  return errorResponse(413, 'PAYLOAD_TOO_LARGE', 'The request body is too large.');
+}
+
+function invalidRequestBodyResponse(): NextResponse {
+  return errorResponse(400, 'VALIDATION_ERROR', 'The request body could not be read.');
 }
 
 function forwardRequestHeaders(request: Request): Headers {
@@ -84,6 +98,52 @@ function forwardResponseHeaders(response: Response): Headers {
   return headers;
 }
 
+async function boundedRequestBody(request: Request): Promise<Uint8Array | undefined | NextResponse> {
+  const method = request.method.toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || request.body === null) return undefined;
+
+  const declaredLength = request.headers.get('content-length');
+  if (declaredLength) {
+    const parsedLength = Number(declaredLength);
+    if (!Number.isSafeInteger(parsedLength) || parsedLength < 0 || parsedLength > MAX_REQUEST_BODY_BYTES) {
+      return payloadTooLargeResponse();
+    }
+  }
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || value.byteLength === 0) continue;
+
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+        await reader.cancel('request body exceeds proxy limit');
+        return payloadTooLargeResponse();
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return invalidRequestBodyResponse();
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (totalBytes === 0) return undefined;
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
 async function proxy(request: Request, { params }: RouteContext): Promise<Response> {
   const apiOrigin = configuredApiOrigin();
   if (!apiOrigin) return unavailableResponse();
@@ -98,13 +158,13 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
   target.pathname = `/${segments.map((segment) => encodeURIComponent(segment)).join('/')}`;
   target.search = new URL(request.url).search;
 
-  const method = request.method.toUpperCase();
-  const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
+  const body = await boundedRequestBody(request);
+  if (body instanceof NextResponse) return body;
 
   let upstream: Response;
   try {
     upstream = await fetch(target, {
-      method,
+      method: request.method.toUpperCase(),
       headers: forwardRequestHeaders(request),
       body,
       redirect: 'manual',

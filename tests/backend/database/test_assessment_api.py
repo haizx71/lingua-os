@@ -792,33 +792,23 @@ def test_assessment_does_not_write_learning_today_content_or_memory_state(
     assert _row_counts(seed.database_url, isolated_tables) == before
 
 
-def test_assessment_rls_and_browser_privileges_are_actor_scoped(
+def test_assessment_browser_roles_cannot_access_domain_tables(
     isolated_migrated_postgres_url: str,
 ) -> None:
     seed = _seed_assessment(isolated_migrated_postgres_url)
-    session = (
-        PostgresAssessmentStore(seed.database_url)
-        .start_or_resume(
-            seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
-        )
-        .session
+    PostgresAssessmentStore(seed.database_url).start_or_resume(
+        seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
     )
     other_id = uuid.uuid4()
-    with psycopg.connect(seed.database_url) as owner:
-        owner.execute("SET ROLE authenticated")
-        owner.execute(
-            "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(seed.actor.id),)
-        )
-        assert owner.execute("SELECT id FROM assessment_attempts").fetchall() == [(session.id,)]
-        with pytest.raises(psycopg.errors.InsufficientPrivilege), owner.transaction():
-            owner.execute("UPDATE assessment_attempts SET current_position = 1")
-        with pytest.raises(psycopg.errors.InsufficientPrivilege), owner.transaction():
-            owner.execute("SELECT * FROM assessment_attempt_items")
 
-    with psycopg.connect(seed.database_url) as other:
-        other.execute("SET ROLE authenticated")
-        other.execute("SELECT set_config('request.jwt.claim.sub', %s, false)", (str(other_id),))
-        assert other.execute("SELECT id FROM assessment_attempts").fetchall() == []
+    for actor_id in (seed.actor.id, other_id):
+        with psycopg.connect(seed.database_url) as session:
+            session.execute("SET ROLE authenticated")
+            session.execute(
+                "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(actor_id),)
+            )
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                session.execute("SELECT id FROM assessment_attempts").fetchall()
 
     with psycopg.connect(seed.database_url) as anonymous:
         anonymous.execute("SET ROLE anon")
@@ -862,6 +852,7 @@ def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
     PostgresAssessmentStore(seed.database_url).start_or_resume(
         seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
     )
+    assert migrate_down(seed.database_url, MIGRATIONS, steps=1) == ["0010"]
     assert migrate_down(seed.database_url, MIGRATIONS, steps=1) == ["0009"]
     with pytest.raises(psycopg.errors.RaiseException, match="assessment_attempt_items"):
         migrate_down(seed.database_url, MIGRATIONS, steps=1)
@@ -893,7 +884,7 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
     shutil.copytree(MIGRATIONS, partial)
     up_0008_name = next(partial.glob("0008_*.up.sql")).name
     down_0008_name = next(partial.glob("0008_*.down.sql")).name
-    for version in ("0008", "0009"):
+    for version in ("0008", "0009", "0010"):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
 

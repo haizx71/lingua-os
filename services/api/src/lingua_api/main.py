@@ -5,6 +5,7 @@ import os
 from typing import Literal
 from uuid import UUID, uuid4
 
+import psycopg
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -68,6 +69,8 @@ from lingua_api.profile.domain import (
 )
 from lingua_api.profile.routes import router as profile_router
 from lingua_api.profile.service import ProfileApplication
+from lingua_api.progress.routes import router as progress_router
+from lingua_api.progress.service import ProgressApplication
 from lingua_api.reader.domain import ReaderMutationInFlight, ReaderValidationError
 from lingua_api.reader.routes import router as reader_router
 from lingua_api.reader.service import ReaderApplication
@@ -94,6 +97,12 @@ class HealthResponse(BaseModel):
     version: str = APP_VERSION
 
 
+class ReadinessResponse(BaseModel):
+    service: Literal["lingua-api"] = "lingua-api"
+    status: Literal["ready"] = "ready"
+    version: str = APP_VERSION
+
+
 class _MissingTokenVerifier:
     def verify(self, token: str) -> AuthenticatedActor:
         del token
@@ -115,6 +124,11 @@ def create_app(
     )
     resolved_database_url = database_url or os.getenv("DATABASE_URL")
     resolved_cursor_secret = cursor_secret or _cursor_secret_from_environment()
+    application.state.database_url = resolved_database_url
+    application.state.cursor_secret_configured = resolved_cursor_secret is not None
+    application.state.auth_configured = token_verifier is not None or bool(
+        os.getenv("SUPABASE_URL")
+    )
     application.state.token_verifier = token_verifier or _token_verifier_from_environment()
     application.state.admin_actor_policy = AdminActorPolicy.from_environment_value(
         admin_user_ids if admin_user_ids is not None else os.getenv("LINGUA_ADMIN_USER_IDS")
@@ -173,11 +187,16 @@ def create_app(
         if resolved_database_url is not None and resolved_cursor_secret is not None
         else None
     )
+    application.state.progress_application = (
+        ProgressApplication(resolved_database_url) if resolved_database_url is not None else None
+    )
 
     @application.middleware("http")
     async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.request_id = uuid4()
-        return await call_next(request)
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = str(request.state.request_id)
+        return response
 
     _register_error_handlers(application)
     application.include_router(admin_router)
@@ -188,12 +207,26 @@ def create_app(
     application.include_router(reader_router)
     application.include_router(today_router)
     application.include_router(brain_router)
+    application.include_router(progress_router)
     application.include_router(assessment_router)
     application.include_router(library_router)
 
     @application.get("/health", response_model=HealthResponse, include_in_schema=False)
     async def health() -> HealthResponse:
         return HealthResponse()
+
+    @application.get("/ready", response_model=ReadinessResponse, include_in_schema=False)
+    def ready() -> ReadinessResponse | JSONResponse:
+        if (
+            not application.state.auth_configured
+            or not application.state.cursor_secret_configured
+            or not _database_ready(application.state.database_url)
+        ):
+            return JSONResponse(
+                status_code=503,
+                content={"service": "lingua-api", "status": "not_ready", "version": APP_VERSION},
+            )
+        return ReadinessResponse()
 
     return application
 
@@ -223,6 +256,16 @@ def _register_error_handlers(application: FastAPI) -> None:
     async def admin_validation(request: Request, error: AdminValidationError) -> JSONResponse:
         del error
         return _error(request, 422, "VALIDATION_ERROR", "The content request is invalid.")
+
+    @application.exception_handler(AuthConfigurationError)
+    async def auth_unavailable(request: Request, error: AuthConfigurationError) -> JSONResponse:
+        del error
+        return _error(
+            request,
+            503,
+            "SERVICE_UNAVAILABLE",
+            "Authentication service is temporarily unavailable.",
+        )
 
     @application.exception_handler(AccessTokenInvalid)
     async def unauthenticated(request: Request, error: AccessTokenInvalid) -> JSONResponse:
@@ -509,6 +552,16 @@ def _error(request: Request, status: int, code: str, message: str) -> JSONRespon
 
 def _request_id(request: Request) -> UUID:
     return getattr(request.state, "request_id", uuid4())
+
+
+def _database_ready(database_url: str | None) -> bool:
+    if database_url is None:
+        return False
+    try:
+        with psycopg.connect(database_url, connect_timeout=3) as connection:
+            return connection.execute("SELECT 1").fetchone() == (1,)
+    except psycopg.Error:
+        return False
 
 
 def _token_verifier_from_environment() -> AccessTokenVerifier:

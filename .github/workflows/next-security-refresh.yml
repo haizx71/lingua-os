@@ -1,0 +1,51 @@
+name: One-time Next security refresh
+
+on:
+  push:
+    branches:
+      - codex/system-audit-hardening-2026-09-15
+    paths:
+      - .github/workflows/next-security-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-next-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/system-audit-hardening-2026-09-15
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Resolve patched Next.js version
+        run: pnpm --filter @lingua/web add next@15.5.24 --save-exact --lockfile-only
+
+      - name: Verify security target and lock integrity
+        run: |
+          node -e "const p=require('./apps/web/package.json'); if(p.dependencies.next!=='15.5.24') process.exit(1)"
+          grep -q "next@15.5.24" pnpm-lock.yaml
+          git diff --check
+
+      - name: Commit regenerated dependency lock
+        run: |
+          if git diff --quiet -- apps/web/package.json pnpm-lock.yaml; then
+            echo "Dependency lock is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/package.json pnpm-lock.yaml
+          git commit -m "fix(deps): patch Next.js critical advisories"
+          git push origin HEAD:codex/system-audit-hardening-2026-09-15
