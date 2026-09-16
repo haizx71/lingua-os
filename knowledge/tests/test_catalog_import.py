@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import inspect
 import unittest
 from pathlib import Path
 
@@ -49,9 +50,17 @@ class CatalogImportTests(unittest.TestCase):
         self.assertEqual(p1["counts"]["concepts"], 108)
         self.assertEqual(p1["counts"]["lexicalConcepts"], 93)
         self.assertEqual(p1["counts"]["byType"], {"grammar": 8, "phrase": 16, "skill": 7, "word": 77})
+        self.assertEqual(p1["source"]["reviewStatus"], "review_pending")
+        self.assertEqual(p1["source"]["transformVersion"], "knowledge-catalog-import.v2")
         rendered = str(p1).lower()
         for forbidden in ("fsrs", "review_items", "learning_events", "user_concept", "today_plan", "saved_concept"):
             self.assertNotIn(forbidden, rendered)
+
+    def test_staging_apply_cannot_mark_source_records_approved(self):
+        apply_source = inspect.getsource(M.apply_plan)
+        self.assertIn('source["reviewStatus"]', apply_source)
+        self.assertNotIn("'approved'", apply_source)
+        self.assertNotIn('"approved"', apply_source)
 
     def test_rejects_non_first_party_example(self):
         c = candidate(); c["concepts"][0]["example"]["rights"] = "UNKNOWN"
