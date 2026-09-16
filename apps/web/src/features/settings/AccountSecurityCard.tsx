@@ -21,6 +21,7 @@ export function AccountSecurityCard() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteCurrentPassword, setDeleteCurrentPassword] = useState('');
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -94,26 +95,35 @@ export function AccountSecurityCard() {
       setLocalError('Nhập đúng email hiện tại để xác nhận xóa tài khoản.');
       return;
     }
-
-    const client = getBrowserSupabaseClient();
-    if (!client) {
-      setLocalError('Supabase Auth chưa được cấu hình.');
+    if (!deleteCurrentPassword) {
+      setLocalError('Nhập mật khẩu hiện tại để xác thực lại trước khi xóa tài khoản.');
       return;
     }
 
     begin('delete');
     try {
-      const { error } = await client.functions.invoke('delete-account', {
-        body: { confirmationEmail: deleteConfirmation.trim() },
+      const deleteResponse = await fetch('/api/account/delete', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirmationEmail: deleteConfirmation.trim(),
+          currentPassword: deleteCurrentPassword,
+        }),
       });
-      if (error) throw error;
+      if (!deleteResponse.ok) throw new Error('delete_failed');
 
-      // The server removes the identity and cascades learner data. Clear the
-      // browser copy of the session as a separate local action afterwards.
-      await client.auth.signOut({ scope: 'local' });
+      // Identity and learner data are deleted server-side. Clear any remaining
+      // browser session material as a best-effort local cleanup before redirect.
+      const client = getBrowserSupabaseClient();
+      if (client) {
+        await client.auth.signOut({ scope: 'local' });
+      }
+      setDeleteCurrentPassword('');
       window.location.assign('/auth');
     } catch {
-      setLocalError('Không thể xóa tài khoản. Không có dữ liệu nào được coi là đã xóa nếu máy chủ chưa xác nhận.');
+      setDeleteCurrentPassword('');
+      setLocalError('Không thể xóa tài khoản. Hãy kiểm tra lại mật khẩu hiện tại; dữ liệu chỉ được coi là đã xóa khi máy chủ xác nhận.');
       finish();
     }
   };
@@ -202,15 +212,24 @@ export function AccountSecurityCard() {
       <div className="space-y-3 border-t border-[var(--status-danger,#E11D48)]/30 pt-5">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--status-danger,#E11D48)]"><Trash2 className="h-4 w-4" /> Xóa tài khoản</h3>
-          <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Thao tác này xóa identity Supabase và dữ liệu người học liên kết bằng cascade. Không thể hoàn tác.</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Thao tác này xóa identity Supabase và dữ liệu người học liên kết bằng cascade. Để giảm rủi ro khi phiên đăng nhập bị chiếm, máy chủ bắt buộc xác thực lại mật khẩu hiện tại ngay trước khi xóa. Không thể hoàn tác.</p>
         </div>
         <Input
           type="email"
           label="Nhập email hiện tại để xác nhận"
           placeholder={user?.email ?? ''}
+          autoComplete="email"
           fullWidth
           value={deleteConfirmation}
           onChange={(event) => setDeleteConfirmation(event.target.value)}
+        />
+        <Input
+          type="password"
+          label="Mật khẩu hiện tại để xác thực lại"
+          autoComplete="current-password"
+          fullWidth
+          value={deleteCurrentPassword}
+          onChange={(event) => setDeleteCurrentPassword(event.target.value)}
         />
         <Button type="button" variant="danger" size="md" isLoading={pending === 'delete'} disabled={pending !== null || !user?.email} onClick={() => void deleteAccount()}>
           Xóa vĩnh viễn tài khoản
