@@ -52,14 +52,9 @@
       "canonicalKeys": ["word:booking:noun","word:cash:noun"]
     },
     {
-      "disposition": "EARLY_PLACEMENT_UNRESOLVED",
-      "severity": "blocker",
-      "canonicalKeys": ["word:left:noun","word:right:noun"]
-    },
-    {
       "disposition": "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE",
       "severity": "warning",
-      "canonicalKeys": ["word:community:noun","word:menu:noun"]
+      "canonicalKeys": ["word:community:noun","word:left:noun","word:menu:noun","word:right:noun"]
     },
     {
       "disposition": "SOURCE_DISAGREEMENT_HUMAN_REVIEW",
@@ -103,6 +98,16 @@
       "observedLevel": "B1",
       "finding": "Supports LINGUA_B1 despite CEFR-J v1.5 B2."
     },
+    "word:left:noun": {
+      "source": "Oxford 3000",
+      "observedLevel": "A1",
+      "finding": "Oxford lists directional left as adjective/adverb/noun A1, supporting the current LINGUA_A1 noun proposal despite CEFR-J v1.5 A2."
+    },
+    "word:right:noun": {
+      "source": "Oxford 3000",
+      "observedLevel": "A1",
+      "finding": "Oxford lists right noun A1, supporting the current LINGUA_A1 directional noun proposal despite CEFR-J v1.5 A2."
+    },
     "word:environment:noun": {
       "source": "Oxford Learner's Dictionaries topic: The environment",
       "observedLevel": "A2",
@@ -119,9 +124,9 @@
       "finding": "Oxford B2 and CEFR-J v1.5 B1 both place booking later than current LINGUA_A2; this is a high-priority review item."
     },
     "word:far:adjective": {
-      "source": "Oxford Learner's Dictionaries adjective entry + CEFR-J POS split",
+      "source": "Oxford Learner's Dictionaries adjective/adverb entries + Oxford 3000 + CEFR-J POS split",
       "observedLevel": "identity mismatch",
-      "finding": "The candidate example 'The airport is far from here.' uses predicative distance far, which is adverbial in the learner-dictionary analysis; CEFR-J has adverb far at A2 while adjective far is B2. Proposed correction: word:far:adverb / partOfSpeech=adverb. Do not import the current adjective identity."
+      "finding": "The candidate example 'The airport is far from here.' uses distance far adverbially. Oxford describes adjective far as only-before-noun and lists far adverb earlier than adjective; CEFR-J also separates POS. Proposed correction: word:far:adverb. Do not import the current adjective identity."
     }
   },
   "proposedIdentityCorrections": [
@@ -131,7 +136,7 @@
       "fromPartOfSpeech": "adjective",
       "toPartOfSpeech": "adverb",
       "curriculumBand": "LINGUA_A2",
-      "reason": "Candidate example and intended location/distance sense are adverbial; POS-specific CEFR-J comparison then aligns at A2.",
+      "reason": "Candidate example and intended location/distance sense are adverbial. CEFR-J's adverb row supports A2; Oxford places the adverb earlier than the adjective, so A2 is not an aggressive placement once identity is corrected.",
       "status": "REQUIRES_SOURCE_PACK_EDIT_AND_COVERAGE_REWRITE"
     }
   ],
@@ -139,10 +144,8 @@
     {"priority": 1, "canonicalKey": "word:far:adjective", "decision": "fix identity before any level decision"},
     {"priority": 2, "canonicalKey": "word:booking:noun", "decision": "move later, replace in A2 content, or document explicit early-teaching rationale"},
     {"priority": 3, "canonicalKey": "word:cash:noun", "decision": "move to A2 or record explicit A1 survival-language rationale"},
-    {"priority": 4, "canonicalKey": "word:left:noun", "decision": "resolve exact directional sense/POS with second source"},
-    {"priority": 5, "canonicalKey": "word:right:noun", "decision": "resolve exact directional sense/POS with second source"},
-    {"priority": 6, "canonicalKey": "word:environment:noun", "decision": "human decision because reputable sources disagree"},
-    {"priority": 7, "canonicalKey": "word:need:verb", "decision": "keep A0 only as survival/bootstrap exposure; production learn-level needs human sign-off"}
+    {"priority": 4, "canonicalKey": "word:environment:noun", "decision": "human decision because reputable sources disagree"},
+    {"priority": 5, "canonicalKey": "word:need:verb", "decision": "keep A0 only as survival/bootstrap exposure; production learn-level needs human sign-off"}
   ],
   "summary": {
     "dispositions": {
@@ -151,8 +154,7 @@
       "AGREES_WITH_V1_5_REFERENCE": 29,
       "GRAMMAR_AUDIT_REQUIRED": 8,
       "EARLY_PLACEMENT_CONFIRMED_BY_SECOND_SOURCE": 2,
-      "EARLY_PLACEMENT_UNRESOLVED": 2,
-      "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE": 2,
+      "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE": 4,
       "SOURCE_DISAGREEMENT_HUMAN_REVIEW": 1,
       "IDENTITY_MODEL_REVIEW_REQUIRED": 1,
       "LINGUA_LATER_THAN_V1_5_REFERENCE": 24,
