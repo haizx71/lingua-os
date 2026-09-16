@@ -1,11 +1,11 @@
 -- LINGUA OS does not expose domain tables directly to browser Supabase clients.
 -- Supabase Auth is the browser-facing identity boundary; FastAPI is the domain/data boundary.
--- Remove PostgREST schema/table/sequence/function privileges from browser roles as defense in depth.
+-- Remove PostgREST table/sequence/function privileges from browser roles as defense in depth.
 --
--- PostgreSQL grants USAGE on public and EXECUTE on new functions to PUBLIC by default. Revoking only
--- anon/authenticated is insufficient because those roles inherit PUBLIC privileges. Close both paths.
+-- Keep USAGE on the public schema itself: schema visibility does not grant access to contained
+-- objects, and retaining it preserves normal PostgreSQL/PostgREST name resolution. The actual
+-- data/execution capabilities below are revoked from browser roles.
 
-REVOKE USAGE ON SCHEMA public FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
