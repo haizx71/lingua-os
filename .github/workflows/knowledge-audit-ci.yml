@@ -61,16 +61,39 @@ jobs:
           assert isinstance(p['candidateSha256'],str) and len(p['candidateSha256'])==64
           print('candidateSha256='+p['candidateSha256'])
           PY
-      - name: Build deterministic guarded catalog apply plan
+      - name: Build deterministic guarded catalog apply plan v2
         run: |
           python knowledge/catalog_import.py --candidate /tmp/production-starter.json --output /tmp/catalog-plan.json
           python - <<'PY'
           import json
           from pathlib import Path
           p=json.loads(Path('/tmp/catalog-plan.json').read_text())
-          assert p['schemaVersion']=='knowledge-catalog-apply-plan.v1'
-          assert p['counts']['concepts']==108 and p['counts']['lexicalConcepts']==93
+          assert p['schemaVersion']=='knowledge-catalog-apply-plan.v2'
+          assert p['counts']['concepts']==108
+          assert p['counts']['lexicalConcepts']==93
           assert p['counts']['byType']=={'grammar':8,'phrase':16,'skill':7,'word':77}
+          assert p['counts']['prerequisiteRelations']==9
+          assert p['counts']['sentences']==108
+          assert p['counts']['sentenceTranslations']==108
+          assert p['counts']['sentenceConcepts']==108
+          assert p['source']['reviewStatus']=='review_pending'
+          assert p['source']['transformVersion']=='knowledge-catalog-import.v3'
+          assert len(p['rows'])==108 and len(p['relations'])==9
+          ids={row['conceptId'] for row in p['rows']}
+          for relation in p['relations']:
+              assert relation['relationType']=='prerequisite'
+              assert relation['sourceConceptId'] in ids and relation['targetConceptId'] in ids
+              assert relation['sourceConceptId'] != relation['targetConceptId']
+              assert relation['weight']==1.0
+          for row in p['rows']:
+              text=row['example']['en']
+              span=row['sentenceConcept']
+              utf16_len=len(text.encode('utf-16-le'))//2
+              assert 0 <= span['startOffset'] < span['endOffset'] <= utf16_len
+              assert span['occurrenceRole'] in {'target','context','grammar'}
+              assert row['sourceMetadata']['rights']=='FIRST_PARTY'
+              assert row['sourceMetadata']['stagingCandidate'] is True
+              assert row['sourceMetadata']['concept']['canonicalKey']==row['canonicalKey']
           assert isinstance(p['planSha256'],str) and len(p['planSha256'])==64
           print('candidateSha256='+p['candidateSha256'])
           print('planSha256='+p['planSha256'])
