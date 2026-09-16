@@ -14,8 +14,8 @@ export interface AppShellProps {
 export function AppShell({ children, focusMode = false, currentPath }: AppShellProps) {
   if (focusMode) {
     return (
-      <div className="min-h-screen bg-[var(--canvas)] text-[var(--text-primary)]">
-        <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8 lg:px-10">
+      <div className="min-h-[100dvh] w-full overflow-x-clip bg-[var(--canvas)] text-[var(--text-primary)]">
+        <main className="mx-auto min-h-[100dvh] w-full min-w-0 max-w-5xl overflow-x-clip px-3 py-4 sm:px-6 sm:py-8 lg:px-10">
           {children}
         </main>
       </div>
@@ -23,12 +23,12 @@ export function AppShell({ children, focusMode = false, currentPath }: AppShellP
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-[var(--text-primary)] md:flex">
+    <div className="min-h-[100dvh] w-full overflow-x-clip bg-transparent text-[var(--text-primary)] md:flex">
       <DesktopSidebar currentPath={currentPath} />
       <TabletRail currentPath={currentPath} />
 
-      <main className="min-h-screen flex-1 pb-24 md:pl-20 md:pb-10 xl:pl-[17.5rem]">
-        <div className="mx-auto w-full max-w-[1540px] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10 xl:py-8">
+      <main className="min-h-[100dvh] min-w-0 flex-1 overflow-x-clip pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pl-20 md:pb-10 xl:pl-[17.5rem]">
+        <div className="mx-auto w-full min-w-0 max-w-[1540px] px-3 py-3 sm:px-6 sm:py-6 lg:px-8 xl:px-10 xl:py-8">
           {children}
         </div>
       </main>
