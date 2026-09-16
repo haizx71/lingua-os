@@ -103,11 +103,13 @@ export function MobileTopBar({ currentPath }: MobileTopBarProps = {}) {
             type="button"
             aria-label="Mở menu điều hướng"
             aria-expanded={open}
+            aria-haspopup="dialog"
             aria-controls="mobile-navigation-drawer"
             onClick={() => setOpen(true)}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-white text-[var(--text-primary)] shadow-sm transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-white px-3 text-[var(--text-primary)] shadow-sm transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           >
             <Menu className="h-5 w-5" />
+            <span className="text-xs font-extrabold">Menu</span>
           </button>
         </div>
       </header>
@@ -125,18 +127,18 @@ export function MobileTopBar({ currentPath }: MobileTopBarProps = {}) {
             role="dialog"
             aria-modal="true"
             aria-label="Menu LINGUA OS"
-            className="absolute inset-y-0 right-0 flex w-[min(88vw,360px)] flex-col overflow-hidden rounded-l-[30px] border-l border-[var(--border-subtle)] bg-white shadow-[0_0_60px_rgba(28,39,67,0.22)]"
+            className="absolute inset-y-0 right-0 flex w-[min(92vw,360px)] max-w-full flex-col overflow-hidden rounded-l-[30px] border-l border-[var(--border-subtle)] bg-white shadow-[0_0_60px_rgba(28,39,67,0.22)]"
           >
             <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pb-4 pt-[max(env(safe-area-inset-top),1rem)]">
-              <div>
-                <div className="text-sm font-black tracking-[-0.02em] text-[var(--text-primary)]">LINGUA OS</div>
-                <div className="mt-0.5 text-xs text-[var(--text-muted)]">Đi đến bất kỳ khu vực nào</div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black tracking-[-0.02em] text-[var(--text-primary)]">LINGUA OS</div>
+                <div className="mt-0.5 truncate text-xs text-[var(--text-muted)]">Đi đến bất kỳ khu vực nào</div>
               </div>
               <button
                 type="button"
                 aria-label="Đóng menu"
                 onClick={() => setOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-subtle)] text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-subtle)] text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               >
                 <X className="h-5 w-5" />
               </button>
