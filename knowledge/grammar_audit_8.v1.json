@@ -1,18 +1,150 @@
 {
-  "schemaVersion":"knowledge-grammar-audit-8.v1",
-  "status":"REVIEW_COMPLETE_NOT_PRODUCTION_APPROVED",
-  "updatedAt":"2026-09-16",
-  "source":{"name":"CEFR-J Grammar Profile","version":"20180315","repository":"openlanguageprofiles/olp-en-cefrj"},
-  "policy":["Grammar profile evidence is a curriculum prior, not learner-state authority.","Bundled LINGUA grammar concepts may span multiple source rows/levels; no level is auto-promoted.","LINGUA_A0 is internal Pre-A1 scaffolding, not an official CEFR-J level.","No grammar concept is production-approved by this audit alone."],
-  "summary":{"concepts":8,"dispositions":{"A0_INTERNAL_SCAFFOLD_REVIEW":2,"BUNDLE_SPANS_LEVELS_REVIEW":3,"INDIRECT_EVIDENCE_ONLY":1,"NO_DIRECT_PROFILE_ROW":1,"SUPPORTED_WITH_FORM_VARIANCE":1}},
-  "records":[
-    {"canonicalKey":"grammar:be-basic","curriculumBand":"LINGUA_A0","source":"CEFR-J Grammar Profile 20180315","evidence":["TA.PRESENT.be.AFF A1.1","TA.PRESENT.be.NEG A1.1","TA.PRESENT.be.INT.AFF A1.1"],"disposition":"A0_INTERNAL_SCAFFOLD_REVIEW","productionApproved":false,"rationale":"Basic be is supported around A1 in the profile; LINGUA may expose it earlier only as internal Pre-A1 bootstrap."},
-    {"canonicalKey":"grammar:comparatives-core","curriculumBand":"LINGUA_A2","source":"CEFR-J Grammar Profile 20180315","evidence":["COMP.JJR.RBR.er A1.3","COMP.JJR.RBR.more A2.2","COMP.JJS.RBS.est A1.1","COMP.JJS.RBS.most A2.1"],"disposition":"BUNDLE_SPANS_LEVELS_REVIEW","productionApproved":false,"rationale":"Comparative/superlative morphology spans A1-A2. A2 is suitable for a consolidated core bundle only after review."},
-    {"canonicalKey":"grammar:first-conditional-core","curriculumBand":"LINGUA_B1","source":"CEFR-J Grammar Profile 20180315","evidence":["CL.if ADVERBIAL CLAUSE: if A2.1","SUBJ.PAST CONDITIONAL: SECOND B1.2"],"disposition":"INDIRECT_EVIDENCE_ONLY","productionApproved":false,"rationale":"The inspected profile has a generic if-clause and second conditional but no direct first-conditional row; a precise B1 assignment cannot be inferred automatically."},
-    {"canonicalKey":"grammar:past-simple-core","curriculumBand":"LINGUA_A2","source":"CEFR-J Grammar Profile 20180315","evidence":["TA.PAST.be.AFF A1.3","TA.PAST.be.NEG A2.1","TA.PAST.do.AFF A1.3","TA.PAST.do.NEG A2.1","TA.PAST.do.INT.AFF A2.1"],"disposition":"BUNDLE_SPANS_LEVELS_REVIEW","productionApproved":false,"rationale":"Past-simple forms span A1.3-A2.1. A2 is defensible for a consolidated system concept but requires explicit pedagogical rationale."},
-    {"canonicalKey":"grammar:present-simple-core","curriculumBand":"LINGUA_A1","source":"CEFR-J Grammar Profile 20180315","evidence":["TA.PRESENT.do.AFF A1.1","TA.PRESENT.do.NEG A1.2","TA.PRESENT.does.AFF A1.1","TA.PRESENT.does.NEG B1.1"],"disposition":"SUPPORTED_WITH_FORM_VARIANCE","productionApproved":false,"rationale":"Core lexical-verb present forms are predominantly A1, but individual third-person negative/interrogative forms vary; scope must be explicit."},
-    {"canonicalKey":"grammar:relative-clauses-basic","curriculumBand":"LINGUA_B1","source":"CEFR-J Grammar Profile 20180315","evidence":["PREL.who A1.3","PREL.that A1.1","PREL.which B2.2"],"disposition":"BUNDLE_SPANS_LEVELS_REVIEW","productionApproved":false,"rationale":"Relative-pronoun forms span A1-B2. One B1 bundle hides meaningful form-level variation and requires explicit scope review."},
-    {"canonicalKey":"grammar:subject-pronouns-basic","curriculumBand":"LINGUA_A0","source":"CEFR-J Grammar Profile 20180315","evidence":["PP.I_am A1.1","personal-pronoun + be patterns cluster around A1"],"disposition":"A0_INTERNAL_SCAFFOLD_REVIEW","productionApproved":false,"rationale":"LINGUA A0 intentionally bootstraps subject pronouns before CEFR-J's A1-oriented grammar profile; this is an internal product band, not a CEFR claim."},
-    {"canonicalKey":"grammar:there-is-are","curriculumBand":"LINGUA_A1","source":"CEFR-J Grammar Profile 20180315","evidence":[],"disposition":"NO_DIRECT_PROFILE_ROW","productionApproved":false,"rationale":"No direct there-is/there-are row was found in the inspected grammar profile. Preserve as proposal pending a second source or explicit human curriculum decision."}
+  "schemaVersion": "knowledge-grammar-audit-8.v1",
+  "status": "EVIDENCE_REVIEW_COMPLETE_NOT_PRODUCTION_APPROVED",
+  "updatedAt": "2026-09-16",
+  "sources": [
+    {
+      "id": "cefr-j-grammar-20180315",
+      "name": "CEFR-J Grammar Profile",
+      "version": "20180315",
+      "role": "primary grammar-level prior",
+      "url": "https://github.com/openlanguageprofiles/olp-en-cefrj/blob/master/cefrj-grammar-profile-20180315.csv"
+    },
+    {
+      "id": "british-council-learnenglish",
+      "name": "British Council LearnEnglish grammar resources",
+      "role": "independent level-range cross-check",
+      "url": "https://learnenglish.britishcouncil.org/free-resources/grammar"
+    }
+  ],
+  "policy": [
+    "Grammar-profile evidence is a curriculum prior, not learner-state authority.",
+    "A broad lesson-page level range does not prove that every sub-form belongs at the lower bound.",
+    "Bundled LINGUA grammar concepts may span multiple source rows/levels; no level is auto-promoted.",
+    "LINGUA_A0 is internal Pre-A1 scaffolding, not an official CEFR-J or Council of Europe lexical/grammar level.",
+    "No grammar concept is production-approved by this audit alone."
+  ],
+  "summary": {
+    "concepts": 8,
+    "secondSourceCoverage": 8,
+    "productionApproved": 0,
+    "dispositions": {
+      "A0_INTERNAL_SCAFFOLD_REVIEW": 2,
+      "SUPPORTED_WITH_FORM_VARIANCE": 4,
+      "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE": 2
+    }
+  },
+  "records": [
+    {
+      "canonicalKey": "grammar:be-basic",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": [
+        "CEFR-J TA.PRESENT.be.AFF A1.1",
+        "CEFR-J TA.PRESENT.be.NEG A1.1",
+        "CEFR-J TA.PRESENT.be.INT.AFF A1.1",
+        "British Council Present simple: 'to be' is in A1-A2 grammar"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/a1-a2/present-simple-be",
+      "disposition": "A0_INTERNAL_SCAFFOLD_REVIEW",
+      "productionApproved": false,
+      "rationale": "Both sources place ordinary present be in beginner/A1-oriented material. LINGUA may surface a narrowly scoped identity/location/state subset earlier only as an explicitly internal Pre-A1 bootstrap."
+    },
+    {
+      "canonicalKey": "grammar:comparatives-core",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": [
+        "CEFR-J COMP.JJR.RBR.er A1.3",
+        "CEFR-J COMP.JJR.RBR.more A2.2",
+        "CEFR-J COMP.JJS.RBS.est A1.1",
+        "CEFR-J COMP.JJS.RBS.most A2.1",
+        "British Council comparative adjectives are taught in the A1-A2 grammar section / beginner reference"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/english-grammar-reference/comparative-superlative-adjectives",
+      "disposition": "SUPPORTED_WITH_FORM_VARIANCE",
+      "productionApproved": false,
+      "rationale": "Comparative morphology spans A1-A2. LINGUA_A2 is a reasonable consolidated-core band if the concept scope stays limited to common -er/more + than comparisons and excludes advanced comparison constructions."
+    },
+    {
+      "canonicalKey": "grammar:first-conditional-core",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": [
+        "CEFR-J CL.if ADVERBIAL CLAUSE: if A2.1 (generic/indirect evidence)",
+        "CEFR-J SUBJ.PAST CONDITIONAL: SECOND B1.2",
+        "British Council Conditionals: zero, first and second is a B1-B2 grammar lesson and directly teaches first conditional"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/b1-b2/conditionals-zero-first-second",
+      "disposition": "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE",
+      "productionApproved": false,
+      "rationale": "The CEFR-J row set does not expose a clean first-conditional row, but the British Council independently places explicit first-conditional instruction in B1-B2 material. Keep B1 as a proposal pending human scope review."
+    },
+    {
+      "canonicalKey": "grammar:past-simple-core",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": [
+        "CEFR-J TA.PAST.be.AFF A1.3",
+        "CEFR-J TA.PAST.be.NEG A2.1",
+        "CEFR-J TA.PAST.do.AFF A1.3",
+        "CEFR-J TA.PAST.do.NEG A2.1",
+        "CEFR-J TA.PAST.do.INT.AFF A2.1",
+        "British Council Past continuous and past simple is in the A1-A2 grammar section"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/a1-a2/past-continuous-past-simple",
+      "disposition": "SUPPORTED_WITH_FORM_VARIANCE",
+      "productionApproved": false,
+      "rationale": "Past-simple forms emerge across late A1 and A2. LINGUA_A2 is defensible for a consolidated affirmative/negative/question core, while individual high-frequency affirmative forms may be encountered earlier."
+    },
+    {
+      "canonicalKey": "grammar:present-simple-core",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": [
+        "CEFR-J TA.PRESENT.do.AFF A1.1",
+        "CEFR-J TA.PRESENT.do.NEG A1.2",
+        "CEFR-J TA.PRESENT.does.AFF A1.1",
+        "CEFR-J TA.PRESENT.does.NEG B1.1",
+        "British Council Present simple is in the A1-A2 grammar section"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/a1-a2/present-simple",
+      "disposition": "SUPPORTED_WITH_FORM_VARIANCE",
+      "productionApproved": false,
+      "rationale": "Core present-simple use is strongly A1-oriented, but some form combinations appear later in CEFR-J. Keep the concept narrow: common affirmative, negative and question patterns for routines/general truths."
+    },
+    {
+      "canonicalKey": "grammar:relative-clauses-basic",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": [
+        "CEFR-J PREL.who A1.3",
+        "CEFR-J PREL.that A1.1",
+        "CEFR-J PREL.which B2.2",
+        "British Council Defining relative clauses is a B1-B2 grammar lesson"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/b1-b2/relative-clauses-defining-relative-clauses",
+      "disposition": "SUPPORTED_WITH_FORM_VARIANCE",
+      "productionApproved": false,
+      "rationale": "Individual relative markers occur earlier, while productive clause-level use spans wider levels. B1 is suitable only for a tightly defined productive bundle (basic defining clauses with who/that/which); advanced omission, non-defining clauses and complex attachment stay outside scope."
+    },
+    {
+      "canonicalKey": "grammar:subject-pronouns-basic",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": [
+        "CEFR-J PP.I_am A1.1 and related personal-pronoun + be patterns cluster around A1",
+        "British Council Personal pronouns marks subject/object pronouns as beginner grammar"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/grammar/english-grammar-reference/personal-pronouns",
+      "disposition": "A0_INTERNAL_SCAFFOLD_REVIEW",
+      "productionApproved": false,
+      "rationale": "Subject pronouns are foundational beginner material. LINGUA can introduce I/you/he/she/we/they in its internal Pre-A1 bootstrap without claiming an official CEFR-J A0 assignment."
+    },
+    {
+      "canonicalKey": "grammar:there-is-are",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": [
+        "No direct there-is/there-are row found in the inspected CEFR-J Grammar Profile",
+        "British Council Using 'there is' and 'there are' is explicitly A1-A2"
+      ],
+      "secondarySourceUrl": "https://learnenglish.britishcouncil.org/free-resources/grammar/a1-a2/using-there-there-are",
+      "disposition": "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE",
+      "productionApproved": false,
+      "rationale": "A direct independent teaching source supports A1-A2 placement even though the CEFR-J grammar CSV lacks a clean matching row. Keep LINGUA_A1 as proposal pending human sign-off."
+    }
   ]
 }
