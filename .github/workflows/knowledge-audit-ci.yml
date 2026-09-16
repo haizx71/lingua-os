@@ -83,3 +83,12 @@ jobs:
           if python knowledge/preview_import.py --apply 2>/dev/null; then echo 'Preview unexpectedly accepted --apply'; exit 1; fi
           if python knowledge/build_production_starter.py --apply 2>/dev/null; then echo 'Builder unexpectedly accepted --apply'; exit 1; fi
           echo 'Guarded apply boundary preserved'
+      - name: Retain exact reviewed staging artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-staging-candidate
+          path: |
+            /tmp/production-starter.json
+            /tmp/catalog-plan.json
+          if-no-files-found: error
+          retention-days: 7
