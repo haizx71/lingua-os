@@ -4,15 +4,16 @@ import React, { useState } from 'react';
 import { Button, Card, InlineAlert, Input } from '@lingua/ui';
 import {
   ArrowRight,
-  BarChart3,
+  BookOpen,
   Brain,
   CheckCircle2,
+  Flame,
+  Headphones,
   LockKeyhole,
   Mail,
   MessageSquareText,
-  Send,
   Sparkles,
-  TrendingUp,
+  Target,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
@@ -22,63 +23,131 @@ export interface AuthEntryProps {
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
+const skillPreview = [
+  { label: 'Vocabulary', value: 72, tone: '#2aa995' },
+  { label: 'Reading', value: 64, tone: '#5378e8' },
+  { label: 'Listening', value: 58, tone: '#d8a945' },
+  { label: 'Speaking', value: 46, tone: '#b878df' },
+];
+
 function BrandMark() {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#173fba] text-sm font-black text-white shadow-[0_8px_22px_rgba(23,63,186,0.22)]">
+      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#15366f] text-sm font-black text-white shadow-[0_10px_24px_rgba(21,54,111,0.18)]">
         L
-        <Sparkles className="absolute -right-1 -top-1 h-3.5 w-3.5 text-[#49c6b5]" />
+        <Sparkles className="absolute -right-1 -top-1 h-3.5 w-3.5 text-[#54c5b3]" />
       </span>
       <div className="min-w-0">
-        <div className="truncate text-[17px] font-black tracking-[-0.03em] text-[#17213a]">LINGUA OS</div>
-        <div className="mt-0.5 hidden text-[10px] font-semibold tracking-[0.07em] text-[#8b91a0] sm:block">LEARN · SMARTER · EVERY DAY</div>
+        <div className="truncate text-[17px] font-black tracking-[-0.035em] text-[#18243d]">LINGUA OS</div>
+        <div className="mt-0.5 hidden text-[10px] font-semibold tracking-[0.08em] text-[#8b928f] sm:block">YOUR LANGUAGE BRAIN</div>
       </div>
     </div>
   );
 }
 
-function LearningArtwork() {
+function ProgressRing() {
   return (
-    <div className="relative h-full min-h-[640px] overflow-hidden bg-[linear-gradient(145deg,#214cc9_0%,#173fba_45%,#12328f_100%)] text-white">
-      <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full border-[34px] border-[#0c2f91] opacity-95" />
-      <div className="absolute left-11 top-5 h-52 w-52 rounded-full border-[18px] border-[#0b2b83] opacity-75" />
-      <div className="absolute right-16 top-0 h-36 w-16 bg-[#49c6b5]" />
-      <Send className="absolute right-20 top-14 h-8 w-8 -rotate-12 text-[#0b286f]" fill="currentColor" />
-      <Sparkles className="absolute right-8 top-32 h-9 w-9 text-[#ff725f]" fill="currentColor" />
-
-      <div className="absolute right-8 top-44 flex h-16 w-24 items-center justify-center rounded-[16px] bg-[#ffe3a8] text-[#153c9f] shadow-[0_16px_34px_rgba(3,18,66,0.18)]">
-        <MessageSquareText className="h-10 w-10" strokeWidth={1.7} />
+    <div className="relative flex h-[168px] w-[168px] shrink-0 items-center justify-center">
+      <svg viewBox="0 0 168 168" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="84" cy="84" r="68" fill="none" stroke="#edf0ea" strokeWidth="13" />
+        <circle
+          cx="84"
+          cy="84"
+          r="68"
+          fill="none"
+          stroke="#39ad9a"
+          strokeWidth="13"
+          strokeLinecap="round"
+          strokeDasharray="427"
+          strokeDashoffset="116"
+        />
+      </svg>
+      <div className="relative text-center">
+        <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#929991]">Level</div>
+        <div className="mt-1 text-[46px] font-black leading-none tracking-[-0.06em] text-[#18243d]">B1</div>
+        <div className="mt-2 text-xs font-bold text-[#49a998]">73% ready</div>
       </div>
-
-      <div className="absolute left-14 top-[38%] z-10 max-w-[330px]">
-        <h2 className="text-[48px] font-black leading-[0.98] tracking-[-0.055em] text-white xl:text-[58px]">
-          Better<br />People<br />Through<br />Languages.
-        </h2>
-      </div>
-
-      <div className="absolute left-14 top-[72%] flex items-end gap-2 text-[#ffe29c]">
-        <BarChart3 className="h-12 w-12" />
-        <TrendingUp className="mb-4 h-9 w-9 text-[#4bc6b4]" />
-      </div>
-
-      <div className="absolute bottom-0 right-[-6%] h-[260px] w-[76%] opacity-55">
-        <svg viewBox="0 0 420 260" className="h-full w-full" fill="none" aria-hidden="true">
-          <path d="M46 219c12-67 34-108 69-124 26-12 57-4 77 14 20-20 43-31 73-27 57 7 100 56 115 137" stroke="#081f67" strokeWidth="4" strokeLinecap="round" />
-          <path d="M111 185c-4-25 2-47 20-62 17-14 39-15 57-3 13 9 20 23 21 40" stroke="#081f67" strokeWidth="4" strokeLinecap="round" />
-          <path d="M235 176c-7-28-2-52 15-70 18-19 45-26 69-17 21 8 36 26 42 50" stroke="#081f67" strokeWidth="4" strokeLinecap="round" />
-          <circle cx="158" cy="151" r="4" fill="#081f67" />
-          <circle cx="296" cy="137" r="4" fill="#081f67" />
-          <path d="M147 171c9 7 19 7 28 0M286 157c9 7 19 7 28 0" stroke="#081f67" strokeWidth="4" strokeLinecap="round" />
-        </svg>
-      </div>
-
-      <div className="absolute bottom-0 left-0 h-36 w-32 bg-[#0d286f]">
-        <div className="absolute bottom-0 right-[-34px] h-16 w-16 rounded-tl-[50px] bg-[#45c3b1]" />
-        <div className="absolute left-5 top-3 text-5xl font-black leading-none text-[#ff705d]">“</div>
-        <Sparkles className="absolute right-5 top-14 h-9 w-9 text-[#ffe4a8]" fill="currentColor" />
-      </div>
-      <div className="absolute -bottom-12 -right-12 h-36 w-36 rounded-full border-[34px] border-[#ff725f]" />
     </div>
+  );
+}
+
+function ProductPreview() {
+  return (
+    <section
+      className="relative hidden min-w-0 overflow-hidden rounded-[34px] border border-[#dde5df] bg-[#e7f0eb] p-6 lg:flex lg:min-h-[690px] lg:flex-col xl:p-8"
+      aria-label="LINGUA OS product preview"
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#c9e7de] opacity-70 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[#f1dfbd] opacity-65 blur-3xl" />
+
+      <div className="relative z-10 flex items-center justify-between gap-4 px-1 pb-5">
+        <div>
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#76827c]">Learning preview</div>
+          <h2 className="mt-1 text-[28px] font-black tracking-[-0.045em] text-[#18243d]">Your progress, in one place.</h2>
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[#2c9c8b] shadow-[0_10px_30px_rgba(54,94,77,0.1)]">
+          <Brain className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="relative z-10 rounded-[30px] border border-white/80 bg-white/95 p-6 shadow-[0_24px_60px_rgba(58,86,73,0.12)] xl:p-7">
+        <div className="grid min-w-0 items-center gap-7 xl:grid-cols-[190px_minmax(0,1fr)]">
+          <div className="flex justify-center">
+            <ProgressRing />
+          </div>
+
+          <div className="min-w-0">
+            <div className="mb-4 flex min-w-0 items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-[#18243d]">Language Brain</p>
+                <p className="mt-1 text-xs leading-5 text-[#747d78]">A balanced view of the skills you are building.</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#e7f7f3] px-3 py-1 text-[11px] font-extrabold text-[#238c7b]">Growing</span>
+            </div>
+
+            <div className="space-y-4">
+              {skillPreview.map((skill) => (
+                <div key={skill.label} className="min-w-0">
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+                    <span className="min-w-0 truncate font-bold text-[#3f4b52]">{skill.label}</span>
+                    <span className="shrink-0 font-extrabold text-[#6e7773]">{skill.value}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#eef1ed]">
+                    <div className="h-full rounded-full" style={{ width: `${skill.value}%`, backgroundColor: skill.tone }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative z-10 mt-5 grid min-w-0 grid-cols-3 gap-3">
+        {[
+          { label: 'Read', icon: BookOpen, surface: '#fff5df', color: '#b37625' },
+          { label: 'Review', icon: Target, surface: '#e8f5f2', color: '#248f7f' },
+          { label: 'Brain', icon: Brain, surface: '#edf0ff', color: '#526ed1' },
+        ].map(({ label, icon: Icon, surface, color }) => (
+          <div key={label} className="min-w-0 rounded-[22px] border border-white/80 bg-white/85 p-4 shadow-[0_12px_30px_rgba(58,86,73,0.08)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: surface, color }}>
+              <Icon className="h-5 w-5" />
+            </div>
+            <p className="mt-3 truncate text-sm font-extrabold text-[#243047]">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="relative z-10 mt-5 rounded-[26px] border border-white/80 bg-[#17345d] p-5 text-white shadow-[0_18px_45px_rgba(27,52,87,0.18)]">
+        <div className="flex min-w-0 items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#a9d9ce]">Featured reading</div>
+            <p className="mt-2 truncate text-base font-extrabold">An Unexpected Morning</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#d7e0eb]">A short story chosen to stretch reading fluency without breaking momentum.</p>
+          </div>
+          <BookOpen className="mt-1 h-5 w-5 shrink-0 text-[#7dd5c5]" />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -188,52 +257,70 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
     );
   }
 
-  const heading = mode === 'signin' ? 'Welcome back 👋' : mode === 'signup' ? 'Create your account' : 'Reset your password';
+  const heading = mode === 'signin'
+    ? 'Welcome back'
+    : mode === 'signup'
+      ? 'Create your account'
+      : 'Reset your password';
   const description = mode === 'forgot'
     ? 'Nhập email để nhận liên kết đặt lại mật khẩu.'
     : mode === 'signup'
-      ? 'Start small. Build consistency. Let LINGUA OS adapt with you.'
-      : 'Continue your learning journey.';
+      ? 'Start with a few minutes a day. LINGUA OS will adapt as you learn.'
+      : 'Continue from exactly where your learning left off.';
 
   return (
-    <main className="min-h-[100dvh] w-full overflow-x-hidden bg-[#f7f8fb] px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
-      <div className="mx-auto w-full max-w-[1180px]">
-        <div className="mb-5 flex min-w-0 items-center justify-between gap-3 sm:mb-7">
+    <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#f5f6f1] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+      <div className="pointer-events-none absolute left-[-120px] top-[80px] h-[340px] w-[340px] rounded-full bg-[#f4e8cc] opacity-55 blur-3xl" />
+      <div className="pointer-events-none absolute right-[10%] top-[-140px] h-[380px] w-[380px] rounded-full bg-[#d9eee8] opacity-55 blur-3xl" />
+
+      <div className="relative z-10 mx-auto w-full max-w-[1240px]">
+        <div className="mb-5 flex min-w-0 items-center justify-between gap-3 sm:mb-6">
           <BrandMark />
           {mode !== 'forgot' && (
             <button
               type="button"
               onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
-              className="min-h-11 shrink-0 rounded-full border border-[#173fba] bg-white px-5 text-sm font-extrabold text-[#173fba] shadow-sm transition-colors hover:bg-[#eef3ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173fba] focus-visible:ring-offset-2"
+              className="min-h-11 shrink-0 rounded-full border border-[#cad1cb] bg-white/85 px-5 text-sm font-extrabold text-[#183154] shadow-sm transition-colors hover:border-[#8ebcaf] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d] focus-visible:ring-offset-2"
             >
               {mode === 'signin' ? 'Sign up' : 'Log in'}
             </button>
           )}
         </div>
 
-        <div className="grid min-w-0 overflow-hidden rounded-[28px] border border-[#e8e2d8] bg-white shadow-[0_24px_80px_rgba(25,38,75,0.11)] lg:grid-cols-[1.15fr_0.85fr]">
-          <section className="min-w-0 bg-[radial-gradient(circle_at_15%_18%,rgba(255,219,153,0.55),transparent_36%),linear-gradient(135deg,#fffaf0_0%,#fff1d6_100%)] px-5 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12 xl:px-20">
-            <div className="mx-auto flex w-full min-w-0 max-w-[430px] flex-col justify-center lg:min-h-[640px]">
-              <header className="mb-7 min-w-0">
-                <h1 className="max-w-full text-[33px] font-black leading-[1.04] tracking-[-0.05em] text-[#17213a] sm:text-[40px]">{heading}</h1>
-                <p className="mt-3 max-w-[38ch] text-sm leading-6 text-[#596277] sm:text-base">{description}</p>
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:gap-7">
+          <section className="min-w-0 rounded-[30px] border border-[#e3e6df] bg-white/95 p-5 shadow-[0_24px_70px_rgba(40,54,47,0.08)] sm:p-8 lg:flex lg:min-h-[690px] lg:items-center lg:p-10 xl:p-12">
+            <div className="mx-auto w-full min-w-0 max-w-[430px]">
+              <div className="mb-8">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#eef6f2] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#468b7f]">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Adaptive language learning
+                </div>
+                <h1 className="text-[34px] font-black leading-[1.02] tracking-[-0.052em] text-[#18243d] sm:text-[42px]">{heading}</h1>
+                <p className="mt-3 max-w-[38ch] text-sm leading-6 text-[#69736e] sm:text-[15px]">{description}</p>
 
                 {mode === 'signin' && (
-                  <button
-                    type="button"
-                    className="mt-4 inline-flex min-h-10 items-center rounded-lg px-1 text-sm font-bold text-[#17213a] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173fba]"
-                    onClick={() => switchMode('signup')}
-                  >
-                    Create an account
-                  </button>
+                  <p className="mt-4 text-sm text-[#69736e]">
+                    New to LINGUA OS?{' '}
+                    <button
+                      type="button"
+                      className="font-extrabold text-[#1f7468] underline decoration-[#a9cec5] underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                      onClick={() => switchMode('signup')}
+                    >
+                      Create an account
+                    </button>
+                  </p>
                 )}
-              </header>
+              </div>
 
               {(error || authError) && (
-                <div className="mb-4"><InlineAlert variant="danger" title="Không thể tiếp tục">{error ?? 'Yêu cầu xác thực chưa thành công. Vui lòng thử lại.'}</InlineAlert></div>
+                <div className="mb-4">
+                  <InlineAlert variant="danger" title="Không thể tiếp tục">{error ?? 'Yêu cầu xác thực chưa thành công. Vui lòng thử lại.'}</InlineAlert>
+                </div>
               )}
               {message && (
-                <div className="mb-4"><InlineAlert variant="success" title="Đã cập nhật">{message}</InlineAlert></div>
+                <div className="mb-4">
+                  <InlineAlert variant="success" title="Đã cập nhật">{message}</InlineAlert>
+                </div>
               )}
 
               <form className="min-w-0 space-y-4" onSubmit={submit}>
@@ -250,7 +337,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   leftIcon={<Mail className="h-5 w-5" />}
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="h-14 !rounded-[14px] !border-[#d8d1c4] !bg-white !pl-12 text-[15px] shadow-none"
+                  className="h-[54px] !rounded-2xl !border-[#d6dcd6] !bg-[#fbfcfa] !pl-12 text-base shadow-none focus:!bg-white"
                 />
 
                 {mode !== 'forgot' && (
@@ -268,7 +355,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                     leftIcon={<LockKeyhole className="h-5 w-5" />}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="h-14 !rounded-[14px] !border-[#d8d1c4] !bg-white !pl-12 text-[15px] shadow-none"
+                    className="h-[54px] !rounded-2xl !border-[#d6dcd6] !bg-[#fbfcfa] !pl-12 text-base shadow-none focus:!bg-white"
                   />
                 )}
 
@@ -287,7 +374,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                     leftIcon={<LockKeyhole className="h-5 w-5" />}
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
-                    className="h-14 !rounded-[14px] !border-[#d8d1c4] !bg-white !pl-12 text-[15px] shadow-none"
+                    className="h-[54px] !rounded-2xl !border-[#d6dcd6] !bg-[#fbfcfa] !pl-12 text-base shadow-none focus:!bg-white"
                   />
                 )}
 
@@ -295,7 +382,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   type="submit"
                   variant="primary"
                   size="lg"
-                  className="min-h-14 w-full rounded-full bg-[#102448] text-base font-extrabold shadow-none hover:bg-[#0c1b37]"
+                  className="min-h-[54px] w-full rounded-2xl bg-[#17345d] text-base font-extrabold shadow-[0_12px_28px_rgba(23,52,93,0.16)] hover:bg-[#10294c]"
                   rightIcon={!submitting ? <ArrowRight className="h-4 w-4" /> : undefined}
                   disabled={submitting || authState === 'loading'}
                 >
@@ -306,7 +393,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               {mode === 'signin' && (
                 <button
                   type="button"
-                  className="mx-auto mt-4 min-h-10 rounded-lg px-2 text-sm font-semibold text-[#17213a] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173fba]"
+                  className="mx-auto mt-4 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#4c5b58] transition-colors hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
                   onClick={() => switchMode('forgot')}
                 >
                   Forgot password?
@@ -318,7 +405,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   type="button"
                   variant="outline"
                   size="md"
-                  className="mt-4 min-h-11 w-full rounded-full"
+                  className="mt-4 min-h-11 w-full rounded-2xl"
                   disabled={resending}
                   leftIcon={!resending ? <CheckCircle2 className="h-4 w-4" /> : undefined}
                   onClick={() => void resendVerification()}
@@ -328,31 +415,50 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               )}
 
               {mode === 'signup' && (
-                <button type="button" className="mx-auto mt-5 min-h-10 rounded-lg px-2 text-sm font-bold text-[#17213a] underline underline-offset-4" onClick={() => switchMode('signin')}>
+                <button
+                  type="button"
+                  className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#40524f] hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                  onClick={() => switchMode('signin')}
+                >
                   Already have an account? Log in
                 </button>
               )}
               {mode === 'forgot' && (
-                <button type="button" className="mx-auto mt-5 min-h-10 rounded-lg px-2 text-sm font-bold text-[#17213a] underline underline-offset-4" onClick={() => switchMode('signin')}>
+                <button
+                  type="button"
+                  className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#40524f] hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                  onClick={() => switchMode('signin')}
+                >
                   Back to log in
                 </button>
               )}
+
+              <div className="mt-8 grid grid-cols-3 gap-2 border-t border-[#edf0eb] pt-5 text-center">
+                <div className="min-w-0">
+                  <Flame className="mx-auto h-4 w-4 text-[#d88b45]" />
+                  <p className="mt-1 truncate text-[10px] font-bold text-[#7a827e]">Daily rhythm</p>
+                </div>
+                <div className="min-w-0">
+                  <Brain className="mx-auto h-4 w-4 text-[#35a18f]" />
+                  <p className="mt-1 truncate text-[10px] font-bold text-[#7a827e]">Adaptive path</p>
+                </div>
+                <div className="min-w-0">
+                  <Headphones className="mx-auto h-4 w-4 text-[#627de0]" />
+                  <p className="mt-1 truncate text-[10px] font-bold text-[#7a827e]">Real practice</p>
+                </div>
+              </div>
             </div>
           </section>
 
-          <section className="hidden lg:block" aria-label="LINGUA OS learning illustration">
-            <LearningArtwork />
-          </section>
+          <ProductPreview />
         </div>
 
-        <footer className="mt-6 flex flex-col gap-3 border-t border-[#e4e7ee] pt-5 text-xs text-[#747b89] sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[15px]" aria-label="Supported language examples">
-            <span>🇺🇸</span><span>🇪🇸</span><span>🇫🇷</span><span>🇩🇪</span><span>🇮🇹</span><span>🇵🇹</span>
+        <footer className="mt-5 flex min-w-0 flex-col gap-2 px-1 text-xs text-[#7a827e] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
+            <MessageSquareText className="h-4 w-4 shrink-0 text-[#3da894]" />
+            <span className="min-w-0">Learn a little every day. Let the system handle the path.</span>
           </div>
-          <div className="flex items-center gap-2 text-[#596277]">
-            <Brain className="h-4 w-4 text-[#45bfae]" />
-            <span>A modern language learning platform for a better you.</span>
-          </div>
+          <span className="shrink-0 font-semibold text-[#929995]">LINGUA OS</span>
         </footer>
       </div>
     </main>
