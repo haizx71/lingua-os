@@ -22,7 +22,6 @@ import {
   RotateCcw,
   Search,
   Sparkles,
-  Star,
   Target,
   Trophy,
   Volume2,
@@ -98,26 +97,26 @@ function activityIcon(type: LearningActivityType) {
   }
 }
 
-function LearnerIllustration() {
+function LanguageBrainVisual() {
   return (
-    <div aria-hidden className="relative h-36 w-40 shrink-0 max-sm:absolute max-sm:-bottom-3 max-sm:-right-5 max-sm:origin-bottom-right max-sm:scale-[0.72] sm:h-40 sm:w-48">
-      <div className="absolute bottom-3 left-1/2 h-6 w-32 -translate-x-1/2 rounded-full bg-[#5a718b]/10 blur-sm" />
-      <div className="absolute left-1/2 top-2 h-[72px] w-[72px] -translate-x-1/2 rounded-[38%_44%_42%_45%] bg-[#26385d] shadow-sm" />
-      <div className="absolute left-1/2 top-[15px] h-[60px] w-[57px] -translate-x-1/2 rounded-[45%_45%_48%_48%] bg-[#f3c3a4]">
-        <span className="absolute left-[14px] top-[28px] h-1.5 w-1.5 rounded-full bg-[#273451]" />
-        <span className="absolute right-[14px] top-[28px] h-1.5 w-1.5 rounded-full bg-[#273451]" />
-        <span className="absolute left-1/2 top-[42px] h-1.5 w-3 -translate-x-1/2 rounded-b-full border-b-2 border-[#b96f68]" />
+    <div aria-hidden className="pointer-events-none absolute right-3 top-3 h-24 w-24 shrink-0 sm:static sm:h-36 sm:w-56">
+      <div className="relative h-full w-full overflow-hidden rounded-[24px] bg-[#eaf7f2] sm:rounded-[28px]">
+        <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#d7eee7] sm:-right-10 sm:-top-10 sm:h-40 sm:w-40" />
+        <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#173fba] shadow-[0_14px_28px_rgba(23,63,186,0.18)] sm:h-[72px] sm:w-[72px]">
+          <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white sm:h-10 sm:w-10">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#49bba8]" />
+          </div>
+        </div>
+        <div className="absolute left-2.5 top-3 h-7 w-9 rounded-xl bg-white shadow-[0_8px_18px_rgba(23,63,186,0.08)] sm:left-4 sm:top-5 sm:flex sm:h-10 sm:w-[74px] sm:items-center sm:justify-center">
+          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#173fba] sm:block">READ</span>
+        </div>
+        <div className="absolute bottom-2.5 left-3 h-6 w-8 rounded-xl bg-[#eef2ff] sm:bottom-4 sm:left-5 sm:flex sm:h-10 sm:w-[78px] sm:items-center sm:justify-center">
+          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#6355b6] sm:block">BRAIN</span>
+        </div>
+        <div className="absolute bottom-2 right-2 h-7 w-9 rounded-xl bg-[#fff6de] sm:bottom-4 sm:right-4 sm:flex sm:h-10 sm:w-[84px] sm:items-center sm:justify-center">
+          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#a56d00] sm:block">REVIEW</span>
+        </div>
       </div>
-      <div className="absolute left-1/2 top-[69px] h-[65px] w-[94px] -translate-x-1/2 rounded-[32px_32px_22px_22px] bg-[#4f72db] shadow-[inset_0_-8px_0_rgba(0,0,0,0.05)]" />
-      <div className="absolute left-[35px] top-[87px] h-12 w-5 rotate-[22deg] rounded-full bg-[#f3c3a4]" />
-      <div className="absolute right-[34px] top-[87px] h-12 w-5 -rotate-[22deg] rounded-full bg-[#f3c3a4]" />
-      <div className="absolute bottom-[4px] left-1/2 h-[47px] w-[72px] -translate-x-1/2 rotate-[-4deg] rounded-xl border-4 border-white bg-[#dff4ef] shadow-[0_8px_16px_rgba(38,45,67,0.12)]">
-        <span className="absolute left-2 top-2 h-1.5 w-9 rounded-full bg-[#70c9b9]/70" />
-        <span className="absolute left-2 top-5 h-1.5 w-12 rounded-full bg-[#80a0e7]/55" />
-      </div>
-      <Headphones className="absolute left-1/2 top-[1px] h-[81px] w-[81px] -translate-x-1/2 text-[#f4c45e]" strokeWidth={2.2} />
-      <Star className="absolute right-1 top-5 h-5 w-5 fill-[#f4c45e] text-[#f4c45e]" />
-      <Sparkles className="absolute left-1 top-16 h-5 w-5 text-[var(--accent-teal)]" />
     </div>
   );
 }
@@ -211,22 +210,21 @@ export function TodayDashboard({
 
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-4 sm:space-y-6">
-          <section className="relative min-w-0 overflow-hidden rounded-[24px] border border-[#d9e5f6] bg-gradient-to-br from-[#eef7ff] via-[#f2f8ff] to-[#edf8f3] px-4 py-5 shadow-[var(--shadow-card)] sm:rounded-[28px] sm:px-8 sm:py-6">
-            <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/50" />
-            <div className="absolute bottom-0 left-[42%] h-24 w-24 rounded-full bg-[var(--accent-teal)]/10 blur-2xl" />
-            <div className="relative flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
-              <div className="min-w-0 max-w-xl pr-16 sm:pr-0">
-                <span className="lingua-kicker text-[var(--action-primary)]">Hôm nay</span>
-                <h1 className="mt-2 text-[25px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-[30px]">Good afternoon, Hải!</h1>
-                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-secondary)] max-sm:line-clamp-2">A new language. A brighter you tomorrow. Chỉ cần tiếp tục đúng hoạt động mà Language Brain đã chọn.</p>
+          <section className="relative min-w-0 overflow-hidden rounded-[26px] border border-[#dfe7f0] bg-[#f3f7ff] px-5 py-5 shadow-[var(--shadow-card)] sm:rounded-[30px] sm:px-7 sm:py-6">
+            <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-[#e7f4f0] sm:hidden" />
+            <div className="relative min-w-0 pr-24 sm:grid sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center sm:gap-7 sm:pr-0">
+              <div className="min-w-0">
+                <span className="inline-flex rounded-full bg-[#e6f4ef] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#258675] sm:text-[11px]">Hôm nay</span>
+                <h1 className="mt-3 text-[28px] font-extrabold leading-[1.08] tracking-[-0.045em] text-[var(--text-primary)] sm:text-[31px]">Chào Hải!</h1>
+                <p className="mt-2 max-w-md text-sm leading-5 text-[var(--text-secondary)] sm:leading-6">Tiếp tục bài học hôm nay theo đúng nhịp của bạn.</p>
                 <div className="mt-4 flex min-w-0 flex-col items-start gap-2 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                  <Link href={nextActivity?.targetUrl ?? '/review'} className="w-full max-w-[220px] sm:w-auto">
-                    <Button variant="primary" size="lg" className="min-h-11 w-full rounded-2xl px-5 sm:w-auto" rightIcon={<ArrowRight className="h-4 w-4" />}>Tiếp tục học</Button>
+                  <Link href={nextActivity?.targetUrl ?? '/review'} className="w-full sm:w-auto">
+                    <Button variant="primary" size="lg" className="min-h-12 w-full rounded-2xl px-6 sm:w-auto" rightIcon={<ArrowRight className="h-4 w-4" />}>Tiếp tục học</Button>
                   </Link>
-                  <span className="text-[11px] font-medium leading-4 text-[var(--text-secondary)] sm:text-xs">{effectivePlan.activities.length} hoạt động được ưu tiên cho bạn</span>
+                  <span className="text-[11px] font-semibold leading-4 text-[var(--text-secondary)] sm:text-xs">{effectivePlan.activities.length} hoạt động được ưu tiên cho bạn</span>
                 </div>
               </div>
-              <LearnerIllustration />
+              <LanguageBrainVisual />
             </div>
           </section>
 
