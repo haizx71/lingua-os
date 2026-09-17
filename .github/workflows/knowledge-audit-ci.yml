@@ -1,0 +1,117 @@
+name: Knowledge Audit CI
+
+on:
+  push:
+    branches:
+      - chatgpt/knowledge-system-v1-2026-09-15
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'knowledge/**'
+      - 'docs/KNOWLEDGE_*'
+      - 'plans/TASK-KNOWLEDGE-001-catalog-foundation.md'
+      - '.github/workflows/knowledge-audit-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile knowledge tooling
+        run: |
+          python -m py_compile knowledge/preview_import.py knowledge/validate_audit_integrity.py knowledge/build_production_starter.py knowledge/catalog_import.py
+      - name: Run knowledge unit tests
+        run: python -m unittest discover -s knowledge/tests -p 'test_*.py' -v
+      - name: Validate 115-concept audit integrity
+        run: |
+          python knowledge/validate_audit_integrity.py --pack knowledge/first_party_starter_inventory.v1.json --pack knowledge/first_party_content_support.v1.json --level-audit knowledge/level_audit_115.v3.json --grammar-audit knowledge/grammar_audit_8.v1.json --phrase-audit knowledge/phrase_audit_17.v1.json --skill-audit knowledge/skill_audit_8.v1.json
+      - name: Generate 115-concept research preview
+        run: |
+          python knowledge/preview_import.py --pack knowledge/first_party_starter_inventory.v1.json --pack knowledge/first_party_content_support.v1.json --level-audit knowledge/level_audit_115.v3.json --grammar-audit knowledge/grammar_audit_8.v1.json --phrase-audit knowledge/phrase_audit_17.v1.json --skill-audit knowledge/skill_audit_8.v1.json --output /tmp/knowledge-preview.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('/tmp/knowledge-preview.json').read_text())
+          assert p['schemaVersion']=='knowledge-import-preview.v1' and p['applySupported'] is False
+          assert p['counts']['concepts']==115 and p['status']=='BLOCKED_REVIEW'
+          assert isinstance(p['planSha256'],str) and len(p['planSha256'])==64
+          PY
+      - name: Build conservative 108-concept staging candidate
+        run: |
+          python knowledge/build_production_starter.py --pack knowledge/first_party_starter_inventory.v1.json --pack knowledge/first_party_content_support.v1.json --manifest knowledge/production_starter_manifest.v1.json --level-audit knowledge/level_audit_115.v3.json --grammar-audit knowledge/grammar_audit_8.v1.json --phrase-audit knowledge/phrase_audit_17.v1.json --skill-audit knowledge/skill_audit_8.v1.json --output /tmp/production-starter.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('/tmp/production-starter.json').read_text())
+          assert p['schemaVersion']=='knowledge-production-starter-candidate.v1'
+          assert p['status']=='STAGING_CANDIDATE_REVIEW_REQUIRED' and p['applySupported'] is False
+          assert p['counts']['selectedConcepts']==108 and p['counts']['quarantinedConcepts']==7
+          assert p['counts']['selectedByType']=={'grammar':8,'phrase':16,'skill':7,'word':77}
+          assert isinstance(p['candidateSha256'],str) and len(p['candidateSha256'])==64
+          print('candidateSha256='+p['candidateSha256'])
+          PY
+      - name: Build deterministic guarded catalog apply plan v2
+        run: |
+          python knowledge/catalog_import.py --candidate /tmp/production-starter.json --output /tmp/catalog-plan.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('/tmp/catalog-plan.json').read_text())
+          assert p['schemaVersion']=='knowledge-catalog-apply-plan.v2'
+          assert p['counts']['concepts']==108
+          assert p['counts']['lexicalConcepts']==93
+          assert p['counts']['byType']=={'grammar':8,'phrase':16,'skill':7,'word':77}
+          assert p['counts']['prerequisiteRelations']==9
+          assert p['counts']['sentences']==108
+          assert p['counts']['sentenceTranslations']==108
+          assert p['counts']['sentenceConcepts']==108
+          assert p['source']['reviewStatus']=='review_pending'
+          assert p['source']['transformVersion']=='knowledge-catalog-import.v3'
+          assert len(p['rows'])==108 and len(p['relations'])==9
+          ids={row['conceptId'] for row in p['rows']}
+          for relation in p['relations']:
+              assert relation['relationType']=='prerequisite'
+              assert relation['sourceConceptId'] in ids and relation['targetConceptId'] in ids
+              assert relation['sourceConceptId'] != relation['targetConceptId']
+              assert relation['weight']==1.0
+          for row in p['rows']:
+              text=row['example']['en']
+              span=row['sentenceConcept']
+              utf16_len=len(text.encode('utf-16-le'))//2
+              assert 0 <= span['startOffset'] < span['endOffset'] <= utf16_len
+              assert span['occurrenceRole'] in {'target','context','grammar'}
+              assert row['sourceMetadata']['rights']=='FIRST_PARTY'
+              assert row['sourceMetadata']['stagingCandidate'] is True
+              assert row['sourceMetadata']['concept']['canonicalKey']==row['canonicalKey']
+          assert isinstance(p['planSha256'],str) and len(p['planSha256'])==64
+          print('candidateSha256='+p['candidateSha256'])
+          print('planSha256='+p['planSha256'])
+          PY
+      - name: Verify apply is fail-closed without explicit approvals
+        run: |
+          if python knowledge/catalog_import.py --candidate /tmp/production-starter.json --apply 2>/dev/null; then
+            echo 'Importer unexpectedly applied without approvals'; exit 1
+          fi
+          if python knowledge/preview_import.py --apply 2>/dev/null; then echo 'Preview unexpectedly accepted --apply'; exit 1; fi
+          if python knowledge/build_production_starter.py --apply 2>/dev/null; then echo 'Builder unexpectedly accepted --apply'; exit 1; fi
+          echo 'Guarded apply boundary preserved'
+      - name: Retain exact reviewed staging artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-staging-candidate
+          path: |
+            /tmp/production-starter.json
+            /tmp/catalog-plan.json
+          if-no-files-found: error
+          retention-days: 7

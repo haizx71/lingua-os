@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "knowledge-level-audit-115.v2",
+  "status": "SECOND_SOURCE_REVIEW_COMPLETE_NOT_PRODUCTION_APPROVED",
+  "updatedAt": "2026-09-16",
+  "scope": {
+    "conceptCount": 115,
+    "typeCounts": {"word": 82, "phrase": 17, "grammar": 8, "skill": 8}
+  },
+  "authorityPolicy": [
+    "CEFR itself describes language proficiency; it does not officially assign one CEFR level to every individual word or grammar construction.",
+    "CEFR-J and Oxford level data are curriculum priors/cross-checks, not learner-state authority.",
+    "LINGUA_A0 is an internal Pre-A1 bootstrap band and must never be presented as an official CEFR-J lexical level.",
+    "Earlier-than-reference placements require explicit review; later-than-reference placements are conservative warnings, not automatic blockers.",
+    "Part-of-speech and sense identity must be resolved before any level comparison is accepted."
+  ],
+  "productionAuthority": {
+    "source": "CEFR-J Wordlist 1.6 official artifact",
+    "status": "OBSERVED_EXTERNAL_ONLY",
+    "reportedRows": 7801,
+    "reportedSha256": "c837d2c00ab8954ed8db48e79afd8ef37099570295fec36950dbf9322303a37a",
+    "blocker": "LINGUA has not independently downloaded and hashed the official 1.6 binary in this environment."
+  },
+  "reference": {
+    "primaryCrossCheck": "CEFR-J vocabulary profile 1.5 GitHub mirror",
+    "secondaryCrossCheck": "Oxford Learner's Dictionaries / Oxford 3000-5000 topic and CEFR labels",
+    "role": "cross-check only"
+  },
+  "groups": [
+    {
+      "disposition": "A0_INTERNAL_SCAFFOLD",
+      "severity": "info",
+      "canonicalKeys": ["word:be:verb","word:breakfast:noun","word:coffee:noun","word:come:verb","word:friend:noun","word:go:verb","word:have:verb","word:help:verb","word:here:adverb","word:home:noun","word:in:preposition","word:like:verb","word:morning:noun","word:name:noun","word:on:preposition","word:room:noun","word:tea:noun","word:there:adverb","word:want:verb","word:water:noun"]
+    },
+    {
+      "disposition": "A0_STRETCH_REVIEW",
+      "severity": "blocker",
+      "canonicalKeys": ["word:need:verb"]
+    },
+    {
+      "disposition": "AGREES_WITH_V1_5_REFERENCE",
+      "severity": "info",
+      "canonicalKeys": ["word:advice:noun","word:appointment:noun","word:bus:noun","word:buy:verb","word:card:noun","word:classmate:noun","word:comfortable:adjective","word:compare:verb","word:decision:noun","word:enough:determiner","word:experience:noun","word:free:adjective","word:hungry:adjective","word:journey:noun","word:near:preposition","word:office:noun","word:possible:adjective","word:price:noun","word:recommend:verb","word:reduce:verb","word:station:noun","word:stop:noun","word:study:verb","word:tired:adjective","word:today:adverb","word:tomorrow:adverb","word:usually:adverb","word:weekend:noun","word:work:noun"]
+    },
+    {
+      "disposition": "GRAMMAR_AUDIT_REQUIRED",
+      "severity": "delegated",
+      "canonicalKeys": ["grammar:be-basic","grammar:comparatives-core","grammar:first-conditional-core","grammar:past-simple-core","grammar:present-simple-core","grammar:relative-clauses-basic","grammar:subject-pronouns-basic","grammar:there-is-are"]
+    },
+    {
+      "disposition": "EARLY_PLACEMENT_CONFIRMED_BY_SECOND_SOURCE",
+      "severity": "blocker",
+      "canonicalKeys": ["word:booking:noun","word:cash:noun"]
+    },
+    {
+      "disposition": "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE",
+      "severity": "warning",
+      "canonicalKeys": ["word:community:noun","word:left:noun","word:menu:noun","word:right:noun"]
+    },
+    {
+      "disposition": "SOURCE_DISAGREEMENT_HUMAN_REVIEW",
+      "severity": "blocker",
+      "canonicalKeys": ["word:environment:noun"]
+    },
+    {
+      "disposition": "IDENTITY_MODEL_REVIEW_REQUIRED",
+      "severity": "blocker",
+      "canonicalKeys": ["word:far:adjective"]
+    },
+    {
+      "disposition": "LINGUA_LATER_THAN_V1_5_REFERENCE",
+      "severity": "warning",
+      "canonicalKeys": ["word:advantage:noun","word:challenge:noun","word:choose:verb","word:disadvantage:noun","word:doctor:noun","word:early:adverb","word:expensive:adjective","word:goal:noun","word:habit:noun","word:late:adjective","word:leave:verb","word:lesson:noun","word:manage:verb","word:medicine:noun","word:online:adjective","word:opinion:noun","word:plan:noun","word:problem:noun","word:realize:verb","word:reason:noun","word:result:noun","word:screen:noun","word:solution:noun","word:ticket:noun"]
+    },
+    {
+      "disposition": "PHRASE_REQUIRES_SEPARATE_EVIDENCE",
+      "severity": "blocker",
+      "canonicalKeys": ["phrase:because-simple-reason","phrase:deal-with","phrase:excuse-me","phrase:find-out","phrase:get-ready","phrase:how-much","phrase:i-dont-understand","phrase:in-my-opinion","phrase:look-for","phrase:make-a-plan","phrase:on-the-other-hand","phrase:on-time","phrase:please","phrase:please-repeat","phrase:thank-you","phrase:where-is","phrase:would-like"]
+    },
+    {
+      "disposition": "SKILL_REQUIRES_CAN_DO_REVIEW",
+      "severity": "blocker",
+      "canonicalKeys": ["skill:ask-basic-directions","skill:explain-simple-problem","skill:greet-someone","skill:handle-misunderstanding","skill:make-simple-suggestion","skill:order-simple-food","skill:repair-understanding","skill:support-an-opinion"]
+    }
+  ],
+  "secondaryEvidenceByKey": {
+    "word:need:verb": {
+      "source": "Oxford 3000/5000 learner list",
+      "observedLevel": "A1",
+      "finding": "Base verb need is treated as A1 by Oxford; LINGUA A0 is still an internal earlier bootstrap, but the CEFR-J v1.5 A2 lexical row is not universal."
+    },
+    "word:menu:noun": {
+      "source": "Oxford Learner's Dictionaries topic: Cooking and eating",
+      "observedLevel": "A1",
+      "finding": "Supports LINGUA_A1 despite CEFR-J v1.5 A2."
+    },
+    "word:community:noun": {
+      "source": "Oxford Learner's Dictionaries topic: People in society",
+      "observedLevel": "B1",
+      "finding": "Supports LINGUA_B1 despite CEFR-J v1.5 B2."
+    },
+    "word:left:noun": {
+      "source": "Oxford 3000",
+      "observedLevel": "A1",
+      "finding": "Oxford lists directional left as adjective/adverb/noun A1, supporting the current LINGUA_A1 noun proposal despite CEFR-J v1.5 A2."
+    },
+    "word:right:noun": {
+      "source": "Oxford 3000",
+      "observedLevel": "A1",
+      "finding": "Oxford lists right noun A1, supporting the current LINGUA_A1 directional noun proposal despite CEFR-J v1.5 A2."
+    },
+    "word:environment:noun": {
+      "source": "Oxford Learner's Dictionaries topic: The environment",
+      "observedLevel": "A2",
+      "finding": "Oxford A2 and CEFR-J v1.5 B2 disagree; LINGUA_B1 lies between them. Preserve disagreement for human review instead of forcing either source."
+    },
+    "word:cash:noun": {
+      "source": "Oxford Learner's Dictionaries topic: Shopping/Money",
+      "observedLevel": "A2",
+      "finding": "Oxford and CEFR-J v1.5 both support A2; current LINGUA_A1 is a genuine early-placement proposal."
+    },
+    "word:booking:noun": {
+      "source": "Oxford Learner's Dictionaries travel/holiday topic",
+      "observedLevel": "B2",
+      "finding": "Oxford B2 and CEFR-J v1.5 B1 both place booking later than current LINGUA_A2; this is a high-priority review item."
+    },
+    "word:far:adjective": {
+      "source": "Oxford Learner's Dictionaries adjective/adverb entries + Oxford 3000 + CEFR-J POS split",
+      "observedLevel": "identity mismatch",
+      "finding": "The candidate example 'The airport is far from here.' uses distance far adverbially. Oxford describes adjective far as only-before-noun and lists far adverb earlier than adjective; CEFR-J also separates POS. Proposed correction: word:far:adverb. Do not import the current adjective identity."
+    }
+  },
+  "proposedIdentityCorrections": [
+    {
+      "fromCanonicalKey": "word:far:adjective",
+      "toCanonicalKey": "word:far:adverb",
+      "fromPartOfSpeech": "adjective",
+      "toPartOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A2",
+      "reason": "Candidate example and intended location/distance sense are adverbial. CEFR-J's adverb row supports A2; Oxford places the adverb earlier than the adjective, so A2 is not an aggressive placement once identity is corrected.",
+      "status": "REQUIRES_SOURCE_PACK_EDIT_AND_COVERAGE_REWRITE"
+    }
+  ],
+  "reviewQueue": [
+    {"priority": 1, "canonicalKey": "word:far:adjective", "decision": "fix identity before any level decision"},
+    {"priority": 2, "canonicalKey": "word:booking:noun", "decision": "move later, replace in A2 content, or document explicit early-teaching rationale"},
+    {"priority": 3, "canonicalKey": "word:cash:noun", "decision": "move to A2 or record explicit A1 survival-language rationale"},
+    {"priority": 4, "canonicalKey": "word:environment:noun", "decision": "human decision because reputable sources disagree"},
+    {"priority": 5, "canonicalKey": "word:need:verb", "decision": "keep A0 only as survival/bootstrap exposure; production learn-level needs human sign-off"}
+  ],
+  "summary": {
+    "dispositions": {
+      "A0_INTERNAL_SCAFFOLD": 20,
+      "A0_STRETCH_REVIEW": 1,
+      "AGREES_WITH_V1_5_REFERENCE": 29,
+      "GRAMMAR_AUDIT_REQUIRED": 8,
+      "EARLY_PLACEMENT_CONFIRMED_BY_SECOND_SOURCE": 2,
+      "SUPPORTED_BY_SECONDARY_LEVEL_SOURCE": 4,
+      "SOURCE_DISAGREEMENT_HUMAN_REVIEW": 1,
+      "IDENTITY_MODEL_REVIEW_REQUIRED": 1,
+      "LINGUA_LATER_THAN_V1_5_REFERENCE": 24,
+      "PHRASE_REQUIRES_SEPARATE_EVIDENCE": 17,
+      "SKILL_REQUIRES_CAN_DO_REVIEW": 8
+    },
+    "blockerPolicy": "Earlier placement, source disagreement, identity mismatch, unresolved phrase/skill review, grammar production approval, and unverified CEFR-J 1.6 authority block production. Conservative later placement is warning-only."
+  }
+}

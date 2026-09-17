@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "knowledge-microcontent-coverage.v1",
+  "status": "planning",
+  "inventory": "first_party_starter_inventory.v1",
+  "purpose": "Use 16 archetypes to reveal catalog gaps without authoring the actual Reader content in this branch.",
+  "rules": [
+    "requiredConceptKeys must exist in the starter inventory",
+    "missingConceptHints are proposals only and must not be auto-created",
+    "archetypes never create learner state or Save/Learn intent",
+    "content authoring and UI are out of scope"
+  ],
+  "archetypes": [
+    {"id":"a0-morning-routine","band":"LINGUA_A0","title":"Self + morning routine","requiredConceptKeys":["word:be:verb","word:have:verb","word:go:verb","word:home:noun","word:water:noun","grammar:be-basic"],"missingConceptHints":["word:morning:noun","word:breakfast:noun"],"coverageStatus":"gaps"},
+    {"id":"a0-home-location","band":"LINGUA_A0","title":"Room/home objects and location","requiredConceptKeys":["word:be:verb","word:home:noun","grammar:be-basic","grammar:subject-pronouns-basic"],"missingConceptHints":["word:room:noun","word:here:adverb","word:there:adverb","word:in:preposition","word:on:preposition"],"coverageStatus":"gaps"},
+    {"id":"a0-tiny-cafe","band":"LINGUA_A0","title":"Tiny cafe/order exchange","requiredConceptKeys":["word:want:verb","word:need:verb","word:water:noun","phrase:thank-you"],"missingConceptHints":["word:coffee:noun","word:tea:noun","phrase:please"],"coverageStatus":"gaps"},
+    {"id":"a0-help-clarification","band":"LINGUA_A0","title":"Asking for help/clarification","requiredConceptKeys":["word:help:verb","phrase:excuse-me","phrase:i-dont-understand","phrase:please-repeat","skill:repair-understanding"],"missingConceptHints":[],"coverageStatus":"starter-covered"},
+
+    {"id":"a1-transport-directions","band":"LINGUA_A1","title":"Local transport/directions","requiredConceptKeys":["word:bus:noun","word:station:noun","word:near:preposition","phrase:where-is","skill:ask-basic-directions"],"missingConceptHints":["word:stop:noun","word:left:noun","word:right:noun"],"coverageStatus":"gaps"},
+    {"id":"a1-shopping-food","band":"LINGUA_A1","title":"Shopping/food quantities","requiredConceptKeys":["word:buy:verb","word:price:noun","word:menu:noun","phrase:how-much","phrase:would-like","skill:order-simple-food"],"missingConceptHints":["word:cash:noun","word:card:noun"],"coverageStatus":"gaps"},
+    {"id":"a1-weekend-preferences","band":"LINGUA_A1","title":"Weekend plan/preferences","requiredConceptKeys":["word:like:verb","word:today:adverb","word:usually:adverb","grammar:present-simple-core"],"missingConceptHints":["word:weekend:noun","word:tomorrow:adverb","word:free:adjective"],"coverageStatus":"gaps"},
+    {"id":"a1-new-classmate","band":"LINGUA_A1","title":"Meeting a new classmate/colleague","requiredConceptKeys":["word:name:noun","word:friend:noun","word:work:noun","word:study:verb","skill:greet-someone","grammar:present-simple-core"],"missingConceptHints":["word:classmate:noun","word:office:noun"],"coverageStatus":"gaps"},
+
+    {"id":"a2-travel-problem","band":"LINGUA_A2","title":"Past travel problem","requiredConceptKeys":["word:journey:noun","word:problem:noun","phrase:look-for","phrase:on-time","grammar:past-simple-core","skill:explain-simple-problem"],"missingConceptHints":["word:ticket:noun","word:late:adjective"],"coverageStatus":"gaps"},
+    {"id":"a2-appointment-health","band":"LINGUA_A2","title":"Appointment/health routine","requiredConceptKeys":["word:appointment:noun","word:early:adverb","word:possible:adjective","grammar:past-simple-core","skill:explain-simple-problem"],"missingConceptHints":["word:doctor:noun","word:medicine:noun"],"coverageStatus":"gaps"},
+    {"id":"a2-compare-options","band":"LINGUA_A2","title":"Comparing two places/options","requiredConceptKeys":["word:compare:verb","word:choose:verb","word:comfortable:adjective","word:enough:determiner","grammar:comparatives-core"],"missingConceptHints":["word:expensive:adjective","word:far:adjective"],"coverageStatus":"gaps"},
+    {"id":"a2-plan-trip","band":"LINGUA_A2","title":"Planning a short trip/event","requiredConceptKeys":["word:plan:noun","phrase:get-ready","phrase:make-a-plan","word:possible:adjective","skill:make-simple-suggestion"],"missingConceptHints":["word:booking:noun","word:leave:verb"],"coverageStatus":"gaps"},
+
+    {"id":"b1-study-work-choice","band":"LINGUA_B1","title":"Choosing between study/work options","requiredConceptKeys":["word:decision:noun","word:advantage:noun","word:goal:noun","word:recommend:verb","word:reason:noun","skill:support-an-opinion"],"missingConceptHints":["word:disadvantage:noun"],"coverageStatus":"gaps"},
+    {"id":"b1-online-habits","band":"LINGUA_B1","title":"Online habits and a simple viewpoint","requiredConceptKeys":["word:habit:noun","word:opinion:noun","word:reason:noun","phrase:in-my-opinion","skill:support-an-opinion"],"missingConceptHints":["word:online:adjective","word:screen:noun"],"coverageStatus":"gaps"},
+    {"id":"b1-community-problem","band":"LINGUA_B1","title":"Community problem and proposed solution","requiredConceptKeys":["word:environment:noun","word:problem:noun","word:solution:noun","phrase:deal-with","grammar:first-conditional-core","skill:make-simple-suggestion"],"missingConceptHints":["word:community:noun","word:reduce:verb"],"coverageStatus":"gaps"},
+    {"id":"b1-experience-narrative","band":"LINGUA_B1","title":"Experience narrative with reasons/lessons/plans","requiredConceptKeys":["word:experience:noun","word:manage:verb","word:result:noun","word:reason:noun","phrase:find-out","grammar:relative-clauses-basic"],"missingConceptHints":["word:lesson:noun","word:realize:verb"],"coverageStatus":"gaps"}
+  ]
+}

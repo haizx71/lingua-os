@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "knowledge-source-snapshot-evidence.v1",
+  "updatedAt": "2026-09-16",
+  "records": [
+    {
+      "sourceId": "cefr-j-wordlist-1.6",
+      "evidenceState": "official-page-verified_artifact-not-lingua-pinned",
+      "officialPage": "https://www.cefr-j.org/download.html",
+      "artifactUrl": "https://www.cefr-j.org/data/CEFRJ_wordlist_ver1.6.zip",
+      "officialPageObservations": {
+        "version": "1.6",
+        "releaseDate": "2020-03-24",
+        "levels": ["A1", "A2", "B1", "B2"],
+        "levelItemCounts": {"A1": 1166, "A2": 1411, "B1": 2445, "B2": 2779},
+        "totalItems": 7801,
+        "referenceUniqueHeadwords": 6868,
+        "sameHeadwordDifferentPosMayHaveDifferentLevel": true,
+        "rightsStatement": "Official CEFR-J page states the wordlist copyright belongs to Tono Laboratory at TUFS and permits research, educational, and commercial use with proper acknowledgement; modified derived lists must still cite the source.",
+        "requiredCitationModel": "The CEFR-J Wordlist Version 1.6. Compiled by Yukio Tono, Tokyo University of Foreign Studies. Retrieved from the official source with retrieval date.",
+        "sourceDisclaimer": "The official page states the list may contain errors and revised versions should be used when available."
+      },
+      "independentArtifactObservations": {
+        "reportedSha256": "c837d2c00ab8954ed8db48e79afd8ef37099570295fec36950dbf9322303a37a",
+        "reportedSizeBytes": 1089155,
+        "status": "observed_external_not_lingua_verified"
+      },
+      "linguaArtifactVerification": {
+        "status": "blocked",
+        "reason": "The official page and artifact URL were verified, but this tool session could not retrieve binary ZIP bytes through the available web/download boundary. No LINGUA-owned artifact hash is claimed.",
+        "requiredNextStep": "Run knowledge/crosscheck_cefrj.py against a locally fetched official ZIP and record the computed SHA-256 before production use."
+      }
+    }
+  ]
+}

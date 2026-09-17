@@ -1,0 +1,36 @@
+{
+  "groups": [
+    {"canonicalKeys":["word:be:verb","word:breakfast:noun","word:coffee:noun","word:come:verb","word:friend:noun","word:go:verb","word:have:verb","word:help:verb","word:here:adverb","word:home:noun","word:in:preposition","word:like:verb","word:morning:noun","word:name:noun","word:on:preposition","word:room:noun","word:tea:noun","word:there:adverb","word:want:verb","word:water:noun"],"disposition":"A0_INTERNAL_SCAFFOLD"},
+    {"canonicalKeys":["word:need:verb"],"disposition":"A0_STRETCH_REVIEW"},
+    {"canonicalKeys":["word:advice:noun","word:appointment:noun","word:bus:noun","word:buy:verb","word:card:noun","word:classmate:noun","word:comfortable:adjective","word:compare:verb","word:decision:noun","word:enough:determiner","word:experience:noun","word:free:adjective","word:hungry:adjective","word:journey:noun","word:near:preposition","word:office:noun","word:possible:adjective","word:price:noun","word:recommend:verb","word:reduce:verb","word:station:noun","word:stop:noun","word:study:verb","word:tired:adjective","word:today:adverb","word:tomorrow:adverb","word:usually:adverb","word:weekend:noun","word:work:noun"],"disposition":"AGREES_WITH_V1_5_REFERENCE"},
+    {"canonicalKeys":["grammar:be-basic","grammar:comparatives-core","grammar:first-conditional-core","grammar:past-simple-core","grammar:present-simple-core","grammar:relative-clauses-basic","grammar:subject-pronouns-basic","grammar:there-is-are"],"disposition":"GRAMMAR_AUDIT_REQUIRED"},
+    {"canonicalKeys":["word:booking:noun","word:cash:noun","word:community:noun","word:environment:noun","word:far:adjective","word:left:noun","word:menu:noun","word:right:noun"],"disposition":"LINGUA_EARLIER_THAN_V1_5_REFERENCE"},
+    {"canonicalKeys":["word:advantage:noun","word:challenge:noun","word:choose:verb","word:disadvantage:noun","word:doctor:noun","word:early:adverb","word:expensive:adjective","word:goal:noun","word:habit:noun","word:late:adjective","word:leave:verb","word:lesson:noun","word:manage:verb","word:medicine:noun","word:online:adjective","word:opinion:noun","word:plan:noun","word:problem:noun","word:realize:verb","word:reason:noun","word:result:noun","word:screen:noun","word:solution:noun","word:ticket:noun"],"disposition":"LINGUA_LATER_THAN_V1_5_REFERENCE"},
+    {"canonicalKeys":["phrase:because-simple-reason","phrase:deal-with","phrase:excuse-me","phrase:find-out","phrase:get-ready","phrase:how-much","phrase:i-dont-understand","phrase:in-my-opinion","phrase:look-for","phrase:make-a-plan","phrase:on-the-other-hand","phrase:on-time","phrase:please","phrase:please-repeat","phrase:thank-you","phrase:where-is","phrase:would-like"],"disposition":"PHRASE_REQUIRES_SEPARATE_EVIDENCE"},
+    {"canonicalKeys":["skill:ask-basic-directions","skill:explain-simple-problem","skill:greet-someone","skill:handle-misunderstanding","skill:make-simple-suggestion","skill:order-simple-food","skill:repair-understanding","skill:support-an-opinion"],"disposition":"SKILL_REQUIRES_CAN_DO_REVIEW"}
+  ],
+  "matchNotes": {
+    "word:be:verb":"source POS=be-verb",
+    "word:doctor:noun":"source headword doctor/Dr./Dr",
+    "word:far:adjective":"far adverb is A2; adjective specifically B2",
+    "word:have:verb":"source POS=have-verb",
+    "word:need:verb":"also need as modal auxiliary A1",
+    "word:realize:verb":"source headword realize/realise"
+  },
+  "productionAuthority": {
+    "blocker":"LINGUA has not independently downloaded and hashed the official 1.6 binary in this environment.",
+    "reportedRows":7801,
+    "reportedSha256":"c837d2c00ab8954ed8db48e79afd8ef37099570295fec36950dbf9322303a37a",
+    "source":"CEFR-J Wordlist 1.6 official artifact",
+    "status":"OBSERVED_EXTERNAL_ONLY"
+  },
+  "reference":{"role":"cross-check only","source":"CEFR-J vocabulary profile 1.5 GitHub mirror"},
+  "referenceLevelByKey": {
+    "word:advantage:noun":"A2","word:advice:noun":"A2","word:appointment:noun":"A2","word:be:verb":"A1","word:booking:noun":"B1","word:breakfast:noun":"A1","word:bus:noun":"A1","word:buy:verb":"A1","word:card:noun":"A1","word:cash:noun":"A2","word:challenge:noun":"A2","word:choose:verb":"A1","word:classmate:noun":"A1","word:coffee:noun":"A1","word:come:verb":"A1","word:comfortable:adjective":"A2","word:community:noun":"B2","word:compare:verb":"A2","word:decision:noun":"B1","word:disadvantage:noun":"A2","word:doctor:noun":"A1","word:early:adverb":"A1","word:enough:determiner":"A2","word:environment:noun":"B2","word:expensive:adjective":"A1","word:experience:noun":"A2","word:far:adjective":"B2","word:free:adjective":"A1","word:friend:noun":"A1","word:go:verb":"A1","word:goal:noun":"A1","word:habit:noun":"A1","word:have:verb":"A1","word:help:verb":"A1","word:here:adverb":"A1","word:home:noun":"A1","word:hungry:adjective":"A1","word:in:preposition":"A1","word:journey:noun":"A2","word:late:adjective":"A1","word:leave:verb":"A1","word:left:noun":"A2","word:lesson:noun":"A1","word:like:verb":"A1","word:manage:verb":"A2","word:medicine:noun":"A1","word:menu:noun":"A2","word:morning:noun":"A1","word:name:noun":"A1","word:near:preposition":"A1","word:need:verb":"A2","word:office:noun":"A1","word:on:preposition":"A1","word:online:adjective":"A2","word:opinion:noun":"A2","word:plan:noun":"A1","word:possible:adjective":"A2","word:price:noun":"A1","word:problem:noun":"A1","word:realize:verb":"A2","word:reason:noun":"A1","word:recommend:verb":"B1","word:reduce:verb":"B1","word:result:noun":"A1","word:right:noun":"A2","word:room:noun":"A1","word:screen:noun":"A2","word:solution:noun":"A2","word:station:noun":"A1","word:stop:noun":"A1","word:study:verb":"A1","word:tea:noun":"A1","word:there:adverb":"A1","word:ticket:noun":"A1","word:tired:adjective":"A1","word:today:adverb":"A1","word:tomorrow:adverb":"A1","word:usually:adverb":"A1","word:want:verb":"A1","word:water:noun":"A1","word:weekend:noun":"A1","word:work:noun":"A1"
+  },
+  "schemaVersion":"knowledge-level-audit-115.v1",
+  "scope":{"conceptCount":115,"typeCounts":{"grammar":8,"phrase":17,"skill":8,"word":82}},
+  "status":"PROVISIONAL_REVIEW_COMPLETE",
+  "summary":{"dispositions":{"A0_INTERNAL_SCAFFOLD":20,"A0_STRETCH_REVIEW":1,"AGREES_WITH_V1_5_REFERENCE":29,"GRAMMAR_AUDIT_REQUIRED":8,"LINGUA_EARLIER_THAN_V1_5_REFERENCE":8,"LINGUA_LATER_THAN_V1_5_REFERENCE":24,"PHRASE_REQUIRES_SEPARATE_EVIDENCE":17,"SKILL_REQUIRES_CAN_DO_REVIEW":8}},
+  "updatedAt":"2026-09-16"
+}

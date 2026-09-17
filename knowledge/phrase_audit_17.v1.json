@@ -1,0 +1,185 @@
+{
+  "schemaVersion": "knowledge-phrase-audit-17.v1",
+  "status": "EVIDENCE_REVIEW_COMPLETE_NOT_PRODUCTION_APPROVED",
+  "updatedAt": "2026-09-16",
+  "scope": {
+    "conceptCount": 17,
+    "sourcePacks": ["first_party_starter_inventory.v1", "first_party_content_support.v1"]
+  },
+  "policy": [
+    "Phrase evidence is sense/function specific; component-word CEFR levels never substitute for phrase evidence.",
+    "Oxford Phrase List and British Council learner materials are independent curriculum cross-checks, not official Council of Europe phrase certification.",
+    "CEFR can-do descriptors may support a communicative function without certifying one exact wording.",
+    "LINGUA_A0 remains internal Pre-A1 survival scaffolding; external A1/A2 evidence is preserved rather than relabelled as A0.",
+    "No phrase is production-approved by this audit alone."
+  ],
+  "sources": [
+    {
+      "id": "oxford-phrase-list",
+      "name": "Oxford Phrase List",
+      "url": "https://www.oxfordlearnersdictionaries.com/wordlists/oxford-phrase-list",
+      "role": "phrase-level CEFR cross-check"
+    },
+    {
+      "id": "british-council-learnenglish",
+      "name": "British Council LearnEnglish",
+      "url": "https://learnenglish.britishcouncil.org/",
+      "role": "learner-level exact-usage cross-check"
+    },
+    {
+      "id": "cefr-companion-volume",
+      "name": "Council of Europe CEFR Companion Volume",
+      "url": "https://www.coe.int/en/web/common-european-framework-reference-languages/cefr-descriptors",
+      "role": "communicative-function/can-do evidence"
+    }
+  ],
+  "summary": {
+    "concepts": 17,
+    "productionApproved": 0,
+    "dispositions": {
+      "A0_INTERNAL_SCAFFOLD_EXTERNAL_A1": 3,
+      "A0_INTERNAL_REPAIR_SCAFFOLD": 2,
+      "SUPPORTED_AT_PROPOSED_BAND": 6,
+      "CONSERVATIVE_LATER_THAN_REFERENCE": 5,
+      "COLLOCATION_REQUIRES_REVIEW": 1
+    }
+  },
+  "records": [
+    {
+      "canonicalKey": "phrase:thank-you",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["Oxford Phrase List: 'Thank you' A1", "CEFR A1 online interaction includes standard expressions of thanks/apology"],
+      "disposition": "A0_INTERNAL_SCAFFOLD_EXTERNAL_A1",
+      "productionApproved": false,
+      "rationale": "High-value survival politeness may be introduced in LINGUA A0 while retaining external A1-oriented evidence."
+    },
+    {
+      "canonicalKey": "phrase:excuse-me",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["Oxford Phrase List: 'excuse me' A1"],
+      "disposition": "A0_INTERNAL_SCAFFOLD_EXTERNAL_A1",
+      "productionApproved": false,
+      "rationale": "Appropriate survival-language bootstrap, but not an external A0 claim."
+    },
+    {
+      "canonicalKey": "phrase:please",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["CEFR A1 describes familiar everyday/basic phrases for concrete needs; exact token-level CEFR certification is not available"],
+      "disposition": "A0_INTERNAL_SCAFFOLD_EXTERNAL_A1",
+      "productionApproved": false,
+      "rationale": "Keep as first-party politeness scaffold; do not infer an official phrase level from component-word data."
+    },
+    {
+      "canonicalKey": "phrase:i-dont-understand",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["CEFR Asking for clarification A1: can express simply that they do not understand", "British Council learner examples use 'I don't understand' as a repair expression"],
+      "disposition": "A0_INTERNAL_REPAIR_SCAFFOLD",
+      "productionApproved": false,
+      "rationale": "The communicative function is explicitly A1-supported; LINGUA A0 use is intentional survival scaffolding."
+    },
+    {
+      "canonicalKey": "phrase:please-repeat",
+      "curriculumBand": "LINGUA_A0",
+      "evidence": ["CEFR Asking for clarification A2: can ask very simply for repetition when not understanding"],
+      "disposition": "A0_INTERNAL_REPAIR_SCAFFOLD",
+      "productionApproved": false,
+      "rationale": "Repetition-request function is externally supported but later than LINGUA's internal bootstrap. Exact wording remains first-party."
+    },
+    {
+      "canonicalKey": "phrase:how-much",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": ["Oxford Phrase List: 'How much ...?' A1"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "Direct phrase-level evidence supports A1."
+    },
+    {
+      "canonicalKey": "phrase:where-is",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": ["British Council A1 reading 'Text messages to a friend' includes 'Where is it?' in an A1 lesson", "CEFR A1 allows asking/answering simple personal/local questions when interlocutor supports interaction"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "Exact question-frame usage is present in A1 learner material."
+    },
+    {
+      "canonicalKey": "phrase:would-like",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": ["Oxford Phrase List: 'would like' A1", "British Council A1 restaurant reading repeatedly models 'would like'"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "Independent phrase-level and learner-material evidence support A1."
+    },
+    {
+      "canonicalKey": "phrase:what-time",
+      "curriculumBand": "LINGUA_A1",
+      "evidence": ["British Council A1-A2 present-be lesson models 'What time is it?'", "British Council A1 reading prompts 'What time do you usually meet?'"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "Exact question phrase is used in A1-oriented material. This is the actual starter-pack key; it replaces the erroneous audit-only key 'phrase:because-simple-reason'."
+    },
+    {
+      "canonicalKey": "phrase:look-for",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": ["Oxford Phrase List: 'look for sb/sth' A1"],
+      "disposition": "CONSERVATIVE_LATER_THAN_REFERENCE",
+      "productionApproved": false,
+      "rationale": "A2 is conservative rather than too early."
+    },
+    {
+      "canonicalKey": "phrase:on-time",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": ["Oxford Phrase List: 'on time' A2"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "Direct phrase-level evidence supports A2."
+    },
+    {
+      "canonicalKey": "phrase:get-ready",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": ["Oxford Phrase List: 'get ready' A1"],
+      "disposition": "CONSERVATIVE_LATER_THAN_REFERENCE",
+      "productionApproved": false,
+      "rationale": "A2 is conservative relative to Oxford."
+    },
+    {
+      "canonicalKey": "phrase:make-a-plan",
+      "curriculumBand": "LINGUA_A2",
+      "evidence": ["British Council A2 writing has a dedicated 'Messaging to make plans' lesson", "Oxford dictionary records 'make a plan' but phrase-list CEFR evidence for this exact collocation was not established"],
+      "disposition": "COLLOCATION_REQUIRES_REVIEW",
+      "productionApproved": false,
+      "rationale": "The communicative activity is A2-supported, but exact collocation-level evidence is insufficient for automatic approval."
+    },
+    {
+      "canonicalKey": "phrase:in-my-opinion",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": ["Oxford Phrase List: 'in my opinion' A1"],
+      "disposition": "CONSERVATIVE_LATER_THAN_REFERENCE",
+      "productionApproved": false,
+      "rationale": "B1 use is deliberately conservative and may support a more complex opinion skill."
+    },
+    {
+      "canonicalKey": "phrase:on-the-other-hand",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": ["Oxford Phrase List: 'on the other hand' B1"],
+      "disposition": "SUPPORTED_AT_PROPOSED_BAND",
+      "productionApproved": false,
+      "rationale": "Direct phrase-level evidence supports B1."
+    },
+    {
+      "canonicalKey": "phrase:deal-with",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": ["Oxford Phrase List: 'deal with sth' A2"],
+      "disposition": "CONSERVATIVE_LATER_THAN_REFERENCE",
+      "productionApproved": false,
+      "rationale": "B1 placement is conservative relative to Oxford and can be retained for the intended problem-solving context."
+    },
+    {
+      "canonicalKey": "phrase:find-out",
+      "curriculumBand": "LINGUA_B1",
+      "evidence": ["Oxford Phrase List: 'find out' A1"],
+      "disposition": "CONSERVATIVE_LATER_THAN_REFERENCE",
+      "productionApproved": false,
+      "rationale": "B1 is conservative relative to the phrase list; no difficulty-risk blocker is implied."
+    }
+  ]
+}
