@@ -109,6 +109,21 @@ export function AppRouteBoundary({
   }
 
   if (authState === 'authenticated') {
+    if (!isAdminRoute && !isRecoveryRoute && readiness.status === 'error') {
+      return (
+        <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">
+          <div className="max-w-xl mx-auto space-y-4 pt-12">
+            <InlineAlert variant="danger" title="Không thể kết nối hồ sơ">
+              {readiness.error?.message || 'Không thể tải thông tin hồ sơ học tập. Vui lòng thử lại.'}
+            </InlineAlert>
+            <Button variant="outline" onClick={() => void readiness.refetch()}>
+              Thử lại
+            </Button>
+          </div>
+        </main>
+      );
+    }
+
     if (effectivePathname === '/auth') {
       return (
         <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">
@@ -125,21 +140,6 @@ export function AppRouteBoundary({
 
       if (readiness.status === 'not_ready' && !isOnboardingRoute) {
         return <LoadingState message="Đang chuyển hướng tới thiết lập lộ trình..." count={2} />;
-      }
-
-      if (readiness.status === 'error') {
-        return (
-          <main className="min-h-screen bg-[var(--canvas)] p-4 sm:p-6">
-            <div className="max-w-xl mx-auto space-y-4 pt-12">
-              <InlineAlert variant="danger" title="Không thể kết nối hồ sơ">
-                {readiness.error?.message || 'Không thể tải thông tin hồ sơ học tập. Vui lòng thử lại.'}
-              </InlineAlert>
-              <Button variant="outline" onClick={() => void readiness.refetch()}>
-                Thử lại
-              </Button>
-            </div>
-          </main>
-        );
       }
     }
   }
