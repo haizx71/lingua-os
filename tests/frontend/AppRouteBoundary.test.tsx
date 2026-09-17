@@ -181,6 +181,28 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
     expect(screen.getByRole('button', { name: /Thử lại/i })).toBeEnabled();
   });
 
+  it('TEST-READY-05B: bootstrap failure on authenticated /auth surfaces error instead of infinite redirect spinner', async () => {
+    currentPathname = '/auth';
+    const api = new MockApiClient();
+    vi.spyOn(api, 'getMe').mockRejectedValue(new Error('Database unavailable'));
+    setApiClient(api);
+
+    render(
+      <AuthProvider customClient={createMockSupabase(testSession)}>
+        <AppRouteBoundary router={{ replace: mockReplace, push: mockPush }} pathname={currentPathname}>
+          <div data-testid="auth-form">Auth Form</div>
+        </AppRouteBoundary>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Không thể kết nối hồ sơ/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Đang chuyển hướng/i)).not.toBeInTheDocument();
+    expect(mockReplace).not.toHaveBeenCalledWith('/today');
+    expect(screen.getByRole('button', { name: /Thử lại/i })).toBeEnabled();
+  });
+
   it('redirects unauthenticated user accessing protected route to /auth', async () => {
     currentPathname = '/today';
     render(
