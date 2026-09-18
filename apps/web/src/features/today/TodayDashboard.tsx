@@ -98,35 +98,16 @@ function activityIcon(type: LearningActivityType) {
 }
 
 function LanguageBrainVisual() {
+  const chibiArtworkUrl = 'https://d2ol7oe51mr4n9.cloudfront.net/user_3GlA8XU18ZAFeRalQzajlaCNDZL/bf560186-d322-4481-ad62-adcc952795e7.png';
+
   return (
     <div aria-hidden className="pointer-events-none absolute right-3 top-3 h-24 w-24 shrink-0 sm:static sm:h-36 sm:w-56">
-      <div className="relative h-full w-full overflow-hidden rounded-[24px] border border-white/50 bg-[linear-gradient(145deg,#ecfaf6_0%,#dff3ed_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-colors duration-300 dark:border-white/5 dark:bg-[linear-gradient(145deg,#192745_0%,#111a31_100%)] dark:shadow-none sm:rounded-[28px]">
-        <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#ccebe2]/90 transition-colors duration-300 dark:bg-[#27385f] sm:-right-10 sm:-top-10 sm:h-40 sm:w-40" />
-
-        <div className="absolute right-4 top-4 hidden h-12 w-12 rounded-full bg-[#f6d37a] shadow-[0_0_32px_rgba(246,211,122,0.34)] sm:block dark:hidden" />
-        <div className="absolute right-4 top-4 hidden h-12 w-12 rounded-full bg-[#f4e6b5] shadow-[0_0_34px_rgba(173,196,255,0.20)] dark:sm:block">
-          <span className="absolute -left-1.5 -top-1.5 h-12 w-12 rounded-full bg-[#192745]" />
-        </div>
-
-        <span className="absolute left-[18%] top-[20%] hidden h-1.5 w-1.5 rounded-full bg-white/80 dark:block" />
-        <span className="absolute right-[22%] top-[42%] hidden h-1 w-1 rounded-full bg-[#9db7ff] dark:block" />
-        <span className="absolute left-[30%] bottom-[18%] hidden h-1 w-1 rounded-full bg-white/70 dark:block" />
-
-        <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#173fba] shadow-[0_14px_28px_rgba(23,63,186,0.18)] transition-colors duration-300 dark:bg-[#7891e8] dark:shadow-[0_0_28px_rgba(120,145,232,0.18)] sm:h-[72px] sm:w-[72px]">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white transition-colors duration-300 dark:bg-[#111522] sm:h-10 sm:w-10">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#49bba8] dark:bg-[#61cdbd]" />
-          </div>
-        </div>
-
-        <div className="absolute left-2.5 top-3 h-7 w-9 rounded-xl bg-white/95 shadow-[0_8px_18px_rgba(23,63,186,0.08)] transition-colors duration-300 dark:bg-[#202c49] dark:shadow-none sm:left-4 sm:top-5 sm:flex sm:h-10 sm:w-[74px] sm:items-center sm:justify-center">
-          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#173fba] dark:text-[#9fb1f3] sm:block">READ</span>
-        </div>
-        <div className="absolute bottom-2.5 left-3 h-6 w-8 rounded-xl bg-[#eef2ff] transition-colors duration-300 dark:bg-[#252643] sm:bottom-4 sm:left-5 sm:flex sm:h-10 sm:w-[78px] sm:items-center sm:justify-center">
-          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#6355b6] dark:text-[#b9aef0] sm:block">BRAIN</span>
-        </div>
-        <div className="absolute bottom-2 right-2 h-7 w-9 rounded-xl bg-[#fff6de] transition-colors duration-300 dark:bg-[#332b1b] sm:bottom-4 sm:right-4 sm:flex sm:h-10 sm:w-[84px] sm:items-center sm:justify-center">
-          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#a56d00] dark:text-[#f5cc76] sm:block">REVIEW</span>
-        </div>
+      <div className="relative h-full w-full overflow-hidden rounded-[24px] border border-white/70 bg-[#dff3ed] shadow-[0_14px_32px_rgba(23,63,186,0.10)] ring-1 ring-[#173fba]/5 transition-all duration-300 dark:border-white/10 dark:bg-[#121c32] dark:shadow-[0_16px_38px_rgba(0,0,0,0.30)] sm:rounded-[28px]">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-95 transition-[filter,opacity] duration-300 [filter:brightness(1.08)_saturate(.92)] dark:opacity-100 dark:[filter:brightness(.96)_saturate(1.04)]"
+          style={{ backgroundImage: `url("${chibiArtworkUrl}")` }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10),transparent_48%)] dark:bg-[linear-gradient(135deg,rgba(120,145,232,0.05),transparent_52%)]" />
       </div>
     </div>
   );
