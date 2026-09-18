@@ -100,21 +100,32 @@ function activityIcon(type: LearningActivityType) {
 function LanguageBrainVisual() {
   return (
     <div aria-hidden className="pointer-events-none absolute right-3 top-3 h-24 w-24 shrink-0 sm:static sm:h-36 sm:w-56">
-      <div className="relative h-full w-full overflow-hidden rounded-[24px] bg-[#eaf7f2] sm:rounded-[28px]">
-        <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#d7eee7] sm:-right-10 sm:-top-10 sm:h-40 sm:w-40" />
-        <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#173fba] shadow-[0_14px_28px_rgba(23,63,186,0.18)] sm:h-[72px] sm:w-[72px]">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white sm:h-10 sm:w-10">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#49bba8]" />
+      <div className="relative h-full w-full overflow-hidden rounded-[24px] border border-white/50 bg-[linear-gradient(145deg,#ecfaf6_0%,#dff3ed_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-colors duration-300 dark:border-white/5 dark:bg-[linear-gradient(145deg,#192745_0%,#111a31_100%)] dark:shadow-none sm:rounded-[28px]">
+        <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#ccebe2]/90 transition-colors duration-300 dark:bg-[#27385f] sm:-right-10 sm:-top-10 sm:h-40 sm:w-40" />
+
+        <div className="absolute right-4 top-4 hidden h-12 w-12 rounded-full bg-[#f6d37a] shadow-[0_0_32px_rgba(246,211,122,0.34)] sm:block dark:hidden" />
+        <div className="absolute right-4 top-4 hidden h-12 w-12 rounded-full bg-[#f4e6b5] shadow-[0_0_34px_rgba(173,196,255,0.20)] dark:sm:block">
+          <span className="absolute -left-1.5 -top-1.5 h-12 w-12 rounded-full bg-[#192745]" />
+        </div>
+
+        <span className="absolute left-[18%] top-[20%] hidden h-1.5 w-1.5 rounded-full bg-white/80 dark:block" />
+        <span className="absolute right-[22%] top-[42%] hidden h-1 w-1 rounded-full bg-[#9db7ff] dark:block" />
+        <span className="absolute left-[30%] bottom-[18%] hidden h-1 w-1 rounded-full bg-white/70 dark:block" />
+
+        <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#173fba] shadow-[0_14px_28px_rgba(23,63,186,0.18)] transition-colors duration-300 dark:bg-[#7891e8] dark:shadow-[0_0_28px_rgba(120,145,232,0.18)] sm:h-[72px] sm:w-[72px]">
+          <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white transition-colors duration-300 dark:bg-[#111522] sm:h-10 sm:w-10">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#49bba8] dark:bg-[#61cdbd]" />
           </div>
         </div>
-        <div className="absolute left-2.5 top-3 h-7 w-9 rounded-xl bg-white shadow-[0_8px_18px_rgba(23,63,186,0.08)] sm:left-4 sm:top-5 sm:flex sm:h-10 sm:w-[74px] sm:items-center sm:justify-center">
-          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#173fba] sm:block">READ</span>
+
+        <div className="absolute left-2.5 top-3 h-7 w-9 rounded-xl bg-white/95 shadow-[0_8px_18px_rgba(23,63,186,0.08)] transition-colors duration-300 dark:bg-[#202c49] dark:shadow-none sm:left-4 sm:top-5 sm:flex sm:h-10 sm:w-[74px] sm:items-center sm:justify-center">
+          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#173fba] dark:text-[#9fb1f3] sm:block">READ</span>
         </div>
-        <div className="absolute bottom-2.5 left-3 h-6 w-8 rounded-xl bg-[#eef2ff] sm:bottom-4 sm:left-5 sm:flex sm:h-10 sm:w-[78px] sm:items-center sm:justify-center">
-          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#6355b6] sm:block">BRAIN</span>
+        <div className="absolute bottom-2.5 left-3 h-6 w-8 rounded-xl bg-[#eef2ff] transition-colors duration-300 dark:bg-[#252643] sm:bottom-4 sm:left-5 sm:flex sm:h-10 sm:w-[78px] sm:items-center sm:justify-center">
+          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#6355b6] dark:text-[#b9aef0] sm:block">BRAIN</span>
         </div>
-        <div className="absolute bottom-2 right-2 h-7 w-9 rounded-xl bg-[#fff6de] sm:bottom-4 sm:right-4 sm:flex sm:h-10 sm:w-[84px] sm:items-center sm:justify-center">
-          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#a56d00] sm:block">REVIEW</span>
+        <div className="absolute bottom-2 right-2 h-7 w-9 rounded-xl bg-[#fff6de] transition-colors duration-300 dark:bg-[#332b1b] sm:bottom-4 sm:right-4 sm:flex sm:h-10 sm:w-[84px] sm:items-center sm:justify-center">
+          <span className="hidden text-[10px] font-extrabold tracking-[0.08em] text-[#a56d00] dark:text-[#f5cc76] sm:block">REVIEW</span>
         </div>
       </div>
     </div>
@@ -210,11 +221,13 @@ export function TodayDashboard({
 
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-4 sm:space-y-6">
-          <section className="relative min-w-0 overflow-hidden rounded-[26px] border border-[#dfe7f0] bg-[#f3f7ff] px-5 py-5 shadow-[var(--shadow-card)] sm:rounded-[30px] sm:px-7 sm:py-6">
-            <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-[#e7f4f0] sm:hidden" />
+          <section className="relative min-w-0 overflow-hidden rounded-[26px] border border-[#dfe7f0] bg-[linear-gradient(135deg,#f6f9ff_0%,#eef8f4_100%)] px-5 py-5 shadow-[var(--shadow-card)] transition-colors duration-300 dark:border-[#2d3953] dark:bg-[linear-gradient(135deg,#182238_0%,#11192c_58%,#18243a_100%)] sm:rounded-[30px] sm:px-7 sm:py-6">
+            <div className="absolute -left-16 -top-20 h-48 w-48 rounded-full bg-[#fff2c8]/45 blur-2xl dark:hidden" />
+            <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-[#d9f1e9]/80 transition-colors duration-300 dark:bg-[#263657]/75 sm:hidden" />
+            <div className="absolute inset-x-0 bottom-0 hidden h-16 bg-[linear-gradient(180deg,transparent,rgba(70,98,166,0.08))] dark:block" />
             <div className="relative min-w-0 pr-24 sm:grid sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center sm:gap-7 sm:pr-0">
               <div className="min-w-0">
-                <span className="inline-flex rounded-full bg-[#e6f4ef] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#258675] sm:text-[11px]">Hôm nay</span>
+                <span className="inline-flex rounded-full bg-[#e6f4ef] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#258675] transition-colors duration-300 dark:bg-[#18342f] dark:text-[#83d9cc] sm:text-[11px]">Hôm nay</span>
                 <h1 className="mt-3 text-[28px] font-extrabold leading-[1.08] tracking-[-0.045em] text-[var(--text-primary)] sm:text-[31px]">Chào Hải!</h1>
                 <p className="mt-2 max-w-md text-sm leading-5 text-[var(--text-secondary)] sm:leading-6">Tiếp tục bài học hôm nay theo đúng nhịp của bạn.</p>
                 <div className="mt-4 flex min-w-0 flex-col items-start gap-2 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
