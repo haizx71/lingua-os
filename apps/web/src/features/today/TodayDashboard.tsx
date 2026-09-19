@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Search,
   Sparkles,
+  Sun,
   Target,
   Trophy,
   Volume2,
@@ -98,17 +99,137 @@ function activityIcon(type: LearningActivityType) {
 }
 
 function LanguageBrainVisual() {
-  const chibiArtworkUrl = 'https://d2ol7oe51mr4n9.cloudfront.net/user_3GlA8XU18ZAFeRalQzajlaCNDZL/bf560186-d322-4481-ad62-adcc952795e7.png';
-
   return (
-    <div aria-hidden className="pointer-events-none absolute right-3 top-3 h-24 w-24 shrink-0 sm:static sm:h-36 sm:w-56">
-      <div className="relative h-full w-full overflow-hidden rounded-[24px] border border-white/70 bg-[#dff3ed] shadow-[0_14px_32px_rgba(23,63,186,0.10)] ring-1 ring-[#173fba]/5 transition-all duration-300 dark:border-white/10 dark:bg-[#121c32] dark:shadow-[0_16px_38px_rgba(0,0,0,0.30)] sm:rounded-[28px]">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-95 transition-[filter,opacity] duration-300 [filter:brightness(1.08)_saturate(.92)] dark:opacity-100 dark:[filter:brightness(.96)_saturate(1.04)]"
-          style={{ backgroundImage: `url("${chibiArtworkUrl}")` }}
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10),transparent_48%)] dark:bg-[linear-gradient(135deg,rgba(120,145,232,0.05),transparent_52%)]" />
+    <div
+      aria-hidden
+      className="relative min-h-[190px] w-full overflow-hidden bg-[linear-gradient(145deg,#dff5f0_0%,#dce9ff_58%,#f8e8bb_100%)] transition-colors duration-300 dark:bg-[linear-gradient(145deg,#2c3f72_0%,#17233f_56%,#11182d_100%)] sm:min-h-[220px]"
+    >
+      <div className="absolute inset-0 opacity-80 dark:opacity-100">
+        <div className="absolute -left-10 -top-12 h-40 w-40 rounded-full bg-white/35 blur-2xl dark:bg-[#6d83d8]/10" />
+        <div className="absolute right-8 top-5 h-12 w-12 rounded-full bg-[#ffd978] shadow-[0_0_28px_rgba(255,217,120,0.38)] dark:hidden" />
+        <div className="absolute right-8 top-5 hidden h-11 w-11 rounded-full bg-[#ffe8a8] shadow-[0_0_26px_rgba(255,232,168,0.30)] dark:block">
+          <span className="absolute -left-2 -top-2 h-11 w-11 rounded-full bg-[#25345d]" />
+        </div>
+        <span className="absolute right-[26%] top-[17%] hidden h-1.5 w-1.5 rounded-full bg-white/85 dark:block" />
+        <span className="absolute right-[12%] top-[31%] hidden h-1 w-1 rounded-full bg-[#a8baff] dark:block" />
+        <span className="absolute right-[39%] top-[10%] hidden h-1 w-1 rounded-full bg-white/70 dark:block" />
       </div>
+
+      <div className="absolute left-4 top-4 hidden rounded-2xl border border-white/50 bg-white/70 px-3 py-2 text-[10px] font-bold leading-4 text-[#52617f] shadow-sm backdrop-blur md:block dark:border-white/10 dark:bg-[#1d2946]/80 dark:text-[#aeb9d8]">
+        Small steps<br />Big progress
+      </div>
+
+      <div className="absolute right-4 top-12 z-20 hidden flex-col gap-2 lg:flex">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-white/88 px-3 py-1.5 text-[9px] font-extrabold tracking-[0.08em] text-[#3155b7] shadow-sm dark:border-white/10 dark:bg-[#1d2946]/88 dark:text-[#a9bbff]">
+          <BookOpen className="h-3.5 w-3.5" /> READ
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-[#f1edff]/92 px-3 py-1.5 text-[9px] font-extrabold tracking-[0.08em] text-[#7455bd] shadow-sm dark:border-white/10 dark:bg-[#2b2447]/90 dark:text-[#c2b1ff]">
+          <Sparkles className="h-3.5 w-3.5" /> BRAIN
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-[#fff3cf]/94 px-3 py-1.5 text-[9px] font-extrabold tracking-[0.08em] text-[#a56b00] shadow-sm dark:border-white/10 dark:bg-[#3a2e18]/92 dark:text-[#ffd878]">
+          <CheckCircle2 className="h-3.5 w-3.5" /> REVIEW
+        </span>
+      </div>
+
+      <svg
+        viewBox="0 0 560 250"
+        className="absolute inset-x-0 bottom-0 h-full w-full"
+        role="presentation"
+      >
+        <defs>
+          <linearGradient id="hoodieGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#263552" />
+            <stop offset="100%" stopColor="#131d33" />
+          </linearGradient>
+          <linearGradient id="hairGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#27365f" />
+            <stop offset="100%" stopColor="#10182d" />
+          </linearGradient>
+          <linearGradient id="deskGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#a77860" />
+            <stop offset="100%" stopColor="#7d5548" />
+          </linearGradient>
+        </defs>
+
+        <rect x="0" y="215" width="560" height="35" fill="url(#deskGradient)" opacity="0.95" />
+        <ellipse cx="360" cy="218" rx="92" ry="10" fill="#0a1020" opacity="0.20" />
+
+        <g opacity="0.96">
+          <rect x="62" y="168" width="92" height="15" rx="5" fill="#24304d" />
+          <rect x="58" y="184" width="101" height="15" rx="5" fill="#2d3857" />
+          <rect x="66" y="200" width="94" height="15" rx="5" fill="#1f2a45" />
+          <text x="88" y="179" fill="#95a8df" fontSize="9" fontWeight="700">READ</text>
+          <text x="88" y="195" fill="#b5a2e7" fontSize="9" fontWeight="700">BRAIN</text>
+          <text x="88" y="211" fill="#e7c88a" fontSize="9" fontWeight="700">REVIEW</text>
+        </g>
+
+        <g>
+          <rect x="164" y="178" width="34" height="38" rx="10" fill="#c58c5d" />
+          <rect x="169" y="184" width="24" height="28" rx="8" fill="#9f714d" />
+          <ellipse cx="178" cy="169" rx="12" ry="22" fill="#4f896d" transform="rotate(-23 178 169)" />
+          <ellipse cx="192" cy="168" rx="11" ry="21" fill="#72a87a" transform="rotate(22 192 168)" />
+          <ellipse cx="184" cy="154" rx="10" ry="20" fill="#5f9c76" />
+        </g>
+
+        <g transform="translate(405 154)">
+          <rect x="0" y="4" width="88" height="55" rx="8" fill="#111a31" />
+          <path d="M8 10h72v42H8z" fill="#1c2a4a" />
+          <path d="M12 59h83l-9 9H18z" fill="#8d746f" />
+          <circle cx="44" cy="30" r="5" fill="#6e8aee" />
+        </g>
+
+        <g transform="translate(430 93)">
+          <rect x="23" y="18" width="10" height="78" rx="5" fill="#1c2740" />
+          <path d="M28 18c31 0 48 17 48 37H28z" fill="#273657" />
+          <ellipse cx="29" cy="58" rx="35" ry="15" fill="#ffd893" opacity="0.22" />
+          <circle cx="28" cy="52" r="8" fill="#ffe5aa" />
+        </g>
+
+        <g transform="translate(192 46)">
+          <ellipse cx="108" cy="159" rx="81" ry="15" fill="#08101f" opacity="0.16" />
+
+          <path d="M66 118c-24 8-38 32-37 69h158c2-36-14-60-42-69z" fill="url(#hoodieGradient)" />
+          <path d="M50 154c16 6 32 9 49 9s36-3 58-11" fill="none" stroke="#33456e" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
+
+          <ellipse cx="106" cy="94" rx="55" ry="54" fill="#ffd5bd" />
+          <ellipse cx="60" cy="100" rx="10" ry="15" fill="#f3b99d" />
+          <ellipse cx="152" cy="100" rx="10" ry="15" fill="#f3b99d" />
+
+          <path d="M55 86c0-43 33-66 71-60 23 3 43 19 48 43-12-11-25-17-42-18-26-1-46 12-59 33-7 12-11 24-12 37-5-10-6-21-6-35z" fill="url(#hairGradient)" />
+          <path d="M72 66c10-29 37-43 69-34-12 3-23 10-31 20 19-7 38-5 53 7-13-2-25 2-37 10-15-6-34-7-54-3z" fill="#334373" />
+          <path d="M94 35c10-18 29-26 45-17-11 5-17 12-18 23z" fill="#27365f" />
+
+          <ellipse cx="85" cy="97" rx="11" ry="14" fill="#2a2430" />
+          <ellipse cx="128" cy="97" rx="11" ry="14" fill="#2a2430" />
+          <circle cx="89" cy="92" r="4" fill="#ffffff" />
+          <circle cx="132" cy="92" r="4" fill="#ffffff" />
+          <path d="M99 119c6 5 13 5 19 0" fill="none" stroke="#c87972" strokeWidth="3" strokeLinecap="round" />
+          <ellipse cx="73" cy="113" rx="11" ry="5" fill="#f2a6a1" opacity="0.46" />
+          <ellipse cx="140" cy="113" rx="11" ry="5" fill="#f2a6a1" opacity="0.46" />
+
+          <path d="M58 158c15-10 27-13 39-12" fill="none" stroke="#ffd5bd" strokeWidth="15" strokeLinecap="round" />
+          <path d="M156 157c-12-11-24-15-36-15" fill="none" stroke="#ffd5bd" strokeWidth="15" strokeLinecap="round" />
+          <circle cx="58" cy="158" r="8" fill="#ffd5bd" />
+          <circle cx="156" cy="157" r="8" fill="#ffd5bd" />
+        </g>
+
+        <g transform="translate(316 170)">
+          <ellipse cx="30" cy="36" rx="32" ry="22" fill="#83879a" />
+          <ellipse cx="20" cy="19" rx="19" ry="19" fill="#9095a8" />
+          <path d="M6 10l9-13 7 15zM28 10l12-11 2 17z" fill="#7f8498" />
+          <ellipse cx="14" cy="20" rx="3" ry="2" fill="#252a36" />
+          <ellipse cx="27" cy="20" rx="3" ry="2" fill="#252a36" />
+          <path d="M17 26c4 3 7 3 11 0" fill="none" stroke="#65585c" strokeWidth="2" strokeLinecap="round" />
+          <ellipse cx="10" cy="27" rx="5" ry="2.5" fill="#e9a9ad" opacity="0.45" />
+          <ellipse cx="32" cy="27" rx="5" ry="2.5" fill="#e9a9ad" opacity="0.45" />
+          <path d="M53 39c16-2 23 6 19 15" fill="none" stroke="#7d8295" strokeWidth="6" strokeLinecap="round" />
+        </g>
+
+        <path d="M248 204c28-8 59-8 89 0l-2 12h-85z" fill="#f7edd5" />
+        <path d="M292 205v10" stroke="#d2c2a5" strokeWidth="2" />
+      </svg>
+
+      <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#0f1728]/15 to-transparent dark:from-black/20" />
     </div>
   );
 }
@@ -202,22 +323,42 @@ export function TodayDashboard({
 
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-4 sm:space-y-6">
-          <section className="relative min-w-0 overflow-hidden rounded-[26px] border border-[#dfe7f0] bg-[linear-gradient(135deg,#f6f9ff_0%,#eef8f4_100%)] px-5 py-5 shadow-[var(--shadow-card)] transition-colors duration-300 dark:border-[#2d3953] dark:bg-[linear-gradient(135deg,#182238_0%,#11192c_58%,#18243a_100%)] sm:rounded-[30px] sm:px-7 sm:py-6">
-            <div className="absolute -left-16 -top-20 h-48 w-48 rounded-full bg-[#fff2c8]/45 blur-2xl dark:hidden" />
-            <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-[#d9f1e9]/80 transition-colors duration-300 dark:bg-[#263657]/75 sm:hidden" />
-            <div className="absolute inset-x-0 bottom-0 hidden h-16 bg-[linear-gradient(180deg,transparent,rgba(70,98,166,0.08))] dark:block" />
-            <div className="relative min-w-0 pr-24 sm:grid sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center sm:gap-7 sm:pr-0">
-              <div className="min-w-0">
-                <span className="inline-flex rounded-full bg-[#e6f4ef] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#258675] transition-colors duration-300 dark:bg-[#18342f] dark:text-[#83d9cc] sm:text-[11px]">Hôm nay</span>
-                <h1 className="mt-3 text-[28px] font-extrabold leading-[1.08] tracking-[-0.045em] text-[var(--text-primary)] sm:text-[31px]">Chào Hải!</h1>
-                <p className="mt-2 max-w-md text-sm leading-5 text-[var(--text-secondary)] sm:leading-6">Tiếp tục bài học hôm nay theo đúng nhịp của bạn.</p>
-                <div className="mt-4 flex min-w-0 flex-col items-start gap-2 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                  <Link href={nextActivity?.targetUrl ?? '/review'} className="w-full sm:w-auto">
-                    <Button variant="primary" size="lg" className="min-h-12 w-full rounded-2xl px-6 sm:w-auto" rightIcon={<ArrowRight className="h-4 w-4" />}>Tiếp tục học</Button>
-                  </Link>
-                  <span className="text-[11px] font-semibold leading-4 text-[var(--text-secondary)] sm:text-xs">{effectivePlan.activities.length} hoạt động được ưu tiên cho bạn</span>
+          <section className="relative min-w-0 overflow-hidden rounded-[28px] border border-[#dbe4f0] bg-[#f7faff] shadow-[0_18px_55px_rgba(31,52,89,0.10)] transition-colors duration-300 dark:border-[#2c3750] dark:bg-[#141d31] sm:rounded-[32px]">
+            <div className="grid min-w-0 md:grid-cols-[minmax(0,0.92fr)_minmax(360px,1.08fr)]">
+              <div className="relative z-10 min-w-0 overflow-hidden px-5 py-6 sm:px-7 sm:py-7 lg:px-10 lg:py-9">
+                <div className="absolute -left-12 -top-20 h-56 w-56 rounded-full bg-[#f7edd0]/55 blur-2xl" />
+                <div className="absolute -right-20 top-0 h-72 w-72 rounded-full bg-[#dce7ff]/55 blur-2xl" />
+                <div className="relative min-w-0">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#cfe9df] bg-[#e8f6f1] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#218573] sm:text-[11px]">
+                    <Sun className="h-3.5 w-3.5" />
+                    Hôm nay
+                  </span>
+
+                  <h1 className="mt-4 text-[32px] font-black leading-[1.04] tracking-[-0.055em] text-[#16213a] sm:text-[38px] lg:text-[44px]">
+                    Chào <span className="bg-[linear-gradient(90deg,#4c6fff,#7d95ff)] bg-clip-text text-transparent">Hải!</span>
+                  </h1>
+                  <p className="mt-3 max-w-[34rem] text-sm leading-6 text-[#66728a] sm:text-base">
+                    Tiếp tục bài học hôm nay theo đúng nhịp của bạn.
+                  </p>
+
+                  <div className="mt-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <Link href={nextActivity?.targetUrl ?? '/review'} className="w-full sm:w-auto">
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        className="min-h-12 w-full rounded-2xl bg-[#4f6fe9] px-7 text-white shadow-[0_10px_28px_rgba(79,111,233,0.22)] hover:bg-[#4263dc] sm:w-auto"
+                        rightIcon={<ArrowRight className="h-4 w-4" />}
+                      >
+                        Tiếp tục học
+                      </Button>
+                    </Link>
+                    <span className="text-[11px] font-semibold leading-5 text-[#6d7890] sm:text-xs">
+                      {effectivePlan.activities.length} hoạt động được ưu tiên cho bạn
+                    </span>
+                  </div>
                 </div>
               </div>
+
               <LanguageBrainVisual />
             </div>
           </section>
