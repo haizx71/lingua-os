@@ -1,60 +1,76 @@
 /**
- * LINGUA OS CSS Variable Theme Tokens
- * Defines semantic tokens and DTCG motion tokens as CSS custom properties
+ * LINGUA OS v2 semantic theme tokens.
+ * Warm, calm learning surfaces with a restrained blue/teal accent system.
  */
 
 :root {
   /* Canvas & Surface */
-  --canvas: #F8FAFC;
+  --canvas: #F7F5EF;
   --surface: #FFFFFF;
-  --surface-subtle: #F1F5F9;
+  --surface-subtle: #F4F2EC;
   --surface-elevated: #FFFFFF;
+  --surface-warm: #FFF9EE;
+  --surface-mint: #EFFAF7;
+  --surface-blue: #EEF5FF;
+  --surface-lilac: #F5F1FF;
+  --surface-peach: #FFF2EA;
 
   /* Text */
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
+  --text-primary: #17213A;
+  --text-secondary: #5D667A;
+  --text-muted: #8D95A6;
+  --text-on-accent: #FFFFFF;
 
   /* Borders */
-  --border-subtle: #E2E8F0;
-  --border-default: #CBD5E1;
-  --border-strong: #94A3B8;
+  --border-subtle: #E9E6DE;
+  --border-default: #DDD9D0;
+  --border-strong: #CAC4B9;
 
   /* Actions */
-  --action-primary: #4F46E5;
-  --action-primary-hover: #4338CA;
+  --action-primary: #4267D9;
+  --action-primary-hover: #3556C0;
   --action-primary-text: #FFFFFF;
-  --action-secondary: #F1F5F9;
-  --action-secondary-hover: #E2E8F0;
-  --action-secondary-text: #0F172A;
+  --action-secondary: #EEF2FF;
+  --action-secondary-hover: #E3E9FF;
+  --action-secondary-text: #273B78;
+  --accent-teal: #45BFAE;
+  --accent-teal-strong: #249887;
+  --accent-teal-soft: #E8F8F4;
+  --accent-purple: #8A73D6;
+  --accent-yellow: #F4C45E;
+  --accent-pink: #EB8EA2;
 
   /* Focus */
-  --focus-ring: #6366F1;
+  --focus-ring: #5B7BE2;
 
   /* Status */
-  --status-success: #059669;
-  --status-success-bg: #ECFDF5;
-  --status-success-border: #A7F3D0;
-  --status-warning: #D97706;
-  --status-warning-bg: #FFFBEB;
-  --status-warning-border: #FDE68A;
-  --status-danger: #E11D48;
-  --status-danger-bg: #FFF1F2;
-  --status-danger-border: #FECDD3;
-  --status-info: #0284C7;
-  --status-info-bg: #F0F9FF;
-  --status-info-border: #BAE6FD;
+  --status-success: #2C9A78;
+  --status-success-bg: #ECF8F3;
+  --status-success-border: #BDE7D6;
+  --status-warning: #B97916;
+  --status-warning-bg: #FFF7E5;
+  --status-warning-border: #F3D99D;
+  --status-danger: #D55169;
+  --status-danger-bg: #FFF0F2;
+  --status-danger-border: #F3C6CF;
+  --status-info: #3979C7;
+  --status-info-bg: #EDF5FF;
+  --status-info-border: #C8DDF6;
+
+  /* Elevation */
+  --shadow-card: 0 10px 30px rgba(38, 45, 67, 0.055), 0 1px 2px rgba(38, 45, 67, 0.04);
+  --shadow-card-hover: 0 16px 38px rgba(38, 45, 67, 0.09), 0 2px 6px rgba(38, 45, 67, 0.05);
+  --shadow-floating: 0 20px 60px rgba(38, 45, 67, 0.12);
 
   /* Radii */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 1rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.125rem;
   --radius-xl: 1.5rem;
+  --radius-2xl: 1.875rem;
   --radius-full: 9999px;
 
-  /* ==========================================================================
-     Primitive Motion Tokens (DTCG Tier 1)
-     ========================================================================== */
+  /* Primitive Motion Tokens (DTCG Tier 1) */
   --motion-duration-0: 0ms;
   --motion-duration-75: 75ms;
   --motion-duration-150: 150ms;
@@ -78,9 +94,7 @@
   --motion-scale-feedback: 1.02;
   --motion-scale-pulse: 1.05;
 
-  /* ==========================================================================
-     Semantic Motion Tokens (DTCG Tier 2)
-     ========================================================================== */
+  /* Semantic Motion Tokens (DTCG Tier 2) */
   --motion-instant: var(--motion-duration-0);
   --motion-fast: var(--motion-duration-150);
   --motion-normal: 250ms;
@@ -89,61 +103,65 @@
 
   --motion-distance-reveal: var(--motion-distance-md);
   --motion-distance-slide: var(--motion-distance-lg);
-
   --motion-scale-active: var(--motion-scale-press);
   --motion-scale-highlight: var(--motion-scale-pulse);
-
-  /* Transitions */
   --transition-fast: var(--motion-fast) var(--motion-ease-standard);
   --transition-base: var(--motion-normal) var(--motion-ease-standard);
 }
 
 .dark {
-  /* Canvas & Surface */
-  --canvas: #020617;
-  --surface: #0F172A;
-  --surface-subtle: #1E293B;
-  --surface-elevated: #1E293B;
+  --canvas: #111522;
+  --surface: #181D2C;
+  --surface-subtle: #202637;
+  --surface-elevated: #202637;
+  --surface-warm: #242116;
+  --surface-mint: #152B27;
+  --surface-blue: #18243A;
+  --surface-lilac: #231F35;
+  --surface-peach: #2B211D;
 
-  /* Text */
-  --text-primary: #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-primary: #F5F3ED;
+  --text-secondary: #B4B9C7;
+  --text-muted: #7E879A;
+  --text-on-accent: #FFFFFF;
 
-  /* Borders */
-  --border-subtle: #1E293B;
-  --border-default: #334155;
-  --border-strong: #475569;
+  --border-subtle: #2A3041;
+  --border-default: #343B4F;
+  --border-strong: #4B5368;
 
-  /* Actions */
-  --action-primary: #6366F1;
-  --action-primary-hover: #4F46E5;
-  --action-primary-text: #FFFFFF;
-  --action-secondary: #1E293B;
-  --action-secondary-hover: #334155;
-  --action-secondary-text: #F1F5F9;
+  --action-primary: #7891E8;
+  --action-primary-hover: #8BA0EB;
+  --action-primary-text: #111522;
+  --action-secondary: #252D46;
+  --action-secondary-hover: #303A58;
+  --action-secondary-text: #EEF1FF;
+  --accent-teal: #61CDBD;
+  --accent-teal-strong: #83D9CC;
+  --accent-teal-soft: #18342F;
+  --accent-purple: #A996E8;
+  --accent-yellow: #F5CC76;
+  --accent-pink: #ED9CAF;
 
-  /* Focus */
-  --focus-ring: #818CF8;
+  --focus-ring: #8BA0EB;
 
-  /* Status */
-  --status-success: #10B981;
-  --status-success-bg: rgba(16, 185, 129, 0.15);
-  --status-success-border: rgba(16, 185, 129, 0.3);
-  --status-warning: #F59E0B;
-  --status-warning-bg: rgba(245, 158, 11, 0.15);
-  --status-warning-border: rgba(245, 158, 11, 0.3);
-  --status-danger: #F43F5E;
-  --status-danger-bg: rgba(244, 63, 94, 0.15);
-  --status-danger-border: rgba(244, 63, 94, 0.3);
-  --status-info: #0EA5E9;
-  --status-info-bg: rgba(14, 165, 233, 0.15);
-  --status-info-border: rgba(14, 165, 233, 0.3);
+  --status-success: #62C5A2;
+  --status-success-bg: rgba(98, 197, 162, 0.13);
+  --status-success-border: rgba(98, 197, 162, 0.28);
+  --status-warning: #F0BB61;
+  --status-warning-bg: rgba(240, 187, 97, 0.13);
+  --status-warning-border: rgba(240, 187, 97, 0.28);
+  --status-danger: #F0879A;
+  --status-danger-bg: rgba(240, 135, 154, 0.13);
+  --status-danger-border: rgba(240, 135, 154, 0.28);
+  --status-info: #80B1EA;
+  --status-info-bg: rgba(128, 177, 234, 0.13);
+  --status-info-border: rgba(128, 177, 234, 0.28);
+
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.18);
+  --shadow-card-hover: 0 16px 38px rgba(0, 0, 0, 0.24);
+  --shadow-floating: 0 20px 60px rgba(0, 0, 0, 0.34);
 }
 
-/* ==========================================================================
-   Reduced Motion Invariant Enforcement
-   ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-duration-0: 0ms;

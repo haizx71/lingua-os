@@ -20,39 +20,36 @@ export interface MobileBottomNavProps {
 
 export function MobileBottomNav({ currentPath }: MobileBottomNavProps = {}) {
   let pathname = usePathname();
-  if (!pathname && currentPath) {
-    pathname = currentPath;
-  }
+  if (!pathname && currentPath) pathname = currentPath;
 
   return (
     <nav
       aria-label="Điều hướng chính di động"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t border-[var(--border-subtle)] pb-safe"
+      className="fixed inset-x-0 bottom-0 z-50 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] md:hidden"
     >
-      <div className="flex items-center justify-around h-16 px-1">
+      <div className="mx-auto flex h-[68px] max-w-md items-center gap-1 rounded-[24px] border border-[var(--border-subtle)] bg-white/95 px-1.5 shadow-[0_14px_40px_rgba(33,45,78,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/88">
         {primaryNavItems.map((item) => {
           const Icon = iconMap[item.iconName] || Home;
-          const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(`${item.href}`));
+          const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
 
           return (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative flex flex-col items-center justify-center flex-1 h-full min-h-[48px] py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+              className={`relative flex h-[58px] min-w-0 flex-1 flex-col items-center justify-center rounded-[18px] px-1 text-[10px] font-semibold transition-[background-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                 isActive
-                  ? 'text-[var(--action-primary)] font-semibold'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  ? 'bg-[var(--surface-blue)] text-[var(--action-primary)]'
+                  : 'text-[var(--text-secondary)] active:scale-[0.97]'
               }`}
             >
-              {isActive && (
-                <span className="absolute top-0 w-8 h-1 rounded-b-full bg-[var(--action-primary)]" />
-              )}
-              <Icon className={`w-5 h-5 mb-1 ${isActive ? 'stroke-[2.5px] text-[var(--action-primary)]' : 'stroke-[1.75px]'}`} />
-              <span className="text-[11px] truncate">{item.labelVi}</span>
+              <span className={`mb-1 flex h-7 w-7 items-center justify-center rounded-xl transition-colors ${isActive ? 'bg-white text-[var(--action-primary)] shadow-sm' : ''}`}>
+                <Icon className={`h-[18px] w-[18px] ${isActive ? 'stroke-[2.4px]' : 'stroke-[1.8px]'}`} />
+              </span>
+              <span className="max-w-full truncate leading-none">{item.labelVi}</span>
+              {isActive && <span className="absolute -bottom-0.5 h-1 w-5 rounded-full bg-[var(--accent-teal)]" />}
             </Link>
           );
-
         })}
       </div>
     </nav>

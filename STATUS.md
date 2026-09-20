@@ -3,6 +3,16 @@
 Version: 4.0 starter
 Phase: FRLL accepted/frozen; TASK-LIBRARY-001 Library live integration complete; GAP-01 Closed
 
+## UI v2 promotion checkpoint — 2026-09-20
+
+The UI v2 branch is merged into an isolated integration worktree and its accepted frontend
+flows are reconciled. All 568 frontend tests pass; typecheck, lint, generated-contract
+freshness and production build pass. Promotion to `master` and deployment remain the next
+steps. The full backend test command is code-clean through format, lint and typecheck; its
+database tests require Docker PostgreSQL, and the baseline migration registry check still
+needs the existing 0010–0012 registry alignment. See `reviews/UI-V2-promotion-checkpoint.md`.
+No API, schema, backend, or learner-state change was made.
+
 ## Current checkpoint — TASK-LIBRARY-001 complete (2026-09-15)
 
 - `/library` now loads all saved concept, sentence and content items through the frozen
