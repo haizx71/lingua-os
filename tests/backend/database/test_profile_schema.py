@@ -103,7 +103,7 @@ def test_profile_schema_rejects_invalid_goal_revision_and_replay_shape(
         )
 
 
-def test_profile_mutation_results_enforce_owner_fk_rls_and_no_browser_writes(
+def test_profile_mutation_results_are_not_browser_readable_or_writable(
     migrated_postgres_url: str,
 ) -> None:
     owner_id = uuid.uuid4()
@@ -134,24 +134,16 @@ def test_profile_mutation_results_enforce_owner_fk_rls_and_no_browser_writes(
         )
         admin.commit()
 
-    with psycopg.connect(migrated_postgres_url) as owner:
-        owner.execute("SET ROLE authenticated")
-        owner.execute("SELECT set_config('request.jwt.claim.sub', %s, false)", (str(owner_id),))
-        assert owner.execute("SELECT idempotency_key FROM profile_mutation_results").fetchall() == [
-            (replay_key,)
-        ]
-        with pytest.raises(psycopg.errors.InsufficientPrivilege), owner.transaction():
-            owner.execute(
-                "DELETE FROM profile_mutation_results WHERE idempotency_key = %s",
-                (replay_key,),
+    for actor_id in (owner_id, other_id):
+        with psycopg.connect(migrated_postgres_url) as session:
+            session.execute("SET ROLE authenticated")
+            session.execute(
+                "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(actor_id),)
             )
-
-    with psycopg.connect(migrated_postgres_url) as other:
-        other.execute("SET ROLE authenticated")
-        other.execute("SELECT set_config('request.jwt.claim.sub', %s, false)", (str(other_id),))
-        assert (
-            other.execute("SELECT idempotency_key FROM profile_mutation_results").fetchall() == []
-        )
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                session.execute(
+                    "SELECT idempotency_key FROM public.profile_mutation_results"
+                ).fetchall()
 
 
 def test_profile_replay_snapshot_is_append_only(
@@ -195,7 +187,7 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
 ) -> None:
     partial = tmp_path / "migrations"
     shutil.copytree(MIGRATIONS, partial)
-    for version in ("0007", "0008", "0009"):
+    for version in ("0007", "0008", "0009", "0010", "0011", "0012", "0013"):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
 
@@ -285,6 +277,12 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
 
+        assert migrate_down(database_url, MIGRATIONS, steps=4) == [
+            "0013",
+            "0012",
+            "0011",
+            "0010",
+        ]
         assert migrate_down(database_url, MIGRATIONS, steps=1) == ["0009"]
         assert migrate_down(database_url, MIGRATIONS, steps=1) == ["0008"]
         with pytest.raises(psycopg.errors.RaiseException, match="timezone cannot be invented"):

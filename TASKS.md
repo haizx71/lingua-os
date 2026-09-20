@@ -8,9 +8,21 @@ Owner: integration. Status: DONE. The accepted flows are reconciled and all 568 
 tests pass. `master` is `20c4cd52f2df0096ebf98679c239e119c6471ff6`; Vercel is live at
 `https://lingua-os-web-mocha.vercel.app/today`, and Render deploy
 `dep-danupg8jo6nc739roda0` is live with `/health` returning HTTP 200. Backend
-format/lint/typecheck pass; database tests remain environment-blocked by unavailable Docker
-PostgreSQL and the existing baseline migration registry check. See
+format/lint/typecheck pass; the promotion checkpoint preceded the Phase A database gate. See
 `plans/UI-V2-promotion.md` and `reviews/UI-V2-promotion-checkpoint.md`.
+
+## PHASE-A-STABILIZE — Backend and migration stabilization
+
+Owner: CODEX
+Status: DONE (local gate)
+Dependencies: UI-V2-PROMOTION
+
+Docker PostgreSQL 17.11 is available. Migration registry/test expectations now cover the
+applied browser boundary migrations `0010`–`0012`, and additive migration `0013` closes the
+global PostgreSQL default `PUBLIC EXECUTE` path for future public functions without rewriting
+hosted migration history. Verification: `pnpm backend:check` passes Ruff format/lint, strict
+mypy, and **512/512** backend tests; targeted lockdown/migration tests pass 12/12. Hosted staging
+still needs the reviewed `0013` migration applied through the normal migration path.
 
 ## Global execution rule for every implementation task
 

@@ -16,6 +16,16 @@ tests require Docker PostgreSQL, and the baseline migration registry check still
 existing 0010–0012 registry alignment. See `reviews/UI-V2-promotion-checkpoint.md`. No API,
 schema, backend, or learner-state change was made.
 
+## Phase A stabilization — 2026-09-20
+
+Docker PostgreSQL is available and the backend gate is green against a real PostgreSQL 17.11
+instance: Ruff format/lint, strict mypy, and **512/512** backend tests pass. The migration
+verifier and staging runbook now cover `0001`–`0013`; tests cover the existing `0010`–`0012`
+browser boundary and the additive `0013` correction for PostgreSQL's global default function
+execute grant. No OpenAPI or frontend contract changed, and no hosted database was mutated.
+The full frontend Vitest run remains **711 passed** with four external FRLL tests failing closed
+because no local FastAPI server was listening on `127.0.0.1:8000`.
+
 ## Current checkpoint — TASK-LIBRARY-001 complete (2026-09-15)
 
 - `/library` now loads all saved concept, sentence and content items through the frozen
