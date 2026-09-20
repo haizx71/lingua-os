@@ -2,6 +2,26 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
+## STAGING-HARDENING-GATE-20260921 — PR #7 and hosted migration 0013
+
+Owner: CODEX. Status: BLOCKED (verification gate; K2-01 must not start).
+
+PR #7 was reviewed live and merged into `master` with merge commit
+`2e531c30d20eb53f04ac4558b64f38b141430785`; its 16 files are restricted to
+`docs/knowledge-v2/**`. Supabase staging project `bdmtdvvnbicgkfririjo` received the exact
+`0013_supabase_public_function_default_execute_lockdown_v1` SQL, the hosted and application
+migration registries were verified, browser function EXECUTE remained denied, and the migration
+pre/post learner snapshot matched exactly. Render deploy `dep-dao6lo7avr4c73b042sg` is live from
+the merge SHA with `/health` 200 and authenticated `/v1/me`, language, Today, Brain and Review
+read-only smoke responses 200.
+
+The release gate is still blocked: a full disposable-actor cloud R1 4/4 run cannot be authorized
+and cleaned up without staging Auth/admin credentials, and the Windows checkout reports generated
+OpenAPI CRLF/LF byte drift plus a missing `@storybook/react` materialization in aggregate typecheck.
+The local baseline remains backend 512/512 and frontend 711 passed (four local-API-dependent FRLL
+tests fail closed). Do not create migration 0014 or begin K2-01. Evidence:
+`reviews/FRLL-CLOUD-VERIFICATION-20260920.md`.
+
 ## UI-V2-PROMOTION — Promote `chatgpt/ui-redesign-v2-2026-09-15`
 
 Owner: integration. Status: DONE. The accepted flows are reconciled and all 568 frontend

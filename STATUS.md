@@ -3,6 +3,48 @@
 Version: 4.0 starter
 Phase: FRLL accepted/frozen; TASK-LIBRARY-001 Library live integration complete; GAP-01 Closed
 
+## Staging hardening gate — 2026-09-21
+
+PR #7 (`gemini/knowledge-v2-master-design`) was verified as documentation-only and merged
+normally into `master` at `2e531c30d20eb53f04ac4558b64f38b141430785`. The resulting `master`
+and `origin/master` are aligned at that SHA and contain the 16 files under
+`docs/knowledge-v2/`; no production source, migration, contract or OpenAPI file was changed.
+
+Supabase staging was explicitly targeted at project `lingua-os-staging`
+(`bdmtdvvnbicgkfririjo`, ap-southeast-1), not dev or production. Migration `0013` was executed
+through the Supabase migration path as `supabase_public_function_default_execute_lockdown_v1`.
+The hosted migration history advanced once, the application registry now contains exactly
+`0001`–`0013` with the local runner checksum, and a transactional future-function probe changed
+from browser-role EXECUTE allowed before the migration to browser-role EXECUTE denied afterward.
+Existing function privileges remained browser-denied and service-role allowed.
+
+The migration-only learner snapshot was unchanged: users 1, learner profiles 1, user languages 1,
+user concept states 1, user skill states 3, review items 1, FSRS states 1, learning events 5,
+exposure events 0, saved concepts 1, today plans 8 and today activities 7 before and after apply.
+After that snapshot, the authenticated hosted UI smoke called `GET /v1/today`, which correctly
+persisted the next daily plan for 2026-09-21 (one plan and one activity); this is an application
+side effect of Today generation, not a migration mutation, and was not deleted or reset.
+
+Render service `lingua-api-staging` is live on deploy `dep-dao6lo7avr4c73b042sg` from the merge
+SHA. `/health` returned HTTP 200. Through the existing authenticated staging browser session,
+Render logs and browser network responses showed HTTP 200 for `/v1/me`, `/v1/me/languages`,
+`/v1/today`, `/v1/brain/summary`, `/v1/brain/concepts` and `/v1/review/queue`; an unauthenticated
+`/v1/me` probe returned the expected 401. Full disposable-actor cloud R1 was not rerun because
+staging disposable Auth credentials/admin cleanup authority are not available in this environment.
+
+Regression evidence on this checkout: backend format/lint/mypy and **512/512** tests pass;
+frontend Vitest has **711 passed** with four external FRLL tests failing closed because no local
+API is listening on `127.0.0.1:8000`; ESLint, production build, OpenAPI contract tests (33/33)
+and `git diff --check` pass. `contracts:check-generated` and the aggregate `typecheck` remain
+blocked by pre-existing Windows CRLF-versus-tool LF bytes in the generated OpenAPI file and a
+missing `@storybook/react` materialization for `packages/ui`; semantic generated content matches
+the contract and no source was changed to bypass the gate.
+
+Supabase advisories still require follow-up: RLS is disabled on 33 canonical tables, and leaked
+password protection is disabled. No blanket RLS remediation was applied because it would be an
+unreviewed security/schema change outside this gate. Knowledge V2 K2-01 remains stopped until the
+cloud R1 disposable-actor proof and the environment gates are resolved.
+
 ## UI v2 promotion checkpoint — 2026-09-20
 
 The UI v2 branch is promoted to `master` at `20c4cd52f2df0096ebf98679c239e119c6471ff6` and
