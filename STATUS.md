@@ -26,6 +26,21 @@ execute grant. No OpenAPI or frontend contract changed, and no hosted database w
 The full frontend Vitest run remains **711 passed** with four external FRLL tests failing closed
 because no local FastAPI server was listening on `127.0.0.1:8000`.
 
+## Real FRLL integration verification — 2026-09-20
+
+Current `master` and `origin/master` are `eb04318acdc8d9843d6036d3729187f50b7f1e1c`.
+Against real disposable Supabase Auth/PostgreSQL state, Phase B, C, D and E each passed 1/1:
+Save/Learn and Memory idempotence, Today selection and plan idempotence, atomic Review/FSRS
+transition with replay/conflict guards, and read-only authoritative Brain projection. Playwright
+R1 passed 4/4 after restoring a missing local `@gsap/react` node_modules materialization; the
+canonical response-loss/reload/replay case was rerun and passed 1/1. Browser actor cleanup and
+post-cleanup isolation passed. Local API, Next and proxy processes were stopped and ports
+8000/3000/3005 are clear. Evidence: `reviews/FRLL-CLOUD-VERIFICATION-20260920.md`.
+
+Render deploy `dep-danvd1qjnfac7397dgr0` is live from this commit. Hosted Supabase still has
+migrations `0010`–`0012`; additive migration `0013` has not been applied, and no hosted DB was
+mutated during verification. This is the remaining staging hardening item.
+
 ## Current checkpoint — TASK-LIBRARY-001 complete (2026-09-15)
 
 - `/library` now loads all saved concept, sentence and content items through the frozen

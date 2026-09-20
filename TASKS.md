@@ -24,6 +24,20 @@ hosted migration history. Verification: `pnpm backend:check` passes Ruff format/
 mypy, and **512/512** backend tests; targeted lockdown/migration tests pass 12/12. Hosted staging
 still needs the reviewed `0013` migration applied through the normal migration path.
 
+## FRLL-REAL-VERIFICATION-20260920 — Real learning loop and promoted UI browser proof
+
+Owner: CODEX
+Status: VERIFIED
+Dependencies: UI-V2-PROMOTION, PHASE-A-STABILIZE
+
+Phase B, C, D and E each pass 1/1 against disposable real Supabase Auth/PostgreSQL state.
+Playwright R1 passes 4/4, with the canonical response-loss/reload/replay scenario rerun and
+passing 1/1; actor ownership, Brain read-only behavior, contract responses and cleanup isolation
+are verified. Current `master` and `origin/master` are `eb04318`. Render deploy
+`dep-danvd1qjnfac7397dgr0` is live. The hosted staging registry still lacks additive migration
+`0013`; no hosted database mutation was made, so applying that migration remains the next staging
+hardening action. Full evidence is in `reviews/FRLL-CLOUD-VERIFICATION-20260920.md`.
+
 ## Global execution rule for every implementation task
 
 Follow `docs/ENGINEERING_WORKFLOW.md` and `docs/SUPERPOWERS_POLICY.md`.
