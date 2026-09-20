@@ -19,7 +19,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       elevated:
         'bg-[var(--surface-elevated,#FFFFFF)] border border-[var(--border-subtle,#E9E6DE)] shadow-[var(--shadow-card-hover)]',
       interactive:
-        'bg-[var(--surface,#FFFFFF)] border border-[var(--border-subtle,#E9E6DE)] shadow-[var(--shadow-card)] hover:-translate-y-0.5 hover:border-[var(--border-default,#DDD9D0)] hover:shadow-[var(--shadow-card-hover)] cursor-pointer active:translate-y-0 active:scale-[0.995]',
+        'bg-[var(--surface,#FFFFFF)] border border-[var(--border-subtle,#E9E6DE)] shadow-[var(--shadow-card)] hover:-translate-y-0.5 hover:border-[var(--border-default,#DDD9D0)] hover:shadow-[var(--shadow-card-hover)] hover:shadow-md cursor-pointer active:translate-y-0 active:scale-[0.995]',
     };
 
     const paddings = {

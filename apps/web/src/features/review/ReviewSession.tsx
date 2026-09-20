@@ -272,7 +272,7 @@ export function ReviewSession({
         <div className="relative flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="lingua-kicker text-[var(--action-primary)]">Smart Review • FSRS</span>
+              <span className="lingua-kicker text-[var(--action-primary)]">Smart Review (FSRS)</span>
               <Sparkles className="h-3.5 w-3.5 text-[var(--accent-teal)]" />
             </div>
             <h1 className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)]">Hàng đợi ôn tập</h1>
@@ -325,7 +325,7 @@ export function ReviewSession({
               <Button
                 variant="secondary"
                 size="icon"
-                className="min-h-[46px] min-w-[46px] rounded-2xl"
+                className="min-h-[44px] min-w-[44px] rounded-2xl"
                 aria-label="Phát âm từ"
                 disabled={!currentCard.audioUrl}
                 onClick={handleAudioPlay}

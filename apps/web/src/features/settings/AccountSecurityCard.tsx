@@ -3,19 +3,18 @@
 import React, { useState } from 'react';
 import { Button, Card, InlineAlert, Input } from '@lingua/ui';
 import { KeyRound, LogOut, Mail, ShieldCheck, Trash2 } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext';
+import { useOptionalAuth } from '../auth/AuthContext';
 import { getBrowserSupabaseClient } from '../../lib/supabase/client';
 
 export function AccountSecurityCard() {
-  const {
-    user,
-    error: authError,
-    updateEmail,
-    updatePassword,
-    signOut,
-    signOutEverywhere,
-    clearError,
-  } = useAuth();
+  const auth = useOptionalAuth();
+  const user = auth?.user ?? null;
+  const authError = auth?.error ?? null;
+  const updateEmail = auth?.updateEmail ?? (async (_email: string) => { throw new Error('Authentication is unavailable.'); });
+  const updatePassword = auth?.updatePassword ?? (async (_password: string, _currentPassword?: string) => { throw new Error('Authentication is unavailable.'); });
+  const signOut = auth?.signOut ?? (async () => undefined);
+  const signOutEverywhere = auth?.signOutEverywhere ?? (async () => undefined);
+  const clearError = auth?.clearError ?? (() => undefined);
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');

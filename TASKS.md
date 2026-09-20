@@ -4,9 +4,11 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## UI-V2-PROMOTION — Promote `chatgpt/ui-redesign-v2-2026-09-15`
 
-Owner: integration. Status: BLOCKED by frontend regression gate. The isolated merge is
-prepared; 71 of 568 frontend tests fail. Reconcile and verify the accepted flows, then
-perform deployment review and promote. See `plans/UI-V2-promotion.md`.
+Owner: integration. Status: READY for promotion. The isolated merge reconciles the accepted
+flows and all 568 frontend tests pass. Promote to `master`, verify the hosted deployment,
+and record the deployment evidence. Backend format/lint/typecheck pass; database tests are
+blocked by unavailable Docker PostgreSQL and the existing baseline migration registry check.
+See `plans/UI-V2-promotion.md` and `reviews/UI-V2-promotion-checkpoint.md`.
 
 ## Global execution rule for every implementation task
 

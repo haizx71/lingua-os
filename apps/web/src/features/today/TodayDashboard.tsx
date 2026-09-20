@@ -9,6 +9,8 @@ import {
   ErrorState,
   InlineAlert,
   LoadingState,
+  ConceptChip,
+  Progress,
 } from '@lingua/ui';
 import {
   ArrowRight,
@@ -331,14 +333,14 @@ export function TodayDashboard({
                 <div className="relative min-w-0">
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#cfe9df] bg-[#e8f6f1] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#218573] sm:text-[11px]">
                     <Sun className="h-3.5 w-3.5" />
-                    Hôm nay
+                    Kế hoạch hôm nay
                   </span>
 
                   <h1 className="mt-4 text-[32px] font-black leading-[1.04] tracking-[-0.055em] text-[#16213a] sm:text-[38px] lg:text-[44px]">
-                    Chào <span className="bg-[linear-gradient(90deg,#4c6fff,#7d95ff)] bg-clip-text text-transparent">Hải!</span>
+                    Chào buổi sáng, <span className="bg-[linear-gradient(90deg,#4c6fff,#7d95ff)] bg-clip-text text-transparent">Hải!</span>
                   </h1>
                   <p className="mt-3 max-w-[34rem] text-sm leading-6 text-[#66728a] sm:text-base">
-                    Tiếp tục bài học hôm nay theo đúng nhịp của bạn.
+                    LINGUA OS đã chọn {effectivePlan.activities.length} hoạt động tối ưu nhất cho bạn.
                   </p>
 
                   <div className="mt-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -349,7 +351,7 @@ export function TodayDashboard({
                         className="min-h-12 w-full rounded-2xl bg-[#4f6fe9] px-7 text-white shadow-[0_10px_28px_rgba(79,111,233,0.22)] hover:bg-[#4263dc] sm:w-auto"
                         rightIcon={<ArrowRight className="h-4 w-4" />}
                       >
-                        Tiếp tục học
+                        Bắt đầu học ngay
                       </Button>
                     </Link>
                     <span className="text-[11px] font-semibold leading-5 text-[#6d7890] sm:text-xs">
@@ -366,7 +368,7 @@ export function TodayDashboard({
           <section aria-label="Tóm tắt hôm nay" className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
             <div className="lingua-card flex min-w-[76%] snap-start items-center gap-3 p-4 sm:min-w-0">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><Target className="h-5 w-5" /></span>
-              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Mục tiêu hôm nay</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedMinutes}/{targetMinutes} phút</div></div>
+              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Mục tiêu hôm nay</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedMinutes} / <span>{targetMinutes} phút</span></div></div>
             </div>
             <div className="lingua-card flex min-w-[76%] snap-start items-center gap-3 p-4 sm:min-w-0">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--status-warning-bg)] text-[var(--status-warning)]"><Flame className="h-5 w-5 fill-current" /></span>
@@ -374,7 +376,7 @@ export function TodayDashboard({
             </div>
             <div className="lingua-card flex min-w-[76%] snap-start items-center gap-3 p-4 sm:min-w-0">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><Trophy className="h-5 w-5" /></span>
-              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Thành tích</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedActivitiesCount}/{totalActivitiesCount} hoàn thành</div></div>
+              <div className="min-w-0"><div className="text-xs font-medium text-[var(--text-muted)]">Thành tích</div><div className="mt-0.5 text-base font-extrabold text-[var(--text-primary)]">{completedActivitiesCount} / {totalActivitiesCount} hoàn thành</div></div>
             </div>
           </section>
 
@@ -383,9 +385,13 @@ export function TodayDashboard({
               <div className="min-w-0">
                 <div className="lingua-kicker text-[var(--accent-teal-strong)]">Language Brain</div>
                 <h2 id="learning-progress-heading" className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-[var(--text-primary)] sm:text-2xl">Your Learning Progress</h2>
-                <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Một cái nhìn nhanh về nhịp học và độ bền trí nhớ hôm nay.</p>
+                <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Tiến độ học hôm nay: {completedMinutes} / {targetMinutes} phút</p>
               </div>
               <Link href="/progress" className="flex items-center gap-1 rounded-xl px-2 py-2 text-xs font-bold text-[var(--action-primary)] hover:bg-[var(--surface-blue)] sm:px-3">Xem chi tiết <ChevronRight className="h-3.5 w-3.5" /></Link>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-[var(--surface-subtle)]/70 p-3">
+              <Progress value={progressPercent} max={100} label={`Tiến độ học hôm nay: ${completedMinutes} / ${targetMinutes} phút`} showValueText size="sm" />
             </div>
 
             <div className="mt-5 grid min-w-0 items-center gap-5 sm:mt-6 sm:gap-7 lg:grid-cols-[200px_minmax(0,1fr)]">
@@ -420,6 +426,24 @@ export function TodayDashboard({
             </div>
           </section>
 
+          <section aria-labelledby="brain-snapshot-heading" className="lingua-card min-w-0 p-4 sm:p-5">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <h2 id="brain-snapshot-heading" className="text-base font-extrabold text-[var(--text-primary)]">Trạng thái Language Brain</h2>
+              <Link href="/brain" className="text-xs font-bold text-[var(--action-primary)]">Xem toàn bộ</Link>
+            </div>
+            <div className="mt-3 flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--accent-teal-soft)] p-3">
+              <Sparkles className="h-5 w-5 shrink-0 text-[var(--accent-teal-strong)]" />
+              <div className="min-w-0 text-sm font-bold text-[var(--text-primary)]">Sức khỏe trí nhớ: {initialMemoryHealth}%</div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-xs text-[var(--text-muted)]">Từ vựng gần đây đang được theo dõi:</span>
+              <ConceptChip status="learning" isDue term="perseverance" size="sm" />
+              <ConceptChip status="learning" term="resilience" size="sm" />
+              <ConceptChip status="mastered" term="effortless" size="sm" />
+              <ConceptChip status="weak" term="meticulous" size="sm" />
+            </div>
+          </section>
+
           <section aria-labelledby="timeline-heading" className="lingua-card min-w-0 p-4 sm:p-6">
             <div className="mb-4 flex items-end justify-between gap-4">
               <div className="min-w-0"><div className="lingua-kicker">Kế hoạch cá nhân</div><h2 id="timeline-heading" className="mt-1 text-lg font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Today's Activity</h2></div>
@@ -440,7 +464,7 @@ export function TodayDashboard({
                   </div>
                   <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:items-center sm:gap-1.5 sm:self-center">
                     <Link href={activity.targetUrl} className="min-w-0"><Button className="w-full sm:w-auto" variant={activity.completed ? 'secondary' : activity.type === 'review' ? 'primary' : 'outline'} size="sm" onClick={() => onActivityStart?.(activity.id)}>{activity.completed ? getCompletedActionLabel(activity.type) : getPendingActionLabel(activity.type)}</Button></Link>
-                    {!activity.completed && <Button className="w-full sm:w-auto" variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang xử lý...' : 'Hoàn thành'}</Button>}
+                    {!activity.completed && <Button className="w-full sm:w-auto" variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang hoàn thành...' : 'Hoàn thành'}</Button>}
                   </div>
                 </div>
               ))}

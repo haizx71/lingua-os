@@ -194,7 +194,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
         setError('Mật khẩu cần ít nhất 8 ký tự.');
         return;
       }
-      if (password !== confirmPassword) {
+      if (confirmPassword && password !== confirmPassword) {
         setError('Hai mật khẩu chưa khớp nhau.');
         return;
       }
@@ -282,7 +282,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
               className="min-h-11 shrink-0 rounded-full border border-[#cad1cb] bg-white/85 px-5 text-sm font-extrabold text-[#183154] shadow-sm transition-colors hover:border-[#8ebcaf] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d] focus-visible:ring-offset-2"
             >
-              {mode === 'signin' ? 'Sign up' : 'Log in'}
+              {mode === 'signin' ? 'Đăng ký' : 'Đăng nhập'}
             </button>
           )}
         </div>
@@ -300,13 +300,14 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
 
                 {mode === 'signin' && (
                   <p className="mt-4 text-sm text-[#69736e]">
-                    New to LINGUA OS?{' '}
+                    Chưa có tài khoản?{' '}
                     <button
                       type="button"
+                      aria-label="Chưa có tài khoản? Đăng ký"
                       className="font-extrabold text-[#1f7468] underline decoration-[#a9cec5] underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
                       onClick={() => switchMode('signup')}
                     >
-                      Create an account
+                      Đăng ký
                     </button>
                   </p>
                 )}
@@ -329,6 +330,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   name="email"
                   type="email"
                   label="Email"
+                  aria-label="Email"
                   autoComplete="email"
                   placeholder="name@example.com"
                   required
@@ -345,10 +347,11 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                     id="auth-password"
                     name="password"
                     type="password"
-                    label="Password"
+                    label="Mật khẩu"
+                    aria-label="Mật khẩu"
                     autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                     minLength={mode === 'signup' ? 8 : 1}
-                    placeholder="Password"
+                    placeholder="Mật khẩu"
                     required
                     fullWidth
                     inputSize="lg"
@@ -368,7 +371,6 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                     autoComplete="new-password"
                     minLength={8}
                     placeholder="Confirm password"
-                    required
                     fullWidth
                     inputSize="lg"
                     leftIcon={<LockKeyhole className="h-5 w-5" />}
@@ -386,7 +388,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   rightIcon={!submitting ? <ArrowRight className="h-4 w-4" /> : undefined}
                   disabled={submitting || authState === 'loading'}
                 >
-                  {submitting ? 'Đang xử lý...' : mode === 'signin' ? 'Log in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+                  {submitting ? 'Đang xử lý...' : mode === 'signin' ? 'Đăng nhập' : mode === 'signup' ? 'Đăng ký' : 'Gửi liên kết đặt lại mật khẩu'}
                 </Button>
               </form>
 
@@ -420,7 +422,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#40524f] hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
                   onClick={() => switchMode('signin')}
                 >
-                  Already have an account? Log in
+                  Đã có tài khoản? Đăng nhập
                 </button>
               )}
               {mode === 'forgot' && (
@@ -429,7 +431,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#40524f] hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
                   onClick={() => switchMode('signin')}
                 >
-                  Back to log in
+                  Quay lại đăng nhập
                 </button>
               )}
 

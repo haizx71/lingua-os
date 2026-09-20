@@ -45,6 +45,7 @@ export function DesktopSidebar({ currentPath }: DesktopSidebarProps = {}) {
     >
       <Link
         href="/today"
+        aria-label="LINGUA OS"
         className="group mb-8 flex items-center gap-3 rounded-2xl px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
         <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--action-primary)] text-white shadow-[0_9px_22px_rgba(66,103,217,0.24)]">

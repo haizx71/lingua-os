@@ -49,7 +49,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
               type="search"
-              placeholder="Nhập từ hoặc cụm từ..."
+              placeholder="Nhập từ vựng, cụm từ tiếng Anh..."
               value={discovery.searchQuery}
               onChange={(e) => discovery.setSearchQuery(e.target.value)}
               aria-label="Nhập từ vựng, cụm từ tiếng Anh..."

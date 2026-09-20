@@ -55,7 +55,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
             <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)] sm:text-[15px]">Những nội dung anh đã lưu trên máy chủ để đọc và học lại.</p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
-            {!forcedState && <Button className="w-full sm:w-auto" variant="outline" size="md" onClick={library.retry}>Tải lại</Button>}
+            {!forcedState && <Button className="w-full sm:w-auto" variant="outline" size="md" onClick={library.retry}>Tải lại thư viện</Button>}
             <Link href="/read" className="min-w-0">
               <Button className="w-full sm:w-auto" variant="primary" size="md" leftIcon={<BookOpen className="h-4 w-4" />}>Đọc bài mới</Button>
             </Link>
@@ -87,7 +87,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       )}
       {status === 'loading' && <LoadingState message="Đang tải thư viện từ máy chủ..." count={3} />}
       {status === 'error' && (
-        <ErrorState code={library.error?.code ?? forcedErrorCode} title="Không thể tải thư viện" description="Danh sách chưa được xác nhận đầy đủ. Vui lòng thử lại." onRetry={library.retry} />
+        <ErrorState code={library.error?.code ?? forcedErrorCode} title="Không thể tải thư viện" description="Danh sách chưa được xác nhận đầy đủ. Vui lòng thử lại." retryLabel="Tải lại thư viện" onRetry={library.retry} />
       )}
       {(status === 'empty' || (status === 'success' && visibleItems.length === 0)) && (
         <EmptyState

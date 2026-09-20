@@ -53,9 +53,11 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const media = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: dark)')
+      : null;
     const applyTheme = () => {
-      const dark = theme === 'dark' || (theme === 'system' && media.matches);
+      const dark = theme === 'dark' || (theme === 'system' && Boolean(media?.matches));
       document.documentElement.classList.toggle('dark', dark);
       document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
     };
@@ -63,7 +65,7 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
     window.localStorage.setItem('lingua-theme', theme);
     applyTheme();
 
-    if (theme !== 'system') return undefined;
+    if (theme !== 'system' || !media) return undefined;
     const onChange = () => applyTheme();
     media.addEventListener('change', onChange);
     return () => media.removeEventListener('change', onChange);
@@ -77,7 +79,7 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
   const handleSave = () => {
     const updated: UserSettingsData = { dailyTargetMinutes: dailyMinutes, newWordsBudgetPerDay: newWordsBudget, theme, reducedMotion, audioAutoplay };
     onSaveSettings?.(updated);
-    setSavedNotification('Đã lưu cài đặt trên thiết bị này.');
+    setSavedNotification('Đã lưu tùy chọn cục bộ trên thiết bị này.');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => { setSavedNotification(null); saveTimerRef.current = null; }, 3000);
   };
@@ -104,8 +106,9 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
       <header className="min-w-0">
-        <h1 className="text-[28px] font-black leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-4xl">Cài đặt</h1>
+        <h1 className="text-[28px] font-black leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-4xl">Cài đặt hệ thống</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-[15px]">Tùy chỉnh trải nghiệm học và quản lý tài khoản của bạn.</p>
+        <span className="sr-only">Preferences &amp; Account</span>
       </header>
 
       {savedNotification && <InlineAlert variant="success" title="Đã lưu">{savedNotification}</InlineAlert>}
@@ -114,7 +117,7 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
         <div className="min-w-0 space-y-4">
           <AccountSecurityCard />
           <Card padding="lg" className="min-w-0 rounded-[26px] bg-[var(--surface-warm)]">
-            <h2 className="text-lg font-black tracking-[-0.02em] text-[var(--text-primary)]">Mục tiêu mỗi ngày</h2>
+            <h2 className="text-lg font-black tracking-[-0.02em] text-[var(--text-primary)]">Mục tiêu học tập hàng ngày</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Điều chỉnh nhịp học để phù hợp với thời gian và sức học của bạn.</p>
           </Card>
         </div>
@@ -136,10 +139,10 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
               <section className="min-w-0">
                 <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h2 className="text-sm font-extrabold text-[var(--text-primary)]">Từ mới mỗi ngày</h2>
+                    <h2 className="text-sm font-extrabold text-[var(--text-primary)]">Ngân sách từ mới mỗi ngày</h2>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Giới hạn lượng từ mới để tránh học quá tải.</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-[var(--accent-teal-soft)] px-3 py-1.5 text-xs font-extrabold text-[var(--accent-teal-strong)]">{newWordsBudget} từ / ngày</span>
+                  <span className="shrink-0 rounded-full bg-[var(--accent-teal-soft)] px-3 py-1.5 text-xs font-extrabold text-[var(--accent-teal-strong)]">{newWordsBudget} từ mới / ngày</span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">{[2, 4, 6, 8].map((count) => <button key={count} type="button" onClick={() => setNewWordsBudget(count)} className={optionClass(newWordsBudget === count)}>{count} từ</button>)}</div>
               </section>

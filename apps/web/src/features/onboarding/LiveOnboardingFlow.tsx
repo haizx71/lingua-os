@@ -122,9 +122,8 @@ function AssessmentAudioPlayer({ src }: { readonly src: string }) {
       try {
         const result = el.play?.();
         if (result !== undefined && typeof result.then === 'function') {
-          result
-            .then(() => setIsPlaying(true))
-            .catch(() => {
+          setIsPlaying(true);
+          result.catch(() => {
               setAudioError('Không thể phát âm thanh. Vui lòng kiểm tra kết nối mạng.');
               setIsPlaying(false);
             });

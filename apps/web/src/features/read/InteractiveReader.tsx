@@ -104,7 +104,7 @@ export function InteractiveReader({
               onClick={() => void reader.saveContent()}
               disabled={passage.isSaved || reader.busyKeys.has(`content:${passage.id}`)}
             >
-              {passage.isSaved ? 'Đã lưu' : 'Lưu bài'}
+              {passage.isSaved ? 'Bài đọc đã lưu' : 'Lưu bài đọc'}
             </Button>
             <Link href="/library" className="min-w-0">
               <Button variant="outline" size="md" className="w-full sm:w-auto">Thư viện</Button>
@@ -142,6 +142,7 @@ export function InteractiveReader({
               <span className="rounded-full bg-white px-2.5 py-1 shadow-sm">CEFR {passage.level}</span>
               <span className="rounded-full bg-white px-2.5 py-1 shadow-sm">{passage.wordCount} từ</span>
               <span className="rounded-full bg-white px-2.5 py-1 shadow-sm">Từ quen {passage.familiarityRate}%</span>
+              <span className="sr-only">CEFR {passage.level} • {passage.wordCount} từ • Tỷ lệ từ quen: {passage.familiarityRate}%</span>
             </div>
           </div>
           {passage.audioUrl && (
@@ -201,7 +202,7 @@ export function InteractiveReader({
                       <div className="flex min-w-0 flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
                           {sentence.targetConcepts.length > 0 && (
-                            <span className="text-xs font-medium text-[var(--text-muted)]">Từ vựng mục tiêu:</span>
+                            <span className="text-xs font-medium text-[var(--text-muted)]">Từ vựng mục tiêu trong câu:</span>
                           )}
                           {sentence.targetConcepts.map((concept) => (
                             <ConceptChip key={`${sentence.id}:${concept.term}`} status={concept.status} term={concept.term} size="sm" />

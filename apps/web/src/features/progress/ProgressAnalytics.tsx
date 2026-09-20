@@ -107,7 +107,7 @@ export function ProgressAnalytics({
           <div className="max-w-2xl">
             <span className="lingua-kicker text-[var(--action-primary)]">Learning Evidence & Trends</span>
             <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)] sm:text-3xl">Tiến độ học thực tế</h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Đo sự tiến bộ bằng bằng chứng ghi nhớ thực tế, không dựa trên XP hay điểm thưởng ảo.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Đo lường sự tiến bộ dựa trên bằng chứng ghi nhớ thực tế, không dựa trên XP hay điểm thưởng ảo.</p>
           </div>
           <div className="flex items-center gap-1 self-start rounded-2xl border border-[var(--border-subtle)] bg-white/75 p-1 shadow-sm sm:self-auto">
             {(['7d', '30d'] as const).map((windowKey) => (
@@ -117,7 +117,7 @@ export function ProgressAnalytics({
                 onClick={() => setTimeWindow(windowKey)}
                 className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${timeWindow === windowKey ? 'bg-[var(--action-primary)] text-white shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]'}`}
               >
-                {windowKey === '7d' ? '7 ngày' : '30 ngày'}
+                {windowKey === '7d' ? '7 ngày qua' : '30 ngày qua'}
               </button>
             ))}
           </div>
@@ -126,15 +126,15 @@ export function ProgressAnalytics({
 
       <section className="grid gap-4 sm:grid-cols-3">
         <Card variant="default" padding="md" className="relative overflow-hidden">
-          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><TrendingUp className="h-5 w-5" /></span><div><div className="text-xs font-semibold text-[var(--text-muted)]">Từ mới đã tiếp nạp</div><div className="mt-0.5 text-2xl font-black tracking-[-0.04em] text-[var(--action-primary)]">+{data.newWordsAcquired}</div></div></div>
+          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><TrendingUp className="h-5 w-5" /></span><div><div className="text-xs font-semibold text-[var(--text-muted)]">Từ mới đã tiếp nạp</div><div className="mt-0.5 text-2xl font-black tracking-[-0.04em] text-[var(--action-primary)]">+{data.newWordsAcquired} từ</div></div></div>
           <p className="mt-3 text-xs text-[var(--text-secondary)]">Qua các bài đọc Reader</p>
         </Card>
         <Card variant="default" padding="md">
-          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--status-success-bg)] text-[var(--status-success)]"><Award className="h-5 w-5" /></span><div><div className="text-xs font-semibold text-[var(--text-muted)]">Từ đã củng cố</div><div className="mt-0.5 text-2xl font-black tracking-[-0.04em] text-[var(--status-success)]">+{data.wordsSolidified}</div></div></div>
+          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--status-success-bg)] text-[var(--status-success)]"><Award className="h-5 w-5" /></span><div><div className="text-xs font-semibold text-[var(--text-muted)]">Từ đã củng cố vững chắc</div><div className="mt-0.5 text-2xl font-black tracking-[-0.04em] text-[var(--status-success)]">+{data.wordsSolidified} từ</div></div></div>
           <p className="mt-3 text-xs text-[var(--text-secondary)]">Đạt chuẩn trí nhớ dài hạn</p>
         </Card>
         <Card variant="default" padding="md">
-          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-warm)] text-[var(--status-warning)]"><Calendar className="h-5 w-5" /></span><div><div className="text-xs font-semibold text-[var(--text-muted)]">Ngày học thành công</div><div className="mt-0.5 text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{data.activeDaysCount}/{data.weeklyTargetDays}</div></div></div>
+          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-warm)] text-[var(--status-warning)]"><Calendar className="h-5 w-5" /></span><div><div className="text-xs font-semibold text-[var(--text-muted)]">Ngày học thành công</div><div className="mt-0.5 text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{data.activeDaysCount} / {data.weeklyTargetDays} ngày</div></div></div>
           <p className="mt-3 text-xs text-[var(--text-secondary)]">Đạt mục tiêu học hàng ngày</p>
         </Card>
       </section>
@@ -150,7 +150,7 @@ export function ProgressAnalytics({
           </div>
 
           <div>
-            <div className="lingua-kicker text-[var(--accent-teal-strong)]">Năng lực hiện tại</div>
+            <div className="lingua-kicker text-[var(--accent-teal-strong)]">Bằng chứng tuần này</div>
             <h2 className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-[var(--text-primary)]">Ước lượng khởi điểm: A2 Elementary</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Độ tin cậy: Vừa • Dựa trên 582 bằng chứng tiếp xúc và tỷ lệ nhớ {data.retentionScore}%.</p>
             <div className="mt-5 grid grid-cols-6 gap-2">
@@ -166,7 +166,7 @@ export function ProgressAnalytics({
       </Card>
 
       <Card variant="default" padding="lg" className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="lingua-kicker">Learning mix</div><h2 className="mt-1 flex items-center gap-2 text-lg font-extrabold text-[var(--text-primary)]"><Clock className="h-4 w-4 text-[var(--action-primary)]" />Thời gian học theo hoạt động</h2></div><span className="rounded-full bg-[var(--surface-subtle)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">{timeWindow === '7d' ? '160 phút tuần này' : '640 phút / 30 ngày'}</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="lingua-kicker">Learning mix</div><h2 className="mt-1 flex items-center gap-2 text-lg font-extrabold text-[var(--text-primary)]"><Clock className="h-4 w-4 text-[var(--action-primary)]" />Thời gian học theo hoạt động</h2></div><span className="rounded-full bg-[var(--surface-subtle)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">{timeWindow === '7d' ? '7 ngày: 160 phút' : '30 ngày: 640 phút'}</span></div>
         <div className="space-y-4">
           {activities.map((activity) => {
             const Icon = activity.icon;

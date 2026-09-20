@@ -51,7 +51,8 @@ export function ProfileView({
             <div className="flex h-16 w-16 shrink-0 items-center justify-center self-start rounded-[22px] bg-[var(--action-primary)] text-xl font-black text-white shadow-[0_12px_28px_rgba(66,103,217,0.24)] sm:h-20 sm:w-20 sm:self-auto sm:text-2xl">{shortLevel}</div>
             <div className="min-w-0 flex-1">
               <h2 className="break-words text-xl font-black tracking-[-0.03em] text-[var(--text-primary)] sm:text-2xl">{profile.name ?? 'Chưa cung cấp'}</h2>
-              <p className="mt-1 break-words text-xs leading-5 text-[var(--text-secondary)] sm:text-sm">Trình độ khởi điểm <span className="font-extrabold text-[var(--action-primary)]">{level}</span> • Độ tin cậy {profile.startingLevelConfidence}</p>
+              <span className="sr-only">User Account</span>
+              <p className="mt-1 break-words text-xs leading-5 text-[var(--text-secondary)] sm:text-sm">Ước lượng khởi điểm: <span className="font-extrabold text-[var(--action-primary)]">{level}</span> • Độ tin cậy: {profile.startingLevelConfidence}</p>
               <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                 <Badge variant="success" size="sm">Tiếng Anh</Badge>
                 <Badge variant="neutral" size="sm">Mục tiêu: Giao tiếp công việc</Badge>
@@ -70,7 +71,7 @@ export function ProfileView({
           <div className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--accent-teal-strong)] shadow-sm"><Brain className="h-5 w-5" /></span><div className="min-w-0"><div className="text-xs font-semibold text-[var(--text-muted)]">Đã nắm vững</div><div className="mt-0.5 break-words text-2xl font-black tracking-[-0.04em] text-[var(--accent-teal-strong)]">{profile.totalConceptsMastered}</div></div></div>
         </Card>
         <Card padding="md" className="min-w-0 rounded-[22px] bg-[var(--surface-warm)]">
-          <div className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--status-warning)] shadow-sm"><Flame className="h-5 w-5 fill-current" /></span><div className="min-w-0"><div className="text-xs font-semibold text-[var(--text-muted)]">Chuỗi học tập</div><div className="mt-0.5 break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{profile.streakDays} ngày</div></div></div>
+          <div className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--status-warning)] shadow-sm"><Flame className="h-5 w-5 fill-current" /></span><div className="min-w-0"><div className="text-xs font-semibold text-[var(--text-muted)]">Số ngày học liên tục</div><div className="mt-0.5 break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{profile.streakDays} ngày</div></div></div>
         </Card>
       </section>
 
@@ -84,7 +85,7 @@ export function ProfileView({
         <Card padding="lg" className="min-w-0 rounded-[26px] bg-[var(--surface-warm)]">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface)] text-[var(--status-warning)] shadow-sm"><Award className="h-5 w-5" /></div>
           <h3 className="mt-4 text-lg font-black tracking-[-0.02em] text-[var(--text-primary)]">Giữ nhịp mỗi ngày</h3>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Chuỗi hiện tại của bạn là <strong>{profile.streakDays} ngày</strong>. Tiến bộ bền vững đến từ việc quay lại đều đặn.</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Chuỗi hiện tại của bạn là {profile.streakDays} ngày liên tiếp. Tiến bộ bền vững đến từ việc quay lại đều đặn.</p>
           <Link href="/today" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl px-1 py-3 text-sm font-extrabold text-[var(--action-primary)]"><Sparkles className="h-4 w-4 shrink-0" />Tiếp tục kế hoạch hôm nay</Link>
         </Card>
       </section>
