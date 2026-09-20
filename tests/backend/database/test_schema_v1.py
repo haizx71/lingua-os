@@ -194,11 +194,19 @@ def test_empty_database_migration_is_reproducible_and_reversible(
             "0008",
             "0009",
             "0010",
+            "0011",
+            "0012",
+            "0013",
         ]
         assert migrate_up(isolated_url, migrations_dir) == []
 
-        assert migrate_down(isolated_url, migrations_dir, steps=1) == ["0010"]
-        assert migrate_up(isolated_url, migrations_dir) == ["0010"]
+        assert migrate_down(isolated_url, migrations_dir, steps=4) == [
+            "0013",
+            "0012",
+            "0011",
+            "0010",
+        ]
+        assert migrate_up(isolated_url, migrations_dir) == ["0010", "0011", "0012", "0013"]
 
         copied_migrations = tmp_path / "migrations"
         shutil.copytree(migrations_dir, copied_migrations)
@@ -461,12 +469,12 @@ def test_browser_roles_cannot_query_domain_tables(migrated_postgres_url: str) ->
             "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(owner_id),)
         )
         with pytest.raises(errors.InsufficientPrivilege):
-            authenticated_session.execute("SELECT id FROM users").fetchall()
+            authenticated_session.execute("SELECT id FROM public.users").fetchall()
 
     with psycopg.connect(migrated_postgres_url) as anonymous_session:
         anonymous_session.execute("SET ROLE anon")
         with pytest.raises(errors.InsufficientPrivilege):
-            anonymous_session.execute("SELECT id FROM users").fetchall()
+            anonymous_session.execute("SELECT id FROM public.users").fetchall()
 
 
 def test_query_path_indexes_exist(db_connection: Connection[tuple[object, ...]]) -> None:

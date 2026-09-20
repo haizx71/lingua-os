@@ -808,12 +808,12 @@ def test_assessment_browser_roles_cannot_access_domain_tables(
                 "SELECT set_config('request.jwt.claim.sub', %s, false)", (str(actor_id),)
             )
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
-                session.execute("SELECT id FROM assessment_attempts").fetchall()
+                session.execute("SELECT id FROM public.assessment_attempts").fetchall()
 
     with psycopg.connect(seed.database_url) as anonymous:
         anonymous.execute("SET ROLE anon")
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
-            anonymous.execute("SELECT id FROM assessment_attempts").fetchall()
+            anonymous.execute("SELECT id FROM public.assessment_attempts").fetchall()
 
 
 def test_failure_after_response_insert_rolls_back_the_entire_transition(
@@ -852,7 +852,12 @@ def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
     PostgresAssessmentStore(seed.database_url).start_or_resume(
         seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
     )
-    assert migrate_down(seed.database_url, MIGRATIONS, steps=1) == ["0010"]
+    assert migrate_down(seed.database_url, MIGRATIONS, steps=4) == [
+        "0013",
+        "0012",
+        "0011",
+        "0010",
+    ]
     assert migrate_down(seed.database_url, MIGRATIONS, steps=1) == ["0009"]
     with pytest.raises(psycopg.errors.RaiseException, match="assessment_attempt_items"):
         migrate_down(seed.database_url, MIGRATIONS, steps=1)
@@ -884,7 +889,7 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
     shutil.copytree(MIGRATIONS, partial)
     up_0008_name = next(partial.glob("0008_*.up.sql")).name
     down_0008_name = next(partial.glob("0008_*.down.sql")).name
-    for version in ("0008", "0009", "0010"):
+    for version in ("0008", "0009", "0010", "0011", "0012", "0013"):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
 

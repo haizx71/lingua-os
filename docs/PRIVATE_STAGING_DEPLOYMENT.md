@@ -95,11 +95,15 @@ after a verified staging backup:
 pnpm db:migrate
 ```
 
-Verify `schema_migrations` contains `0001` through `0009`, RLS policies are
+Verify `schema_migrations` contains `0001` through `0013`, RLS policies are
 present and a second run is a no-op. Never run migrations from API startup and
 do not use destructive down migrations for hosted learner data. Require TLS
 for the runtime/admin connection (`sslmode=require` or the platform-equivalent
 setting).
+
+The hosted staging baseline already contains `0010`–`0012`; apply the additive
+`0013` migration through the reviewed migration path. Do not rewrite an applied
+migration file to repair its checksum.
 
 ## First-deploy smoke and rollback
 

@@ -167,7 +167,12 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_exists is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == ["0010"]
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=4) == [
+        "0013",
+        "0012",
+        "0011",
+        "0010",
+    ]
     assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == ["0009"]
 
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
@@ -179,7 +184,13 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_after_down is None
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == ["0009", "0010"]
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == [
+        "0009",
+        "0010",
+        "0011",
+        "0012",
+        "0013",
+    ]
 
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         table_after_up = connection.execute(
