@@ -26,26 +26,26 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none';
+      'inline-flex max-w-full min-w-0 touch-manipulation items-center justify-center font-semibold tracking-[-0.01em] transition-[transform,box-shadow,background-color,border-color,color] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--canvas)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 select-none';
 
     const variants = {
       primary:
-        'bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)] focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+        'bg-[var(--action-primary)] text-[var(--action-primary-text)] shadow-[0_8px_20px_rgba(66,103,217,0.18)] hover:-translate-y-0.5 hover:bg-[var(--action-primary-hover)] hover:shadow-[0_11px_26px_rgba(66,103,217,0.24)] active:translate-y-0 active:scale-[0.985] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',
       secondary:
-        'bg-[var(--action-secondary)] text-[var(--action-secondary-text)] hover:bg-[var(--action-secondary-hover)] focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+        'bg-[var(--action-secondary)] text-[var(--action-secondary-text)] border border-transparent hover:-translate-y-0.5 hover:bg-[var(--action-secondary-hover)] active:translate-y-0 active:scale-[0.985] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',
       outline:
-        'border border-[var(--border-default)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+        'border border-[var(--border-default)] bg-[var(--surface)] text-[var(--text-primary)] shadow-sm hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-subtle)] active:translate-y-0 active:scale-[0.985] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',
       ghost:
-        'bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] focus-visible:ring-[var(--focus-ring)]',
+        'bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] active:scale-[0.99] motion-reduce:active:scale-100',
       danger:
-        'bg-[var(--status-danger)] text-white hover:opacity-90 focus-visible:ring-[var(--focus-ring)] active:scale-[0.98]',
+        'bg-[var(--status-danger)] text-white shadow-sm hover:-translate-y-0.5 hover:brightness-95 active:translate-y-0 active:scale-[0.985] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',
     };
 
     const sizes = {
-      sm: 'h-8 px-3 text-xs rounded-[var(--radius-sm)] gap-1.5 min-h-[32px]',
-      md: 'h-10 px-4 text-sm rounded-[var(--radius-md)] gap-2 min-h-[44px]',
-      lg: 'h-12 px-6 text-base rounded-[var(--radius-md)] gap-2.5 min-h-[48px]',
-      icon: 'h-10 w-10 p-0 rounded-[var(--radius-md)] min-h-[44px] min-w-[44px]',
+      sm: 'h-9 min-h-[36px] max-sm:min-h-[44px] gap-1.5 rounded-xl px-3.5 text-xs',
+      md: 'h-11 min-h-[44px] gap-2 rounded-2xl px-5 text-sm',
+      lg: 'h-12 min-h-[48px] gap-2.5 rounded-2xl px-6 text-sm sm:text-base',
+      icon: 'h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-2xl p-0',
     };
 
     return (
@@ -56,9 +56,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(baseStyles, variants[variant], sizes[size], className)}
         {...props}
       >
-        {isLoading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+        {isLoading && <Loader2 className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
         {!isLoading && leftIcon}
-        <span>{children}</span>
+        <span className="min-w-0">{children}</span>
         {!isLoading && rightIcon}
       </button>
     );

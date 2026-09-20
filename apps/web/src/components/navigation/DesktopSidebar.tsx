@@ -14,6 +14,7 @@ import {
   Settings,
   User,
   Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import { primaryNavItems, secondaryNavItems } from './NavTypes';
 
@@ -35,83 +36,71 @@ export interface DesktopSidebarProps {
 
 export function DesktopSidebar({ currentPath }: DesktopSidebarProps = {}) {
   let pathname = usePathname();
-  if (!pathname && currentPath) {
-    pathname = currentPath;
-  }
+  if (!pathname && currentPath) pathname = currentPath;
 
   return (
     <aside
       aria-label="Điều hướng màn hình lớn"
-      className="hidden xl:flex flex-col w-64 fixed left-0 top-0 bottom-0 z-30 bg-[var(--surface)] border-r border-[var(--border-subtle)] p-5 justify-between"
+      className="fixed inset-y-0 left-0 z-30 hidden w-[17.5rem] flex-col border-r border-[var(--border-subtle)] bg-[color:var(--surface)]/95 px-5 py-6 backdrop-blur-xl xl:flex"
     >
-      <div className="flex flex-col gap-6">
-        {/* Brand Header */}
-        <Link
-          href="/today"
-          className="flex items-center gap-3 px-2 py-1 rounded-xl transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-        >
-          <div className="w-9 h-9 rounded-xl bg-[var(--action-primary)] flex items-center justify-center text-[var(--action-primary-text)] font-bold text-lg shadow-sm">
-            L
-          </div>
-          <div>
-            <h1 className="font-bold text-base tracking-tight leading-none text-[var(--text-primary)]">
-              LINGUA OS
-            </h1>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">Adaptive Learning</p>
-          </div>
-        </Link>
+      <Link
+        href="/today"
+        className="group mb-8 flex items-center gap-3 rounded-2xl px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      >
+        <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--action-primary)] text-white shadow-[0_9px_22px_rgba(66,103,217,0.24)]">
+          <span className="relative z-10 text-lg font-black tracking-tight">L</span>
+          <span className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-[var(--accent-teal)]/80" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[15px] font-extrabold tracking-[-0.025em] text-[var(--text-primary)]">LINGUA OS</div>
+          <div className="mt-0.5 text-[11px] font-medium text-[var(--text-muted)]">Your language brain</div>
+        </div>
+      </Link>
 
-        {/* Primary Navigation */}
-        <nav aria-label="Menu chính" className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] px-3 mb-1">
-            Học tập
-          </span>
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <nav aria-label="Menu chính" className="space-y-1">
+          <div className="lingua-kicker mb-2 px-3">Học tập</div>
           {primaryNavItems.map((item) => {
             const Icon = iconMap[item.iconName] || Home;
-            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(`${item.href}`));
-
+            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                className={`group relative flex min-h-11 items-center gap-3 rounded-2xl px-3.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                   isActive
-                    ? 'bg-[var(--status-info-bg)] text-[var(--action-primary)] font-semibold shadow-xs'
+                    ? 'bg-[var(--surface-blue)] text-[var(--action-primary)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action-primary)_10%,transparent)]'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                {isActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--action-primary)]" />
-                )}
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px] text-[var(--action-primary)]' : 'stroke-[1.75px]'}`} />
-                <span>{item.labelVi}</span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${isActive ? 'bg-white shadow-sm' : 'bg-transparent'}`}>
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <span className="flex-1">{item.labelVi}</span>
+                {isActive && <span className="h-2 w-2 rounded-full bg-[var(--accent-teal)]" aria-hidden />}
               </Link>
             );
           })}
         </nav>
 
-        {/* Secondary Navigation */}
-        <nav aria-label="Khám phá và cài đặt" className="flex flex-col gap-1 pt-4 border-t border-[var(--border-subtle)]">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] px-3 mb-1">
-            Khám phá & Quản lý
-          </span>
+        <nav aria-label="Khám phá và cài đặt" className="mt-7 space-y-1 border-t border-[var(--border-subtle)] pt-6">
+          <div className="lingua-kicker mb-2 px-3">Khám phá</div>
           {secondaryNavItems.map((item) => {
             const Icon = iconMap[item.iconName] || User;
-            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(`${item.href}`));
-
+            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                className={`flex min-h-10 items-center gap-3 rounded-xl px-3.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                   isActive
-                    ? 'bg-[var(--surface-subtle)] text-[var(--text-primary)] font-semibold'
+                    ? 'bg-[var(--surface-subtle)] text-[var(--text-primary)]'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="h-4 w-4" />
                 <span>{item.labelVi}</span>
               </Link>
             );
@@ -119,31 +108,23 @@ export function DesktopSidebar({ currentPath }: DesktopSidebarProps = {}) {
         </nav>
       </div>
 
-      {/* Footer Profile / Brain Summary Card */}
       <Link
         href="/profile"
         aria-label="Xem hồ sơ người học"
-        className="p-3.5 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)] flex items-center justify-between hover:border-[var(--border-strong)] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] group"
+        className="mt-5 rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface-warm)] p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-[var(--status-info-bg)] text-[var(--action-primary)] flex items-center justify-center font-semibold text-xs border border-[var(--status-info-border)]">
-            A2
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[120px]">
-              Learner Profile
-            </div>
-            <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[var(--status-warning)]" />
-              <span>483 từ đã vững</span>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xs font-extrabold text-[var(--action-primary)] shadow-sm">B1</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-bold text-[var(--text-primary)]">Hành trình của bạn</div>
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-[var(--text-secondary)]">
+              <Sparkles className="h-3 w-3 text-[var(--status-warning)]" />
+              <span>Tiếp tục xây Language Brain</span>
             </div>
           </div>
-        </div>
-        <div className="p-1.5 rounded-lg text-[var(--text-secondary)] group-hover:bg-[var(--surface)] group-hover:text-[var(--text-primary)] transition-colors">
-          <User className="w-4 h-4" />
+          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
         </div>
       </Link>
-
     </aside>
   );
 }

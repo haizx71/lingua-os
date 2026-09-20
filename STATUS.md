@@ -3,6 +3,13 @@
 Version: 4.0 starter
 Phase: FRLL accepted/frozen; TASK-LIBRARY-001 Library live integration complete; GAP-01 Closed
 
+## UI v2 promotion checkpoint — 2026-09-20
+
+The UI v2 branch is merged into an isolated integration worktree. Promotion and deployment
+remain blocked by 71 frontend test failures (497 passed). Typecheck, lint and production
+build pass. See `reviews/UI-V2-promotion-checkpoint.md` for the conflict resolutions and
+verification results. No API, schema, backend, or learner-state change was made.
+
 ## Current checkpoint — TASK-LIBRARY-001 complete (2026-09-15)
 
 - `/library` now loads all saved concept, sentence and content items through the frozen

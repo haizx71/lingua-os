@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MobileBottomNav } from './MobileBottomNav';
+import { MobileTopBar } from './MobileTopBar';
 import { TabletRail } from './TabletRail';
 import { DesktopSidebar } from './DesktopSidebar';
 
@@ -14,26 +15,28 @@ export interface AppShellProps {
 export function AppShell({ children, focusMode = false, currentPath }: AppShellProps) {
   if (focusMode) {
     return (
-      <div className="min-h-screen bg-[var(--canvas)] flex flex-col">
-        <main className="flex-1 w-full max-w-4xl mx-auto p-4 sm:p-6 md:p-8">{children}</main>
+      <div className="min-h-[100dvh] w-full overflow-x-clip bg-[var(--canvas)] text-[var(--text-primary)]">
+        <main className="mx-auto min-h-[100dvh] w-full min-w-0 max-w-5xl overflow-x-clip px-3 py-4 sm:px-6 sm:py-8 lg:px-10">
+          {children}
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)] flex flex-col md:flex-row">
-      {/* Navigation for Desktop (>=1200px) */}
+    <div className="min-h-[100dvh] w-full overflow-x-clip bg-transparent text-[var(--text-primary)] md:flex">
       <DesktopSidebar currentPath={currentPath} />
-
-      {/* Navigation for Tablet (768px - 1199px) */}
       <TabletRail currentPath={currentPath} />
 
-      {/* Main Content Area */}
-      <main className="flex-1 md:pl-20 xl:pl-64 pb-20 md:pb-8 transition-all min-h-screen">
-        <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">{children}</div>
-      </main>
+      <div className="min-w-0 flex-1 md:pl-20 xl:pl-[17.5rem]">
+        <MobileTopBar currentPath={currentPath} />
+        <main className="min-h-[calc(100dvh-3.5rem)] min-w-0 overflow-x-clip pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:min-h-[100dvh] md:pb-10">
+          <div className="mx-auto w-full min-w-0 max-w-[1540px] px-3 py-3 sm:px-6 sm:py-6 lg:px-8 xl:px-10 xl:py-8">
+            {children}
+          </div>
+        </main>
+      </div>
 
-      {/* Navigation for Mobile (<768px) */}
       <MobileBottomNav currentPath={currentPath} />
     </div>
   );
