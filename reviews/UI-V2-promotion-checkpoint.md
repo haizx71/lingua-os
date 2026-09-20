@@ -1,6 +1,6 @@
 # UI v2 promotion checkpoint — 2026-09-20
 
-Outcome: integration reconciled; ready for promotion and deployment review.
+Outcome: UI v2 promoted to `master` and deployed.
 
 - Source branch `df2e09f` diverged from `master` (`70d642c`) by 46 and 74 commits respectively. Merge produced two conflicts.
 - `layout.tsx`: retained current multilingual fonts and added UI v2's early theme initialization.
@@ -32,5 +32,16 @@ learner-state logic changed.
 Code review: two merge conflicts resolved; changed components retain existing provider and
 server-guard boundaries. The frontend regression suite and static checks now pass.
 
-Deployment has not been triggered yet. Remote `master` update is the next step after this
-checkpoint commit.
+Deployment evidence:
+
+- GitHub `master` was pushed at `20c4cd52f2df0096ebf98679c239e119c6471ff6`.
+- Vercel status for the commit is successful; browser smoke checks confirmed the live UI at
+  `https://lingua-os-web-mocha.vercel.app/today`, `/brain` and `/settings`.
+- Render auto-deploy `dep-danupg8jo6nc739roda0` is **Deploy succeeded | Live**, sourced from
+  the same commit. `https://lingua-api-staging.onrender.com/health` returned HTTP 200 with
+  `{"service":"lingua-api","status":"ok","version":"0.1.0"}`.
+- Supabase schema and hosted data were not mutated; no API contract, migration or learner-state
+  change was included.
+
+Completion: UI v2 is the current hosted frontend on `master`; the backend test limitations
+above remain recorded as environment/baseline follow-up work.

@@ -5,13 +5,16 @@ Phase: FRLL accepted/frozen; TASK-LIBRARY-001 Library live integration complete;
 
 ## UI v2 promotion checkpoint — 2026-09-20
 
-The UI v2 branch is merged into an isolated integration worktree and its accepted frontend
-flows are reconciled. All 568 frontend tests pass; typecheck, lint, generated-contract
-freshness and production build pass. Promotion to `master` and deployment remain the next
-steps. The full backend test command is code-clean through format, lint and typecheck; its
-database tests require Docker PostgreSQL, and the baseline migration registry check still
-needs the existing 0010–0012 registry alignment. See `reviews/UI-V2-promotion-checkpoint.md`.
-No API, schema, backend, or learner-state change was made.
+The UI v2 branch is promoted to `master` at `20c4cd52f2df0096ebf98679c239e119c6471ff6` and
+its accepted frontend flows are reconciled. All 568 frontend tests pass; typecheck, lint,
+generated-contract freshness and production build pass. The Vercel UI is live at
+`https://lingua-os-web-mocha.vercel.app/today`; browser smoke checks passed for `/today`,
+`/brain` and `/settings`. Render deploy `dep-danupg8jo6nc739roda0` is live from the same
+commit at `https://lingua-api-staging.onrender.com`, and `/health` returned HTTP 200.
+The full backend test command is code-clean through format, lint and typecheck; its database
+tests require Docker PostgreSQL, and the baseline migration registry check still needs the
+existing 0010–0012 registry alignment. See `reviews/UI-V2-promotion-checkpoint.md`. No API,
+schema, backend, or learner-state change was made.
 
 ## Current checkpoint — TASK-LIBRARY-001 complete (2026-09-15)
 

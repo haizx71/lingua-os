@@ -4,11 +4,13 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## UI-V2-PROMOTION — Promote `chatgpt/ui-redesign-v2-2026-09-15`
 
-Owner: integration. Status: READY for promotion. The isolated merge reconciles the accepted
-flows and all 568 frontend tests pass. Promote to `master`, verify the hosted deployment,
-and record the deployment evidence. Backend format/lint/typecheck pass; database tests are
-blocked by unavailable Docker PostgreSQL and the existing baseline migration registry check.
-See `plans/UI-V2-promotion.md` and `reviews/UI-V2-promotion-checkpoint.md`.
+Owner: integration. Status: DONE. The accepted flows are reconciled and all 568 frontend
+tests pass. `master` is `20c4cd52f2df0096ebf98679c239e119c6471ff6`; Vercel is live at
+`https://lingua-os-web-mocha.vercel.app/today`, and Render deploy
+`dep-danupg8jo6nc739roda0` is live with `/health` returning HTTP 200. Backend
+format/lint/typecheck pass; database tests remain environment-blocked by unavailable Docker
+PostgreSQL and the existing baseline migration registry check. See
+`plans/UI-V2-promotion.md` and `reviews/UI-V2-promotion-checkpoint.md`.
 
 ## Global execution rule for every implementation task
 
