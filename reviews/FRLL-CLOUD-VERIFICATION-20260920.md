@@ -61,7 +61,7 @@ This addendum supersedes the earlier deployment-boundary note for the hosted sta
   `supabase_public_function_default_execute_lockdown_v1`; no later migration exists.
 - After exact SQL execution and privilege verification, the application registry was synchronized
   with version `0013` and checksum
-  `c750d91681018cfdb8c5e8c03789f2e3d313a18a2e69ca5add666c9726d4bc`.
+  `c750d91681018cfdb8cde5c8c03789f2e3d313a18a2e69ca5add666c9726d4bc`.
 - A transactional future-function probe changed from `anon=true, authenticated=true` before
   apply to `anon=false, authenticated=false, service_role=true, postgres=true` after apply.
   Existing public functions remained at browser EXECUTE count 0 and service-role EXECUTE count 18.
