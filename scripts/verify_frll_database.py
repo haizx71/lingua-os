@@ -39,6 +39,7 @@ EXPECTED_MIGRATIONS = (
     "0011_supabase_public_function_execute_lockdown_v1",
     "0012_supabase_public_schema_browser_lockdown_v1",
     "0013_supabase_public_function_default_execute_lockdown_v1",
+    "0014_knowledge_v2_canonical_structures",
 )
 
 

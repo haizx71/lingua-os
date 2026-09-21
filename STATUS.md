@@ -1,7 +1,39 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; TASK-LIBRARY-001 Library live integration complete; GAP-01 Closed
+Phase: FRLL accepted/frozen; Knowledge V2 K2-01 Canonical Schema Foundations implemented locally
+
+## Knowledge V2 K2-01 canonical schema foundations — 2026-09-22
+
+Knowledge System V2 Wave K2-01 (Canonical Schema Foundations) has been implemented and fully verified
+locally on `haizx71/lingua-os` (branch `master`).
+
+- Migration `0014_knowledge_v2_canonical_structures.up.sql` / `.down.sql`:
+  - Introduces `grammar_specifications`, `phrase_specifications`, and `phonetic_transcriptions`
+    with foreign keys to canonical `concepts` / `lexemes`, relational constraints, indexes,
+    and explicit privilege revocation (`REVOKE ALL PRIVILEGES ... FROM anon, authenticated`).
+  - Migration runner verified: apply, rollback, and re-apply cleanly. Checksum:
+    `9dee05acb17f002f21dd3465d838953da33f57037ba621b274c69829e3348fd3`.
+- SQLAlchemy 2.0 ORM models and Pydantic v2 DTOs:
+  - Added to `services/api/src/lingua_api/catalog/models.py` and exported in `lingua_api/catalog/__init__.py`.
+- Automated tests:
+  - 9 automated tests added in `tests/backend/database/test_knowledge_v2_canonical_schema.py`.
+- Verification results:
+  - Ruff format: pass. Ruff lint: pass. Strict mypy: pass (123 files, 0 issues).
+  - Backend pytest: **521/521 PASS** on real PostgreSQL 17.11.
+  - TypeScript (`pnpm typecheck`): PASS across all packages.
+  - ESLint (`pnpm lint`): PASS (0 errors, 0 warnings).
+  - Next.js build (`pnpm build`): PASS (19 routes compiled).
+  - Storybook build (`pnpm build-storybook`): PASS.
+  - Frontend Vitest (`pnpm vitest run tests/frontend`): **568/568 PASS**.
+  - Acceptance support unit tests: **143/143 PASS**.
+  - FRLL live acceptance suites against PostgreSQL + Supabase:
+    - Phase B: PASS (1/1)
+    - Phase C: PASS (1/1)
+    - Phase D: PASS (1/1)
+    - Phase E: PASS (1/1)
+- Remote execution status:
+  - Handed off to remote agent LUNA for remote staging verification (Supabase migration apply, Render deployment, smoke test).
 
 ## Staging hardening gate — 2026-09-21
 

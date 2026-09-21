@@ -1,1 +1,23 @@
-"""Shared read-only catalog policy helpers."""
+"""Shared read-only catalog policy helpers and Knowledge V2 models."""
+
+from lingua_api.catalog.models import (
+    AccentVariant,
+    AudioSource,
+    GrammarSpecification,
+    GrammarSpecificationDto,
+    PhoneticTranscription,
+    PhoneticTranscriptionDto,
+    PhraseSpecification,
+    PhraseSpecificationDto,
+)
+
+__all__ = [
+    "AccentVariant",
+    "AudioSource",
+    "GrammarSpecification",
+    "GrammarSpecificationDto",
+    "PhoneticTranscription",
+    "PhoneticTranscriptionDto",
+    "PhraseSpecification",
+    "PhraseSpecificationDto",
+]

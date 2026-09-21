@@ -2,6 +2,18 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
+## TASK-K2-01 — Knowledge V2 Canonical Schema Foundations
+
+Owner: GEMINI
+Status: DONE (local implementation & verification gate passed)
+Dependencies: STAGING-HARDENING-GATE-20260921
+
+Implements Wave K2-01 canonical schema foundations for Knowledge System V2:
+- Migration 0014 (`0014_knowledge_v2_canonical_structures.up.sql` / `.down.sql`) defining `grammar_specifications`, `phrase_specifications`, and `phonetic_transcriptions` with relational integrity, check constraints, indexes, and explicit browser privilege revocation.
+- SQLAlchemy 2.0 ORM models and Pydantic v2 DTOs in `services/api/src/lingua_api/catalog/models.py`.
+- Automated tests in `tests/backend/database/test_knowledge_v2_canonical_schema.py`.
+- Local verification: 521/521 backend pytest PASS, full Vitest/acceptance PASS (Phase B, C, D, E), Next.js build PASS, Storybook build PASS. Ready for remote verification by LUNA.
+
 ## STAGING-HARDENING-GATE-20260921 — PR #7 and hosted migration 0013
 
 Owner: CODEX. Status: BLOCKED (verification gate; K2-01 must not start).
