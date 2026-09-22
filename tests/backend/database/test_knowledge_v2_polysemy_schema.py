@@ -11,7 +11,7 @@ from psycopg import Connection, errors
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from database.migrate import _connect, _database_url, migrate_down, migrate_up
+from database.migrate import _connect, migrate_down, migrate_up
 
 
 def _seed_source_and_concept(
@@ -67,6 +67,8 @@ def _seed_source_and_concept(
 
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "database" / "migrations"
+
+
 def _seed_lexeme_with_senses(
     conn: Connection[tuple[object, ...]],
     *,
@@ -389,9 +391,9 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
 
 
 def test_concept_sense_orm_and_dto_roundtrip(
-    db_connection: Connection[tuple[object, ...]],
+    isolated_migrated_postgres_url: str,
 ) -> None:
-    db_url = _database_url()
+    db_url = isolated_migrated_postgres_url
     sqlalchemy_url = db_url.replace("postgresql://", "postgresql+psycopg://")
     engine = create_engine(sqlalchemy_url)
 
