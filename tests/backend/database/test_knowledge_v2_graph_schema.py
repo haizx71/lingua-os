@@ -22,7 +22,7 @@ from database.migrate import _connect, migrate_down, migrate_up
 MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "database" / "migrations"
 GRAPH_RELATION_TYPES = tuple(
     sorted(ConceptEdgeRelation(value).value for value in ConceptEdgeRelation)
-  )
+)
 
 def _seed_source_and_concept(
     conn: Connection[tuple[object, ...]],
