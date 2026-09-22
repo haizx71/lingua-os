@@ -70,8 +70,8 @@ def test_expected_application_tables_match_canonical_migrations() -> None:
     """Ensure verify_frll_database tracks the exact set of migration-created tables."""
     discovered = discover_expected_tables(MIGRATIONS_DIR)
     assert discovered == EXPECTED_APPLICATION_TABLES
-    assert len(EXPECTED_APPLICATION_TABLES) == 62, (
-        f"Expected 62 application tables (61 migration + 1 schema_migrations), "
+    assert len(EXPECTED_APPLICATION_TABLES) == 63, (
+        f"Expected 63 application tables (62 migration + 1 schema_migrations), "
         f"got {len(EXPECTED_APPLICATION_TABLES)}"
     )
     assert "schema_migrations" in EXPECTED_APPLICATION_TABLES
