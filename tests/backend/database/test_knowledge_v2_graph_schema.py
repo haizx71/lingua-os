@@ -232,6 +232,15 @@ def test_self_cycle_deep_cycle_and_update_cycle_are_rejected(
     )
 
     _insert_edge(db_connection, first_id, second_id)
+    _assert_rejected(
+        db_connection,
+        """
+        INSERT INTO concept_edges (source_concept_id, target_concept_id, relation_type)
+        VALUES (%s, %s, 'prerequisite_of')
+        """,
+        (second_id, first_id),
+        errors.CheckViolation,
+    )
     _insert_edge(db_connection, second_id, third_id)
 
     _assert_rejected(
