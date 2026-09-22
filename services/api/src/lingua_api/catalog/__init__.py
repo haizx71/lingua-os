@@ -3,6 +3,8 @@
 from lingua_api.catalog.models import (
     AccentVariant,
     AudioSource,
+    ConceptSense,
+    ConceptSenseDto,
     GrammarSpecification,
     GrammarSpecificationDto,
     PhoneticTranscription,
@@ -14,6 +16,8 @@ from lingua_api.catalog.models import (
 __all__ = [
     "AccentVariant",
     "AudioSource",
+    "ConceptSense",
+    "ConceptSenseDto",
     "GrammarSpecification",
     "GrammarSpecificationDto",
     "PhoneticTranscription",

@@ -2,7 +2,7 @@
 
 Strictly verifies that:
 1. PostgreSQL connection is operational.
-2. All 13 canonical migrations (0001..0013) are applied and valid in public.schema_migrations.
+2. All canonical migrations (0001..0015) are applied and valid in public.schema_migrations.
 3. Core application schema tables exist in the public schema.
 4. Deterministic FRLL catalog anchor concept exists exactly once.
 5. Zero rows exist across all learner-derived tables (strict learner isolation).
@@ -40,6 +40,7 @@ EXPECTED_MIGRATIONS = (
     "0012_supabase_public_schema_browser_lockdown_v1",
     "0013_supabase_public_function_default_execute_lockdown_v1",
     "0014_knowledge_v2_canonical_structures",
+    "0015_knowledge_v2_polysemy_resolution",
 )
 
 

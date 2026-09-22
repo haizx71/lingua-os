@@ -1,4 +1,4 @@
-"""Authoritative canonical models for Knowledge System V2 (Wave K2-01).
+"""Authoritative canonical models for Knowledge System V2 (Waves K2-01 and K2-02).
 
 Provides:
 1. SQLAlchemy 2.0 Declarative ORM models for database persistence and migrations.
@@ -40,6 +40,28 @@ class CatalogBase(DeclarativeBase):
 # Canonical parent tables referenced by foreign keys
 Table("concepts", CatalogBase.metadata, Column("id", PG_UUID(as_uuid=True), primary_key=True))
 Table("lexemes", CatalogBase.metadata, Column("id", PG_UUID(as_uuid=True), primary_key=True))
+Table("word_senses", CatalogBase.metadata, Column("id", PG_UUID(as_uuid=True), primary_key=True))
+
+
+class ConceptSense(CatalogBase):
+    """Canonical bridge from a pedagogical concept to one word sense."""
+
+    __tablename__ = "concept_senses"
+
+    concept_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("concepts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    word_sense_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("word_senses.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    is_primary: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.clock_timestamp()
+    )
 
 
 class GrammarSpecification(CatalogBase):
@@ -153,6 +175,13 @@ class ApiModel(BaseModel):
         populate_by_name=True,
         serialize_by_alias=True,
     )
+
+
+class ConceptSenseDto(ApiModel):
+    concept_id: UUID
+    word_sense_id: UUID
+    is_primary: bool = True
+    created_at: datetime
 
 
 class GrammarSpecificationDto(ApiModel):
