@@ -118,7 +118,8 @@ EXECUTE FUNCTION public.fn_check_concept_edges_acyclic();
 -- service role used by the server-side catalog path.
 REVOKE ALL PRIVILEGES ON TABLE public.concept_edges FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON FUNCTION public.fn_check_concept_edges_acyclic() FROM PUBLIC;
-REVOKE ALL PRIVILEGES ON FUNCTION public.fn_check_concept_edges_acyclic() FROM anon, authenticated, authenticator;
+REVOKE ALL PRIVILEGES ON FUNCTION public.fn_check_concept_edges_acyclic()
+    FROM anon, authenticated, authenticator;
 GRANT EXECUTE ON FUNCTION public.fn_check_concept_edges_acyclic() TO service_role;
 
 -- Backfill only legacy relation types with a one-to-one V2 meaning. The
