@@ -1,4 +1,4 @@
-"""Authoritative canonical models for Knowledge System V2 (Waves K2-01 and K2-02).
+"""Authoritative canonical models for Knowledge System V2 (Waves K2-01, K2-02, and K2-03).
 
 Provides:
 1. SQLAlchemy 2.0 Declarative ORM models for database persistence and migrations.
@@ -18,6 +18,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Float,
     Integer,
     Table,
     Text,
@@ -59,6 +60,55 @@ class ConceptSense(CatalogBase):
         primary_key=True,
     )
     is_primary: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.clock_timestamp()
+    )
+
+
+class ConceptEdge(CatalogBase):
+    """Typed semantic or pedagogical relationship between two concepts."""
+
+    __tablename__ = "concept_edges"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_concept_id",
+            "target_concept_id",
+            "relation_type",
+            name="uq_concept_edges_directed",
+        ),
+        CheckConstraint(
+            "source_concept_id <> target_concept_id",
+            name="chk_concept_edges_no_self_loop",
+        ),
+        CheckConstraint(
+            "weight >= 0.0 AND weight <= 1.0",
+            name="chk_concept_edges_weight",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(metadata) = 'object'",
+            name="chk_concept_edges_metadata_object",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    source_concept_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("concepts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    target_concept_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("concepts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    relation_type: Mapped[str] = mapped_column(Text, nullable=False)
+    weight: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    edge_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        default=dict,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.clock_timestamp()
     )
@@ -168,6 +218,20 @@ class AudioSource(StrEnum):
     HIGH_QUALITY_NEURAL_TTS = "high_quality_neural_tts"
 
 
+class ConceptEdgeRelation(StrEnum):
+    PREREQUISITE_OF = "prerequisite_of"
+    PART_OF = "part_of"
+    SYNONYM_OF = "synonym_of"
+    ANTONYM_OF = "antonym_of"
+    COLLOCATES_WITH = "collocates_with"
+    INFLECTION_OF = "inflection_of"
+    DERIVED_FROM = "derived_from"
+    CONFUSABLE_WITH = "confusable_with"
+    GRAMMAR_PATTERN_OF = "grammar_pattern_of"
+    HYPERNYM_OF = "hypernym_of"
+    HYPONYM_OF = "hyponym_of"
+
+
 class ApiModel(BaseModel):
     model_config = ConfigDict(
         alias_generator=_to_camel,
@@ -181,6 +245,16 @@ class ConceptSenseDto(ApiModel):
     concept_id: UUID
     word_sense_id: UUID
     is_primary: bool = True
+    created_at: datetime
+
+
+class ConceptEdgeDto(ApiModel):
+    id: UUID
+    source_concept_id: UUID
+    target_concept_id: UUID
+    relation_type: ConceptEdgeRelation
+    weight: float = Field(default=1.0, ge=0.0, le=1.0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
 
 
