@@ -1,6 +1,6 @@
 # TASK-K2-04 — Grammar Specifications and Brain Integration
 
-Status: IN PROGRESS  
+Status: LOCAL REVIEWED: PASS / STAGING PENDING  
 Owner: CODEX single-writer lane  
 Base source SHA: `d8658c83640df88af789c915f985f921d851bc7f`  
 Branch: `agent/k2-04-grammar-brain`
@@ -59,3 +59,14 @@ all temporary acceptance fixtures.
 - Catalog plan SHA-256: `855c9ae6a034990899e62ec3e158db25b45e8880125031d523debd73f2b587c9`
 - Grammar manifest SHA-256: `5b19e8e2366e02f5e0a8cc3f6e7a03fa9208b3df7ebed919841169302fba287a`
 - Grammar sub-plan SHA-256: `8651c1510a8653477421b0ee541ae4f3dd910e446aa5eea2ad2ee1238a26d810`
+
+## Local acceptance
+
+- Independent read-only review: APPROVED; no unresolved BLOCKER or HIGH finding.
+- GitHub Actions run `35739251570`: knowledge audit and PostgreSQL 17 grammar integration jobs
+  both passed on commit `110532644fcd95113427060497f377ffe33a56ef`.
+- Local verification: 57 knowledge tests, 214 non-database backend tests, 719 frontend/support
+  tests with four environment-gated live acceptance skips, focused grammar/frontend tests, Ruff,
+  mypy, generated-contract freshness, TypeScript, ESLint, production build, Storybook, and
+  production dependency audit passed.
+- Hosted Supabase/Render acceptance remains pending and is the only K2-04 promotion gate left.
