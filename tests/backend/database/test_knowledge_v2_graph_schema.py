@@ -280,17 +280,39 @@ def test_symmetric_relation_can_store_both_directions(
     ).fetchone() == (2,)
 
 
-def test_delete_cascades_only_the_v2_edges(
+def test_foreign_keys_and_delete_cascades_only_the_v2_edges(
     db_connection: Connection[tuple[object, ...]],
 ) -> None:
     source_id, _ = _seed_source_and_concept(db_connection)
     target_id, _ = _seed_source_and_concept(db_connection)
+    dependent_id, _ = _seed_source_and_concept(db_connection)
     _insert_edge(db_connection, source_id, target_id)
+    _insert_edge(db_connection, dependent_id, target_id)
+
+    _assert_rejected(
+        db_connection,
+        """
+        INSERT INTO concept_edges (source_concept_id, target_concept_id, relation_type)
+        VALUES (%s, %s, 'part_of')
+        """,
+        (source_id, uuid.uuid4()),
+        errors.ForeignKeyViolation,
+    )
 
     db_connection.execute("DELETE FROM concepts WHERE id = %s", (source_id,))
     assert db_connection.execute(
         "SELECT count(*) FROM concept_edges WHERE source_concept_id = %s",
         (source_id,),
+    ).fetchone() == (0,)
+    assert db_connection.execute(
+        "SELECT count(*) FROM concept_edges WHERE target_concept_id = %s",
+        (target_id,),
+    ).fetchone() == (1,)
+
+    db_connection.execute("DELETE FROM concepts WHERE id = %s", (target_id,))
+    assert db_connection.execute(
+        "SELECT count(*) FROM concept_edges WHERE target_concept_id = %s",
+        (target_id,),
     ).fetchone() == (0,)
 
 
