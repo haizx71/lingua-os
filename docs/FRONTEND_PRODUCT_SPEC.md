@@ -5,7 +5,7 @@ LINGUA OS • UI/UX & Frontend Specification
 Design system, information architecture, màn hình, states,
 accessibility, responsive và frontend handoff
 
-**Đối tượng bàn giao: Gemini / UI designer / frontend agent**
+**Đối tượng bàn giao: Frontend/Product UI Engineer / UI designer / frontend agent**
 
 Source of Truth v2.0
 
@@ -21,10 +21,10 @@ specification nhưng không nằm trong navigation/acceptance gate của v0.1.
 Placement đổi thành Starting Level Estimate. Progress phải làm Language
 Brain nhìn thấy được ngay trong tuần đầu.
 
-# 0. Vai trò của Gemini
+# 0. Vai trò của Frontend/Product UI Engineer
 
-Gemini chịu trách nhiệm biến product contract thành trải nghiệm hoàn
-chỉnh. Gemini không được thay đổi business logic, tự tạo endpoint, đổi
+Frontend/Product UI Engineer chịu trách nhiệm biến product contract thành trải nghiệm hoàn
+chỉnh. Frontend/Product UI Engineer không được thay đổi business logic, tự tạo endpoint, đổi
 tên field API hoặc âm thầm bỏ state mà backend đã định nghĩa. Khi
 backend chưa sẵn sàng, dùng mock được sinh từ contract.
 
@@ -429,7 +429,7 @@ Concept details → bottom sheet or dedicated detail screen
 
 # 19. AI Tutor UX, post-MVP
 
-AI Tutor là future specification. Gemini không implement route,
+AI Tutor là future specification. Frontend/Product UI Engineer không implement route,
 navigation item hoặc giả API trong v0.1. Khi feature flag được bật,
 Tutor phải là activity có mục tiêu học rõ, không phải chat app chung
 chung.
@@ -605,7 +605,7 @@ hoặc visualization phức tạp trước khi core loop được kiểm chứng
 
 # 28. Frontend architecture boundary
 
-Gemini được triển khai frontend nhưng không sở hữu domain contract.
+Frontend/Product UI Engineer được triển khai frontend nhưng không sở hữu domain contract.
 
 /apps/web  
 /app  
@@ -740,7 +740,7 @@ dependency của MVP.
 
 - No hardcoded API endpoint, business rule, magic color/spacing.
 
-# 34. Implementation roadmap cho Gemini
+# 34. Implementation roadmap cho Frontend/Product UI Engineer
 
 | **Phase** | **Deliverable**                                                    |
 |-----------|--------------------------------------------------------------------|
@@ -758,7 +758,7 @@ dependency của MVP.
 | POST-U11  | Speak/Pronunciation UI after approved speech provider contract.    |
 | POST-U12  | Chinese/Japanese language-specific UI system.                      |
 
-# 35. Prompt bàn giao baseline cho Gemini
+# 35. Prompt bàn giao baseline cho Frontend/Product UI Engineer
 
 You are the UI/UX and frontend owner for LINGUA OS.  
 Treat this specification, /packages/contracts, /design/tokens and
@@ -785,9 +785,9 @@ Vietnamese diacritics, 200% zoom and reduced motion.
 If requested UI conflicts with the contract or MVP boundary, report the
 conflict instead of silently expanding scope.
 
-# 36. Handoff checklist giữa Gemini và Codex
+# 36. Handoff checklist giữa Frontend/Product UI Engineer và Backend/System Engineer
 
-| **Khi Gemini cần**     | **Artifact từ Codex**                                                                                       |
+| **Khi Frontend/Product UI Engineer cần**     | **Artifact từ Backend/System Engineer**                                                                                       |
 |------------------------|-------------------------------------------------------------------------------------------------------------|
 | Render Today           | GET /v1/today schema + reason codes + mock loading/empty/completed states.                                  |
 | Submit Review          | Review request/response + exerciseMode + rating/error/idempotency behavior.                                 |
@@ -798,7 +798,7 @@ conflict instead of silently expanding scope.
 | Tutor/Speak \[future\] | Chỉ khi feature approved: provider/status contracts + feature flag.                                         |
 | Settings               | Editable profile fields + validation/privacy rules.                                                         |
 
-| **Khi Codex cần**          | **Artifact từ Gemini**          |
+| **Khi Backend/System Engineer cần**          | **Artifact từ Frontend/Product UI Engineer**          |
 |----------------------------|---------------------------------|
 | Know required state        | ui-state-matrix.md              |
 | Know payload fields needed | Screen data requirements        |
@@ -865,4 +865,4 @@ thức</u>](https://spec.openapis.org/oas/v3.2.0.html)
 
 Kết thúc tài liệu v2.0. UI không được mở rộng MVP bằng placeholder route
 hoặc mock-only feature. Mọi field/state mới phải quay lại contract
-review với Codex.
+review với Backend/System Engineer.

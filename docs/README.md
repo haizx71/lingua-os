@@ -15,13 +15,13 @@ Project-level truth:
 
 ## Core engineering specs
 
-- `CODEX_PROJECT_SPEC.md` — detailed backend/system specification
-- `GEMINI_PROJECT_SPEC.md` — detailed frontend/product UI specification
+- `BACKEND_SYSTEM_SPEC.md` — detailed backend/system specification
+- `FRONTEND_PRODUCT_SPEC.md` — detailed frontend/product UI specification
 - `ENGINEERING_WORKFLOW.md` — execution and verification workflow
 - `GIT_WORKTREE_WORKFLOW.md` — safe parallel branch/worktree workflow
 - `PRIVATE_STAGING_DEPLOYMENT.md` — hosted staging/deployment notes
 
-The two detailed project-spec filenames are legacy names retained for compatibility with existing references. They are subsystem specifications, not startup prompts and not instructions tied to a specific model.
+These are subsystem specifications. They are model-neutral and are not startup prompts.
 
 ## Learning-system specifications
 

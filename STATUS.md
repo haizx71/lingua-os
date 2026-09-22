@@ -320,7 +320,7 @@ FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
 - Product/system specification v2.0
 - UI/UX/frontend specification v2.0
 - Master project contract v4.0
-- Codex and Gemini ownership instructions
+- backend and frontend ownership instructions
 - Starter shared contracts (`contracts/enums.json`, `contracts/errors.json`, `contracts/openapi.yaml`)
 - UI UX Pro Max policy and setup workflow
 - Superpowers policy and setup workflow
@@ -416,7 +416,7 @@ FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
   - GSAP animations in `ReviewCard`, `ReviewSession`, `ConceptNode`, `LanguageBrainCanvas`, `ProgressAnalytics` strictly consume component/semantic motion tokens with zero hardcoded magic numbers or raw easing strings.
   - Standard `usePrefersReducedMotion()` hook (SSR-safe `useSyncExternalStore`) universally enforced across all 5 animated surfaces with immediate fallback and zero animation leaks (`useGSAP` scoped with automatic lifecycle cleanup).
   - Synchronous non-blocking feedback (<= 300ms) and immediate DOM/ARIA data correctness preserved from Frame 0.
-  - Note for Codex: The frontend motion system is complete, verified, and stable. Do not rewrite or modify frontend motion layers during backend development.
+  - Note for backend/system work: The frontend motion system is complete, verified, and stable. Do not rewrite or modify frontend motion layers during backend development.
 
 - `TASK-006C`: Frontend Authentication Foundation
   - Official `@supabase/supabase-js@^2.49.1` and `@supabase/ssr` for Next.js App Router
@@ -628,7 +628,7 @@ FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
 - `TASK-012` frontend compatibility -> **PASSED CLEAN** through the approved narrow patch:
   generated freshness, TypeScript, ESLint, Storybook, Next production build, and 308/308 tests
   across 27 files pass. `apps/web` source is unchanged and MockApiClient has no business-logic
-  change. Gemini/frontend is frozen again at 308 tests / 27 files.
+  change. Frontend is frozen again at 308 tests / 27 files.
 
 - `TASK-010` backend -> **PASSED CLEAN**: Ruff format/lint, strict mypy across 58 files, 90/90
   non-database tests, 135/135 real PostgreSQL tests, and 225/225 full backend tests.

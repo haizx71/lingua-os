@@ -4,7 +4,7 @@ LINGUA OS • Core System Engineering Specification
 
 Kiến trúc, dữ liệu, API, AI, bảo mật, kiểm thử và quy trình triển khai
 
-**Đối tượng bàn giao: ChatGPT Codex / kỹ sư backend / AI agent coding**
+**Đối tượng bàn giao: kỹ sư backend / system engineer / AI coding agent**
 
 Source of Truth v2.0
 
@@ -23,7 +23,7 @@ cost architecture, provider abstraction, content provenance và QA gate.
 
 # 0. Cách sử dụng tài liệu này
 
-Tài liệu này là source of truth cho phần hệ thống cốt lõi. Codex phải
+Tài liệu này là source of truth cho phần hệ thống cốt lõi. Backend/System Engineer phải
 đọc toàn bộ trước khi sửa repository. Mọi quyết định làm thay đổi public
 contract, dữ liệu, event, security boundary hoặc hành vi học tập phải
 được ghi thành ADR trước khi triển khai.
@@ -75,7 +75,7 @@ nhưng MVP không phụ thuộc các hệ thống đắt tiền hoặc khó ki�
 | **Lĩnh vực**   | **Chuẩn / công cụ**           | **Ứng dụng vào LINGUA OS**                                                         |
 |----------------|-------------------------------|------------------------------------------------------------------------------------|
 | Spec-driven    | GitHub Spec Kit               | Luồng Spec → Plan → Tasks → Implement. Mỗi feature có spec và acceptance criteria. |
-| Agent guidance | Codex AGENTS.md + Skills      | Quy tắc bền vững đặt trong repo, không nhồi vào prompt từng task.                  |
+| Agent guidance | Backend/System Engineer AGENTS.md + Skills      | Quy tắc bền vững đặt trong repo, không nhồi vào prompt từng task.                  |
 | Architecture   | C4 Model + ADR                | C4 cho Context, Container, Component. ADR cho quyết định quan trọng.               |
 | HTTP contract  | OpenAPI 3.2                   | Single source of truth cho REST/HTTP API và generated client.                      |
 | Event contract | AsyncAPI 3.1                  | Mô tả message-driven contracts và event envelopes.                                 |
@@ -170,11 +170,11 @@ vào core contract, không được làm core phụ thuộc ngược lại.
 # 4. Repository layout và ownership
 
 /apps  
-/web \# Gemini: UI implementation  
-/api \# Codex: API/BFF if used  
+/web \# Frontend/Product UI Engineer: UI implementation  
+/api \# Backend/System Engineer: API/BFF if used  
 /services  
-/core \# Codex: learner, content, Today, progress  
-/worker \# Codex: ETL and async jobs  
+/core \# Backend/System Engineer: learner, content, Today, progress  
+/worker \# Backend/System Engineer: ETL and async jobs  
 /providers  
 /ai \# post-MVP; create only after approved spec + feature flag  
 /speech \# post-MVP; create only after approved spec + feature flag  
@@ -194,7 +194,7 @@ vào core contract, không được làm core phụ thuộc ngược lại.
 /runbooks  
 AGENTS.md
 
-Ownership rule: Gemini được sửa /apps/web và /design. Codex được sửa
+Ownership rule: Frontend/Product UI Engineer được sửa /apps/web và /design. Backend/System Engineer được sửa
 toàn bộ backend, contracts và infrastructure. Thay đổi
 /packages/contracts phải đi qua contract review vì đây là biên giới
 chung.
@@ -391,7 +391,7 @@ bị trước”.
 
 | **Khối**                | **Yêu cầu khi feature được bật**                                                                  |
 |-------------------------|---------------------------------------------------------------------------------------------------|
-| Provider abstraction    | Domain contract không chứa tên/model-specific field của OpenAI, Gemini, Claude hay provider khác. |
+| Provider abstraction    | Domain contract không chứa tên/model-specific field của bất kỳ AI/model provider cụ thể nào. |
 | Tutor policy            | Giữ level phù hợp, ưu tiên target concepts, không sửa mọi lỗi cùng lúc.                           |
 | Structured output       | Schema validation trước khi ghi learner evidence. Prose không được tự động thành fact.            |
 | Prompt/model versioning | Lưu promptVersion, modelRoute, policyVersion và checksum khi cần audit.                           |
@@ -734,22 +734,22 @@ assertions.
 | ADR-012 | Vector search/embedding chỉ thêm sau experiment và lifecycle/cost plan.                     |
 | ADR-013 | Mobile strategy sau web MVP.                                                                |
 
-# 25. Contract giữa Codex và Gemini
+# 25. Contract giữa Backend/System Engineer và Frontend/Product UI Engineer
 
 Hai agent làm song song chỉ khi các artifact dưới đây tồn tại và được
 version-control.
 
 | **Artifact**                        | **Owner**         | **Consumer**             | **Rule**                                |
 |-------------------------------------|-------------------|--------------------------|-----------------------------------------|
-| /packages/contracts/openapi.yaml    | Codex             | Gemini                   | Frontend không gọi endpoint ngoài spec. |
-| /packages/contracts/asyncapi.yaml   | Codex             | Gemini nếu dùng realtime | Không tự đặt event name.                |
-| /packages/contracts/schemas/\*.json | Codex             | Gemini                   | Mock và validation dùng chung.          |
-| /packages/sdk                       | Generated         | Gemini                   | Không sửa tay generated code.           |
-| /mocks                              | Codex từ contract | Gemini                   | UI phát triển độc lập backend.          |
-| /design/tokens/tokens.json          | Gemini            | Codex/web build          | Không hardcode token trùng lặp.         |
+| /packages/contracts/openapi.yaml    | Backend/System Engineer             | Frontend/Product UI Engineer                   | Frontend không gọi endpoint ngoài spec. |
+| /packages/contracts/asyncapi.yaml   | Backend/System Engineer             | Frontend/Product UI Engineer nếu dùng realtime | Không tự đặt event name.                |
+| /packages/contracts/schemas/\*.json | Backend/System Engineer             | Frontend/Product UI Engineer                   | Mock và validation dùng chung.          |
+| /packages/sdk                       | Generated         | Frontend/Product UI Engineer                   | Không sửa tay generated code.           |
+| /mocks                              | Backend/System Engineer từ contract | Frontend/Product UI Engineer                   | UI phát triển độc lập backend.          |
+| /design/tokens/tokens.json          | Frontend/Product UI Engineer            | Backend/System Engineer/web build          | Không hardcode token trùng lặp.         |
 | /docs/product/domain-glossary.md    | Shared            | Cả hai                   | Tên domain phải thống nhất.             |
-| /docs/product/ui-state-matrix.md    | Gemini            | Codex                    | Backend phải cung cấp state cần thiết.  |
-| /docs/adr                           | Codex/shared      | Cả hai                   | Decision history không mất.             |
+| /docs/product/ui-state-matrix.md    | Frontend/Product UI Engineer            | Backend/System Engineer                    | Backend phải cung cấp state cần thiết.  |
+| /docs/adr                           | Backend/System Engineer/shared      | Cả hai                   | Decision history không mất.             |
 
 # 26. Definition of Done cho backend feature
 
@@ -769,13 +769,13 @@ version-control.
 
 - Error code/documentation đủ cho frontend.
 
-- Mock fixture được sinh/cập nhật cho Gemini.
+- Mock fixture được sinh/cập nhật cho Frontend/Product UI Engineer.
 
 - ADR được thêm nếu quyết định kiến trúc thay đổi.
 
 - No secret, no debug dump, no dead experimental code trong main branch.
 
-# 27. Implementation roadmap cho Codex
+# 27. Implementation roadmap cho Backend/System Engineer
 
 | **Phase**                      | **Deliverable**                                                           | **Exit criteria**                                                              |
 |--------------------------------|---------------------------------------------------------------------------|--------------------------------------------------------------------------------|
@@ -793,7 +793,7 @@ version-control.
 | POST-B                         | Speech/STT/pronunciation provider                                         | Only after UX need, privacy and latency/cost targets are approved.             |
 | POST-C                         | Chinese/Japanese language-specific engines                                | Only after English learning loop is validated.                                 |
 
-# 28. AGENTS.md baseline cho Codex
+# 28. AGENTS.md baseline cho Backend/System Engineer
 
 \# LINGUA OS engineering rules  
 1. Read /docs/product, /docs/architecture, /docs/adr and
@@ -839,13 +839,12 @@ completing a task.
 | AI/Speech                 | Nếu disabled: không phát sinh runtime dependency. Nếu enabled: schema/eval/confidence/privacy pass? |
 | Security/Privacy          | RLS, authz, retention/delete/export, file/provider boundary pass?                                   |
 | Observability/Reliability | Trace, metric, timeout, retry, idempotency, backup/restore đủ?                                      |
-| Testing/Handoff           | Critical journey tests pass và Gemini nhận mock/type/UI states đúng contract?                       |
+| Testing/Handoff           | Critical journey tests pass và Frontend/Product UI Engineer nhận mock/type/UI states đúng contract?                       |
 
 # Nguồn chuẩn và tài liệu tham chiếu
 
-**R1. OpenAI Codex Best Practices.** OpenAI. Dùng AGENTS.md, context bền
-vững, validation và workflow. [<u>Nguồn chính
-thức</u>](https://developers.openai.com/codex/learn/best-practices)
+**R1. LINGUA OS Agent Guide.** Quy tắc làm việc bền vững trong repository:
+`../AGENTS.md`.
 
 **R2. GitHub Spec Kit.** GitHub. Spec-driven workflow: Spec, Plan,
 Tasks, Implement. [<u>Nguồn chính

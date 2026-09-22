@@ -51,7 +51,7 @@ Initial placement is an estimate with confidence and is recalibrated by behavior
 ## ADR-010 — Superpowers is the approved engineering-process skill
 Status: ACCEPTED
 
-Codex and Gemini may use Superpowers for planning, TDD, debugging, review and verification. Superpowers does not override project specifications, contracts or accepted decisions.
+Backend and frontend workstreams may use Superpowers for planning, TDD, debugging, review and verification. Superpowers does not override project specifications, contracts or accepted decisions.
 
 ## ADR-011 — Approved specs are locked design by default
 Status: ACCEPTED
@@ -61,7 +61,7 @@ Agents must not repeatedly reopen approved product or architecture decisions thr
 ## ADR-012 — Separate worktrees for parallel agent implementation
 Status: ACCEPTED
 
-After Git initialization, prefer separate Codex and Gemini branches/worktrees for concurrent work. Integrate through verified commits so agents do not overwrite each other's uncommitted changes.
+After Git initialization, prefer separate backend and frontend branches/worktrees for concurrent work. Integrate through verified commits so agents do not overwrite each other's uncommitted changes.
 
 ## ADR-013 — External skills are advisors, never authorities
 Status: ACCEPTED

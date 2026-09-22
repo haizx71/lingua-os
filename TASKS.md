@@ -4,7 +4,7 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## TASK-K2-03 — Knowledge V2 Knowledge Graph & Concurrency-Safe DAG
 
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE (integrated & verified in master)
 Dependencies: TASK-K2-02
 
@@ -18,7 +18,7 @@ Implements Wave K2-03 Knowledge Graph and Concurrency-Safe DAG:
 
 ## TASK-K2-02 — Knowledge V2 Polysemy Resolution
 
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE (integrated & verified in master)
 Dependencies: TASK-K2-01
 
@@ -32,7 +32,7 @@ Implements Wave K2-02 Polysemy Resolution:
 
 ## TASK-K2-01 — Knowledge V2 Canonical Schema Foundations
 
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE (local implementation & verification gate passed)
 Dependencies: STAGING-HARDENING-GATE-20260921
 
@@ -44,7 +44,7 @@ Implements Wave K2-01 canonical schema foundations for Knowledge System V2:
 
 ## STAGING-HARDENING-GATE-20260921 — PR #7 and hosted migration 0013
 
-Owner: CODEX. Status: BLOCKED (verification gate; K2-01 must not start).
+Owner: BACKEND. Status: BLOCKED (verification gate; K2-01 must not start).
 
 PR #7 was reviewed live and merged into `master` with merge commit
 `2e531c30d20eb53f04ac4558b64f38b141430785`; its 16 files are restricted to
@@ -73,7 +73,7 @@ format/lint/typecheck pass; the promotion checkpoint preceded the Phase A databa
 
 ## PHASE-A-STABILIZE — Backend and migration stabilization
 
-Owner: CODEX
+Owner: BACKEND
 Status: DONE (local gate)
 Dependencies: UI-V2-PROMOTION
 
@@ -86,7 +86,7 @@ still needs the reviewed `0013` migration applied through the normal migration p
 
 ## FRLL-REAL-VERIFICATION-20260920 — Real learning loop and promoted UI browser proof
 
-Owner: CODEX
+Owner: BACKEND
 Status: VERIFIED
 Dependencies: UI-V2-PROMOTION, PHASE-A-STABILIZE
 
@@ -116,7 +116,7 @@ Approved specs and accepted ADRs are locked design by default. Do not brainstorm
 ## Owner administration
 
 ### TASK-ADMIN-001 — Owner-only first-party content authoring vertical slice
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-003, TASK-004, TASK-008, owner self-use baseline
 
@@ -132,7 +132,7 @@ backend tests and 677/677 frontend/acceptance tests (55 files, sequential worker
 freshness, OpenAPI validation, Ruff, mypy, TypeScript, ESLint, production build and diff check PASS.*
 
 ### TASK-ADMIN-002 — Admin manual concept mapping
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-ADMIN-001
 
@@ -162,11 +162,11 @@ FINAL REVIEW = OWNER SELF-USE BASELINE ACCEPTED
 ## Foundation
 
 ### TASK-001 — Repository/backend foundation
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: none
 
-Initialize the backend/workspace foundation according to `docs/CODEX_PROJECT_SPEC.md`. Add only the tooling needed for the MVP core and shared contracts. Establish test/type/lint commands.
+Initialize the backend/workspace foundation according to `docs/BACKEND_SYSTEM_SPEC.md`. Add only the tooling needed for the MVP core and shared contracts. Establish test/type/lint commands.
 
 Definition of done:
 - reproducible install/start/test commands
@@ -175,11 +175,11 @@ Definition of done:
 - no post-MVP service scaffolding unless required as an interface
 
 ### TASK-002 — Frontend/design-system foundation
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: none
 
-Initialize the web frontend and persistent design-system foundation according to `docs/GEMINI_PROJECT_SPEC.md`, `docs/UI_UX_SKILL_POLICY.md` and `design-system/DESIGN_BRIEF.md`. Use the approved UI UX Pro Max skill as design intelligence. Product specifications remain authoritative.
+Initialize the web frontend and persistent design-system foundation according to `docs/FRONTEND_PRODUCT_SPEC.md`, `docs/UI_UX_SKILL_POLICY.md` and `design-system/DESIGN_BRIEF.md`. Use the approved UI UX Pro Max skill as design intelligence. Product specifications remain authoritative.
 
 Definition of done:
 - UI UX Pro Max guidance was consulted for learning-product design, accessibility and current stack patterns
@@ -194,7 +194,7 @@ Definition of done:
 - final UI/UX anti-pattern review completed
 
 ### TASK-003 — Core database schema v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-001
 
@@ -211,7 +211,7 @@ Minimum domain entities:
 - provenance/quality metadata
 
 ### TASK-004 — Shared API contract v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-001, TASK-003
 
@@ -219,7 +219,7 @@ Define the first executable OpenAPI contract for onboarding/profile, Today, Read
 *Completed and accepted: authoritative OpenAPI 3.2 contract with 24 paths / 29 operations, synchronized API enums/errors, cursor/auth/idempotency/concurrency conventions, contract invariant tests, and frontend reconciliation report.*
 
 ### TASK-005 — Frontend contract types and mock layer
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: TASK-002, TASK-004
 
@@ -229,7 +229,7 @@ Generate/use types from shared contracts and create contract-valid development m
 ## Learning loop
 
 ### TASK-006 — Memory Engine / FSRS MVP
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-003
 
@@ -240,7 +240,7 @@ idempotent replay, actor-scoped due query and real-PostgreSQL invariant coverage
 and Today/competence logic remain outside this task.*
 
 ### TASK-006A — Review API Adapter v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-004, TASK-006
 
@@ -253,7 +253,7 @@ exact historical replay snapshots, deterministic cross-lineage key conflicts, an
 frontend regression verification.*
 
 ### TASK-006B — ConceptSummary partOfSpeech contract correction
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-004, TASK-005, TASK-006A
 
@@ -266,7 +266,7 @@ are fresh, Review serializes lexical/grammar/skill concepts without fake values,
 and presentations omit absent POS cleanly, and all backend/database/frontend gates pass.*
 
 ### TASK-006C — Frontend Authentication Foundation
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: TASK-004, TASK-005, TASK-006A
 
@@ -274,7 +274,7 @@ Establish the canonical, testable Supabase Auth foundation for the Next.js App R
 *Completed: Added official `@supabase/supabase-js` and `@supabase/ssr` client SDKs, `createBrowserSupabaseClient` and `createServerSupabaseClient` with cookie synchronization, `AuthTokenProvider` abstraction in `@lingua/types`, React `AuthProvider` / `useAuth()` lifecycle management, `ProtectedRoute` boundary preventing redirect loops, strict rejection of service-role keys in browser config, 16 comprehensive invariant unit tests, clean Storybook and production builds. Login method decision recorded as pending specification.*
 
 ### TASK-006C.1 — Authentication Foundation Hardening
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: TASK-006C
 
@@ -287,7 +287,7 @@ Harden the frontend authentication architecture:
 *Completed: Hardening requirements satisfied, 19 auth tests passing, clean Storybook and typecheck gates. Login method decision remains pending specification.*
 
 ### TASK-006C.2 — Supabase SSR Alignment Patch
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: TASK-006C.1
 
@@ -299,7 +299,7 @@ Apply upstream Supabase SSR alignment patch:
 *Completed: getClaims() session validation aligned, response cache headers preserved on NextResponse, 20/20 auth tests passing, 307/307 total tests passing across all 27 files, clean static Storybook and Next.js production builds (`ƒ Middleware 93.2 kB`). Login method decision remains pending specification.*
 
 ### TASK-006D — Learner Evidence Ingestion & Competence Projection v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-003, TASK-004, TASK-006, TASK-006A
 
@@ -318,7 +318,7 @@ replay/concurrency/rollback tests pass. OpenAPI and frontend source are unchange
 frontend baseline remains 307/307 tests across 27 files.*
 
 ### TASK-006E — Profile / Language Profile API & Auth Bootstrap v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-001, TASK-003, TASK-004, TASK-006C.2
 
@@ -345,7 +345,7 @@ PostgreSQL 17.11 reports 188/188 database tests and 321/321 full backend tests; 
 remains 313/313 across 27 files. OpenAPI and frontend application behavior are unchanged.*
 
 ### TASK-007 — Review UI / Review Live Frontend Integration
-Owner: GEMINI; CODEX explicitly authorized for bounded interrupted-worktree completion
+Owner: FRONTEND; BACKEND explicitly authorized for bounded interrupted-worktree completion
 Status: DONE
 Dependencies: TASK-005, TASK-006, TASK-006A, TASK-006B, TASK-006C, TASK-006C.1, TASK-006C.2
 
@@ -356,7 +356,7 @@ Implement Review flow and all specified states using the API contract.
 
 
 ### TASK-008 — Reader/content service MVP
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-003, TASK-004, TASK-006D
 
@@ -367,7 +367,7 @@ through TASK-006D. Real PostgreSQL, backend, contract and frozen frontend gates 
 application behavior remained frozen.*
 
 ### TASK-008A — Dictionary and Reader Analyze API v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-004, TASK-006D, TASK-008, TASK-006E
 
@@ -379,7 +379,7 @@ Completed with deterministic exact-match dictionary lookup and Reader Analyze, p
 ownership enforcement, opaque cursor pagination, and PostgreSQL-backed contract tests.
 
 ### TASK-008B — Library API v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-004, TASK-006, TASK-006D, TASK-008, TASK-006E
 
@@ -396,7 +396,7 @@ REPLAY-01 rebuild invariance, GATE-01 endpoint authorization, concurrency barrie
 transactional rollbacks. Recorded ADR-022 with frozen contract alignment (ADR-PATH-01).*
 
 ### TASK-008C — Production content and lexical data pipeline v1
-Owner: CODEX
+Owner: BACKEND
 Status: BACKLOG
 Dependencies: TASK-003, TASK-008
 
@@ -406,7 +406,7 @@ sources require their already-recorded license/source approval; do not expand in
 speech scoring, CJK or unapproved datasets.
 
 ### TASK-009 — Reader UI
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: TASK-005, TASK-008, TASK-008B, TASK-017
 
@@ -424,7 +424,7 @@ while strictly suppressing the active "Lưu để học" CTA for unconfirmed con
 The remaining full Reader integration is completed by TASK-READ-001 below.*
 
 ### TASK-READ-001 — Reader live integration
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-008, TASK-008A, TASK-009, TASK-017
 
@@ -443,7 +443,7 @@ backend on PostgreSQL, Ruff, mypy, TypeScript, ESLint, contract freshness, produ
 check PASS. See `reviews/TASK-READ-001-reader-live-integration.md`.*
 
 ### TASK-LIBRARY-001 — Library live integration
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-008, TASK-008A, TASK-009, TASK-017, TASK-READ-001
 
@@ -463,7 +463,7 @@ tests on PostgreSQL, Ruff format/lint, mypy, generated-contract freshness, TypeS
 production build and diff check PASS. See `reviews/TASK-LIBRARY-001-library-live-integration.md`.*
 
 ### TASK-010 — Today Engine heuristic v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-006, TASK-006D, TASK-008
 
@@ -475,7 +475,7 @@ diagnostics, and the two frozen FastAPI Today operations. Goal relevance is neut
 `learn`, OpenAPI change, or frontend application change was made.*
 
 ### TASK-011 — Today UI
-Owner: GEMINI
+Owner: FRONTEND
 Status: DONE
 Dependencies: TASK-005, TASK-010
 
@@ -483,7 +483,7 @@ Implement Today live frontend integration connecting the authenticated product-r
 *Accepted: Final review verdict "TASK-011 TODAY CONTRACT R2 FINAL REVIEW: PASS — MARK TASK-011 DONE AND PROCEED TO TASK-007 REVIEW LIVE". Live hook with actor lifecycle isolation (epoch / sequenceRef / isCurrentActor / LinguaActorAbortedError), presentation adapters preserving server order with zero client heuristics/sorting, optimistic completion suppression and authoritative rollback, fail-closed timezone authority requiring stored valid IANA timezone (TIMEZONE-011-R1 fixed), strict OpenAPI query shape without manual timeZone widening (TODAY-CONTRACT-011-R2 fixed), 26/26 live integration tests (covering TEST-011-R2-01..06), 429/429 full frontend suite passing, zero backend/contract changes.*
 
 ### TASK-012 — Language Brain projection API
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-003, TASK-006, TASK-006D, TASK-008
 
@@ -499,16 +499,16 @@ contract, 15/15 focused Brain PostgreSQL, 150/150 database, 250/250 full backend
 `docs/LANGUAGE_BRAIN_PROJECTION_API_V1.md` and `docs/LANGUAGE_BRAIN_IMPLEMENTATION_V1.md`.*
 
 ### TASK-013 — Language Brain UI
-Owner: GEMINI
+Owner: FRONTEND
 Status: BLOCKED
 Dependencies: TASK-005, TASK-012
 
 Implement visible Language Brain summary and concept detail states defined in the UI spec.
 *Note: UI canvas, filters, and 3D skill evidence are complete and TASK-012 is satisfied; the task
-remains manually BLOCKED until explicit Gemini/frontend authorization after the core roadmap audit.*
+remains manually BLOCKED until explicit Frontend/frontend authorization after the core roadmap audit.*
 
 ### TASK-014 — Progress API
-Owner: CODEX
+Owner: BACKEND
 Status: BACKLOG
 Dependencies: TASK-006A, TASK-006D, TASK-008, TASK-010, TASK-012
 
@@ -518,18 +518,18 @@ target learning days, minutes, strengthened concepts and review-retention bucket
 Reader progress, Today completion and Progress trends must remain separate authorities.*
 
 ### TASK-015 — Progress UI
-Owner: GEMINI
+Owner: FRONTEND
 Status: BLOCKED
 Dependencies: TASK-005, TASK-014
 
 Implement Progress according to the UI spec.
-*Note: UI analytics and evidence breakdown complete; marked BLOCKED pending Codex implementation of TASK-014.*
+*Note: UI analytics and evidence breakdown complete; marked BLOCKED pending Backend implementation of TASK-014.*
 
 ## FRLL acceptance checkpoint
 
 ### FRLL-F1 — Acceptance harness hardening R2/R3/R4/R5
 
-Owner: CODEX
+Owner: BACKEND
 Checkpoint status: READY_FOR_INDEPENDENT_REVIEW
 Baseline: `1878406`; preserves existing B/C/D/E acceptance flows.
 
@@ -559,7 +559,7 @@ entry.
 ## MVP Pilot Readiness (planning milestone)
 
 Status: PLANNED — discovery and acceptance planning only; implementation not started.
-Owner: CODEX / GEMINI within existing ownership boundaries.
+Owner: BACKEND / FRONTEND within existing ownership boundaries.
 Dependencies: FRLL accepted; TASK-017 and TASK-017A complete.
 
 Goal: verify that a real learner can use the MVP end-to-end without developer
@@ -574,7 +574,7 @@ Chinese/Japanese, frontend ownership of domain algorithms, or changes to the
 frozen FRLL baseline.
 
 ### Private staging deployment hardening (pre-pilot gate)
-Owner: CODEX
+Owner: BACKEND
 Status: READY
 Dependencies: FRLL accepted; no product/domain changes permitted.
 
@@ -591,7 +591,7 @@ required before enabling staging.
 ## Onboarding
 
 ### TASK-016 — Starting Level Estimate v1
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-003, TASK-004, TASK-006D, TASK-006E
 
@@ -618,7 +618,7 @@ OpenAPI or frontend application behavior change. See
 `reviews/TASK-016-starting-level-estimate-v1.md`.*
 
 ### TASK-017 — Live Auth + Onboarding Integration v1
-Owner: CODEX (temporary integration execution; frontend foundation remains Gemini-owned)
+Owner: BACKEND (temporary integration execution; frontend foundation remains Frontend-owned)
 Status: DONE
 Dependencies: TASK-004, TASK-005, TASK-006C.2, TASK-006E, TASK-016, TASK-017A
 
@@ -629,7 +629,7 @@ Reader, Brain, Progress, Library and Dictionary remain mock-driven.
 *Completed controlled hardening across all four slices (A: actor runtime isolation & actor-scoped pointer C-1/C-2; B: readiness predicate & route gating C-3/C-4; C: language profile 409 conflict reconciliation C-5; D: assessment stimulus preservation C-6), subsequent Required Fix Pass (DEF-01 complete 6-point readiness predicate; DEF-02 paused profile recovery & resumption; DEF-03 stale actor lifecycle outcome isolation), and DEF-03-R1 final actor lifecycle fix (application-level operation epoch guarding across AuthContext, LiveOnboardingFlow, and useProductReadiness). Child ETag transport dependency resolved by verified TASK-017A. Final Sol re-acceptance received; marked DONE.*
 
 ### TASK-017A — Language Profile child ETag transport correction
-Owner: CODEX
+Owner: BACKEND
 Status: DONE
 Dependencies: TASK-004, TASK-006E, TASK-017
 
