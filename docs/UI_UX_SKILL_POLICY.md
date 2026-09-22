@@ -1,29 +1,26 @@
 # LINGUA OS — UI/UX Skill Policy
 
-Version: 1.0
-Approved skill: UI UX Pro Max
-Primary consumer: Gemini
+Version: 2.0  
+Primary consumer: frontend/product UI workstream
 
-## Purpose
+External UI/UX skills may provide design intelligence, pattern research, stack guidance and pre-delivery UX checks. They do not define the product.
 
-The external UI/UX skill supplies design intelligence, pattern retrieval, stack guidance and pre-delivery UX checks. It does not define the product.
-
-## What the skill is allowed to influence
+## Allowed influence
 
 - visual hierarchy
 - layout and information density
-- typography recommendations
+- typography
 - semantic color roles
 - spacing, radius, elevation and motion systems
 - accessible interaction patterns
 - responsive adaptation
 - component composition
-- empty/loading/error presentation
-- charts and progress visualization when required by the product spec
-- Next.js, React, Tailwind and shadcn/ui implementation guidance
+- loading/empty/error presentation
+- required progress visualization
+- stack-specific frontend implementation guidance
 - UI/UX anti-pattern detection
 
-## What the skill is not allowed to change
+## Not allowed to change
 
 - target user
 - MVP feature set
@@ -34,67 +31,36 @@ The external UI/UX skill supplies design intelligence, pattern retrieval, stack 
 - FSRS behavior
 - Today Engine logic
 - product metrics
-- pricing or monetization
 - post-MVP feature gates
 
-## Mandatory workflow
+## Workflow
 
 For a new page or major component family:
 
-1. Read the product and UI specification.
-2. Read `design-system/MASTER.md` if present.
-3. Read the matching page override if present.
-4. Query/use the UI skill for the user goal and interaction problem first.
-5. Query/use current stack guidance for Next.js/React/shadcn/ui when relevant.
-6. Compare recommendations with LINGUA OS constraints.
-7. Reject conflicting recommendations.
-8. Implement from semantic tokens and shared components.
-9. Validate mobile, tablet and desktop behavior.
-10. Validate keyboard, focus, screen-reader semantics, contrast and reduced motion.
-11. Run a final anti-pattern review.
+1. read the product and UI specification
+2. read `design-system/MASTER.md`
+3. read the matching page override if present
+4. use external design intelligence only where it adds value
+5. compare recommendations with LINGUA OS constraints
+6. reject conflicting recommendations
+7. implement from semantic tokens and shared components
+8. verify mobile, tablet and desktop behavior
+9. verify keyboard, focus, semantics, contrast and reduced motion
+10. run a final anti-pattern review
 
 ## Design-system persistence
 
-The project uses:
+- `design-system/DESIGN_BRIEF.md` — product design intent
+- `design-system/MASTER.md` — approved global design system
+- `design-system/pages/*.md` — intentional page-specific deviations
 
-- `design-system/DESIGN_BRIEF.md` for immutable product design intent
-- `design-system/MASTER.md` for the approved generated/global design system
-- `design-system/pages/*.md` for intentional page-specific deviations
+## Visual guardrails
 
-A page override must not duplicate the master. It only records differences.
-
-## Token architecture
-
-Use three levels:
-
-1. Primitive tokens: raw scales and palette primitives.
-2. Semantic tokens: meaning such as surface, text, action, focus, success, learning-new, learning-weak.
-3. Component tokens: optional component-specific bindings when a reusable component needs them.
-
-Page components must not depend directly on raw palette values.
-
-## LINGUA OS visual guardrails
-
-- Calm and focused before playful.
-- Premium and modern without looking corporate or sterile.
-- Learning evidence is more important than decoration.
-- Avoid game-heavy metaphors, excessive gradients, decorative 3D, confetti and attention-seeking motion.
-- Progress states need text/icon/shape support so color is never the only signal.
-- Dense learning data should remain scannable on small screens.
-- Vietnamese diacritics must render cleanly.
-- Future English, Chinese and Japanese content must fit without redesigning the base typography/layout system.
-
-## Review checklist
-
-Before completing a UI task, verify:
-
-- Is every visible element tied to a product requirement?
-- Is hierarchy obvious within a few seconds?
-- Does the layout work at narrow mobile width?
-- Does it adapt deliberately to desktop?
-- Are interactive targets and focus states clear?
-- Are loading, empty, error and success states present?
-- Is color being used as the only state signal anywhere?
-- Are design tokens used instead of magic values?
-- Did the external skill introduce an unapproved feature or pattern?
-- Does the result still look like one coherent LINGUA OS product?
+- calm and focused before playful
+- premium and modern without becoming corporate or sterile
+- learning evidence before decoration
+- no game-heavy metaphors or attention-seeking motion
+- no color-only learning states
+- dense learning data must remain scannable on small screens
+- Vietnamese diacritics must render cleanly
+- future multilingual content must fit without redesigning the base system

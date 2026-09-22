@@ -1,65 +1,64 @@
 # LINGUA OS Engineering Workflow
 
-Version: 1.0
+Version: 2.0
 
-This workflow coordinates Codex and Gemini as two engineers working against one product contract.
+This workflow applies to any engineer or agent working on LINGUA OS. Work is divided by subsystem, not by model or vendor.
 
-## Roles
+## Workstreams
 
-Codex: Core System Engineer
+### Backend/system
 
-- backend
-- data model
-- migrations
-- contracts
+Typical scope:
+
+- backend services
+- data model and migrations
+- public contracts
 - learner/memory/content/Today engines
-- backend security and tests
+- authorization and security
+- backend tests and observability
 
-Gemini: Frontend and Product UI Engineer
+### Frontend/product UI
+
+Typical scope:
 
 - web frontend
-- design system
-- components
+- design system and components
 - responsive behavior
 - accessibility
-- client integration and frontend tests
+- client integration
+- frontend tests
+- interaction and motion polish
 
-UI UX Pro Max: design-intelligence advisor for Gemini.
-
-Superpowers: engineering-process advisor for Codex and Gemini.
-
-Neither external skill may override LINGUA OS product specifications.
+External design or engineering skills are advisory only. They never override LINGUA OS specifications, contracts or accepted decisions.
 
 ## Per-task lifecycle
 
 ### 1. Select
 
-Choose the first READY task for the current owner whose dependencies are DONE.
+Choose an unblocked task from `TASKS.md` or the explicitly assigned task.
 
 ### 2. Understand
 
-Read task-specific authoritative files and inspect the current code before editing.
+Read the authoritative project files, relevant subsystem spec, contracts and current implementation before editing.
 
 ### 3. Plan
 
-For a non-trivial task, create:
+For non-trivial work, create or update:
 
 `plans/TASK-XXX-short-name.md`
 
-The plan should contain:
+Keep the plan concise and executable:
 
 - objective
 - affected files
-- contracts/migrations involved
+- contract/migration impact
 - implementation steps
 - tests and acceptance checks
 - risks or blockers
 
-Keep it executable and concise.
-
 ### 4. Test and implement
 
-Use test-first development for deterministic behavior. Implement only the slice needed for the task.
+Use test-first development for deterministic behavior when practical. Implement the smallest complete vertical slice.
 
 ### 5. Review
 
@@ -68,11 +67,11 @@ Run two review passes:
 - specification compliance
 - code quality
 
-When subagent capability exists, separate implementation and review contexts where practical. When it does not, perform explicit self-review against the same checklist.
+Independent review is preferred for high-risk changes. Self-review does not replace an explicitly required external review gate.
 
 ### 6. Verify
 
-Run real commands. Do not claim completion from inspection alone.
+Run real checks. Do not claim completion from inspection alone.
 
 Typical evidence:
 
@@ -80,82 +79,64 @@ Typical evidence:
 - type check
 - lint
 - migration validation
-- OpenAPI validation
+- OpenAPI/contract validation
 - accessibility checks
-- responsive visual checks
+- responsive/browser verification
 - production build where applicable
 
 ### 7. Record
 
-Update:
+Update durable state only when meaningful:
 
 - `TASKS.md`
 - `STATUS.md`
-- `DECISIONS.md` only when a durable decision changed
+- `DECISIONS.md` only for durable decisions
+- `reviews/` for acceptance/review evidence worth retaining
+
+Do not create per-agent briefing trees, chat handoff files or temporary journals inside the repository.
 
 ## Shared contract protocol
 
-Codex owns public contract edits by default.
+If a required contract is missing or unsuitable:
 
-If Gemini discovers a missing or unsuitable contract:
+1. do not invent a local replacement
+2. identify the exact contract gap
+3. make a bounded contract change when authorized
+4. update affected tests and generated types
+5. verify consumers against the new contract
 
-1. do not invent a replacement locally
-2. record the exact need in `STATUS.md`
-3. request a bounded contract change
-4. continue with contract-valid mocks only when possible
-
-When Codex changes a shared contract:
-
-1. update OpenAPI/enums/errors in the same task
-2. update backend tests
-3. commit the contract change clearly
-4. Gemini syncs before implementing dependent integration
+Mocks must remain contract-valid.
 
 ## Git and worktrees
 
-Once Git is initialized, avoid running Codex and Gemini against the same mutable working tree at the same time.
+Do not point multiple active writers at the same mutable worktree.
 
-Recommended long-lived development branches during MVP:
+Use isolated branches/worktrees for parallel changes and integrate through reviewed commits. Never force-reset or discard another writer's uncommitted work.
 
-- `codex/core`
-- `gemini/ui`
-
-Recommended working directories:
-
-- main checkout for integration
-- separate Codex worktree
-- separate Gemini worktree
-
-Example after an initial commit:
-
-```bash
-git branch codex/core
-git branch gemini/ui
-git worktree add ../lingua-codex codex/core
-git worktree add ../lingua-gemini gemini/ui
-```
-
-Open Codex in `../lingua-codex` and Gemini in `../lingua-gemini`.
-
-Integrate through reviewed commits. Do not share uncommitted edits between agents.
+See `GIT_WORKTREE_WORKFLOW.md`.
 
 ## Commit convention
 
-Use task-scoped commits where practical.
+Prefer task-scoped commits.
 
 Examples:
 
 ```text
 feat(core): implement concept state model
-feat(ui): add Today application shell
+feat(ui): add Today learning surface
 fix(api): align Today response contract
- test(memory): cover due queue transitions
+test(memory): cover due queue transitions
+docs(project): consolidate repository guidance
 ```
-
-Include the task ID in commit body or PR description when useful.
 
 ## When to brainstorm
 
-Approved specs are already product design. Do not repeatedly brainstorm them.
+Approved specs are not brainstorming prompts.
 
-Brainstorm only for unresolved gaps, conflicts or genuinely new decisions. See `docs/SUPERPOWERS_POLICY.md`.
+Explore alternatives only when:
+
+- a material specification gap exists
+- authoritative sources conflict
+- a new durable decision is required
+- multiple implementation approaches have meaningful tradeoffs
+- the human explicitly requests exploration

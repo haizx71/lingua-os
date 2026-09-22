@@ -1,7 +1,7 @@
 # LINGUA OS — Design Brief
 
-Status: authoritative product design intent
-Consumer: Gemini + approved UI/UX skills
+Status: authoritative product design intent  
+Consumer: frontend/product UI workstream and approved design-intelligence tools
 
 ## Product feeling
 
@@ -59,7 +59,7 @@ State meaning must not rely on color alone. Pair color with label, icon, shape, 
 - Excellent Vietnamese diacritic rendering is mandatory.
 - Body text must be comfortable for reading passages on mobile.
 - Learning content and UI chrome need distinct hierarchy.
-- The system should remain compatible with future Chinese and Japanese content.
+- The system should remain compatible with future multilingual content.
 
 ## Motion
 
@@ -72,27 +72,24 @@ Motion communicates state change and continuity. It must not distract from readi
 - excessive gradients/glows
 - glass effects that reduce readability
 - decorative charts without decisions attached
-- tiny text to fit more dashboard data
+- tiny text used only to fit more dashboard data
 - color-only learning states
 - arbitrary icon styles
 - overly dense desktop dashboards copied onto mobile
 
-## Output expected from TASK-002
+## Design-system output
 
-Create and persist `design-system/MASTER.md` containing the approved global system, including:
+The approved global system lives in `design-system/MASTER.md` and should define:
 
 - visual direction and rationale
-- primitive token families
-- semantic color roles
-- typography scale
-- spacing scale
-- radius and elevation rules
-- motion rules
+- primitive and semantic tokens
+- typography and spacing scales
+- radius/elevation/motion rules
 - focus/accessibility rules
 - layout/grid rules
 - core component families
-- learning-state presentation rules
-- light/dark theme behavior if implemented
-- examples of forbidden magic values/patterns
+- learning-state presentation
+- theme behavior
+- forbidden magic values/patterns
 
-Then implement the corresponding frontend token foundation under `packages/ui/` or the final frontend structure established by TASK-002.
+Page-specific deviations belong under `design-system/pages/`.

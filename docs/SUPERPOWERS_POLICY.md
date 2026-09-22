@@ -1,95 +1,77 @@
-# Superpowers Policy for LINGUA OS
+# LINGUA OS — Engineering Skill Policy
 
-Version: 1.0
+Version: 2.0
 
-Superpowers is an approved engineering-process skill set for both Codex and Gemini. It improves planning, test discipline, review and verification. It does not own product decisions.
+Superpowers or similar engineering-process skills may be used to improve planning, test discipline, debugging, review and verification. They do not own product or architecture decisions.
 
 ## Authority order
 
-When Superpowers guidance conflicts with project rules, follow this order:
+When external skill guidance conflicts with project rules, follow:
 
 1. `MASTER_PROJECT.md`
-2. accepted entries in `DECISIONS.md`
+2. accepted `DECISIONS.md`
 3. shared contracts and migration history
-4. the applicable Codex or Gemini project specification
+4. applicable detailed subsystem specification
 5. `TASKS.md`
 6. `docs/ENGINEERING_WORKFLOW.md`
-7. Superpowers guidance
+7. external skill guidance
 8. agent preference
 
 ## Locked decisions
 
-Do not use brainstorming to reopen accepted product or architecture decisions simply because a skill suggests exploration.
+Do not use brainstorming to reopen accepted product or architecture decisions merely because a skill suggests exploration.
 
-Examples of locked decisions:
+Examples include:
 
 - PostgreSQL first
 - Language Brain in v0.1
 - one primary FSRS lineage per learner/concept in MVP
-- English for Vietnamese first
+- English for Vietnamese learners first
 - AI Tutor post-MVP
-- realtime pronunciation scoring post-MVP
+- real-time pronunciation scoring post-MVP
 - OpenAPI as public API source of truth
-- Today, Read, Review, Brain and Progress as MVP primary surfaces
+- Today, Read, Review, Brain and Progress as the primary MVP surfaces
 
-Brainstorming is appropriate only when:
-
-- a task has a material gap in the specification
-- two authoritative documents conflict
-- a new durable architecture decision is required
-- there are multiple valid implementation approaches with meaningful tradeoffs
-- the human explicitly asks for product or architecture exploration
-
-For ordinary implementation tasks, move from approved spec to implementation plan, tests, code, review and verification.
+Brainstorming is appropriate only when a real gap, conflict, new durable decision or meaningful implementation tradeoff exists.
 
 ## Required engineering sequence
 
-For non-trivial implementation tasks:
+For non-trivial work:
 
-1. Read the task and authoritative project files.
-2. Inspect existing implementation and contracts.
-3. Decide whether brainstorming is necessary under the rules above.
-4. Write or update a bounded implementation plan under `plans/` when the task spans multiple files or steps.
-5. Define acceptance checks and tests before or alongside implementation.
-6. Implement the smallest complete slice.
-7. Run tests, type checks, lint and task-specific verification.
-8. Perform specification-compliance review.
-9. Perform code-quality review.
-10. Record verification evidence.
-11. Update `TASKS.md` and `STATUS.md`.
+1. read task and authoritative project files
+2. inspect current implementation and contracts
+3. decide whether exploration is actually needed
+4. write a bounded plan under `plans/` when useful
+5. define acceptance checks/tests
+6. implement the smallest complete slice
+7. run real verification
+8. review spec compliance
+9. review code quality
+10. record durable evidence only where useful
 
 ## TDD policy
 
-Use test-first development where the behavior is deterministic and testable, especially:
+Prefer test-first development for deterministic behavior such as:
 
 - learner-state transitions
-- FSRS scheduling integration
+- FSRS scheduling
 - Today priority rules
-- authorization and RLS boundaries
-- content filtering/provenance rules
+- authorization boundaries
+- content filtering/provenance
 - API validation
 - data transformation
-- component behavior and interaction states
+- interactive component behavior
 
-Do not create meaningless tests merely to satisfy a rule. Visual-only polish may use snapshot or end-to-end coverage when unit tests provide little value.
+Do not create meaningless tests simply to satisfy a process rule.
 
-## Review policy
+## Persistence
 
-Review in this order:
+Durable reasoning belongs in:
 
-1. Spec compliance: does the implementation match the approved requirement and contract?
-2. Code quality: is the implementation maintainable, secure, typed, testable and minimal?
-3. Verification: do the actual commands and user flows prove it works?
+- `plans/`
+- `reviews/`
+- `DECISIONS.md`
+- `STATUS.md`
+- `TASKS.md`
 
-A passing test suite is not sufficient if the implementation violates the project specification.
-
-## Skill output persistence
-
-Durable project reasoning belongs in repository files, not only chat.
-
-- implementation plans: `plans/`
-- review notes when useful: `reviews/`
-- durable decisions: `DECISIONS.md`
-- execution state: `STATUS.md` and `TASKS.md`
-
-Do not paste large skill-generated essays into source files. Persist only concise decisions and executable plans.
+Temporary skill output, chat logs, handoff notes and agent journals should not be committed.

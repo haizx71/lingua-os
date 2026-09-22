@@ -1,110 +1,95 @@
-# Codex Project Instructions: LINGUA OS
+# LINGUA OS — Unified Agent Guide
 
-You are the Core System Engineer for LINGUA OS.
+This repository no longer uses model-specific startup prompts. Any engineering agent working on LINGUA OS must use the repository itself as the durable source of truth.
 
-## Read before implementation
+## Read before changing anything
 
-Read these files in order:
+Read in this order:
 
-1. `MASTER_PROJECT.md`
-2. `docs/CODEX_PROJECT_SPEC.md`
-3. `docs/SUPERPOWERS_POLICY.md`
-4. `docs/ENGINEERING_WORKFLOW.md`
-5. `DECISIONS.md`
-6. `STATUS.md`
-7. `TASKS.md`
-8. `contracts/openapi.yaml`
-9. `contracts/enums.json`
-10. `contracts/errors.json`
+1. `MASTER_PROJECT.md` — product definition, direction, scope and invariants.
+2. `DECISIONS.md` — accepted durable decisions.
+3. `STATUS.md` — current verified state and active blockers.
+4. `TASKS.md` — current execution scope and dependencies.
+5. `CONTEXT.md` — shared domain vocabulary.
+6. `docs/README.md` — documentation map.
+7. Relevant contracts, migrations, subsystem specs and implementation files for the task.
 
-Read `docs/GEMINI_PROJECT_SPEC.md` only when backend work affects an agreed frontend contract or UX state. Do not redesign the UI.
+Do not treat chat history, an old handoff, a branch name or a historical review as more authoritative than the files above.
 
-## Your ownership
+## Work by subsystem, not by model name
 
-You own backend/system work under:
+Backend/system work normally lives under:
 
 - `services/`
 - `database/`
 - `contracts/`
-- `tests/backend/`
-- backend-related shared packages
+- backend tests and backend-related shared packages
 
-Do not implement or redesign frontend UI under `apps/web/` or `packages/ui/` unless `TASKS.md` explicitly assigns a bounded integration correction to Codex.
+Frontend/product UI work normally lives under:
 
-## Superpowers
+- `apps/web/`
+- `packages/ui/`
+- `tests/frontend/`
+- `design-system/`
 
-Superpowers is the approved engineering-process skill set for Codex.
+Shared project truth includes:
 
-Use it for planning, test-first implementation, debugging, review and verification when relevant.
+- `MASTER_PROJECT.md`
+- `DECISIONS.md`
+- `STATUS.md`
+- `TASKS.md`
+- `CONTEXT.md`
+- `contracts/`
 
-Do not let Superpowers reopen locked product or architecture decisions. The project specification is already approved design unless the task contains a real unresolved gap.
-
-For normal implementation tasks, prefer this sequence:
-
-spec and task
-→ inspect code
-→ bounded implementation plan
-→ tests
-→ implementation
-→ spec-compliance review
-→ code-quality review
-→ verification
-→ status update
-
-Use brainstorming only under `docs/SUPERPOWERS_POLICY.md`.
-
-If Superpowers is unavailable, continue with the same repository-defined workflow manually. Do not block the project solely because the optional machine-level skill is missing.
+Crossing a subsystem boundary is allowed only when the task actually requires it and the impact is understood.
 
 ## Non-negotiable rules
 
-- Contract first. Do not invent fields or endpoints silently.
-- Any public API change updates `contracts/openapi.yaml` in the same task.
-- Any persistent schema change uses a versioned migration.
-- Do not put AI Tutor, realtime pronunciation scoring, realtime forced alignment, Chinese or Japanese into the MVP critical path.
-- Keep AI, speech and external services behind provider interfaces.
-- Preserve one primary FSRS memory lineage per learner/concept for MVP unless an accepted ADR changes it.
+- Inspect the current branch and latest repository state before editing.
+- Do not silently invent API fields, endpoints, enums, migrations or learning rules.
+- Public API changes must update the shared contract in the same task.
+- Persistent schema changes require versioned migrations.
+- Preserve learner state, authorization boundaries and accepted FRLL behavior.
+- Keep one primary FSRS memory lineage per learner/concept unless an accepted decision changes it.
+- Keep AI and external providers behind replaceable interfaces.
 - Persist content provenance, license and quality metadata.
-- Enforce authorization server-side. Never trust client-provided ownership.
-- Add meaningful tests for business rules and regressions.
-- Prefer simple relational PostgreSQL structures before specialized databases.
-- Do not delete or rename shared enums without a compatibility plan.
-- Do not mark a task DONE before real verification commands pass.
+- Never expose secrets in source, logs, screenshots or completion reports.
+- Do not mutate hosted Supabase, Render or Vercel state unless the task explicitly requires it.
+- Do not mark work complete until real verification has passed.
 
-## Work protocol
+## Execution workflow
 
-For each assigned task:
+For non-trivial work:
 
-1. Read the task and dependencies.
-2. Inspect current code, contracts and migrations before editing.
-3. Decide whether brainstorming is necessary. Usually it is not.
-4. For non-trivial work, create or update `plans/TASK-XXX-short-name.md`.
-5. State the files, contracts and migrations likely to change.
-6. Define acceptance checks and tests.
-7. Implement the smallest complete vertical slice.
-8. Run relevant tests, type checks, lint and validation.
-9. Perform a specification-compliance review.
-10. Perform a code-quality review.
-11. Record verification evidence in the completion report or a concise review file when useful.
-12. Update `STATUS.md` and the task status.
-13. Add an entry to `DECISIONS.md` only for a durable decision.
+spec/task → inspect → bounded plan → tests/checks → implementation → spec review → code review → verification → status update
 
-If the repository is still a starter and a required framework is not initialized, follow the stack in `docs/CODEX_PROJECT_SPEC.md` and create only the foundation needed for the current MVP task.
+Use `plans/` for implementation plans that are useful beyond the current chat. Use `reviews/` for durable review evidence. Do not create temporary agent journals, handoff folders or per-agent briefing trees in the repository.
 
-## Git safety
+If parallel agents are active, use isolated branches/worktrees and integrate through reviewed commits. Never overwrite another agent's uncommitted work.
 
-After Git is initialized and both agents begin parallel work, prefer the separate worktree model in `docs/GIT_WORKTREE_WORKFLOW.md`.
+## Verification
 
-Do not force-reset, discard or overwrite another agent's uncommitted work.
+Run the checks relevant to the changed surface. Typical gates include:
+
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm backend:check`
+- `pnpm build`
+- `pnpm build-storybook`
+- contract validation
+- migration checks
+- focused browser/integration acceptance
+
+Documentation-only changes do not require the full runtime suite, but links, paths and source-of-truth references must still be checked.
 
 ## Completion report
 
-At the end of each task, report:
+Report only what matters:
 
-- task ID and outcome
-- what changed
-- contracts and migrations changed
-- tests/checks run with results
-- spec-review result
-- code-review result
-- known limitations
-- next unblocked task
+- outcome
+- files/systems changed
+- contracts or migrations changed
+- verification performed and result
+- known blocker or risk
+- next action, if any

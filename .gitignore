@@ -21,5 +21,6 @@ __pycache__/
 venv/
 storybook-static/
 .gemini/
+.agents/
 test-results/
 playwright-report/

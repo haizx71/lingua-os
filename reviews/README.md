@@ -1,8 +1,16 @@
-# Review Notes
+# Review and Acceptance Evidence
 
-Store concise task review notes here when a review produces durable follow-up work that does not belong in source comments.
+Store durable review notes, audits, acceptance checkpoints and regression evidence here.
+
+Use this directory for material that is valuable for traceability but is not an active product or subsystem specification.
 
 Suggested naming:
 
-`TASK-XXX-spec-review.md`
-`TASK-XXX-code-review.md`
+- `TASK-XXX-spec-review.md`
+- `TASK-XXX-code-review.md`
+- `<AREA>-AUDIT-YYYYMMDD.md`
+- `<AREA>-CHECKPOINT-YYYYMMDD.md`
+
+Active product/system rules belong in `MASTER_PROJECT.md`, `DECISIONS.md`, `contracts/` or the relevant file under `docs/`.
+
+Historical agent journals, per-agent handoff folders and temporary briefings should not be committed.
