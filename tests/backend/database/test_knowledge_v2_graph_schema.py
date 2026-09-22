@@ -181,9 +181,40 @@ def test_graph_relation_taxonomy_and_duplicate_identity(
         (source_id, target_id),
         errors.UniqueViolation,
     )
+    _assert_rejected(
+        db_connection,
+        """
+        INSERT INTO concept_edges (source_concept_id, target_concept_id, relation_type)
+        VALUES (%s, %s, 'not_a_v2_relation')
+        """,
+        (source_id, target_id),
+        errors.CheckViolation,
+    )
+    _assert_rejected(
+        db_connection,
+        """
+        INSERT INTO concept_edges (
+            source_concept_id, target_concept_id, relation_type, weight
+        )
+        VALUES (%s, %s, 'part_of', 1.1)
+        """,
+        (source_id, target_id),
+        errors.CheckViolation,
+    )
+    _assert_rejected(
+        db_connection,
+        """
+        INSERT INTO concept_edges (
+            source_concept_id, target_concept_id, relation_type, metadata
+        )
+        VALUES (%s, %s, 'part_of', '[]'::jsonb)
+        """,
+        (source_id, target_id),
+        errors.CheckViolation,
+    )
 
 
-def test_self_cycle_and_deep_cycle_are_rejected(
+def test_self_cycle_deep_cycle_and_update_cycle_are_rejected(
     db_connection: Connection[tuple[object, ...]],
 ) -> None:
     first_id, _ = _seed_source_and_concept(db_connection)
@@ -210,6 +241,18 @@ def test_self_cycle_and_deep_cycle_are_rejected(
         VALUES (%s, %s, 'prerequisite_of')
         """,
         (third_id, first_id),
+        errors.CheckViolation,
+    )
+    _assert_rejected(
+        db_connection,
+        """
+        UPDATE concept_edges
+        SET source_concept_id = %s, target_concept_id = %s
+        WHERE source_concept_id = %s
+          AND target_concept_id = %s
+          AND relation_type = 'prerequisite_of'
+        """,
+        (third_id, second_id, first_id, second_id),
         errors.CheckViolation,
     )
 
