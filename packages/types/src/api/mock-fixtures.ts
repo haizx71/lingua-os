@@ -259,6 +259,22 @@ export const mockGrammarConceptDetail = {
   ],
   examples: [],
   relations: [],
+  grammar: {
+    patternFormula: 'S + have/has + V3/ed',
+    syntacticCategory: 'tense_aspect',
+    pragmaticFunction: 'Connect a past action to the present.',
+    vietnameseExplanation: 'Dùng have/has với quá khứ phân từ để nối hành động quá khứ với hiện tại.',
+    vietnameseCommonTraps: 'Không dùng mốc thời gian quá khứ đã kết thúc.',
+    structuralSlots: [
+      { label: 'S', role: 'subject', required: true, examples: ['I', 'she'] },
+      {
+        label: 'have/has + V3',
+        role: 'present_relevance',
+        required: true,
+        examples: ['have finished', 'has gone'],
+      },
+    ],
+  },
   learner: {
     status: 'learning',
     isDue: true,

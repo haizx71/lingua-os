@@ -173,6 +173,19 @@ export interface BrainConceptViewModel {
   readonly productionScore: number;
   readonly productionConfidence: number;
   readonly productionEvidenceCount: number;
+  readonly grammar?: Readonly<{
+    patternFormula: string;
+    syntacticCategory: string;
+    pragmaticFunction: string;
+    vietnameseExplanation: string;
+    vietnameseCommonTraps?: string;
+    structuralSlots: readonly Readonly<{
+      label: string;
+      role: string;
+      required: boolean;
+      examples: readonly string[];
+    }>[];
+  }>;
 }
 
 export interface BrainCompetenceViewModel {

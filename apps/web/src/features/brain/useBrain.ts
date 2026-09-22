@@ -72,6 +72,15 @@ const conceptStatuses = new Set([
   'forgotten',
 ]);
 const competenceDimensions = ['recognition', 'listening', 'production'] as const;
+const grammarKeys = new Set([
+  'patternFormula',
+  'syntacticCategory',
+  'pragmaticFunction',
+  'vietnameseExplanation',
+  'vietnameseCommonTraps',
+  'structuralSlots',
+]);
+const grammarSlotKeys = new Set(['label', 'role', 'required', 'examples']);
 
 function asRecord(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -80,11 +89,25 @@ function asRecord(value: unknown, path: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function requireString(value: unknown, path: string): string {
-  if (typeof value !== 'string' || value.trim() === '') {
+function requireString(value: unknown, path: string, maxLength?: number): string {
+  if (
+    typeof value !== 'string'
+    || value.trim() === ''
+    || (maxLength !== undefined && value.length > maxLength)
+  ) {
     throw new Error(`Malformed Brain response at ${path}`);
   }
   return value;
+}
+
+function requireExactKeys(
+  value: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  path: string,
+): void {
+  if (Object.keys(value).some((key) => !allowed.has(key))) {
+    throw new Error(`Malformed Brain response at ${path}`);
+  }
 }
 
 function requireBoolean(value: unknown, path: string): boolean {
@@ -216,6 +239,37 @@ function assertConceptDetailResponse(value: unknown): asserts value is BrainConc
       throw new Error(`Malformed Brain response at ${path}.translation`);
     }
   });
+  if (concept.grammar !== undefined) {
+    const grammarPath = 'brainConcept.data.concept.grammar';
+    const grammar = asRecord(concept.grammar, grammarPath);
+    requireExactKeys(grammar, grammarKeys, grammarPath);
+    requireString(grammar.patternFormula, `${grammarPath}.patternFormula`, 1000);
+    requireString(grammar.syntacticCategory, `${grammarPath}.syntacticCategory`, 100);
+    requireString(grammar.pragmaticFunction, `${grammarPath}.pragmaticFunction`, 2000);
+    requireString(grammar.vietnameseExplanation, `${grammarPath}.vietnameseExplanation`, 4000);
+    if (grammar.vietnameseCommonTraps !== undefined) {
+      requireString(grammar.vietnameseCommonTraps, `${grammarPath}.vietnameseCommonTraps`, 4000);
+    }
+    if (
+      !Array.isArray(grammar.structuralSlots)
+      || grammar.structuralSlots.length === 0
+      || grammar.structuralSlots.length > 20
+    ) {
+      throw new Error('Malformed Brain response at brainConcept.data.concept.grammar.structuralSlots');
+    }
+    grammar.structuralSlots.forEach((value, index) => {
+      const path = `brainConcept.data.concept.grammar.structuralSlots[${index}]`;
+      const slot = asRecord(value, path);
+      requireExactKeys(slot, grammarSlotKeys, path);
+      requireString(slot.label, `${path}.label`, 100);
+      requireString(slot.role, `${path}.role`, 100);
+      requireBoolean(slot.required, `${path}.required`);
+      if (!Array.isArray(slot.examples) || slot.examples.length > 10) {
+        throw new Error(`Malformed Brain response at ${path}.examples`);
+      }
+      slot.examples.forEach((example, exampleIndex) => requireString(example, `${path}.examples[${exampleIndex}]`));
+    });
+  }
   const learner = asRecord(concept.learner, 'brainConcept.data.concept.learner');
   if (typeof learner.status !== 'string' || !conceptStatuses.has(learner.status)) throw new Error('Malformed Brain response at brainConcept.data.concept.learner.status');
   requireBoolean(learner.isDue, 'brainConcept.data.concept.learner.isDue');

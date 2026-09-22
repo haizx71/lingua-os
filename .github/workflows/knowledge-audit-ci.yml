@@ -63,7 +63,7 @@ jobs:
           PY
       - name: Build deterministic guarded catalog apply plan v2
         run: |
-          python knowledge/catalog_import.py --candidate /tmp/production-starter.json --output /tmp/catalog-plan.json
+          python knowledge/catalog_import.py --candidate /tmp/production-starter.json --grammar-specs knowledge/grammar_specifications.v1.json --output /tmp/catalog-plan.json
           python - <<'PY'
           import json
           from pathlib import Path
@@ -95,13 +95,24 @@ jobs:
               assert row['sourceMetadata']['stagingCandidate'] is True
               assert row['sourceMetadata']['concept']['canonicalKey']==row['canonicalKey']
           assert isinstance(p['planSha256'],str) and len(p['planSha256'])==64
+          grammar=p['grammarPlan']
+          assert grammar['schemaVersion']=='knowledge-grammar-specification-apply-plan.v1'
+          assert grammar['counts']=={'grammarSpecifications':8}
+          assert len(grammar['rows'])==8
+          assert isinstance(grammar['manifestSha256'],str) and len(grammar['manifestSha256'])==64
+          assert isinstance(grammar['planSha256'],str) and len(grammar['planSha256'])==64
           print('candidateSha256='+p['candidateSha256'])
           print('planSha256='+p['planSha256'])
+          print('grammarManifestSha256='+grammar['manifestSha256'])
+          print('grammarPlanSha256='+grammar['planSha256'])
           PY
       - name: Verify apply is fail-closed without explicit approvals
         run: |
           if python knowledge/catalog_import.py --candidate /tmp/production-starter.json --apply 2>/dev/null; then
             echo 'Importer unexpectedly applied without approvals'; exit 1
+          fi
+          if python knowledge/catalog_import.py --candidate /tmp/production-starter.json --grammar-specs knowledge/grammar_specifications.v1.json --apply 2>/dev/null; then
+            echo 'Grammar importer unexpectedly applied without approvals'; exit 1
           fi
           if python knowledge/preview_import.py --apply 2>/dev/null; then echo 'Preview unexpectedly accepted --apply'; exit 1; fi
           if python knowledge/build_production_starter.py --apply 2>/dev/null; then echo 'Builder unexpectedly accepted --apply'; exit 1; fi
@@ -115,3 +126,36 @@ jobs:
             /tmp/catalog-plan.json
           if-no-files-found: error
           retention-days: 7
+
+  grammar-postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24
+        env:
+          POSTGRES_PASSWORD: lingua_test_password
+          POSTGRES_DB: lingua_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lingua_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:lingua_test_password@127.0.0.1:5432/lingua_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked backend test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements/backend-dev.lock
+      - name: Verify grammar import and Brain detail against PostgreSQL
+        run: >-
+          python -m pytest -q
+          tests/backend/database/test_knowledge_v2_grammar_import.py
+          tests/backend/database/test_brain_api.py

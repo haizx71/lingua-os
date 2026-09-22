@@ -184,3 +184,10 @@ def test_brain_runtime_metadata_preserves_the_frozen_contract() -> None:
     assert {"mastery", "confidence"} <= set(schemas["BrainConceptSummaryDto"]["required"])
     assert {"mastery", "confidence", "memory"} <= set(schemas["BrainConceptDetailDto"]["required"])
     assert {"memoryHealth", "startingLevelEstimate"} <= set(schemas["BrainSummaryDto"]["required"])
+    grammar_slot = schemas["GrammarStructuralSlotDto"]
+    assert grammar_slot["properties"]["examples"] == {
+        "items": {"minLength": 1, "type": "string"},
+        "maxItems": 10,
+        "title": "Examples",
+        "type": "array",
+    }

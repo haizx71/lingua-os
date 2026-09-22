@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, StringConstraints
 from pydantic.json_schema import SkipJsonSchema
 
 from lingua_api.review.models import (
@@ -68,6 +69,24 @@ class ConceptRelationDto(ApiModel):
     canonical_form: str = Field(min_length=1, max_length=300)
 
 
+class GrammarStructuralSlotDto(ApiModel):
+    label: str = Field(min_length=1, max_length=100)
+    role: str = Field(min_length=1, max_length=100)
+    required: bool
+    examples: list[Annotated[str, StringConstraints(min_length=1)]] = Field(max_length=10)
+
+
+class GrammarSpecificationDto(ApiModel):
+    pattern_formula: str = Field(min_length=1, max_length=1000)
+    syntactic_category: str = Field(min_length=1, max_length=100)
+    pragmatic_function: str = Field(min_length=1, max_length=2000)
+    vietnamese_explanation: str = Field(min_length=1, max_length=4000)
+    vietnamese_common_traps: str | SkipJsonSchema[None] = Field(
+        default=None, max_length=4000, exclude_if=lambda value: value is None
+    )
+    structural_slots: list[GrammarStructuralSlotDto] = Field(min_length=1, max_length=20)
+
+
 class ConceptLearnerProjectionDto(ApiModel):
     status: ConceptStatusDto
     is_due: bool
@@ -100,6 +119,9 @@ class ConceptDetailDto(ApiModel):
     definitions: list[ConceptDefinitionDto]
     examples: list[ConceptExampleDto] = Field(max_length=50)
     relations: list[ConceptRelationDto] = Field(max_length=100)
+    grammar: GrammarSpecificationDto | SkipJsonSchema[None] = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     learner: ConceptLearnerProjectionDto
     attribution: AttributionDto | SkipJsonSchema[None] = Field(
         default=None, exclude_if=lambda value: value is None

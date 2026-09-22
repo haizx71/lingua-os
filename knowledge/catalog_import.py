@@ -23,6 +23,8 @@ from typing import Any
 
 CANDIDATE_SCHEMA = "knowledge-production-starter-candidate.v1"
 PLAN_SCHEMA = "knowledge-catalog-apply-plan.v2"
+GRAMMAR_MANIFEST_SCHEMA = "knowledge-grammar-specifications.v1"
+GRAMMAR_PLAN_SCHEMA = "knowledge-grammar-specification-apply-plan.v1"
 SOURCE_NAME = "LINGUA First-Party Knowledge Starter"
 SOURCE_VERSION = "2026-09-16.v1"
 LICENSE_CODE = "LINGUA-FIRST-PARTY"
@@ -52,6 +54,25 @@ REVIEWED_EXAMPLE_SURFACES = {
     "word:manage:verb": "managed",
     "word:realize:verb": "realized",
     "phrase:look-for": "looking for",
+}
+
+GRAMMAR_SPEC_KEYS = {
+    "grammar:subject-pronouns-basic",
+    "grammar:be-basic",
+    "grammar:present-simple-core",
+    "grammar:there-is-are",
+    "grammar:past-simple-core",
+    "grammar:comparatives-core",
+    "grammar:first-conditional-core",
+    "grammar:relative-clauses-basic",
+}
+
+GRAMMAR_TEXT_LIMITS = {
+    "patternFormula": 1000,
+    "syntacticCategory": 100,
+    "pragmaticFunction": 2000,
+    "vietnameseExplanation": 4000,
+    "vietnameseCommonTraps": 4000,
 }
 
 
@@ -127,6 +148,118 @@ def load_candidate(path: Path) -> dict[str, Any]:
     if not isinstance(expected, str) or digest(unsigned) != expected:
         raise ImportError("candidate hash verification failed")
     return data
+
+
+def load_grammar_manifest(path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ImportError(f"cannot read grammar manifest: {exc}") from exc
+    if data.get("schemaVersion") != GRAMMAR_MANIFEST_SCHEMA:
+        raise ImportError("unsupported grammar manifest schema")
+    if data.get("status") != "APPROVED":
+        raise ImportError("grammar manifest is not approved")
+    if data.get("sourceInventory") != "first_party_starter_inventory.v1":
+        raise ImportError("grammar manifest source inventory is not approved")
+    if data.get("counts", {}).get("grammarSpecifications") != 8:
+        raise ImportError("grammar manifest must declare exactly eight specifications")
+    expected = data.get("manifestSha256")
+    unsigned = dict(data)
+    unsigned.pop("manifestSha256", None)
+    if not isinstance(expected, str) or digest(unsigned) != expected:
+        raise ImportError("grammar manifest hash verification failed")
+    specifications = data.get("specifications")
+    if not isinstance(specifications, list) or len(specifications) != 8:
+        raise ImportError("grammar manifest specification list/count mismatch")
+    keys: list[str] = []
+    for row in specifications:
+        if not isinstance(row, dict):
+            raise ImportError("grammar specification must be an object")
+        key = row.get("canonicalKey")
+        keys.append(key if isinstance(key, str) else "")
+        for field in (
+            "canonicalKey",
+            "patternFormula",
+            "syntacticCategory",
+            "pragmaticFunction",
+            "vietnameseExplanation",
+        ):
+            value = row.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ImportError(f"grammar specification requires {field}: {key!r}")
+            limit = GRAMMAR_TEXT_LIMITS.get(field)
+            if limit is not None and len(value) > limit:
+                raise ImportError(
+                    f"grammar specification {field} exceeds {limit} characters: {key!r}"
+                )
+        traps = row.get("vietnameseCommonTraps")
+        if traps is not None and (not isinstance(traps, str) or not traps.strip()):
+            raise ImportError(f"invalid Vietnamese common traps: {key}")
+        if isinstance(traps, str) and len(traps) > GRAMMAR_TEXT_LIMITS["vietnameseCommonTraps"]:
+            raise ImportError(f"Vietnamese common traps exceed 4000 characters: {key}")
+        slots = row.get("structuralSlots")
+        if not isinstance(slots, list) or not slots or len(slots) > 20:
+            raise ImportError(f"grammar structural slots must contain 1-20 entries: {key}")
+        for slot in slots:
+            if not isinstance(slot, dict) or set(slot) != {"label", "role", "required", "examples"}:
+                raise ImportError(f"invalid grammar structural slot shape: {key}")
+            if (
+                not isinstance(slot["label"], str)
+                or not slot["label"].strip()
+                or len(slot["label"]) > 100
+            ):
+                raise ImportError(f"invalid grammar structural slot label: {key}")
+            if (
+                not isinstance(slot["role"], str)
+                or not slot["role"].strip()
+                or len(slot["role"]) > 100
+            ):
+                raise ImportError(f"invalid grammar structural slot role: {key}")
+            if not isinstance(slot["required"], bool):
+                raise ImportError(f"invalid grammar structural slot requirement: {key}")
+            examples = slot["examples"]
+            if (
+                not isinstance(examples, list)
+                or len(examples) > 10
+                or any(not isinstance(value, str) or not value.strip() for value in examples)
+            ):
+                raise ImportError(f"invalid grammar structural slot examples: {key}")
+    if set(keys) != GRAMMAR_SPEC_KEYS or len(keys) != len(set(keys)):
+        raise ImportError("grammar manifest canonical keys do not match the approved starter set")
+    return data
+
+
+def build_grammar_plan(
+    manifest: dict[str, Any], catalog_plan: dict[str, Any]
+) -> dict[str, Any]:
+    grammar_concepts = {
+        row["canonicalKey"]: row
+        for row in catalog_plan["rows"]
+        if row["conceptType"] == "grammar"
+    }
+    if set(grammar_concepts) != GRAMMAR_SPEC_KEYS:
+        raise ImportError("catalog plan grammar keys do not match the approved grammar manifest")
+    rows: list[dict[str, Any]] = []
+    for specification in sorted(
+        manifest["specifications"], key=lambda value: value["canonicalKey"]
+    ):
+        key = specification["canonicalKey"]
+        rows.append(
+            {
+                "id": stable_id("grammar-specification", key),
+                "conceptId": grammar_concepts[key]["conceptId"],
+                **specification,
+            }
+        )
+    plan: dict[str, Any] = {
+        "schemaVersion": GRAMMAR_PLAN_SCHEMA,
+        "manifestSha256": manifest["manifestSha256"],
+        "catalogPlanSha256": catalog_plan["planSha256"],
+        "counts": {"grammarSpecifications": len(rows)},
+        "rows": rows,
+    }
+    plan["planSha256"] = digest(plan)
+    return plan
 
 
 def _validate_prerequisites(rows_by_key: dict[str, dict[str, Any]]) -> None:
@@ -465,6 +598,86 @@ def _insert_source_records(cur: Any, plan: dict[str, Any]) -> None:
         cur.execute("insert into public.source_records(id,source_id,source_record_key,raw_hash,transform_version,quality_score,review_status,reviewed_at,metadata) values (%s,%s,%s,%s,%s,1,%s,transaction_timestamp(),%s::jsonb) on conflict (source_id,source_record_key,raw_hash) do nothing", (row["sourceRecordId"], source["sourceId"], row["canonicalKey"], row["rawHash"], source["transformVersion"], source["applyReviewStatus"], json.dumps(_metadata_for(plan, row), ensure_ascii=False)))
 
 
+def _grammar_content(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row["patternFormula"],
+        row["syntacticCategory"],
+        row["pragmaticFunction"],
+        row["vietnameseExplanation"],
+        row.get("vietnameseCommonTraps"),
+        row["structuralSlots"],
+    )
+
+
+def _assert_grammar_preflight(cur: Any, plan: dict[str, Any]) -> None:
+    rows = plan["rows"]
+    keys = [row["canonicalKey"] for row in rows]
+    concept_ids = [row["conceptId"] for row in rows]
+    cur.execute(
+        "select canonical_key,concept_type,id::text from public.concepts "
+        "where language_code='en' and (canonical_key = any(%s) or id = any(%s::uuid[]))",
+        (keys, concept_ids),
+    )
+    found = {(str(key), str(ctype), str(cid)) for key, ctype, cid in cur.fetchall()}
+    expected = {(row["canonicalKey"], "grammar", row["conceptId"]) for row in rows}
+    if found != expected:
+        raise ImportError("grammar concept identity/type collision")
+    ids = [row["id"] for row in rows]
+    cur.execute(
+        "select id::text,concept_id::text,pattern_formula,syntactic_category,"
+        "pragmatic_function,vietnamese_explanation,vietnamese_common_traps,structural_slots "
+        "from public.grammar_specifications "
+        "where concept_id = any(%s::uuid[]) or id = any(%s::uuid[])",
+        (concept_ids, ids),
+    )
+    existing = list(cur.fetchall())
+    rows_by_concept = {row["conceptId"]: row for row in rows}
+    for record in existing:
+        spec_id, concept_id, *content = record
+        row = rows_by_concept.get(str(concept_id))
+        if row is None or str(spec_id) != row["id"] or tuple(content) != _grammar_content(row):
+            raise ImportError(f"grammar specification identity/content collision: {concept_id}")
+
+
+def _insert_grammar_specifications(cur: Any, plan: dict[str, Any]) -> None:
+    for row in plan["rows"]:
+        cur.execute(
+            "insert into public.grammar_specifications("
+            "id,concept_id,pattern_formula,syntactic_category,pragmatic_function,"
+            "vietnamese_explanation,vietnamese_common_traps,structural_slots) "
+            "values (%s,%s,%s,%s,%s,%s,%s,%s::jsonb) on conflict (concept_id) do nothing",
+            (
+                row["id"],
+                row["conceptId"],
+                row["patternFormula"],
+                row["syntacticCategory"],
+                row["pragmaticFunction"],
+                row["vietnameseExplanation"],
+                row.get("vietnameseCommonTraps"),
+                json.dumps(row["structuralSlots"], ensure_ascii=False),
+            ),
+        )
+
+
+def _assert_grammar_post_apply(cur: Any, plan: dict[str, Any]) -> None:
+    concept_ids = [row["conceptId"] for row in plan["rows"]]
+    cur.execute(
+        "select id::text,concept_id::text,pattern_formula,syntactic_category,"
+        "pragmatic_function,vietnamese_explanation,vietnamese_common_traps,structural_slots "
+        "from public.grammar_specifications where concept_id = any(%s::uuid[])",
+        (concept_ids,),
+    )
+    actual = {
+        str(concept_id): (str(spec_id), *content)
+        for spec_id, concept_id, *content in cur.fetchall()
+    }
+    expected = {
+        row["conceptId"]: (row["id"], *_grammar_content(row)) for row in plan["rows"]
+    }
+    if actual != expected:
+        raise ImportError("post-apply grammar specification verification failed")
+
+
 def _assert_post_apply(cur: Any, plan: dict[str, Any]) -> None:
     rows = plan["rows"]
     concept_ids = [row["conceptId"] for row in rows]
@@ -518,7 +731,11 @@ def _assert_post_apply(cur: Any, plan: dict[str, Any]) -> None:
         raise ImportError("post-apply prerequisite relation verification failed")
 
 
-def apply_plan(plan: dict[str, Any], database_url: str) -> None:
+def apply_plan(
+    plan: dict[str, Any],
+    database_url: str,
+    grammar_plan: dict[str, Any] | None = None,
+) -> None:
     try:
         import psycopg  # type: ignore
     except builtins.ImportError as exc:
@@ -552,6 +769,10 @@ def apply_plan(plan: dict[str, Any], database_url: str) -> None:
                 for relation in plan["relations"]:
                     cur.execute("insert into public.concept_relations(source_concept_id,target_concept_id,language_code,relation_type,weight,source_record_id) values (%s,%s,'en','prerequisite',%s,%s) on conflict (source_concept_id,target_concept_id,relation_type) do nothing", (relation["sourceConceptId"], relation["targetConceptId"], relation["weight"], relation["sourceRecordId"]))
                 _assert_post_apply(cur, plan)
+                if grammar_plan is not None:
+                    _assert_grammar_preflight(cur, grammar_plan)
+                    _insert_grammar_specifications(cur, grammar_plan)
+                    _assert_grammar_post_apply(cur, grammar_plan)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -561,6 +782,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--approved-candidate-sha")
     parser.add_argument("--approved-plan-sha")
+    parser.add_argument("--grammar-specs")
+    parser.add_argument("--approved-grammar-manifest-sha")
+    parser.add_argument("--approved-grammar-plan-sha")
     return parser.parse_args(argv)
 
 
@@ -569,16 +793,28 @@ def main(argv: list[str] | None = None) -> int:
     try:
         candidate = load_candidate(Path(args.candidate))
         plan = build_plan(candidate)
+        grammar_plan = None
+        if args.grammar_specs:
+            grammar_manifest = load_grammar_manifest(Path(args.grammar_specs))
+            grammar_plan = build_grammar_plan(grammar_manifest, plan)
         if args.apply:
             if args.approved_candidate_sha != plan["candidateSha256"]:
                 raise ImportError("approved candidate hash does not match")
             if args.approved_plan_sha != plan["planSha256"]:
                 raise ImportError("approved plan hash does not match")
+            if grammar_plan is not None:
+                if args.approved_grammar_manifest_sha != grammar_plan["manifestSha256"]:
+                    raise ImportError("approved grammar manifest hash does not match")
+                if args.approved_grammar_plan_sha != grammar_plan["planSha256"]:
+                    raise ImportError("approved grammar plan hash does not match")
             database_url = os.environ.get("DATABASE_URL")
             if not database_url:
                 raise ImportError("DATABASE_URL is required for apply")
-            apply_plan(plan, database_url)
-        rendered = json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+            apply_plan(plan, database_url, grammar_plan)
+        rendered_plan = dict(plan)
+        if grammar_plan is not None:
+            rendered_plan["grammarPlan"] = grammar_plan
+        rendered = json.dumps(rendered_plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         if args.output:
             Path(args.output).write_text(rendered, encoding="utf-8")
         else:

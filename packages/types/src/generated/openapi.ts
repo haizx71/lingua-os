@@ -1117,6 +1117,20 @@ export interface components {
             readonly relationType: string;
             readonly canonicalForm: string;
         };
+        readonly GrammarStructuralSlot: {
+            readonly label: string;
+            readonly role: string;
+            readonly required: boolean;
+            readonly examples: readonly string[];
+        };
+        readonly GrammarSpecification: {
+            readonly patternFormula: string;
+            readonly syntacticCategory: string;
+            readonly pragmaticFunction: string;
+            readonly vietnameseExplanation: string;
+            readonly vietnameseCommonTraps?: string;
+            readonly structuralSlots: readonly components["schemas"]["GrammarStructuralSlot"][];
+        };
         readonly ConceptDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -1130,6 +1144,7 @@ export interface components {
             readonly definitions: readonly components["schemas"]["ConceptDefinition"][];
             readonly examples: readonly components["schemas"]["ConceptExample"][];
             readonly relations: readonly components["schemas"]["ConceptRelation"][];
+            readonly grammar?: components["schemas"]["GrammarSpecification"];
             readonly learner: components["schemas"]["ConceptLearnerProjection"];
             readonly attribution?: components["schemas"]["Attribution"];
         };

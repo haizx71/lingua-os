@@ -131,6 +131,24 @@ def brain_api(migrated_postgres_url: str) -> BrainApiSeed:
         )
         connection.execute(
             """
+            INSERT INTO grammar_specifications
+                (id, concept_id, pattern_formula, syntactic_category, pragmatic_function,
+                 vietnamese_explanation, vietnamese_common_traps, structural_slots)
+            VALUES
+                ('33000000-0000-4000-8100-000000000001', %s,
+                 'S + have/has + V3/ed', 'tense_aspect',
+                 'Connect a past action to the present.',
+                 'Dùng have/has với quá khứ phân từ để nối hành động quá khứ với hiện tại.',
+                 'Không dùng mốc thời gian quá khứ đã kết thúc.',
+                 '[{"label":"S","role":"subject","required":true,"examples":["I","she"]},'
+                 ' {"label":"have/has + V3","role":"present_relevance","required":true,'
+                 '  "examples":["have finished","has gone"]}]'::jsonb)
+            ON CONFLICT (concept_id) DO NOTHING
+            """,
+            (GRAMMAR,),
+        )
+        connection.execute(
+            """
             INSERT INTO concepts
                 (id, language_code, concept_type, canonical_key, source_record_id)
             VALUES
@@ -520,6 +538,41 @@ def test_catalog_only_nonlexical_detail_is_synthetic_zero_without_fake_pos(
         assert score == {"score": 0.5, "confidence": 0, "evidenceCount": 0}
     assert body["data"]["concept"]["learner"]["competence"] == body["data"]["competence"]
     _assert_contract_schema("BrainConceptResponse", body)
+
+
+def test_grammar_detail_returns_structured_first_party_specification(
+    brain_api: BrainApiSeed,
+) -> None:
+    response = brain_api.client.get(f"/v1/brain/concepts/{GRAMMAR}", headers=_headers())
+    assert response.status_code == 200
+    grammar = response.json()["data"]["concept"]["grammar"]
+    assert grammar == {
+        "patternFormula": "S + have/has + V3/ed",
+        "syntacticCategory": "tense_aspect",
+        "pragmaticFunction": "Connect a past action to the present.",
+        "vietnameseExplanation": (
+            "Dùng have/has với quá khứ phân từ để nối hành động quá khứ với hiện tại."
+        ),
+        "vietnameseCommonTraps": "Không dùng mốc thời gian quá khứ đã kết thúc.",
+        "structuralSlots": [
+            {
+                "label": "S",
+                "role": "subject",
+                "required": True,
+                "examples": ["I", "she"],
+            },
+            {
+                "label": "have/has + V3",
+                "role": "present_relevance",
+                "required": True,
+                "examples": ["have finished", "has gone"],
+            },
+        ],
+    }
+    lexical = brain_api.client.get(f"/v1/brain/concepts/{WORD_ONE}", headers=_headers())
+    skill = brain_api.client.get(f"/v1/brain/concepts/{SKILL}", headers=_headers())
+    assert "grammar" not in lexical.json()["data"]["concept"]
+    assert "grammar" not in skill.json()["data"]["concept"]
 
 
 def test_brain_hides_restricted_catalog_and_validates_query_bounds(brain_api: BrainApiSeed) -> None:

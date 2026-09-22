@@ -35,6 +35,7 @@ import {
   isAssessmentDomain,
   isStartingLevelBand,
   mapApiErrorToUi,
+  mapBrainConceptDetailToViewModel,
   mapBrainConceptToViewModel,
   mapConceptDetailToDictionaryViewModel,
   mapContentToReaderPassage,
@@ -339,6 +340,32 @@ describe('TASK-005 adapters', () => {
     expect(view.listeningScore).toBe(56);
     expect(view.productionScore).toBe(41);
     expect(view).not.toHaveProperty('masteryScore');
+  });
+
+  it('maps grammar only from Brain concept detail without contaminating summary nodes', () => {
+    const summary = mapBrainConceptToViewModel(mockBrainConceptSummary, 'Cuộc hẹn');
+    const detail = mapBrainConceptDetailToViewModel({
+      ...mockBrainConceptResponse.data,
+      concept: mockGrammarConceptDetail,
+    });
+
+    expect(summary.grammar).toBeUndefined();
+    expect(detail.grammar).toEqual({
+      patternFormula: 'S + have/has + V3/ed',
+      syntacticCategory: 'tense_aspect',
+      pragmaticFunction: 'Connect a past action to the present.',
+      vietnameseExplanation: 'Dùng have/has với quá khứ phân từ để nối hành động quá khứ với hiện tại.',
+      vietnameseCommonTraps: 'Không dùng mốc thời gian quá khứ đã kết thúc.',
+      structuralSlots: [
+        { label: 'S', role: 'subject', required: true, examples: ['I', 'she'] },
+        {
+          label: 'have/has + V3',
+          role: 'present_relevance',
+          required: true,
+          examples: ['have finished', 'has gone'],
+        },
+      ],
+    });
   });
 
   it('satisfies TASK-012 Language Brain contract requirements for mastery, confidence, and nullable memoryHealth', () => {
