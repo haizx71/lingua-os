@@ -103,8 +103,10 @@ ORDER BY depth, target_concept_id;
 
 
 def _bounded_depth(max_depth: int) -> int:
-    if not 1 <= max_depth <= 100:
-        raise ValueError("max_depth must be between 1 and 100")
+    if not 1 <= max_depth <= MAX_PREREQUISITE_DEPTH:
+        raise ValueError(
+            f"max_depth must be between 1 and {MAX_PREREQUISITE_DEPTH}"
+        )
     return max_depth
 
 
