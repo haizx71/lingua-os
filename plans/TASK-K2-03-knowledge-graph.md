@@ -38,6 +38,12 @@ Self-edges are rejected. Weight is bounded to [0, 1]. Metadata is a JSON object.
 The four strict DAG relation types are checked per relation type. Symmetric relation values
 remain able to represent both directions; no reverse row is silently synthesized.
 
+The taxonomy table in `06-knowledge-graph.md` also labels `hyponym_of` as acyclic, but
+the same document's executable trigger and invariant section explicitly enforce only the
+four types above. This branch follows the executable trigger contract; `hyponym_of`
+therefore remains a validated directed relation without K2-03 cycle enforcement until the
+specification is reconciled.
+
 ## Cycle prevention
 
 The trigger takes pg_advisory_xact_lock(hashtext('lingua_concept_dag_mutation_lock'))
