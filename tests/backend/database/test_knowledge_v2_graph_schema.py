@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 from lingua_api.catalog.graph_service import (
@@ -21,13 +21,6 @@ from database.migrate import _connect, migrate_down, migrate_up
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "database" / "migrations"
 GRAPH_RELATION_TYPES = tuple(sorted(ConceptEdgeRelation(value).value for value in ConceptEdgeRelation))
-DAG_RELATION_TYPES = {
-    "prerequisite_of",
-    "part_of",
-    "hypernym_of",
-    "derived_from",
-}
-
 
 def _seed_source_and_concept(
     conn: Connection[tuple[object, ...]],
@@ -325,6 +318,8 @@ def test_recursive_graph_queries_are_bounded(
 
     with pytest.raises(ValueError):
         fetch_prerequisite_ancestors(db_connection, third_id, max_depth=0)
+    with pytest.raises(ValueError):
+        fetch_prerequisite_ancestors(db_connection, third_id, max_depth=5)
 
 
 def test_graph_orm_and_dto_roundtrip(
