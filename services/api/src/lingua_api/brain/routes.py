@@ -33,6 +33,8 @@ from lingua_api.brain.models import (
     ConceptRelationDto,
     ConceptStatusCountsDto,
     EvidenceSummaryDto,
+    GrammarSpecificationDto,
+    GrammarStructuralSlotDto,
 )
 from lingua_api.brain.service import BrainApplication
 from lingua_api.competence.domain import (
@@ -209,6 +211,24 @@ def brain_concept_detail_dto(value: BrainConceptDetailProjection) -> BrainConcep
             )
             for item in value.relations
         ],
+        grammar=None
+        if value.grammar is None
+        else GrammarSpecificationDto(
+            pattern_formula=value.grammar.pattern_formula,
+            syntactic_category=value.grammar.syntactic_category,
+            pragmatic_function=value.grammar.pragmatic_function,
+            vietnamese_explanation=value.grammar.vietnamese_explanation,
+            vietnamese_common_traps=value.grammar.vietnamese_common_traps,
+            structural_slots=[
+                GrammarStructuralSlotDto(
+                    label=slot.label,
+                    role=slot.role,
+                    required=slot.required,
+                    examples=list(slot.examples),
+                )
+                for slot in value.grammar.structural_slots
+            ],
+        ),
         learner=learner_dto,
         attribution=_attribution(identity.attribution),
     )

@@ -1835,6 +1835,38 @@ components:
         conceptId: { type: string, format: uuid }
         relationType: { type: string, minLength: 1, maxLength: 64 }
         canonicalForm: { type: string, minLength: 1, maxLength: 300 }
+    GrammarStructuralSlot:
+      type: object
+      additionalProperties: false
+      required: [label, role, required, examples]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 100 }
+        role: { type: string, minLength: 1, maxLength: 100 }
+        required: { type: boolean }
+        examples:
+          type: array
+          maxItems: 10
+          items: { type: string, minLength: 1 }
+    GrammarSpecification:
+      type: object
+      additionalProperties: false
+      required:
+        - patternFormula
+        - syntacticCategory
+        - pragmaticFunction
+        - vietnameseExplanation
+        - structuralSlots
+      properties:
+        patternFormula: { type: string, minLength: 1, maxLength: 1000 }
+        syntacticCategory: { type: string, minLength: 1, maxLength: 100 }
+        pragmaticFunction: { type: string, minLength: 1, maxLength: 2000 }
+        vietnameseExplanation: { type: string, minLength: 1, maxLength: 4000 }
+        vietnameseCommonTraps: { type: string, minLength: 1, maxLength: 4000 }
+        structuralSlots:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: '#/components/schemas/GrammarStructuralSlot' }
     ConceptDetail:
       type: object
       additionalProperties: false
@@ -1864,6 +1896,7 @@ components:
           type: array
           maxItems: 100
           items: { $ref: '#/components/schemas/ConceptRelation' }
+        grammar: { $ref: '#/components/schemas/GrammarSpecification' }
         learner: { $ref: '#/components/schemas/ConceptLearnerProjection' }
         attribution: { $ref: '#/components/schemas/Attribution' }
     ConceptLearnerProjection:

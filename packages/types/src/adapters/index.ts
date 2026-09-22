@@ -262,6 +262,23 @@ export function mapBrainConceptDetailToViewModel(
     productionScore: percent(item.competence.production.score),
     productionConfidence: percent(item.competence.production.confidence),
     productionEvidenceCount: item.competence.production.evidenceCount,
+    ...(concept.grammar ? {
+      grammar: {
+        patternFormula: concept.grammar.patternFormula,
+        syntacticCategory: concept.grammar.syntacticCategory,
+        pragmaticFunction: concept.grammar.pragmaticFunction,
+        vietnameseExplanation: concept.grammar.vietnameseExplanation,
+        ...(concept.grammar.vietnameseCommonTraps
+          ? { vietnameseCommonTraps: concept.grammar.vietnameseCommonTraps }
+          : {}),
+        structuralSlots: concept.grammar.structuralSlots.map((slot) => ({
+          label: slot.label,
+          role: slot.role,
+          required: slot.required,
+          examples: [...slot.examples],
+        })),
+      },
+    } : {}),
   };
 }
 

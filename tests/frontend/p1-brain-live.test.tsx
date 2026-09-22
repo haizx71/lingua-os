@@ -12,6 +12,7 @@ import {
   HttpApiClient,
   mapBrainConceptToViewModel,
   mockApiResponses,
+  mockGrammarConceptDetail,
   type ApiClient,
   type BrainConceptListResponseDto,
   type BrainConceptResponseDto,
@@ -284,6 +285,73 @@ describe('P1 live Brain route and presentation boundary', () => {
     expect(await screen.findByRole('dialog', { name: 'Chi tiết khái niệm' })).toHaveTextContent('Chưa có dữ liệu');
     expect(getBrainConcept).toHaveBeenCalledWith(concept.concept.id);
     expect(getBrainConcept.mock.calls[0]).toHaveLength(1);
+  });
+
+  it('renders the complete grammar explanation only from the selected Brain detail envelope', async () => {
+    const getBrainConcept = vi.fn().mockResolvedValue(detailResponse({
+      ...mockApiResponses.brainConcept.data,
+      concept: {
+        ...mockGrammarConceptDetail,
+        id: mockApiResponses.brainConcepts.data[0].concept.id,
+      },
+    }));
+    const api = makeApi({ getBrainConcept });
+
+    render(<BrainPage apiClient={api} languageProfileId={profileA} />);
+    fireEvent.click(await screen.findByRole('button', { name: /appointment/i }));
+
+    const grammar = await screen.findByRole('region', { name: 'Giải thích ngữ pháp' });
+    expect(grammar).toHaveTextContent('S + have/has + V3/ed');
+    expect(grammar).toHaveTextContent('Connect a past action to the present.');
+    expect(grammar).toHaveTextContent('Dùng have/has với quá khứ phân từ');
+    expect(grammar).toHaveTextContent('Không dùng mốc thời gian quá khứ đã kết thúc.');
+    expect(grammar).toHaveTextContent('have finished, has gone');
+    expect(getBrainConcept).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['empty slots', { ...mockGrammarConceptDetail.grammar, structuralSlots: [] }],
+    ['too many slots', {
+      ...mockGrammarConceptDetail.grammar,
+      structuralSlots: Array.from({ length: 21 }, () => mockGrammarConceptDetail.grammar.structuralSlots[0]),
+    }],
+    ['oversized formula', {
+      ...mockGrammarConceptDetail.grammar,
+      patternFormula: 'x'.repeat(1001),
+    }],
+    ['unexpected grammar field', {
+      ...mockGrammarConceptDetail.grammar,
+      unexpected: true,
+    }],
+    ['unexpected slot field', {
+      ...mockGrammarConceptDetail.grammar,
+      structuralSlots: [{
+        ...mockGrammarConceptDetail.grammar.structuralSlots[0],
+        unexpected: true,
+      }],
+    }],
+    ['non-string example', {
+      ...mockGrammarConceptDetail.grammar,
+      structuralSlots: [{
+        ...mockGrammarConceptDetail.grammar.structuralSlots[0],
+        examples: [7],
+      }],
+    }],
+  ])('fails closed for malformed grammar detail: %s', async (_label, grammar) => {
+    const response = detailResponse({
+      ...mockApiResponses.brainConcept.data,
+      concept: { ...mockGrammarConceptDetail, grammar },
+    } as unknown as typeof mockApiResponses.brainConcept.data);
+    const api = makeApi({ getBrainConcept: vi.fn().mockResolvedValue(response) });
+
+    render(<BrainProbe api={api} />);
+    fireEvent.click(await screen.findByText(
+      `Select ${mockApiResponses.brainConcepts.data[0].concept.canonicalForm}`
+    ));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('brain-detail')).toHaveTextContent('settled::NETWORK_ERROR');
+    });
   });
 
   it('rejects a malformed required Brain DTO instead of fabricating a node', async () => {

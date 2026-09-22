@@ -278,6 +278,40 @@ export function LanguageBrainCanvas({
           {detailLoading && <p className="mt-3 text-xs text-[var(--text-secondary)]" role="status">Đang tải chi tiết khái niệm...</p>}
           {detailError && <div className="mt-3"><InlineAlert variant="danger" title="Không thể tải chi tiết khái niệm">Vui lòng thử lại bằng cách chọn lại khái niệm.</InlineAlert></div>}
 
+          {visibleSelectedNode.grammar && (
+            <section className="mt-4 space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-blue)] p-4" aria-label="Giải thích ngữ pháp">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--action-primary)]">Công thức</p>
+                <p className="mt-1 font-mono text-sm font-bold text-[var(--text-primary)]">{visibleSelectedNode.grammar.patternFormula}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Cách dùng</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{visibleSelectedNode.grammar.pragmaticFunction}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Giải thích tiếng Việt</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{visibleSelectedNode.grammar.vietnameseExplanation}</p>
+              </div>
+              {visibleSelectedNode.grammar.vietnameseCommonTraps && (
+                <div className="rounded-xl bg-[var(--surface-warm)] p-3">
+                  <p className="text-xs font-bold text-[var(--status-warning)]">Lỗi thường gặp</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{visibleSelectedNode.grammar.vietnameseCommonTraps}</p>
+                </div>
+              )}
+              <ul className="space-y-2" aria-label="Thành phần cấu trúc">
+                {visibleSelectedNode.grammar.structuralSlots.map((slot) => (
+                  <li key={`${slot.label}:${slot.role}`} className="rounded-xl bg-white/80 p-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-[var(--text-primary)]">{slot.label}</span>
+                      <span className="text-[var(--text-muted)]">{slot.required ? 'Bắt buộc' : 'Tùy chọn'}</span>
+                    </div>
+                    {slot.examples.length > 0 && <p className="mt-1 text-[var(--text-secondary)]">Ví dụ: {slot.examples.join(', ')}</p>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-xl bg-[var(--surface-blue)] p-2"><span className="block text-[var(--text-muted)]">Độ vững</span><strong className="mt-1 block text-[var(--text-primary)]">{displayPercent(visibleSelectedNode.mastery)}</strong></div><div className="rounded-xl bg-[var(--accent-teal-soft)] p-2"><span className="block text-[var(--text-muted)]">Tin cậy</span><strong className="mt-1 block text-[var(--text-primary)]">{displayPercent(visibleSelectedNode.confidence)}</strong></div><div className="rounded-xl bg-[var(--surface-warm)] p-2"><span className="block text-[var(--text-muted)]">Đã gặp</span><strong className="mt-1 block text-[var(--text-primary)]">{visibleSelectedNode.exposureCount}</strong></div></div>
 
           <div className="mt-4 space-y-3 border-t border-[var(--border-subtle)] pt-4"><Progress value={visibleSelectedNode.recognitionScore} max={100} label={`Nhận diện: ${visibleSelectedNode.recognitionScore}%`} size="sm" /><Progress value={visibleSelectedNode.listeningScore} max={100} label={`Nghe: ${visibleSelectedNode.listeningScore}%`} size="sm" variant="warning" /><Progress value={visibleSelectedNode.productionScore} max={100} label={`Tự dùng: ${visibleSelectedNode.productionScore}%`} size="sm" variant="warning" /></div>

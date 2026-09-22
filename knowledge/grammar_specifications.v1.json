@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "knowledge-grammar-specifications.v1",
+  "status": "APPROVED",
+  "sourceInventory": "first_party_starter_inventory.v1",
+  "counts": {
+    "grammarSpecifications": 8
+  },
+  "manifestSha256": "5b19e8e2366e02f5e0a8cc3f6e7a03fa9208b3df7ebed919841169302fba287a",
+  "specifications": [
+    {
+      "canonicalKey": "grammar:be-basic",
+      "patternFormula": "S + am/is/are + complement",
+      "syntacticCategory": "copular_clause",
+      "pragmaticFunction": "Link a subject to an identity, state, description, or location.",
+      "vietnameseExplanation": "Động từ be thay đổi theo chủ ngữ: I đi với am; he/she/it và danh từ số ít đi với is; you/we/they và danh từ số nhiều đi với are. Be nối chủ ngữ với danh tính, tính chất, trạng thái hoặc nơi chốn.",
+      "vietnameseCommonTraps": "Không bỏ am/is/are như trong câu tiếng Việt; không dùng do/does trước be; chọn đúng dạng be theo chủ ngữ.",
+      "structuralSlots": [
+        {"label": "S", "role": "subject", "required": true, "examples": ["I", "she", "the station"]},
+        {"label": "am/is/are", "role": "finite_copula", "required": true, "examples": ["am", "is", "are"]},
+        {"label": "complement", "role": "subject_complement", "required": true, "examples": ["a student", "tired", "at home"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:comparatives-core",
+      "patternFormula": "S + be + adjective-er + than + NP | S + be + more + adjective + than + NP",
+      "syntacticCategory": "comparison",
+      "pragmaticFunction": "Compare one person, thing, place, or option with another.",
+      "vietnameseExplanation": "Dùng tính từ ngắn với -er và tính từ dài với more, rồi dùng than để nêu đối tượng được so sánh. Một số tính từ có dạng bất quy tắc như good → better.",
+      "vietnameseCommonTraps": "Không dùng đồng thời more và -er; than là từ nối so sánh, khác với then; kiểm tra dạng bất quy tắc trước khi thêm -er.",
+      "structuralSlots": [
+        {"label": "S + be", "role": "subject_and_copula", "required": true, "examples": ["This hotel is"]},
+        {"label": "comparative adjective", "role": "comparison_property", "required": true, "examples": ["cheaper", "more convenient", "better"]},
+        {"label": "than + NP", "role": "comparison_target", "required": true, "examples": ["than the other one"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:first-conditional-core",
+      "patternFormula": "If + present simple, S + will + base verb",
+      "syntacticCategory": "conditional_clause",
+      "pragmaticFunction": "Describe a realistic future condition and its likely result.",
+      "vietnameseExplanation": "Mệnh đề if nêu điều kiện có khả năng xảy ra và dùng hiện tại đơn; mệnh đề kết quả thường dùng will + động từ nguyên mẫu. Có thể đổi thứ tự hai mệnh đề mà không đổi nghĩa chính.",
+      "vietnameseCommonTraps": "Thông thường không dùng will trong mệnh đề if; sau will dùng động từ nguyên mẫu không to; dùng dấu phẩy khi mệnh đề if đứng trước.",
+      "structuralSlots": [
+        {"label": "if-clause", "role": "realistic_condition", "required": true, "examples": ["If it rains"]},
+        {"label": "result subject", "role": "result_subject", "required": true, "examples": ["we"]},
+        {"label": "will + base verb", "role": "likely_result", "required": true, "examples": ["will stay"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:past-simple-core",
+      "patternFormula": "S + V2/-ed | S + did not + base verb | Did + S + base verb?",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Report a completed event or state at a finished time in the past.",
+      "vietnameseExplanation": "Câu khẳng định dùng động từ quá khứ V2 hoặc -ed. Câu phủ định và câu hỏi dùng did, còn động từ chính trở về dạng nguyên mẫu. Trạng từ như yesterday hoặc last week thường làm rõ thời điểm đã kết thúc.",
+      "vietnameseCommonTraps": "Không dùng dạng quá khứ của động từ chính sau did/did not; học riêng các động từ bất quy tắc; không dùng quá khứ đơn cho một việc vẫn đang tiếp diễn đến hiện tại.",
+      "structuralSlots": [
+        {"label": "S", "role": "subject", "required": true, "examples": ["The train", "we"]},
+        {"label": "V2/-ed", "role": "completed_past_event", "required": true, "examples": ["arrived", "went"]},
+        {"label": "finished-time marker", "role": "past_time_context", "required": false, "examples": ["yesterday", "last week"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:present-simple-core",
+      "patternFormula": "S + base verb(s/es) | S + do/does not + base verb | Do/Does + S + base verb?",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Express habits, repeated situations, routines, and general facts.",
+      "vietnameseExplanation": "Dùng động từ nguyên mẫu với I/you/we/they; thêm -s hoặc -es với he/she/it trong câu khẳng định. Câu hỏi và phủ định dùng do/does, sau đó động từ chính trở về dạng nguyên mẫu.",
+      "vietnameseCommonTraps": "Không quên -s/-es với chủ ngữ ngôi ba số ít; không giữ -s/-es sau does; không dùng be trước động từ thường chỉ để đánh dấu hiện tại.",
+      "structuralSlots": [
+        {"label": "S", "role": "subject", "required": true, "examples": ["I", "he", "the train"]},
+        {"label": "base verb(s/es)", "role": "habit_or_fact", "required": true, "examples": ["work", "works"]},
+        {"label": "frequency/time expression", "role": "repetition_context", "required": false, "examples": ["usually", "on Saturdays"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:relative-clauses-basic",
+      "patternFormula": "noun + who/that/which + clause",
+      "syntacticCategory": "relative_clause",
+      "pragmaticFunction": "Identify or add information about a person or thing.",
+      "vietnameseExplanation": "Mệnh đề quan hệ đứng ngay sau danh từ mà nó bổ nghĩa. Dùng who cho người, which cho vật, và that thường dùng cho người hoặc vật trong mệnh đề xác định cơ bản.",
+      "vietnameseCommonTraps": "Không đặt mệnh đề quan hệ xa danh từ được bổ nghĩa; tránh lặp đại từ chủ ngữ sau who/that/which khi từ quan hệ đã làm chủ ngữ; chọn who/which phù hợp.",
+      "structuralSlots": [
+        {"label": "head noun", "role": "modified_referent", "required": true, "examples": ["the woman", "the ticket"]},
+        {"label": "who/that/which", "role": "relative_marker", "required": true, "examples": ["who", "that", "which"]},
+        {"label": "clause", "role": "identifying_information", "required": true, "examples": ["called me", "I bought"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:subject-pronouns-basic",
+      "patternFormula": "I/You/He/She/It/We/They + predicate",
+      "syntacticCategory": "clause_structure",
+      "pragmaticFunction": "Name the speaker, listener, person, thing, or group acting as the clause subject.",
+      "vietnameseExplanation": "Đại từ chủ ngữ đứng trước động từ trong câu trần thuật tiếng Anh. Chọn đại từ theo người và số: I, you, he, she, it, we, they; tiếng Anh thường không lược bỏ chủ ngữ như tiếng Việt.",
+      "vietnameseCommonTraps": "Không dùng me/him/her/them ở vị trí chủ ngữ; không bỏ chủ ngữ; it có thể chỉ đồ vật, động vật hoặc chủ ngữ hình thức.",
+      "structuralSlots": [
+        {"label": "subject pronoun", "role": "clause_subject", "required": true, "examples": ["I", "she", "they"]},
+        {"label": "predicate", "role": "subject_information", "required": true, "examples": ["am ready", "works here", "are students"]}
+      ]
+    },
+    {
+      "canonicalKey": "grammar:there-is-are",
+      "patternFormula": "There + is/are + noun phrase (+ place)",
+      "syntacticCategory": "existential_clause",
+      "pragmaticFunction": "Introduce the existence or presence of a person or thing.",
+      "vietnameseExplanation": "Dùng there is trước danh từ số ít hoặc không đếm được và there are trước danh từ số nhiều. There trong mẫu này mở đầu câu tồn tại, không mang nghĩa địa điểm 'ở đó'.",
+      "vietnameseCommonTraps": "Không chọn is/are theo từ there; hãy chọn theo danh từ theo sau; không dịch there theo nghĩa 'ở đó' trong cấu trúc này; dùng any trong nhiều câu hỏi và phủ định.",
+      "structuralSlots": [
+        {"label": "there", "role": "existential_marker", "required": true, "examples": ["there"]},
+        {"label": "is/are", "role": "number_agreement", "required": true, "examples": ["is", "are"]},
+        {"label": "noun phrase", "role": "introduced_entity", "required": true, "examples": ["a cafe", "two seats"]},
+        {"label": "place", "role": "location_context", "required": false, "examples": ["near the station"]}
+      ]
+    }
+  ]
+}

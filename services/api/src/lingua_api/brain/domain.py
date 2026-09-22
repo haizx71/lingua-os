@@ -69,6 +69,24 @@ class RelationProjection:
 
 
 @dataclass(frozen=True)
+class GrammarStructuralSlotProjection:
+    label: str
+    role: str
+    required: bool
+    examples: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class GrammarSpecificationProjection:
+    pattern_formula: str
+    syntactic_category: str
+    pragmatic_function: str
+    vietnamese_explanation: str
+    vietnamese_common_traps: str | None
+    structural_slots: tuple[GrammarStructuralSlotProjection, ...]
+
+
+@dataclass(frozen=True)
 class EvidenceProjection:
     exposure_count: int
     review_count: int
@@ -114,6 +132,7 @@ class BrainConceptDetailProjection:
     definitions: tuple[DefinitionProjection, ...]
     examples: tuple[ExampleProjection, ...]
     relations: tuple[RelationProjection, ...]
+    grammar: GrammarSpecificationProjection | None
     evidence: EvidenceProjection
 
 

@@ -23,6 +23,8 @@ from lingua_api.brain.domain import (
     DefinitionProjection,
     EvidenceProjection,
     ExampleProjection,
+    GrammarSpecificationProjection,
+    GrammarStructuralSlotProjection,
     MemoryProjection,
     ProficiencyLevelProjection,
     RelationProjection,
@@ -301,6 +303,7 @@ class PostgresBrainStore:
         definitions = _load_definitions(snapshot, concept_id)
         examples = _load_examples(snapshot, concept_id)
         relations = _load_relations(snapshot, concept_id)
+        grammar = _load_grammar_specification(snapshot, concept_id)
         learner = item.learner
         evidence = EvidenceProjection(
             exposure_count=learner.exposure_count,
@@ -314,6 +317,7 @@ class PostgresBrainStore:
             definitions=tuple(definitions),
             examples=tuple(examples),
             relations=tuple(relations),
+            grammar=grammar,
             evidence=evidence,
         )
 
@@ -520,6 +524,75 @@ def _load_relations(snapshot: BrainSnapshot, concept_id: UUID) -> list[RelationP
     return [RelationProjection(_uuid(row[0]), str(row[1]), str(row[2])) for row in rows]
 
 
+def _load_grammar_specification(
+    snapshot: BrainSnapshot, concept_id: UUID
+) -> GrammarSpecificationProjection | None:
+    row = snapshot.connection.execute(
+        """
+        SELECT grammar.pattern_formula, grammar.syntactic_category,
+               grammar.pragmatic_function, grammar.vietnamese_explanation,
+               grammar.vietnamese_common_traps, grammar.structural_slots
+        FROM grammar_specifications AS grammar
+        JOIN concepts AS concept ON concept.id = grammar.concept_id
+        WHERE grammar.concept_id = %s AND concept.concept_type = 'grammar'
+        """,
+        (concept_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    pattern_formula = _required_bounded_text(row[0], field="pattern formula", limit=1000)
+    syntactic_category = _required_bounded_text(row[1], field="syntactic category", limit=100)
+    pragmatic_function = _required_bounded_text(row[2], field="pragmatic function", limit=2000)
+    vietnamese_explanation = _required_bounded_text(
+        row[3], field="Vietnamese explanation", limit=4000
+    )
+    vietnamese_common_traps = _optional_bounded_text(
+        row[4], field="Vietnamese common traps", limit=4000
+    )
+    raw_slots = row[5]
+    if not isinstance(raw_slots, list) or not 1 <= len(raw_slots) <= 20:
+        raise BrainProjectionUnavailable("grammar structural slots are invalid")
+    slots: list[GrammarStructuralSlotProjection] = []
+    for raw_slot in raw_slots:
+        if not isinstance(raw_slot, dict) or set(raw_slot) != {
+            "label",
+            "role",
+            "required",
+            "examples",
+        }:
+            raise BrainProjectionUnavailable("grammar structural slot shape is invalid")
+        examples = raw_slot["examples"]
+        if (
+            not isinstance(raw_slot["label"], str)
+            or not raw_slot["label"].strip()
+            or len(raw_slot["label"]) > 100
+            or not isinstance(raw_slot["role"], str)
+            or not raw_slot["role"].strip()
+            or len(raw_slot["role"]) > 100
+            or not isinstance(raw_slot["required"], bool)
+            or not isinstance(examples, list)
+            or len(examples) > 10
+            or any(not isinstance(value, str) or not value.strip() for value in examples)
+        ):
+            raise BrainProjectionUnavailable("grammar structural slot content is invalid")
+        slots.append(
+            GrammarStructuralSlotProjection(
+                label=raw_slot["label"],
+                role=raw_slot["role"],
+                required=raw_slot["required"],
+                examples=tuple(examples),
+            )
+        )
+    return GrammarSpecificationProjection(
+        pattern_formula=pattern_formula,
+        syntactic_category=syntactic_category,
+        pragmatic_function=pragmatic_function,
+        vietnamese_explanation=vietnamese_explanation,
+        vietnamese_common_traps=vietnamese_common_traps,
+        structural_slots=tuple(slots),
+    )
+
+
 def _list_item(row: tuple[object, ...]) -> BrainConceptListItem:
     identity = ConceptIdentityProjection(
         id=_uuid(row[0]),
@@ -600,6 +673,18 @@ def _optional_datetime(value: object) -> datetime | None:
 
 def _optional_text(value: object) -> str | None:
     return None if value is None else str(value)
+
+
+def _required_bounded_text(value: object, *, field: str, limit: int) -> str:
+    if not isinstance(value, str) or not value.strip() or len(value) > limit:
+        raise BrainProjectionUnavailable(f"grammar {field} is invalid")
+    return value
+
+
+def _optional_bounded_text(value: object, *, field: str, limit: int) -> str | None:
+    if value is None:
+        return None
+    return _required_bounded_text(value, field=field, limit=limit)
 
 
 def _float(value: object) -> float:
