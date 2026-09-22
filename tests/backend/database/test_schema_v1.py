@@ -198,10 +198,14 @@ def test_empty_database_migration_is_reproducible_and_reversible(
             "0012",
             "0013",
             "0014",
+            "0015",
+            "0016",
         ]
         assert migrate_up(isolated_url, migrations_dir) == []
 
-        assert migrate_down(isolated_url, migrations_dir, steps=5) == [
+        assert migrate_down(isolated_url, migrations_dir, steps=7) == [
+            "0016",
+            "0015",
             "0014",
             "0013",
             "0012",
@@ -214,6 +218,8 @@ def test_empty_database_migration_is_reproducible_and_reversible(
             "0012",
             "0013",
             "0014",
+            "0015",
+            "0016",
         ]
 
         copied_migrations = tmp_path / "migrations"

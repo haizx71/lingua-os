@@ -24,6 +24,7 @@ GRAPH_RELATION_TYPES = tuple(
     sorted(ConceptEdgeRelation(value).value for value in ConceptEdgeRelation)
 )
 
+
 def _seed_source_and_concept(
     conn: Connection[tuple[object, ...]],
     *,
@@ -350,9 +351,7 @@ def test_legacy_backfill_reapply_and_learner_isolation(
             (source_id, target_id),
         ).fetchone()
         assert row == ("prerequisite_of", 0.75, "concept_relations")
-        assert conn.execute(
-            "SELECT count(*) FROM concept_relations"
-        ).fetchone() == (1,)
+        assert conn.execute("SELECT count(*) FROM concept_relations").fetchone() == (1,)
 
         learner_tables = (
             "user_concept_states",
@@ -388,9 +387,7 @@ def test_recursive_graph_queries_are_bounded(
     }
 
     descendants = fetch_prerequisite_descendants(db_connection, first_id, max_depth=1)
-    assert [(row.dependent_concept_id, row.depth) for row in descendants] == [
-        (second_id, 1)
-    ]
+    assert [(row.dependent_concept_id, row.depth) for row in descendants] == [(second_id, 1)]
 
     with pytest.raises(ValueError):
         fetch_prerequisite_ancestors(db_connection, third_id, max_depth=0)
@@ -402,8 +399,29 @@ def test_graph_orm_and_dto_roundtrip(
     isolated_migrated_postgres_url: str,
 ) -> None:
     db_url = isolated_migrated_postgres_url
-    sqlalchemy_url = db_url.replace("postgresql://", "postgresql+psycopg://")
-    engine = create_engine(sqlalchemy_url)
+    if db_url.startswith(("postgresql://", "postgresql+psycopg://")):
+        sqlalchemy_url = db_url.replace("postgresql://", "postgresql+psycopg://")
+        engine = create_engine(sqlalchemy_url)
+    else:
+        from psycopg.conninfo import conninfo_to_dict
+        from sqlalchemy import URL
+
+        params = conninfo_to_dict(db_url)
+        user = str(params["user"]) if params.get("user") is not None else None
+        pwd = str(params["password"]) if params.get("password") is not None else None
+        host = str(params["host"]) if params.get("host") is not None else None
+        port = int(str(params["port"])) if params.get("port") is not None else None
+        dbname = str(params["dbname"]) if params.get("dbname") is not None else None
+        engine = create_engine(
+            URL.create(
+                "postgresql+psycopg",
+                username=user,
+                password=pwd,
+                host=host,
+                port=port,
+                database=dbname,
+            )
+        )
 
     with _connect(db_url) as conn:
         source_id, _ = _seed_source_and_concept(conn)
@@ -483,7 +501,8 @@ def test_function_and_table_privilege_lockdown(
     ).fetchone()
     assert function_row is not None
     assert function_row[0] is False
-    assert "search_path=public, pg_temp" in (function_row[1] or [])
+    proconfig = function_row[1] if isinstance(function_row[1], (list, tuple)) else ()
+    assert "search_path=public, pg_temp" in proconfig
 
 
 def _run_opposing_insert(
@@ -545,13 +564,19 @@ def test_concurrent_opposing_writes_leave_zero_cycles(
 def test_concept_edge_does_not_touch_learner_state(
     db_connection: Connection[tuple[object, ...]],
 ) -> None:
+    concept_states_before = db_connection.execute(
+        "SELECT count(*) FROM user_concept_states"
+    ).fetchone()
+    review_items_before = db_connection.execute("SELECT count(*) FROM review_items").fetchone()
+
     source_id, _ = _seed_source_and_concept(db_connection)
     target_id, _ = _seed_source_and_concept(db_connection)
     _insert_edge(db_connection, source_id, target_id)
 
-    assert db_connection.execute(
-        "SELECT count(*) FROM user_concept_states"
-    ).fetchone() == (0,)
-    assert db_connection.execute(
-        "SELECT count(*) FROM review_items"
-    ).fetchone() == (0,)
+    assert (
+        db_connection.execute("SELECT count(*) FROM user_concept_states").fetchone()
+        == concept_states_before
+    )
+    assert (
+        db_connection.execute("SELECT count(*) FROM review_items").fetchone() == review_items_before
+    )

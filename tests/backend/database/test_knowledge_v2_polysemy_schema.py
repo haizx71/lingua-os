@@ -341,7 +341,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
     isolated_migrated_postgres_url: str,
 ) -> None:
     database_url = isolated_migrated_postgres_url
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=1) == ["0015"]
+    assert migrate_down(database_url, MIGRATIONS_DIR, steps=2) == ["0016", "0015"]
 
     with _connect(database_url) as conn:
         _, lexeme_id, sense_ids = _seed_lexeme_with_senses(
@@ -351,7 +351,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
         )
         conn.commit()
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0015"]
+    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0015", "0016"]
     assert migrate_up(database_url, MIGRATIONS_DIR) == []
 
     with _connect(database_url) as conn:
@@ -394,8 +394,29 @@ def test_concept_sense_orm_and_dto_roundtrip(
     isolated_migrated_postgres_url: str,
 ) -> None:
     db_url = isolated_migrated_postgres_url
-    sqlalchemy_url = db_url.replace("postgresql://", "postgresql+psycopg://")
-    engine = create_engine(sqlalchemy_url)
+    if db_url.startswith(("postgresql://", "postgresql+psycopg://")):
+        sqlalchemy_url = db_url.replace("postgresql://", "postgresql+psycopg://")
+        engine = create_engine(sqlalchemy_url)
+    else:
+        from psycopg.conninfo import conninfo_to_dict
+        from sqlalchemy import URL
+
+        params = conninfo_to_dict(db_url)
+        user = str(params["user"]) if params.get("user") is not None else None
+        pwd = str(params["password"]) if params.get("password") is not None else None
+        host = str(params["host"]) if params.get("host") is not None else None
+        port = int(str(params["port"])) if params.get("port") is not None else None
+        dbname = str(params["dbname"]) if params.get("dbname") is not None else None
+        engine = create_engine(
+            URL.create(
+                "postgresql+psycopg",
+                username=user,
+                password=pwd,
+                host=host,
+                port=port,
+                database=dbname,
+            )
+        )
 
     with _connect(db_url) as conn:
         _, _, sense_ids = _seed_lexeme_with_senses(conn)

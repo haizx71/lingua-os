@@ -2,6 +2,34 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
+## TASK-K2-03 — Knowledge V2 Knowledge Graph & Concurrency-Safe DAG
+
+Owner: GEMINI
+Status: DONE (integrated & verified in master)
+Dependencies: TASK-K2-02
+
+Implements Wave K2-03 Knowledge Graph and Concurrency-Safe DAG:
+- Migration `0016_knowledge_v2_graph_dag.up.sql` / `.down.sql`:
+  - Table `concept_edges` with foreign keys to `concepts`, check constraint on allowed `relation_type` values, and partial uniqueness index.
+  - Concurrency-safe transactional cycle detection trigger function (`check_concept_edge_dag_integrity`) enforcing lock ordering to prevent race conditions and deadlocks.
+- Service layer `services/api/src/lingua_api/catalog/graph_service.py` with recursive CTE graph traversal queries bounded by `MAX_PREREQUISITE_DEPTH = 4`.
+- Automated test suite in `tests/backend/database/test_knowledge_v2_graph_schema.py` (11 tests).
+- Local verification: 537/537 backend pytest PASS, full Vitest/acceptance PASS (Phase B, C, D, E), Next.js build PASS, Storybook build PASS.
+
+## TASK-K2-02 — Knowledge V2 Polysemy Resolution
+
+Owner: GEMINI
+Status: DONE (integrated & verified in master)
+Dependencies: TASK-K2-01
+
+Implements Wave K2-02 Polysemy Resolution:
+- Migration `0015_knowledge_v2_polysemy_resolution.up.sql` / `.down.sql`:
+  - Tables: `concept_senses`, `sense_glosses`, `sense_examples`, `context_senses`.
+  - Check constraints, foreign keys to `concepts` and `lexemes`, sense ranking uniqueness, and browser privilege revocation.
+- Service layer `services/api/src/lingua_api/catalog/sense_service.py` and ORM models in `models.py`.
+- Automated test suite in `tests/backend/database/test_knowledge_v2_polysemy_schema.py` (5 tests).
+- Verified as prerequisite foundation for Wave K2-03.
+
 ## TASK-K2-01 — Knowledge V2 Canonical Schema Foundations
 
 Owner: GEMINI

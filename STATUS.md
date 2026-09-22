@@ -1,9 +1,42 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-01 Canonical Schema Foundations implemented locally
+Phase: FRLL accepted/frozen; Knowledge V2 K2-01, K2-02, K2-03 integrated and verified locally
 
-## Knowledge V2 K2-01 canonical schema foundations — 2026-09-22
+## Knowledge V2 K2-02 & K2-03 Integration & Verification — 2026-09-22
+
+Knowledge System V2 Wave K2-02 (Polysemy Resolution) and Wave K2-03 (Knowledge Graph & Concurrency-Safe DAG) have been merged from `origin/agent/k2-03-knowledge-graph` into `master` and fully verified on `haizx71/lingua-os`.
+
+- **Wave K2-02 (Polysemy Resolution)**:
+  - Migration `0015_knowledge_v2_polysemy_resolution.up.sql` / `.down.sql`:
+    - Tables: `concept_senses`, `sense_glosses`, `sense_examples`, `context_senses`.
+    - Relational integrity: Foreign keys to `concepts` / `lexemes`, sense ranking uniqueness, cascade semantics.
+    - Security: Browser roles (`anon`, `authenticated`) revoked; service-role only.
+    - Service layer: `services/api/src/lingua_api/catalog/sense_service.py`.
+    - Tests: `tests/backend/database/test_knowledge_v2_polysemy_schema.py` (5/5 PASS).
+- **Wave K2-03 (Knowledge Graph & Concurrency-Safe DAG)**:
+  - Migration `0016_knowledge_v2_graph_dag.up.sql` / `.down.sql`:
+    - Tables: `concept_edges` with `relation_type` CHECK, partial uniqueness index, and concurrency-safe transactional cycle detection trigger (`check_concept_edge_dag_integrity`) with lock ordering.
+    - Graph traversal: Recursive CTE queries in `services/api/src/lingua_api/catalog/graph_service.py` with bounded depth (`MAX_PREREQUISITE_DEPTH = 4`).
+    - Tests: `tests/backend/database/test_knowledge_v2_graph_schema.py` (11/11 PASS, including concurrent race conditions).
+- **Full Verification Suite**:
+  - Code quality: Ruff format PASS, Ruff lint PASS, strict Mypy PASS (126 files, 0 issues).
+  - Schema & Bootstrap: `verify_frll_database.py` PASS (16/16 migrations, 63 application tables, 0 learner rows across all 22 learner tables).
+  - Backend pytest: **537/537 PASS** against real PostgreSQL 17.11.
+  - Frontend TypeScript (`pnpm typecheck`): PASS across all workspaces.
+  - Frontend ESLint (`pnpm lint`): PASS (0 errors, 0 warnings).
+  - Production build (`pnpm build`): PASS (19 routes compiled).
+  - Storybook build (`pnpm build-storybook`): PASS.
+  - Frontend Vitest (`pnpm vitest run tests/frontend`): **568/568 PASS**.
+  - Acceptance support tests (`tests/acceptance/support`): **143/143 PASS**.
+  - Live FRLL acceptance tests against live Supabase Auth & PostgreSQL:
+    - Phase B: PASS (1/1)
+    - Phase C: PASS (1/1)
+    - Phase D: PASS (1/1)
+    - Phase E: PASS (1/1)
+  - Post-acceptance cleanup verifier: PASS (16/16 migrations, 63 tables, 0 learner rows).
+- **Remote Handoff**:
+  - Ready for remote staging migration apply (`0015`, `0016`) and deployment verification by LUNA.
 
 Knowledge System V2 Wave K2-01 (Canonical Schema Foundations) has been implemented and fully verified
 locally on `haizx71/lingua-os` (branch `master`).
