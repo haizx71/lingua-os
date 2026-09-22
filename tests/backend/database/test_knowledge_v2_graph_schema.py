@@ -198,7 +198,7 @@ def test_graph_relation_taxonomy_and_duplicate_identity(
         )
         VALUES (%s, %s, 'part_of', 1.1)
         """,
-        (source_id, target_id),
+        (target_id, source_id),
         errors.CheckViolation,
     )
     _assert_rejected(
@@ -209,7 +209,7 @@ def test_graph_relation_taxonomy_and_duplicate_identity(
         )
         VALUES (%s, %s, 'part_of', '[]'::jsonb)
         """,
-        (source_id, target_id),
+        (target_id, source_id),
         errors.CheckViolation,
     )
 
