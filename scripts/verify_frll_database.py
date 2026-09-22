@@ -41,6 +41,7 @@ EXPECTED_MIGRATIONS = (
     "0013_supabase_public_function_default_execute_lockdown_v1",
     "0014_knowledge_v2_canonical_structures",
     "0015_knowledge_v2_polysemy_resolution",
+    "0016_knowledge_v2_graph_dag",
 )
 
 
