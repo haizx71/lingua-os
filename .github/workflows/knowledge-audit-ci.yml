@@ -11,6 +11,9 @@ on:
       - 'knowledge/**'
       - 'docs/KNOWLEDGE_*'
       - 'plans/TASK-KNOWLEDGE-001-catalog-foundation.md'
+      - 'services/api/src/lingua_api/brain/**'
+      - 'tests/backend/test_brain_models.py'
+      - 'tests/backend/database/test_brain_api.py'
       - '.github/workflows/knowledge-audit-ci.yml'
   workflow_dispatch:
 
