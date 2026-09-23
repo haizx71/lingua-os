@@ -1,6 +1,6 @@
 # TASK-K2-05 — Dynamic Retrievability Projection
 
-Status: LOCAL REVIEWED: PASS / STAGING PENDING  
+Status: LOCAL REVIEWED: PASS / STAGING: PASS  
 Owner: CODEX single-writer lane  
 Predecessor: K2-04 STAGING PASS  
 Migration: `0017_knowledge_v2_learner_retrievability`
@@ -83,3 +83,29 @@ record K2-05 STAGING PASS only after all checks succeed.
 - Staging rollback-only preflight proved the extreme `1e10000` JSON numeric fails closed without a
   projection error, `service_role` retains its existing schema baseline and can read the view,
   browser roles cannot read it, and all temporary DDL/data disappeared after rollback.
+
+## Hosted acceptance evidence
+
+- Source PR #12 merged as `3394dcd16c43db76acfdef211759c2d07ab3a1da`; Supabase default
+  privileges then exposed a staging-only ACL gap before acceptance. The unaccepted deployment was
+  rolled back exactly, and ACL hotfix PR #13 merged as
+  `63bea1ab4f1d3c23baf6640fda0a127a1b9b8fc4` after independent re-review and full CI.
+- Final staging application registry records exactly `0017_knowledge_v2_learner_retrievability`
+  with source-pair checksum
+  `0bcdaea9705e8f3a80ce0a7f124481aed2ea8b426eba346072c22d992acb8e8d`; Supabase migration
+  history contains one final `knowledge_v2_learner_retrievability_0017` entry.
+- Hosted SQL retrievability `0.929283111697091` matches py-fsrs 6.3.2 with relative error
+  `4.779e-16`. Rollback-safe fixtures passed immediately above and below `0.50`, `0.70`, and
+  `0.75`, with only accepted `active`, `mastered`, `weak`, and `forgotten` projections.
+- Hosted actor/profile `EXPLAIN (ANALYZE, BUFFERS)` completed in `1.622 ms` and used
+  `user_concept_states_user_id_concept_id_key`, `review_items_user_id_concept_id_key`,
+  `fsrs_states_pkey`, and `fsrs_parameter_sets_id_version_key`; no speculative index was added.
+- The view ACL is exactly owner-all plus `service_role=r`. `service_role` read one row and has no
+  INSERT, UPDATE, DELETE, or TRUNCATE privilege; `PUBLIC`, `anon`, `authenticated`, and
+  `authenticator` have no SELECT privilege.
+- Counts and canonical full-row hashes for all 27 learner/private tables were identical before and
+  after migration and rollback-safe fixtures. No acceptance fixture remains.
+- Final GitHub run `35835490206` passed knowledge audit, grammar PostgreSQL regression, scoped
+  Ruff/format, strict mypy, and the complete PostgreSQL suite (`354 passed, 1 environment-only
+  deselected`). Supabase advisors reported no new K2-05 view finding; pre-existing platform/auth and
+  broad foreign-key advisory backlog remains outside this additive read-only wave.

@@ -31,3 +31,11 @@ Verdict: **APPROVE FOR SOURCE PROMOTION**
   strict mypy, and PostgreSQL 17.11 integration.
 
 The PostgreSQL integration workflow remains the authoritative source-promotion merge gate.
+
+## Hosted ACL addendum
+
+Supabase default privileges initially granted `service_role` all relation privileges on the new
+view. Hosted acceptance stopped before PASS, the unaccepted deployment was rolled back, and the
+migration was amended to revoke all default privileges before granting SELECT. Independent
+re-review approved the hotfix with no findings. Rollback-only staging proof and the final applied
+ACL both show `service_role=r` and no write privilege.
