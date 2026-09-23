@@ -2,7 +2,7 @@
 
 Strictly verifies that:
 1. PostgreSQL connection is operational.
-2. All canonical migrations (0001..0016) are applied and valid in public.schema_migrations.
+2. All canonical migrations (0001..0017) are applied and valid in public.schema_migrations.
 3. Core application schema tables exist in the public schema.
 4. Deterministic FRLL catalog anchor concept exists exactly once.
 5. Zero rows exist across all learner-derived tables (strict learner isolation).
@@ -21,6 +21,11 @@ from pathlib import Path
 import psycopg
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from database.migrate import discover_migrations  # noqa: E402
+
 MIGRATIONS_DIR = ROOT / "database" / "migrations"
 CONCEPT_ID = uuid.UUID("7f110000-0000-4000-8000-000000000004")
 EXPECTED_LEMMA = "frll-anchor"
@@ -42,6 +47,7 @@ EXPECTED_MIGRATIONS = (
     "0014_knowledge_v2_canonical_structures",
     "0015_knowledge_v2_polysemy_resolution",
     "0016_knowledge_v2_graph_dag",
+    "0017_knowledge_v2_learner_retrievability",
 )
 
 
@@ -99,15 +105,18 @@ def verify_database(database_url: str) -> None:
         # 1. Verify migrations
         print("Checking applied schema migrations...")
         migration_rows = conn.execute(
-            "SELECT version, name FROM public.schema_migrations ORDER BY version"
+            "SELECT version, name, checksum FROM public.schema_migrations ORDER BY version"
         ).fetchall()
-        applied_versions = {row[0] for row in migration_rows}
-        for exp in EXPECTED_MIGRATIONS:
-            ver = exp.split("_")[0]
-            if ver not in applied_versions:
-                raise RuntimeError(
-                    f"Migration {exp} ({ver}) is missing from public.schema_migrations"
-                )
+        expected_rows = [
+            (migration.version, migration.name, migration.checksum)
+            for migration in discover_migrations(MIGRATIONS_DIR)
+        ]
+        actual_rows = [tuple(str(value) for value in row) for row in migration_rows]
+        if actual_rows != expected_rows:
+            raise RuntimeError(
+                "public.schema_migrations does not exactly match the ordered source registry "
+                "(version, name, checksum)"
+            )
         print(
             f"  [OK] Migrations verified: {len(migration_rows)}/{len(EXPECTED_MIGRATIONS)} "
             f"applied in canonical order."

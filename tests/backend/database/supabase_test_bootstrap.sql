@@ -17,6 +17,10 @@ BEGIN
 END
 $$;
 
+-- Supabase provisions direct public-schema usage for service_role. Mirror that
+-- platform baseline so additive migrations never need to change schema ACLs.
+GRANT USAGE ON SCHEMA public TO service_role;
+
 CREATE SCHEMA IF NOT EXISTS auth;
 
 CREATE TABLE IF NOT EXISTS auth.users (

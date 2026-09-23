@@ -187,7 +187,19 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
 ) -> None:
     partial = tmp_path / "migrations"
     shutil.copytree(MIGRATIONS, partial)
-    for version in ("0007", "0008", "0009", "0010", "0011", "0012", "0013", "0014", "0015", "0016"):
+    for version in (
+        "0007",
+        "0008",
+        "0009",
+        "0010",
+        "0011",
+        "0012",
+        "0013",
+        "0014",
+        "0015",
+        "0016",
+        "0017",
+    ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
 
@@ -277,7 +289,8 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
 
-        assert migrate_down(database_url, MIGRATIONS, steps=7) == [
+        assert migrate_down(database_url, MIGRATIONS, steps=8) == [
+            "0017",
             "0016",
             "0015",
             "0014",

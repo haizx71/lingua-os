@@ -341,7 +341,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
     isolated_migrated_postgres_url: str,
 ) -> None:
     database_url = isolated_migrated_postgres_url
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=2) == ["0016", "0015"]
+    assert migrate_down(database_url, MIGRATIONS_DIR, steps=3) == ["0017", "0016", "0015"]
 
     with _connect(database_url) as conn:
         _, lexeme_id, sense_ids = _seed_lexeme_with_senses(
@@ -351,7 +351,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
         )
         conn.commit()
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0015", "0016"]
+    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0015", "0016", "0017"]
     assert migrate_up(database_url, MIGRATIONS_DIR) == []
 
     with _connect(database_url) as conn:

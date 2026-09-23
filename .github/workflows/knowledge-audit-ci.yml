@@ -10,10 +10,20 @@ on:
     paths:
       - 'knowledge/**'
       - 'docs/KNOWLEDGE_*'
+      - 'database/**'
+      - 'services/api/src/lingua_api/memory/**'
+      - 'tests/backend/**'
+      - 'scripts/verify_frll_database.py'
+      - 'requirements/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - 'plans/TASK-KNOWLEDGE-001-catalog-foundation.md'
       - 'services/api/src/lingua_api/brain/**'
       - 'tests/backend/test_brain_models.py'
       - 'tests/backend/database/test_brain_api.py'
+      - 'plans/TASK-K2-05-dynamic-retrievability.md'
+      - 'plans/FOLLOW-UP-weak-etag-preconditions.md'
+      - 'plans/KNOWLEDGE-V2-REMAINING-EXECUTION-MAP.md'
       - '.github/workflows/knowledge-audit-ci.yml'
   workflow_dispatch:
 
@@ -162,3 +172,51 @@ jobs:
           python -m pytest -q
           tests/backend/database/test_knowledge_v2_grammar_import.py
           tests/backend/database/test_brain_api.py
+
+  retrievability-postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24
+        env:
+          POSTGRES_PASSWORD: lingua_test_password
+          POSTGRES_DB: lingua_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lingua_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:lingua_test_password@127.0.0.1:5432/lingua_test
+      DATABASE_URL: postgresql://postgres:lingua_test_password@127.0.0.1:5432/lingua_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked backend test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements/backend-dev.lock
+      - name: Verify Python formatting, lint, and types
+        run: |
+          python -m ruff format --check \
+            services/api/src/lingua_api/memory/retrievability.py \
+            tests/backend/memory/test_retrievability.py \
+            tests/backend/database/test_knowledge_v2_retrievability.py \
+            scripts/verify_frll_database.py
+          python -m ruff check \
+            services/api/src/lingua_api/memory/retrievability.py \
+            tests/backend/memory/test_retrievability.py \
+            tests/backend/database/test_knowledge_v2_retrievability.py \
+            scripts/verify_frll_database.py
+          python -m mypy services/api/src
+      - name: Verify py-fsrs equivalence and private PostgreSQL projection
+        run: >-
+          python -m pytest -q
+          tests/backend/memory/test_retrievability.py
+          tests/backend/database
+          -k 'not test_bootstrap_ps1_fails_closed_when_database_url_missing'

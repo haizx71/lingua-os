@@ -35,8 +35,9 @@ not remaining implementation waves.
    TASK-006D schema. K2-05/K2-06 must build on those real columns and parameter lineages.
 5. **FSRS column and parameter drift.** Design SQL hard-codes defaults and names
    `last_reviewed_at`; actual history uses `last_review_at` plus immutable
-   `fsrs_parameter_sets.parameters`. K2-05 must derive decay/factor from each row's versioned 21
-   weights and desired retention rather than baking the global default into the view.
+   `fsrs_parameter_sets.parameters`. K2-05 must derive decay from each row's versioned 21 weights;
+   pinned py-fsrs 6.3.2 fixes the retrievability factor at a `0.9` reference point, while desired
+   retention affects future interval selection and does not enter current retrievability.
 6. **Brain/FSRS public-boundary drift.** Older design text suggests exposing raw stability,
    difficulty, and retrievability. The accepted public contract explicitly keeps those private.
    Internal projections may use them; K2-04/K2-05 will not expose raw FSRS values.
