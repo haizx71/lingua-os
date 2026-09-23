@@ -167,7 +167,8 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_exists is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=7) == [
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=8) == [
+        "0017",
         "0016",
         "0015",
         "0014",
@@ -196,6 +197,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         "0014",
         "0015",
         "0016",
+        "0017",
     ]
 
     with psycopg.connect(isolated_migrated_postgres_url) as connection:

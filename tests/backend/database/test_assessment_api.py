@@ -852,7 +852,8 @@ def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
     PostgresAssessmentStore(seed.database_url).start_or_resume(
         seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
     )
-    assert migrate_down(seed.database_url, MIGRATIONS, steps=7) == [
+    assert migrate_down(seed.database_url, MIGRATIONS, steps=8) == [
+        "0017",
         "0016",
         "0015",
         "0014",
@@ -892,7 +893,18 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
     shutil.copytree(MIGRATIONS, partial)
     up_0008_name = next(partial.glob("0008_*.up.sql")).name
     down_0008_name = next(partial.glob("0008_*.down.sql")).name
-    for version in ("0008", "0009", "0010", "0011", "0012", "0013", "0014", "0015", "0016"):
+    for version in (
+        "0008",
+        "0009",
+        "0010",
+        "0011",
+        "0012",
+        "0013",
+        "0014",
+        "0015",
+        "0016",
+        "0017",
+    ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
 
