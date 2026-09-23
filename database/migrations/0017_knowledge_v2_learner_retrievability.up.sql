@@ -159,6 +159,9 @@ COMMENT ON VIEW public.v_learner_concept_retrievability IS
 REVOKE ALL PRIVILEGES ON TABLE public.v_learner_concept_retrievability FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON TABLE public.v_learner_concept_retrievability
     FROM anon, authenticated, authenticator;
+-- Supabase default privileges grant service_role all relation privileges at
+-- creation time. Normalize that platform baseline before granting read-only access.
+REVOKE ALL PRIVILEGES ON TABLE public.v_learner_concept_retrievability FROM service_role;
 
 -- The backend service role is the only non-owner reader. The security-definer
 -- view owner resolves the underlying RLS tables; raw FSRS tables remain closed
