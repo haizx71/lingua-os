@@ -45,8 +45,8 @@ class CompetenceDimensionDto(StrEnum):
 
 class ConceptDefinitionDto(ApiModel):
     definition: str = Field(min_length=1, max_length=4000)
-    translation: str | SkipJsonSchema[None] = Field(
-        default=None, max_length=4000, exclude_if=lambda value: value is None
+    translation: Annotated[str, StringConstraints(max_length=4000)] | SkipJsonSchema[None] = Field(
+        default=None, exclude_if=lambda value: value is None
     )
     language_code: str
     order: int = Field(ge=0)
@@ -55,8 +55,8 @@ class ConceptDefinitionDto(ApiModel):
 class ConceptExampleDto(ApiModel):
     sentence_id: UUID
     text: str = Field(min_length=1, max_length=5000)
-    translation: str | SkipJsonSchema[None] = Field(
-        default=None, max_length=5000, exclude_if=lambda value: value is None
+    translation: Annotated[str, StringConstraints(max_length=5000)] | SkipJsonSchema[None] = Field(
+        default=None, exclude_if=lambda value: value is None
     )
     audio_url: str | SkipJsonSchema[None] = Field(
         default=None, exclude_if=lambda value: value is None
@@ -81,9 +81,9 @@ class GrammarSpecificationDto(ApiModel):
     syntactic_category: str = Field(min_length=1, max_length=100)
     pragmatic_function: str = Field(min_length=1, max_length=2000)
     vietnamese_explanation: str = Field(min_length=1, max_length=4000)
-    vietnamese_common_traps: str | SkipJsonSchema[None] = Field(
-        default=None, max_length=4000, exclude_if=lambda value: value is None
-    )
+    vietnamese_common_traps: (
+        Annotated[str, StringConstraints(max_length=4000)] | SkipJsonSchema[None]
+    ) = Field(default=None, exclude_if=lambda value: value is None)
     structural_slots: list[GrammarStructuralSlotDto] = Field(min_length=1, max_length=20)
 
 
