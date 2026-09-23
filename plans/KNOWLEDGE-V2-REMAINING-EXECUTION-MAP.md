@@ -3,7 +3,7 @@
 Status: ACTIVE EXECUTION MAP  
 Date: 2026-09-22  
 Authoritative source checkpoint: `d8658c83640df88af789c915f985f921d851bc7f`  
-Hosted predecessor at discovery: application registry `0014`; `0015` and `0016` were subsequently applied and gated one at a time.
+Hosted predecessor at discovery: application registry `0014`; `0015`, `0016`, and `0017` were subsequently applied and gated one at a time.
 
 ## Authority and compatibility rules
 
