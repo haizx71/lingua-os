@@ -637,6 +637,89 @@ def test_brain_detail_returns_only_direct_stored_relations_and_safe_catalog_data
     assert data["confidence"] == 0.62
 
 
+def test_brain_uses_temporal_effective_status_without_rewriting_competence(
+    brain_api: BrainApiSeed,
+) -> None:
+    review_item_id: uuid.UUID | None = None
+    with psycopg.connect(brain_api.database_url) as connection:
+        before = connection.execute(
+            """
+            SELECT status, state_version, recognition, listening, production,
+                   mastery, confidence, recent_competence_outcomes
+            FROM user_concept_states
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (brain_api.actor.id, brain_api.profile_id, WORD_ONE),
+        ).fetchone()
+        parameter = connection.execute(
+            """
+            SELECT id, version FROM fsrs_parameter_sets
+            WHERE algorithm_version = 'FSRS-6' AND library_version = '6.3.2'
+            ORDER BY is_default DESC, created_at, id
+            LIMIT 1
+            """
+        ).fetchone()
+        assert before is not None and parameter is not None
+        item = connection.execute(
+            """
+            INSERT INTO review_items
+                (user_id, user_language_id, concept_id, status, created_from)
+            VALUES (%s, %s, %s, 'active', 'learner_saved')
+            RETURNING id
+            """,
+            (brain_api.actor.id, brain_api.profile_id, WORD_ONE),
+        ).fetchone()
+        assert item is not None
+        review_item_id = uuid.UUID(str(item[0]))
+        connection.execute(
+            """
+            INSERT INTO fsrs_states
+                (review_item_id, user_id, difficulty, stability, due_at,
+                 last_review_at, state, parameter_set_id, params_version)
+            VALUES (%s, %s, 5, 1, '2025-01-02T00:00:00Z',
+                    '2025-01-01T00:00:00Z', 'review', %s, %s)
+            """,
+            (review_item_id, brain_api.actor.id, parameter[0], parameter[1]),
+        )
+        connection.commit()
+
+    try:
+        detail = brain_api.client.get(f"/v1/brain/concepts/{WORD_ONE}", headers=_headers())
+        filtered = brain_api.client.get(
+            "/v1/brain/concepts", params={"status": "forgotten"}, headers=_headers()
+        )
+        summary = brain_api.client.get("/v1/brain/summary", headers=_headers())
+
+        assert detail.status_code == filtered.status_code == summary.status_code == 200
+        assert detail.json()["data"]["status"] == "forgotten"
+        assert [item["concept"]["id"] for item in filtered.json()["data"]] == [str(WORD_ONE)]
+        assert summary.json()["data"]["statusCounts"]["active"] == 0
+        assert summary.json()["data"]["statusCounts"]["forgotten"] == 1
+        recent = {item["concept"]["id"]: item for item in summary.json()["data"]["recentConcepts"]}
+        assert recent[str(WORD_ONE)]["concept"]["status"] == "forgotten"
+
+        with psycopg.connect(brain_api.database_url) as connection:
+            after = connection.execute(
+                """
+                SELECT status, state_version, recognition, listening, production,
+                       mastery, confidence, recent_competence_outcomes
+                FROM user_concept_states
+                WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+                """,
+                (brain_api.actor.id, brain_api.profile_id, WORD_ONE),
+            ).fetchone()
+        assert after == before
+        assert after is not None and after[0] == "active"
+    finally:
+        if review_item_id is not None:
+            with psycopg.connect(brain_api.database_url) as connection:
+                connection.execute(
+                    "DELETE FROM review_items WHERE id = %s AND user_id = %s",
+                    (review_item_id, brain_api.actor.id),
+                )
+                connection.commit()
+
+
 def test_profile_ownership_is_hidden_and_all_gets_are_read_only(brain_api: BrainApiSeed) -> None:
     hidden = brain_api.client.get(
         "/v1/brain/summary",

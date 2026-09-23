@@ -106,13 +106,17 @@ class PostgresBrainStore:
         status_rows = snapshot.connection.execute(
             f"""
             WITH anchors AS ({_ANCHOR_SQL}), projected AS (
-                SELECT COALESCE(state.status, 'unseen') AS status
+                SELECT COALESCE(retrievability.effective_status, state.status, 'unseen') AS status
                 FROM anchors
                 JOIN concepts AS concept ON concept.id = anchors.concept_id
                 LEFT JOIN user_concept_states AS state
                   ON state.user_id = %s AND state.user_language_id = %s
                  AND state.concept_id = anchors.concept_id
                  AND state.competence_parameter_set_id IS NOT NULL
+                LEFT JOIN v_learner_concept_retrievability AS retrievability
+                  ON retrievability.user_id = state.user_id
+                 AND retrievability.user_language_id = state.user_language_id
+                 AND retrievability.concept_id = state.concept_id
                 WHERE concept.language_code = 'en'
                   AND {allowed_record_sql("concept.source_record_id")}
             )
@@ -172,7 +176,7 @@ class PostgresBrainStore:
         parameters = _anchor_parameters(snapshot.actor.id, profile_id)
         parameters.extend((snapshot.actor.id, profile_id, snapshot.actor.id, profile_id))
         if status is not None:
-            filters.append("COALESCE(state.status, 'unseen') = %s")
+            filters.append("COALESCE(retrievability.effective_status, state.status, 'unseen') = %s")
             parameters.append(status.value)
         if query is not None:
             filters.append(
@@ -197,7 +201,8 @@ class PostgresBrainStore:
                    framework.code, level.code, level.label,
                    source.name, license.code, source.attribution_text, source.source_url,
                    license.attribution_required,
-                   state.status, state.competence_parameter_set_id,
+                   COALESCE(retrievability.effective_status, state.status),
+                   state.competence_parameter_set_id,
                    state.recognition, state.recognition_confidence,
                    state.recognition_evidence_count, state.recognition_last_evidence_at,
                    state.listening, state.listening_confidence,
@@ -216,6 +221,10 @@ class PostgresBrainStore:
               ON state.user_id = %s AND state.user_language_id = %s
              AND state.concept_id = concept.id
              AND state.competence_parameter_set_id IS NOT NULL
+            LEFT JOIN v_learner_concept_retrievability AS retrievability
+              ON retrievability.user_id = state.user_id
+             AND retrievability.user_language_id = state.user_language_id
+             AND retrievability.concept_id = state.concept_id
             LEFT JOIN review_items AS item
               ON item.user_id = %s AND item.concept_id = concept.id
              AND item.user_language_id = %s
@@ -251,7 +260,8 @@ class PostgresBrainStore:
                    framework.code, level.code, level.label,
                    source.name, license.code, source.attribution_text, source.source_url,
                    license.attribution_required,
-                   state.status, state.competence_parameter_set_id,
+                   COALESCE(retrievability.effective_status, state.status),
+                   state.competence_parameter_set_id,
                    state.recognition, state.recognition_confidence,
                    state.recognition_evidence_count, state.recognition_last_evidence_at,
                    state.listening, state.listening_confidence,
@@ -271,6 +281,10 @@ class PostgresBrainStore:
               ON state.user_id = %s AND state.user_language_id = %s
              AND state.concept_id = concept.id
              AND state.competence_parameter_set_id IS NOT NULL
+            LEFT JOIN v_learner_concept_retrievability AS retrievability
+              ON retrievability.user_id = state.user_id
+             AND retrievability.user_language_id = state.user_language_id
+             AND retrievability.concept_id = state.concept_id
             LEFT JOIN review_items AS item
               ON item.user_id = %s AND item.user_language_id = %s
              AND item.concept_id = concept.id
@@ -399,7 +413,8 @@ def _load_recent(snapshot: BrainSnapshot, profile_id: UUID) -> list[BrainConcept
                framework.code, level.code, level.label,
                source.name, license.code, source.attribution_text, source.source_url,
                license.attribution_required,
-               state.status, state.competence_parameter_set_id,
+               COALESCE(retrievability.effective_status, state.status),
+               state.competence_parameter_set_id,
                state.recognition, state.recognition_confidence,
                state.recognition_evidence_count, state.recognition_last_evidence_at,
                state.listening, state.listening_confidence,
@@ -410,6 +425,10 @@ def _load_recent(snapshot: BrainSnapshot, profile_id: UUID) -> list[BrainConcept
                memory.state, memory.due_at, memory.last_review_at,
                CASE WHEN item.status = 'active' AND memory.due_at <= %s THEN true ELSE false END
         FROM user_concept_states AS state
+        LEFT JOIN v_learner_concept_retrievability AS retrievability
+          ON retrievability.user_id = state.user_id
+         AND retrievability.user_language_id = state.user_language_id
+         AND retrievability.concept_id = state.concept_id
         JOIN concepts AS concept ON concept.id = state.concept_id
         JOIN source_records AS concept_record ON concept_record.id = concept.source_record_id
         JOIN data_sources AS source ON source.id = concept_record.source_id

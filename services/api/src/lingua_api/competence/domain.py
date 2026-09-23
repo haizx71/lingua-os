@@ -201,6 +201,14 @@ class DimensionProjection:
         )
 
     @property
+    def variance(self) -> Decimal:
+        """Posterior Beta variance for internal uncertainty and convergence checks."""
+        alpha = self.parameters.prior_alpha + self.positive_mass
+        beta = self.parameters.prior_beta + self.negative_mass
+        total = alpha + beta
+        return (alpha * beta) / (total * total * (total + 1))
+
+    @property
     def confidence(self) -> Decimal:
         if self.effective_mass == 0:
             return Decimal("0")
