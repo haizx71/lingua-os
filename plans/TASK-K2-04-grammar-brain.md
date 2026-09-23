@@ -70,16 +70,16 @@ all temporary acceptance fixtures.
   mypy, generated-contract freshness, TypeScript, ESLint, production build, Storybook, and
   production dependency audit passed.
 - Hosted Supabase/Render acceptance passed on 2026-09-23 at merge commit
-  \`17305496b3d4ec99683d8121a34b9721a9de095b\` (Render deploy
-  \`dep-dapj6trm8hqs73adaeeg\`).
-- Authenticated hosted smoke passed: \`GET /v1/me\` 200, \`PATCH /v1/me\` 200,
+  `17305496b3d4ec99683d8121a34b9721a9de095b` (Render deploy
+  `dep-dapj6trm8hqs73adaeeg`).
+- Authenticated hosted smoke passed: `GET /v1/me` 200, `PATCH /v1/me` 200,
   language-profile creation 201, hydrated grammar Brain detail 200, and the nullable-translation
-  lexical \`be\` detail 200. Render logs confirm both final Brain requests returned 200.
-- Hosted grammar verification remained 8/8 complete rows. \`PUBLIC\`, \`anon\`,
-  \`authenticated\`, and \`authenticator\` retained no CRUD privileges on
-  \`grammar_specifications\`.
+  lexical `be` detail 200. Render logs confirm both final Brain requests returned 200.
+- Hosted grammar verification remained 8/8 complete rows. `PUBLIC`, `anon`,
+  `authenticated`, and `authenticator` retained no CRUD privileges on
+  `grammar_specifications`.
 - The disposable smoke actor was removed from Auth and every public table carrying a direct
-  \`user_id\` or \`actor_id\`; no temporary \`k2-04-smoke-*\` Auth users remain.
-- PR #10 hotfixed optional nullable Brain translations. GitHub Actions run \`35808405269\`
+  `user_id` or `actor_id`; no temporary `k2-04-smoke-*` Auth users remain.
+- PR #10 hotfixed optional nullable Brain translations. GitHub Actions run `35808405269`
   passed both knowledge audit and PostgreSQL grammar integration, and independent review approved
   the fix with no unresolved finding.
