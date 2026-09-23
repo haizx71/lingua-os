@@ -65,6 +65,15 @@ def brain_api(migrated_postgres_url: str) -> BrainApiSeed:
     with psycopg.connect(migrated_postgres_url) as connection:
         connection.execute(READER_SEED.read_text(encoding="utf-8"))
         connection.execute(
+            """
+            UPDATE word_senses AS sense
+            SET translated_definition = NULL, translation_language_code = NULL
+            FROM lexemes AS lexeme
+            WHERE sense.lexeme_id = lexeme.id AND lexeme.concept_id = %s
+            """,
+            (WORD_SIX,),
+        )
+        connection.execute(
             "INSERT INTO auth.users (id) VALUES (%s), (%s), (%s)",
             (actor_id, other_actor_id, new_actor_id),
         )
@@ -573,6 +582,16 @@ def test_grammar_detail_returns_structured_first_party_specification(
     skill = brain_api.client.get(f"/v1/brain/concepts/{SKILL}", headers=_headers())
     assert "grammar" not in lexical.json()["data"]["concept"]
     assert "grammar" not in skill.json()["data"]["concept"]
+
+
+def test_lexical_detail_omits_an_absent_optional_translation(brain_api: BrainApiSeed) -> None:
+    response = brain_api.client.get(f"/v1/brain/concepts/{WORD_SIX}", headers=_headers())
+
+    assert response.status_code == 200
+    definition = response.json()["data"]["concept"]["definitions"][0]
+    assert definition["definition"] == "Synthetic fixture definition 6"
+    assert "translation" not in definition
+    assert "grammar" not in response.json()["data"]["concept"]
 
 
 def test_brain_hides_restricted_catalog_and_validates_query_bounds(brain_api: BrainApiSeed) -> None:
