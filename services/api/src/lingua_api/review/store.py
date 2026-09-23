@@ -103,7 +103,7 @@ class PostgresReviewReadStore:
                 SELECT review_item.id, concept.id,
                        COALESCE(lexeme.lemma, concept.canonical_key),
                        lexeme.part_of_speech,
-                       concept_state.status,
+                       COALESCE(retrievability.effective_status, concept_state.status),
                        COALESCE(sense.translated_definition, sense.definition,
                                 lexeme.lemma, concept.canonical_key),
                        state.due_at, state.last_review_at, state.state,
@@ -125,6 +125,10 @@ class PostgresReviewReadStore:
                 LEFT JOIN user_concept_states AS concept_state
                   ON concept_state.user_id = review_item.user_id
                  AND concept_state.concept_id = review_item.concept_id
+                LEFT JOIN v_learner_concept_retrievability AS retrievability
+                  ON retrievability.user_id = review_item.user_id
+                 AND retrievability.user_language_id = review_item.user_language_id
+                 AND retrievability.concept_id = review_item.concept_id
                 LEFT JOIN LATERAL (
                     SELECT id, lemma, part_of_speech
                     FROM lexemes

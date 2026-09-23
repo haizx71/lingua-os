@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
+from itertools import pairwise
 
 import pytest
 from lingua_api.competence.domain import (
@@ -245,6 +246,17 @@ def test_confidence_grows_monotonically_and_excludes_prior_mass() -> None:
     assert zero.confidence < one.confidence < two.confidence
     assert one.confidence == Decimal("0.2")
     assert two.confidence == Decimal(1) / Decimal(3)
+
+
+def test_beta_score_converges_and_posterior_variance_decreases_monotonically() -> None:
+    states = [DimensionProjection.zero(PARAMETERS)]
+    for _ in range(20):
+        states.append(apply_observation(states[-1], _observation("1")))
+
+    assert all(Decimal("0") <= state.score <= Decimal("1") for state in states)
+    assert all(earlier.score < later.score for earlier, later in pairwise(states))
+    assert all(earlier.variance > later.variance for earlier, later in pairwise(states))
+    assert states[-1].score > Decimal("0.9")
 
 
 def test_lexical_mastery_waits_for_every_required_dimension_without_renormalizing() -> None:

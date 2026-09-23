@@ -411,6 +411,61 @@ def test_authenticated_queue_returns_owned_due_projection(
     assert payload["meta"]["pageSize"] == 1
 
 
+def test_queue_uses_temporal_effective_status_without_rewriting_stored_status(
+    api_client: TestClient,
+    api_seed: ApiSeed,
+    migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(migrated_postgres_url) as connection:
+        before = connection.execute(
+            """
+            SELECT status, state_version, recognition_positive_mass,
+                   recognition_negative_mass, listening_positive_mass,
+                   listening_negative_mass, recent_competence_outcomes
+            FROM user_concept_states
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.language_profile_id, api_seed.concept_id),
+        ).fetchone()
+        assert before is not None
+        connection.execute(
+            """
+            UPDATE user_concept_states SET status = 'active'
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.language_profile_id, api_seed.concept_id),
+        )
+        connection.execute(
+            """
+            UPDATE fsrs_states
+            SET state = 'review', difficulty = 5, stability = 1, step = NULL,
+                last_review_at = '2025-01-01T00:00:00Z',
+                due_at = '2025-01-02T00:00:00Z'
+            WHERE review_item_id = %s AND user_id = %s
+            """,
+            (api_seed.review_item_id, api_seed.actor.id),
+        )
+        connection.commit()
+
+    response = api_client.get("/v1/review/queue", headers=_auth())
+
+    assert response.status_code == 200
+    assert response.json()["data"][0]["concept"]["status"] == "forgotten"
+    with psycopg.connect(migrated_postgres_url) as connection:
+        after = connection.execute(
+            """
+            SELECT status, state_version, recognition_positive_mass,
+                   recognition_negative_mass, listening_positive_mass,
+                   listening_negative_mass, recent_competence_outcomes
+            FROM user_concept_states
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.language_profile_id, api_seed.concept_id),
+        ).fetchone()
+    assert after is not None
+    assert after == ("active", *before[1:])
+
+
 def test_same_queue_page_returns_different_competence_for_different_concepts(
     api_client: TestClient,
     api_seed: ApiSeed,

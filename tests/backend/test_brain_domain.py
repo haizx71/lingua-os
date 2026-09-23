@@ -65,7 +65,7 @@ def test_brain_cursor_rejects_tampering() -> None:
         codec.decode(token[:-1] + replacement)
 
 
-def test_brain_store_has_no_write_offset_event_replay_or_scheduler_path() -> None:
+def test_brain_store_has_no_write_offset_event_replay_or_raw_scheduler_path() -> None:
     source = inspect.getsource(PostgresBrainStore).upper()
 
     for forbidden in (
@@ -76,6 +76,11 @@ def test_brain_store_has_no_write_offset_event_replay_or_scheduler_path() -> Non
         "LEARNING_EVENTS",
         "REVIEW_EVENTS AS EVENT\n                JOIN",
         "PY_FSRS",
-        "RETRIEVABILITY",
+        "CURRENT_RETRIEVABILITY",
+        "STABILITY",
+        "DIFFICULTY",
+        "PARAMS_VERSION",
     ):
         assert forbidden not in source
+    assert "V_LEARNER_CONCEPT_RETRIEVABILITY" in source
+    assert "EFFECTIVE_STATUS" in source
