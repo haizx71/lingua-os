@@ -1,7 +1,22 @@
-﻿import { type NextRequest } from 'next/server';
+﻿import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
+import { getCanonicalVercelRedirect } from './lib/routing/canonical-host';
 
 export async function middleware(request: NextRequest) {
+  const hostHeader =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host');
+
+  const canonicalRedirect = getCanonicalVercelRedirect(
+    request.nextUrl,
+    hostHeader,
+    process.env.CANONICAL_WEB_ORIGIN,
+  );
+
+  if (canonicalRedirect) {
+    return NextResponse.redirect(canonicalRedirect, 308);
+  }
+
   return await updateSession(request);
 }
 
