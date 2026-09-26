@@ -222,8 +222,7 @@ def test_profile_replay_snapshot_is_append_only(
 
     with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
         db_connection.execute(
-            "DELETE FROM profile_mutation_results "
-            "WHERE user_id = %s AND idempotency_key = %s",
+            "DELETE FROM profile_mutation_results WHERE user_id = %s AND idempotency_key = %s",
             (actor_id, replay_key),
         )
 
@@ -235,8 +234,7 @@ def test_profile_replay_cannot_be_deleted_while_auth_identity_exists(
 
     with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
         db_connection.execute(
-            "DELETE FROM profile_mutation_results "
-            "WHERE user_id = %s AND idempotency_key = %s",
+            "DELETE FROM profile_mutation_results WHERE user_id = %s AND idempotency_key = %s",
             (actor_id, replay_key),
         )
 
