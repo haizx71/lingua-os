@@ -14,6 +14,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
         CREATE ROLE service_role NOLOGIN;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+        CREATE ROLE supabase_auth_admin NOLOGIN;
+    END IF;
 END
 $$;
 
@@ -36,5 +39,6 @@ AS $$
     SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
 
-GRANT USAGE ON SCHEMA auth TO anon, authenticated;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, supabase_auth_admin;
 GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated;
+GRANT SELECT, DELETE ON auth.users TO supabase_auth_admin;

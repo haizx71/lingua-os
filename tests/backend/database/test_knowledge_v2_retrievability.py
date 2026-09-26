@@ -710,7 +710,7 @@ def test_0017_checksum_rollback_reapply_and_learner_delta(
         ).fetchone()
         assert registry == (migration.name, migration.checksum)
 
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=1) == ["0017"]
+    assert migrate_down(database_url, MIGRATIONS_DIR, steps=2) == ["0018", "0017"]
     with _connect(database_url) as connection:
         assert connection.execute(
             "SELECT to_regclass('public.v_learner_concept_retrievability')"
@@ -723,7 +723,7 @@ def test_0017_checksum_rollback_reapply_and_learner_delta(
         )
         assert _learner_snapshots(connection) == before
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0017"]
+    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0017", "0018"]
     assert migrate_up(database_url, MIGRATIONS_DIR) == []
     with _connect(database_url) as connection:
         assert _learner_snapshots(connection) == before

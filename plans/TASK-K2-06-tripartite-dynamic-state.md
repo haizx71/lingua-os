@@ -3,7 +3,7 @@
 Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING  
 Owner: CODEX single-writer lane  
 Predecessor: K2-05 STAGING: PASS  
-Migration: none
+Migration: `0018_profile_replay_auth_erasure` (cleanup-only exception; no competence-state change)
 
 ## Objective
 
@@ -21,6 +21,22 @@ rewriting the replayable `competence-beta-v1` projection or adding a ninth publi
 - Brain and Review already expose the eight-value status enum. Returning the effective value is a
   behavior reconciliation, not a public schema change.
 - Today remediation policy remains K2-08 scope; K2-06 does not alter Today packing.
+
+## Revised persistence checkpoint — 2026-09-26
+
+Hosted acceptance exposed a cleanup invariant that cannot be met under migration 0007:
+`profile_mutation_results` blocks Auth deletion through both its unconditional DELETE trigger and
+its composite `ON DELETE RESTRICT` foreign key. This prevented deleting the authorized disposable
+K2-06 actor even though the behavioral assertions passed. The independent PostgreSQL/security
+review approved a narrow migration design before DDL: UPDATE and active-identity DELETE remain
+append-only; DELETE is permitted only during a nested FK cascade when the matching
+`auth.users` row is absent. The FK becomes `ON DELETE CASCADE`. No browser ACL, API, competence
+projection, evidence, or learner migration changes. The hosted Auth principal's necessary grants
+were verified read-only.
+
+The hosted gate remains pending until PostgreSQL tests prove active-identity rejection, the exact
+Auth-chain cascade and trigger context, actor isolation, concurrent replay/deletion behavior,
+rollback/reapply, and a real disposable Auth deletion in staging.
 
 ## Expected changes
 

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import shutil
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from time import monotonic, sleep
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -34,6 +37,42 @@ def _isolated_database(postgres_url: str) -> Iterator[str]:
             admin.execute(
                 sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(database_name))
             )
+
+
+def _insert_profile_replay(
+    connection: Connection[tuple[object, ...]],
+    *,
+    actor_id: uuid.UUID | None = None,
+) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    selected_actor_id = actor_id or uuid.uuid4()
+    profile_id = uuid.uuid4()
+    replay_key = uuid.uuid4()
+    connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (selected_actor_id,))
+    connection.execute("INSERT INTO users (id) VALUES (%s)", (selected_actor_id,))
+    connection.execute(
+        "INSERT INTO learner_profiles (user_id, time_zone) VALUES (%s, NULL)",
+        (selected_actor_id,),
+    )
+    connection.execute(
+        """
+        INSERT INTO user_languages
+            (id, user_id, language_code, native_language_code, goal, daily_minutes)
+        VALUES (%s, %s, 'en', 'vi', 'communication', 20)
+        """,
+        (profile_id, selected_actor_id),
+    )
+    connection.execute(
+        """
+        INSERT INTO profile_mutation_results
+            (user_id, idempotency_key, operation_type, schema_version,
+             request_fingerprint, language_profile_id, http_status,
+             result_data_snapshot, result_etag, completed_at)
+        VALUES (%s, %s, 'create-language-profile-v1', 1, %s, %s, 201,
+                '{}'::jsonb, '"profile-etag"', now())
+        """,
+        (selected_actor_id, replay_key, "d" * 64, profile_id),
+    )
+    return selected_actor_id, profile_id, replay_key
 
 
 def test_profile_migration_adds_only_frozen_profile_authorities(
@@ -181,6 +220,251 @@ def test_profile_replay_snapshot_is_append_only(
             ('"changed"', actor_id, replay_key),
         )
 
+    with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
+        db_connection.execute(
+            "DELETE FROM profile_mutation_results "
+            "WHERE user_id = %s AND idempotency_key = %s",
+            (actor_id, replay_key),
+        )
+
+
+def test_profile_replay_cannot_be_deleted_while_auth_identity_exists(
+    db_connection: Connection[tuple[object, ...]],
+) -> None:
+    actor_id, profile_id, replay_key = _insert_profile_replay(db_connection)
+
+    with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
+        db_connection.execute(
+            "DELETE FROM profile_mutation_results "
+            "WHERE user_id = %s AND idempotency_key = %s",
+            (actor_id, replay_key),
+        )
+
+    with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
+        db_connection.execute("DELETE FROM user_languages WHERE id = %s", (profile_id,))
+
+    with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
+        db_connection.execute("DELETE FROM users WHERE id = %s", (actor_id,))
+
+    assert db_connection.execute(
+        "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+    ).fetchone() == (1,)
+    assert db_connection.execute(
+        "SELECT count(*) FROM profile_mutation_results WHERE user_id = %s", (actor_id,)
+    ).fetchone() == (1,)
+
+
+def test_auth_identity_erasure_cascades_replay_only_for_erased_actor(
+    db_connection: Connection[tuple[object, ...]],
+) -> None:
+    actor_id, _, _ = _insert_profile_replay(db_connection)
+    other_actor_id, _, _ = _insert_profile_replay(db_connection)
+
+    db_connection.execute(
+        """
+        CREATE TABLE public.profile_mutation_delete_probe (
+            user_id uuid NOT NULL,
+            trigger_depth integer NOT NULL,
+            auth_identity_present boolean NOT NULL
+        )
+        """
+    )
+    db_connection.execute(
+        """
+        CREATE FUNCTION public.capture_profile_mutation_delete_context()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        SET search_path = pg_catalog
+        AS $$
+        BEGIN
+            INSERT INTO public.profile_mutation_delete_probe
+                (user_id, trigger_depth, auth_identity_present)
+            VALUES (
+                OLD.user_id,
+                pg_catalog.pg_trigger_depth(),
+                EXISTS (
+                    SELECT 1
+                    FROM auth.users AS auth_user
+                    WHERE auth_user.id = OLD.user_id
+                )
+            );
+            RETURN OLD;
+        END
+        $$
+        """
+    )
+    db_connection.execute(
+        """
+        CREATE TRIGGER aaa_profile_mutation_delete_probe
+        BEFORE DELETE ON public.profile_mutation_results
+        FOR EACH ROW EXECUTE FUNCTION public.capture_profile_mutation_delete_context()
+        """
+    )
+
+    auth_privileges = db_connection.execute(
+        """
+        SELECT has_schema_privilege('supabase_auth_admin', 'auth', 'USAGE'),
+               has_table_privilege('supabase_auth_admin', 'auth.users', 'SELECT'),
+               has_table_privilege('supabase_auth_admin', 'auth.users', 'DELETE'),
+               has_table_privilege('supabase_auth_admin', 'public.users', 'DELETE')
+        """
+    ).fetchone()
+    assert auth_privileges == (True, True, True, False)
+
+    db_connection.execute("SET ROLE supabase_auth_admin")
+    db_connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+    db_connection.execute("RESET ROLE")
+
+    probe = db_connection.execute(
+        """
+        SELECT trigger_depth, auth_identity_present
+        FROM public.profile_mutation_delete_probe
+        WHERE user_id = %s
+        """,
+        (actor_id,),
+    ).fetchall()
+    assert len(probe) == 1
+    assert probe[0][0] > 1
+    assert probe[0][1] is False
+
+    for table in ("users", "learner_profiles", "user_languages", "profile_mutation_results"):
+        assert db_connection.execute(
+            f"SELECT count(*) FROM public.{table} WHERE user_id = %s", (actor_id,)
+        ).fetchone() == (0,)
+    assert db_connection.execute(
+        "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+    ).fetchone() == (0,)
+
+    assert db_connection.execute(
+        "SELECT count(*) FROM auth.users WHERE id = %s", (other_actor_id,)
+    ).fetchone() == (1,)
+    assert db_connection.execute(
+        "SELECT count(*) FROM profile_mutation_results WHERE user_id = %s",
+        (other_actor_id,),
+    ).fetchone() == (1,)
+
+
+def test_profile_replay_insert_racing_auth_erasure_cannot_leave_orphan(
+    migrated_postgres_url: str,
+) -> None:
+    actor_id = uuid.uuid4()
+    replay_key = uuid.uuid4()
+    with psycopg.connect(migrated_postgres_url) as setup:
+        _, profile_id, _ = _insert_profile_replay(setup, actor_id=actor_id)
+        setup.commit()
+
+    application_name = f"profile-erasure-race-{uuid.uuid4().hex}"
+    contender_url = make_conninfo(migrated_postgres_url, application_name=application_name)
+    deletion = psycopg.connect(migrated_postgres_url)
+    try:
+        deletion.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+
+        started = Event()
+
+        def insert_replay_after_delete_starts() -> None:
+            with psycopg.connect(contender_url) as contender:
+                started.set()
+                contender.execute(
+                    """
+                    INSERT INTO profile_mutation_results
+                        (user_id, idempotency_key, operation_type, schema_version,
+                         request_fingerprint, language_profile_id, http_status,
+                         result_data_snapshot, result_etag, completed_at)
+                    VALUES (%s, %s, 'create-language-profile-v1', 1, %s, %s, 201,
+                            '{}'::jsonb, '"profile-etag"', now())
+                    """,
+                    (actor_id, replay_key, "e" * 64, profile_id),
+                )
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            pending_insert = executor.submit(insert_replay_after_delete_starts)
+            try:
+                assert started.wait(timeout=5)
+
+                deadline = monotonic() + 5
+                blocked = False
+                while monotonic() < deadline:
+                    with psycopg.connect(migrated_postgres_url) as observer:
+                        wait_type = observer.execute(
+                            """
+                            SELECT wait_event_type
+                            FROM pg_stat_activity
+                            WHERE application_name = %s
+                            """,
+                            (application_name,),
+                        ).fetchone()
+                    if wait_type is not None and wait_type[0] == "Lock":
+                        blocked = True
+                        break
+                    sleep(0.02)
+                assert blocked, "concurrent replay insert did not wait on Auth erasure"
+            finally:
+                deletion.commit()
+
+            with pytest.raises(psycopg.errors.ForeignKeyViolation):
+                pending_insert.result(timeout=10)
+    finally:
+        deletion.close()
+
+    with psycopg.connect(migrated_postgres_url) as check:
+        assert check.execute(
+            "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+        ).fetchone() == (0,)
+        assert check.execute(
+            "SELECT count(*) FROM profile_mutation_results WHERE user_id = %s", (actor_id,)
+        ).fetchone() == (0,)
+
+
+def test_0018_auth_erasure_migration_rolls_back_and_reapplies_without_data_loss(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    actor_id = uuid.uuid4()
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        _insert_profile_replay(connection, actor_id=actor_id)
+        connection.commit()
+        migration = connection.execute(
+            "SELECT name, checksum FROM schema_migrations WHERE version = '0018'"
+        ).fetchone()
+        assert migration is not None
+
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1) == ["0018"]
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        foreign_key = connection.execute(
+            """
+            SELECT pg_get_constraintdef(oid)
+            FROM pg_constraint
+            WHERE conrelid = 'public.profile_mutation_results'::regclass
+              AND conname =
+                  'profile_mutation_results_user_id_language_profile_id_fkey'
+            """
+        ).fetchone()
+        assert foreign_key is not None
+        assert foreign_key[0].endswith("ON DELETE RESTRICT")
+        assert connection.execute(
+            "SELECT count(*) FROM profile_mutation_results WHERE user_id = %s",
+            (actor_id,),
+        ).fetchone() == (1,)
+
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == ["0018"]
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == []
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        foreign_key = connection.execute(
+            """
+            SELECT pg_get_constraintdef(oid)
+            FROM pg_constraint
+            WHERE conrelid = 'public.profile_mutation_results'::regclass
+              AND conname =
+                  'profile_mutation_results_user_id_language_profile_id_fkey'
+            """
+        ).fetchone()
+        assert foreign_key is not None
+        assert foreign_key[0].endswith("ON DELETE CASCADE")
+        assert connection.execute(
+            "SELECT count(*) FROM profile_mutation_results WHERE user_id = %s",
+            (actor_id,),
+        ).fetchone() == (1,)
+
 
 def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_preflight(
     postgres_url: str, tmp_path: Path
@@ -199,6 +483,7 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
         "0015",
         "0016",
         "0017",
+        "0018",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
@@ -289,7 +574,8 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
 
-        assert migrate_down(database_url, MIGRATIONS, steps=8) == [
+        assert migrate_down(database_url, MIGRATIONS, steps=9) == [
+            "0018",
             "0017",
             "0016",
             "0015",
