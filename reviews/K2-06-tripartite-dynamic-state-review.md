@@ -31,4 +31,18 @@ are not rewritten. Raw retrievability, stability, difficulty, and parameter valu
 - Hosted read-only cardinality check: joined learner rows equal distinct learner states (`1 = 1`),
   with no duplicate projection row.
 
-Source promotion remains blocked until the complete PostgreSQL CI job is green.
+Source promotion is complete: PR #15 merged after all three CI jobs passed. Hosted acceptance remains pending.
+
+
+## Post-promotion status — 2026-09-27
+
+- PR #15 merged at `f0dd8bd67d5ef9aa2a75ef51d1226b8e69cf3ef0`; CI run
+  `35874384258` passed `knowledge-audit`, `retrievability-postgres-integration`, and
+  `grammar-postgres-integration`.
+- Latest observed master: `d0cb203a82ba09fa50550c0a805a0a26caf29490`.
+- Render is live on that commit and `GET /health` returned HTTP 200.
+- Supabase staging remains healthy at migration 0017. Aggregate read-only checks confirm one-row
+  join cardinality and no browser SELECT grants; no decayed fixture exists.
+- The disposable authenticated actor proof is still pending. The attempted browser sign-in was
+  denied before authentication, and no hosted data was mutated. This review approves the source
+  change only and does not imply `K2-06 STAGING: PASS`.
