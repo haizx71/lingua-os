@@ -1,6 +1,6 @@
 # TASK-K2-06 — Tripartite Competence and Dynamic State Reconciliation
 
-Status: LOCAL REVIEWED: PASS / SOURCE CI PENDING  
+Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING  
 Owner: CODEX single-writer lane  
 Predecessor: K2-05 STAGING: PASS  
 Migration: none
@@ -53,6 +53,26 @@ rewriting the replayable `competence-beta-v1` projection or adding a ninth publi
 5. Source PR CI green before merge.
 6. Disposable hosted actor proof: one-dimension update, exact replay, dynamic decay without stored
    rewrite, isolation, unchanged non-fixture learner snapshot, and complete cleanup.
+
+## Current hosted gate status — 2026-09-27
+
+Source PR #15 merged at `f0dd8bd67d5ef9aa2a75ef51d1226b8e69cf3ef0`. GitHub Actions run
+`35874384258` passed all three jobs: `knowledge-audit`,
+`retrievability-postgres-integration`, and `grammar-postgres-integration`. The latest observed
+master is `d0cb203a82ba09fa50550c0a805a0a26caf29490`.
+
+Hosted Supabase staging remains at migration `0017` (version
+`20260923081253`) and reports `ACTIVE_HEALTHY`. Render deployment
+`dep-daq9ed0u01pc73cjknv0` is live on the latest master; `GET /health` returned HTTP 200.
+Read-only aggregate verification found one retrievability row, one learner-concept state, one
+joined row, zero decayed rows, and zero browser-role SELECT grants. This supports one-row
+cardinality and privilege checks only; there is no hosted temporal-decay behavior proof.
+
+The required disposable authenticated actor acceptance has not run because no authorized
+disposable Auth credentials or pre-provisioned test actor are available. A browser sign-in attempt
+was denied before authentication; no account or learner state was changed. Keep K2-06 hosted
+acceptance pending and do not record STAGING PASS until the complete disposable-actor, replay,
+isolation, no-rewrite, snapshot, and cleanup proof succeeds.
 
 ## Explicit non-scope
 
