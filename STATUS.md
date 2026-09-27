@@ -1,7 +1,7 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 promotion pending
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 source promoted, hosted acceptance pending
 
 ## Current Knowledge V2 checkpoint — 2026-09-27
 
@@ -18,18 +18,19 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 promotio
   the pre-run baseline. Independent read-only review found no K2-06 blocker.
   The synthetic fixture does not establish natural API progression to `active`.
   See `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- Supabase staging migration head: `20260927034218` (`0019`). Render staging
-  source: `9c39417`. Vercel Production deployment
-  `3X1RipweSgvkj656Xcf4zQz9rDaQ` was Ready from `9c39417`; no Share link or
-  protection change was made. K2-07 PR #19 remains open. Its initial CI and
-  Vercel Preview were successful, but independent review found a HIGH trust-
-  boundary issue: caller-supplied `correct` with an explicit non-`self_recall`
-  mode was counted as objective evidence without server grading. The current
-  fix rejects this combination; promotion remains blocked until the updated
-  head passes CI and independent review. See
-  `plans/TASK-K2-07-review-modality-engine.md`.
-- K2-07 Multi-Modal Review Modality Engine is the active source wave on
-  `feat/k2-07-modality-engine`. K2-08 through K2-10 remain downstream.
+- **K2-07 SOURCE PROMOTED: PASS; HOSTED ACCEPTANCE: PENDING.** PR #19 merged
+  into `master` at `ac02c349f8500975a843633556daf9d1bebc49e8` after the
+  caller-supplied `correct` HIGH finding was fixed and independently verified.
+  All four GitHub Actions jobs and Vercel Preview passed at PR head `c97f3e0`.
+  A medium UTF-16 cloze-offset issue remains a documented follow-up; no schema
+  migration was added. See `plans/TASK-K2-07-review-modality-engine.md`.
+- Post-merge read-only state: Supabase staging migration head is
+  `20260927034218` (`0019`). Render `lingua-api-staging` deployment
+  `dep-dasj8v49v7es73f2q7bg` is live from `ac02c34` and `/health` returned
+  200. GitHub's Vercel Production deployment record for `ac02c34` reports
+  success; direct Vercel connector lookup was unavailable. No Share link or
+  protection setting changed. K2-08 through K2-10 remain downstream of K2-07
+  hosted acceptance.
 
 The dated sections below preserve earlier checkpoints; their pending statements
 do not override this current result.

@@ -7,17 +7,17 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
   are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- **TASK-K2-07: DOING; promotion BLOCKED pending re-verification.** Independent
-  review found that caller-supplied `correct` combined with an explicit
-  non-`self_recall` mode was treated as objective evidence without server
-  grading. The current PR fix rejects that combination and adds zero-write,
-  legacy self-recall, and rating-fallback coverage. Recheck PR #19 head, CI,
-  Preview and independent review before promotion; do not claim K2-07 staging
-  PASS from CI alone.
+- **TASK-K2-07: SOURCE DONE; HOSTED ACCEPTANCE PENDING.** PR #19 merged at
+  `ac02c349f8500975a843633556daf9d1bebc49e8` after the HIGH correctness
+  trust-boundary fix, four passing CI jobs, successful Vercel Preview, and
+  independent verify-fix review. The fix rejects caller `correct` for explicit
+  modes without server grading; tests cover zero writes on rejection, legacy
+  self-recall, and rating-fallback weight. Hosted disposable-actor validation
+  remains required before K2-07 STAGING: PASS.
   Select cloze, listening, typing, or self-recall from the weakest observed
   competence dimension and available canonical material. Keep one primary FSRS
   lineage through the existing atomic Memory and competence transaction.
-  No schema migration; K2-08 through K2-10 remain downstream.
+  No schema migration; K2-08 through K2-10 remain downstream of hosted PASS.
 - **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
   `weak`; effective `forgotten` concepts appear in “Tất cả” but have no dedicated
   chip. This does not reopen K2-06's Brain/Review API acceptance.
