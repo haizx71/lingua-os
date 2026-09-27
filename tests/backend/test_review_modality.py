@@ -49,7 +49,7 @@ def test_equal_weak_scores_use_stable_recognition_first_tie_break() -> None:
     )
 
     assert selected.exercise_mode is ReviewExerciseMode.CLOZE
-    assert selected.context_sentence == "I made an _______ yesterday."
+    assert selected.context_sentence == "I made an _____ yesterday."
 
 
 def test_listening_is_selected_when_it_is_the_weakest_observed_dimension() -> None:
