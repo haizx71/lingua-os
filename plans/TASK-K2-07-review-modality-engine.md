@@ -1,6 +1,6 @@
 # TASK-K2-07 — Multi-Modal Review Modality Engine
 
-Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING  
+Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING
 Owner: CODEX single-writer lane  
 Predecessor: K2-06 SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE: PASS  
 Schema: NONE  
