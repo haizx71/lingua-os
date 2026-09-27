@@ -208,7 +208,7 @@ def test_empty_database_migration_is_reproducible_and_reversible(
 
         assert migrate_down(isolated_url, migrations_dir, steps=10) == [
             "0019",
-            "0018"
+            "0018",
             "0017",
             "0016",
             "0015",
