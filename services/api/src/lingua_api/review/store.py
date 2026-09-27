@@ -13,6 +13,7 @@ from psycopg import Connection
 from lingua_api.competence.domain import CompetenceProjection, CompetenceScoreProjection
 from lingua_api.memory.domain import AuthenticatedActor, MemoryItemNotFound, MemoryState
 from lingua_api.review.domain import DueReviewProjection, ReviewProjectionUnavailable
+from lingua_api.review.modality import ReviewMaterial, select_review_prompt
 
 CONCEPT_STATUSES = frozenset(
     {"unseen", "discovered", "learning", "familiar", "active", "mastered", "weak", "forgotten"}
@@ -118,7 +119,10 @@ class PostgresReviewReadStore:
                        concept_state.production, concept_state.production_confidence,
                        concept_state.production_evidence_count,
                        concept_state.production_last_evidence_at,
-                       concept_state.updated_at
+                       concept_state.updated_at,
+                       sense.translated_definition, sense.translation_language_code,
+                       example.sentence_text, example.translation,
+                       example.start_offset, example.end_offset, phonetic.audio_uri
                 FROM fsrs_states AS state
                 JOIN review_items AS review_item ON review_item.id = state.review_item_id
                 JOIN concepts AS concept ON concept.id = review_item.concept_id
@@ -137,12 +141,59 @@ class PostgresReviewReadStore:
                     LIMIT 1
                 ) AS lexeme ON true
                 LEFT JOIN LATERAL (
-                    SELECT definition, translated_definition
+                    SELECT definition, translated_definition, translation_language_code
                     FROM word_senses
                     WHERE lexeme_id = lexeme.id
-                    ORDER BY sense_order
+                    ORDER BY CASE
+                        WHEN translation_language_code = 'vi'
+                         AND translated_definition IS NOT NULL THEN 0 ELSE 1
+                    END, sense_order
                     LIMIT 1
                 ) AS sense ON true
+                LEFT JOIN LATERAL (
+                    SELECT sentence.text AS sentence_text,
+                           translation.text AS translation,
+                           occurrence.start_offset, occurrence.end_offset
+                    FROM sentence_concepts AS occurrence
+                    JOIN sentences AS sentence
+                      ON sentence.id = occurrence.sentence_id
+                     AND sentence.language_code = occurrence.language_code
+                    LEFT JOIN LATERAL (
+                        SELECT sentence_translation.text
+                        FROM sentence_translations AS sentence_translation
+                        WHERE sentence_translation.sentence_id = sentence.id
+                          AND sentence_translation.target_language_code = 'vi'
+                        ORDER BY sentence_translation.source_record_id, sentence_translation.id
+                        LIMIT 1
+                    ) AS translation ON true
+                    WHERE occurrence.concept_id = concept.id
+                      AND occurrence.language_code = 'en'
+                      AND occurrence.occurrence_role = 'target'
+                      AND char_length(sentence.text) <= 3000
+                      AND EXISTS (
+                          SELECT 1
+                          FROM content_segments AS segment
+                          JOIN content_items AS content
+                            ON content.id = segment.content_id
+                           AND content.language_code = segment.language_code
+                          WHERE segment.sentence_id = sentence.id
+                            AND segment.language_code = 'en'
+                            AND content.publication_status = 'published'
+                            AND reader_content_passes_publication_gate(content.id)
+                      )
+                    ORDER BY sentence.quality_score DESC NULLS LAST,
+                             sentence.id, occurrence.start_offset
+                    LIMIT 1
+                ) AS example ON true
+                LEFT JOIN LATERAL (
+                    SELECT audio_uri
+                    FROM phonetic_transcriptions
+                    WHERE lexeme_id = lexeme.id AND audio_uri IS NOT NULL
+                    ORDER BY CASE accent_variant
+                        WHEN 'en_US' THEN 0 WHEN 'en_GB' THEN 1 ELSE 2
+                    END, accent_variant
+                    LIMIT 1
+                ) AS phonetic ON true
                 LEFT JOIN LATERAL (
                     SELECT level_id
                     FROM framework_mappings
@@ -172,20 +223,39 @@ class PostgresReviewReadStore:
 def _due_projection(row: tuple[object, ...]) -> DueReviewProjection:
     if row[2] is None or row[5] is None:
         raise ReviewProjectionUnavailable("due concept projection is incomplete")
+    canonical_form = str(row[2])
+    competence = _concept_competence(row[12:26])
+    translated_definition = _optional_text(row[26]) if row[27] == "vi" else None
+    prompt = select_review_prompt(
+        fallback_prompt_text=str(row[5]),
+        competence=competence,
+        material=ReviewMaterial(
+            translated_definition=translated_definition,
+            example_sentence=_optional_text(row[28]),
+            example_translation=_optional_text(row[29]),
+            example_start_offset=_optional_int(row[30]),
+            example_end_offset=_optional_int(row[31]),
+            audio_url=_optional_text(row[32]),
+        ),
+    )
     return DueReviewProjection(
         review_item_id=_uuid(row[0]),
         concept_id=_uuid(row[1]),
-        canonical_form=str(row[2]),
+        canonical_form=canonical_form,
         part_of_speech=None if row[3] is None else str(row[3]),
         concept_status="unseen" if row[4] is None else str(row[4]),
-        prompt_text=str(row[5]),
+        prompt_text=prompt.prompt_text,
+        exercise_mode=prompt.exercise_mode,
+        context_sentence=prompt.context_sentence,
+        translation=prompt.translation,
+        audio_url=prompt.audio_url,
         due_at=_datetime(row[6]),
         last_review_at=_optional_datetime(row[7]),
         memory_state=MemoryState(str(row[8])),
         framework_code=None if row[9] is None else str(row[9]),
         level_code=None if row[10] is None else str(row[10]),
         level_label=None if row[11] is None else str(row[11]),
-        competence=_concept_competence(row[12:26]),
+        competence=competence,
     )
 
 
@@ -222,6 +292,22 @@ def _datetime(value: object) -> datetime:
 
 def _optional_datetime(value: object) -> datetime | None:
     return None if value is None else _datetime(value)
+
+
+def _optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ReviewProjectionUnavailable("prompt material has an unexpected type")
+    return value
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ReviewProjectionUnavailable("prompt offset has an unexpected type")
+    return value
 
 
 def _float(value: object) -> float:

@@ -34,7 +34,7 @@ export interface ReviewSessionState {
   readonly reviewedCount: number;
   readonly isAnswerRevealed: boolean;
   readonly setIsAnswerRevealed: (revealed: boolean | ((prev: boolean) => boolean)) => void;
-  readonly submitRating: (rating: ReviewRating) => Promise<void>;
+  readonly submitRating: (rating: ReviewRating, responseText?: string) => Promise<void>;
   readonly retryLastAnswer: () => Promise<void>;
   readonly pendingRetryOperation: PendingReviewOperation | null;
   readonly refetch: () => Promise<void>;
@@ -223,7 +223,16 @@ export function useReviewSession({
       setPendingRetryOperation(operation);
       const response = await api.answerReviewItem({
         reviewItemId: operation.reviewItemId,
-        body: { rating: operation.rating, responseTimeMs: operation.responseTimeMs },
+        body: {
+          rating: operation.rating,
+          responseTimeMs: operation.responseTimeMs,
+          exerciseMode: operation.exerciseMode,
+          ...(operation.correct === undefined ? {} : { correct: operation.correct }),
+          ...(operation.responseText === undefined ? {} : { responseText: operation.responseText }),
+          ...(operation.selectedOptionId === undefined
+            ? {}
+            : { selectedOptionId: operation.selectedOptionId }),
+        },
         headers: { 'Idempotency-Key': operation.idempotencyKey },
       });
       if (!current()) return;
@@ -263,11 +272,15 @@ export function useReviewSession({
   }, [api, canRequest, captureGuard, currentIndex, isLoading, live, loadQueue,
     onRatingSubmit, onSessionComplete, queue, receiptKey]);
 
-  const submitRating = useCallback(async (rating: ReviewRating) => {
+  const submitRating = useCallback(async (rating: ReviewRating, responseText?: string) => {
     if (!currentCard || busyRef.current || activeOperationRef.current || isLoading || error) return;
     try {
       const operation: PendingReviewOperation = {
-        reviewItemId: currentCard.id, rating, idempotencyKey: crypto.randomUUID(),
+        reviewItemId: currentCard.id,
+        rating,
+        exerciseMode: currentCard.exerciseMode,
+        ...(responseText?.trim() ? { responseText } : {}),
+        idempotencyKey: crypto.randomUUID(),
         responseTimeMs: Math.min(3600000, Math.max(0, Math.round(performance.now() - cardStartTimeRef.current))),
       };
       activeOperationRef.current = operation;

@@ -1,5 +1,26 @@
 # LINGUA OS — MVP Task Board
 
+## TASK-K2-07 — Multi-Modal Review Modality Engine
+
+Owner: CODEX single-writer lane  
+Status: DOING (implementation and verification in progress)  
+Dependencies: TASK-K2-06 hosted acceptance; accepted Review/Memory FRLL boundary  
+Schema: NONE
+
+Select cloze, listening, typing, or self-recall from the weakest observed competence dimension and
+available canonical material. Keep a single primary FSRS lineage; pass the selected mode through
+the existing atomic Memory + competence transaction. K2-08 through K2-10 remain sequentially
+blocked until this wave is accepted.
+
+## TASK-K2-06 — Tripartite Competence and Dynamic State Reconciliation
+
+Owner: CODEX single-writer lane  
+Status: DONE (source promoted and hosted acceptance passed)  
+Migrations: 0018 and cleanup-only 0019  
+Evidence: PR #18 merged; CI run #54 and Vercel passed; staging cleanup removed the authorized
+disposable actor and aggregate counts/hashes across 27 tracked tables matched the retained learner
+snapshot exactly. See `plans/TASK-K2-06-tripartite-dynamic-state.md`.
+
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## TASK-K2-03 — Knowledge V2 Knowledge Graph & Concurrency-Safe DAG

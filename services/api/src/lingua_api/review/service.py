@@ -97,6 +97,7 @@ class ReviewApplication:
         actor: AuthenticatedActor,
         review_item_id: UUID,
         submission: ReviewSubmission,
+        exercise_mode: ReviewExerciseMode = ReviewExerciseMode.SELF_RECALL,
     ) -> ReviewAnswerProjection:
         reviewed_at = _utc(self._clock.now())
         feedback = "Đã ghi nhận kết quả ôn tập."
@@ -107,7 +108,7 @@ class ReviewApplication:
                     connection,
                     actor=actor,
                     review_item_id=review_item_id,
-                    exercise_mode=ReviewExerciseMode.SELF_RECALL,
+                    exercise_mode=exercise_mode,
                     submission=submission,
                     reviewed_at=reviewed_at,
                 )
@@ -131,7 +132,7 @@ class ReviewApplication:
                         concept_id=locked.concept_id,
                         review_item_id=review_item_id,
                         review_event_id=outcome.event_id,
-                        exercise_mode=ReviewExerciseMode.SELF_RECALL,
+                        exercise_mode=exercise_mode,
                         submission=submission,
                         reviewed_at=reviewed_at,
                     )

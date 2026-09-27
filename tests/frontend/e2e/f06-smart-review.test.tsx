@@ -57,6 +57,21 @@ describe('Tier 1: Feature 06 - Smart Review (FSRS Algorithm & Ratings)', () => {
     expect(dueChip.textContent).toContain('appointment');
   });
 
+  it('test_smart_review_renders_typing_prompt_without_leaking_the_target', () => {
+    const typingCard = {
+      ...defaultReviewQueue[0],
+      exerciseMode: 'typing' as const,
+      prompt: 'Một cuộc hẹn.',
+      meaningVi: 'Một cuộc hẹn.',
+    };
+
+    renderWithProviders(<ReviewSession initialQueue={[typingCard]} />);
+
+    expect(screen.getByRole('textbox', { name: 'Câu trả lời' })).toBeInTheDocument();
+    expect(screen.getByText('Gõ từ')).toBeInTheDocument();
+    expect(screen.queryByText('appointment')).not.toBeInTheDocument();
+  });
+
   it('test_smart_review_renders_non_lexical_concept_without_fake_pos_or_empty_parentheses', () => {
     const [{ pos: _pos, ...baseCard }] = defaultReviewQueue;
     const nonLexicalCard = {

@@ -1159,6 +1159,21 @@ def test_queue_cursor_is_opaque_keyset_state_and_rejects_tampering(
     assert tampered.status_code == 422
 
 
+def test_answer_routes_selected_mode_to_matching_competence_dimension(
+    api_client: TestClient, api_seed: ApiSeed
+) -> None:
+    response = _answer(
+        api_client,
+        api_seed.review_item_id,
+        body_extra={"exerciseMode": "listening", "correct": True},
+    )
+
+    assert response.status_code == 200
+    competence = response.json()["data"]["competence"]
+    assert competence["listening"]["evidenceCount"] == 1
+    assert competence["production"]["evidenceCount"] == 0
+
+
 def test_fastapi_publishes_authoritative_review_operations(
     api_client: TestClient,
 ) -> None:
@@ -1181,7 +1196,7 @@ def test_fastapi_publishes_authoritative_review_operations(
         assert actual["security"] == [{"bearerAuth": []}]
     request_schema = generated["components"]["schemas"]["ReviewAnswerRequestDto"]
     assert set(request_schema["required"]) == {"rating", "responseTimeMs"}
-    for optional_name in ("correct", "responseText", "selectedOptionId"):
+    for optional_name in ("correct", "responseText", "selectedOptionId", "exerciseMode"):
         assert "null" not in str(request_schema["properties"][optional_name])
     concept_schema = generated["components"]["schemas"]["ConceptSummaryDto"]
     assert "partOfSpeech" not in concept_schema["required"]

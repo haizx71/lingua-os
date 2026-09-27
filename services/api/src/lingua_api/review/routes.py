@@ -11,7 +11,12 @@ from pydantic.json_schema import SkipJsonSchema
 
 from lingua_api.auth import AccessTokenForbidden, AccessTokenInvalid, AccessTokenVerifier
 from lingua_api.competence.domain import CompetenceProjection, CompetenceScoreProjection
-from lingua_api.memory.domain import AuthenticatedActor, ReviewRating, ReviewSubmission
+from lingua_api.memory.domain import (
+    AuthenticatedActor,
+    ReviewExerciseMode,
+    ReviewRating,
+    ReviewSubmission,
+)
 from lingua_api.review.domain import (
     DueReviewProjection,
 )
@@ -128,6 +133,11 @@ def answer_review_item(
     projection = application.answer(
         actor=actor,
         review_item_id=review_item_id,
+        exercise_mode=(
+            ReviewExerciseMode(body.exercise_mode.value)
+            if body.exercise_mode is not None
+            else ReviewExerciseMode.SELF_RECALL
+        ),
         submission=ReviewSubmission(
             idempotency_key=idempotency_key,
             rating=ReviewRating(body.rating.value),
@@ -176,8 +186,13 @@ def _queue_item(item: DueReviewProjection) -> ReviewQueueItemDto:
             status=ConceptStatusDto(item.concept_status),
             is_due=True,
         ),
-        exercise_mode=ReviewExerciseModeDto.SELF_RECALL,
-        prompt=ReviewPromptDto(prompt_text=item.prompt_text),
+        exercise_mode=ReviewExerciseModeDto(item.exercise_mode.value),
+        prompt=ReviewPromptDto(
+            prompt_text=item.prompt_text,
+            context_sentence=item.context_sentence,
+            translation=item.translation,
+            audio_url=item.audio_url,
+        ),
         memory=MemorySnapshotDto(
             state=MemoryStateDto(item.memory_state.value),
             due_at=item.due_at,

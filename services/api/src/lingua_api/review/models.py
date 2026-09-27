@@ -156,6 +156,9 @@ class ReviewQueueItemDto(ApiModel):
 
 class ReviewAnswerRequestDto(ApiModel):
     rating: ReviewRatingDto
+    exercise_mode: ReviewExerciseModeDto | SkipJsonSchema[None] = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     correct: bool | SkipJsonSchema[None] = Field(
         default=None, exclude_if=lambda value: value is None
     )

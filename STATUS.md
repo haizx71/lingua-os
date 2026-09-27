@@ -1,7 +1,19 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-01, K2-02, K2-03 integrated and verified locally
+Phase: FRLL accepted/frozen; K2-01 through K2-06 accepted; K2-07 implementation active
+
+## Latest Knowledge V2 checkpoint — 2026-09-27
+
+K2-06 source promotion and hosted acceptance are **PASS**. Cleanup PR #18 merged at
+`9c39417f29309d5dc2714082d7a28375712a79a6`; CI run #54 passed
+`knowledge-audit`, `grammar-postgres-integration`, and
+`retrievability-postgres-integration`, with Vercel successful. Staging migrations 0018 and 0019
+are applied. The authorized disposable actor was deleted; aggregate counts and row hashes across 27
+tracked tables matched the retained learner snapshot exactly, with no actor-owned residue.
+
+K2-07 Multi-Modal Review Modality Engine is now the active wave on
+`feat/k2-07-modality-engine`. K2-08 through K2-10 remain downstream and are not started.
 
 ## Knowledge V2 K2-02 & K2-03 Integration & Verification — 2026-09-22
 

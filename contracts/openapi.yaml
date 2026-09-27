@@ -1768,6 +1768,7 @@ components:
       required: [rating, responseTimeMs]
       properties:
         rating: { $ref: '#/components/schemas/ReviewRating' }
+        exerciseMode: { $ref: '#/components/schemas/ReviewExerciseMode' }
         correct: { type: boolean }
         responseText: { type: string, maxLength: 5000 }
         selectedOptionId: { type: string, format: uuid }

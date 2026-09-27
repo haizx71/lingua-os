@@ -1067,6 +1067,7 @@ export interface components {
         };
         readonly ReviewAnswerRequest: {
             readonly rating: components["schemas"]["ReviewRating"];
+            readonly exerciseMode?: components["schemas"]["ReviewExerciseMode"];
             readonly correct?: boolean;
             readonly responseText?: string;
             /** Format: uuid */
