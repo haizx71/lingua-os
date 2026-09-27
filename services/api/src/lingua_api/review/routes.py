@@ -176,23 +176,30 @@ def _queue_item(item: DueReviewProjection) -> ReviewQueueItemDto:
             code=item.level_code,
             label=item.level_label,
         )
+
+    concept_fields: dict[str, str] = {}
+    if item.part_of_speech is not None:
+        concept_fields["part_of_speech"] = item.part_of_speech
+    prompt_fields: dict[str, str] = {"prompt_text": item.prompt_text}
+    if item.context_sentence is not None:
+        prompt_fields["context_sentence"] = item.context_sentence
+    if item.translation is not None:
+        prompt_fields["translation"] = item.translation
+    if item.audio_url is not None:
+        prompt_fields["audio_url"] = item.audio_url
+
     return ReviewQueueItemDto(
         review_item_id=item.review_item_id,
         concept=ConceptSummaryDto(
             id=item.concept_id,
             canonical_form=item.canonical_form,
-            part_of_speech=item.part_of_speech,
+            **concept_fields,
             level=level,
             status=ConceptStatusDto(item.concept_status),
             is_due=True,
         ),
         exercise_mode=ReviewExerciseModeDto(item.exercise_mode.value),
-        prompt=ReviewPromptDto(
-            prompt_text=item.prompt_text,
-            context_sentence=item.context_sentence,
-            translation=item.translation,
-            audio_url=item.audio_url,
-        ),
+        prompt=ReviewPromptDto(**prompt_fields),
         memory=MemorySnapshotDto(
             state=MemoryStateDto(item.memory_state.value),
             due_at=item.due_at,
