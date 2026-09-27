@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -181,6 +182,8 @@ class PostgresMemoryEngine:
         exercise_mode: ReviewExerciseMode,
         submission: ReviewSubmission,
         reviewed_at: datetime,
+        validate_exercise_mode: Callable[[Connection[tuple[object, ...]], LockedMemoryItem], None]
+        | None = None,
     ) -> tuple[ReviewOutcome, LockedMemoryItem]:
         """Apply Memory using a caller-owned transaction and never commit independently."""
         reviewed_at = _utc(reviewed_at)
@@ -199,6 +202,8 @@ class PostgresMemoryEngine:
             actor=actor,
             idempotency_key=submission.idempotency_key,
         )
+        if existing is None and validate_exercise_mode is not None:
+            validate_exercise_mode(connection, locked)
         if existing is not None:
             if existing.request_fingerprint != fingerprint:
                 raise IdempotencyConflict(

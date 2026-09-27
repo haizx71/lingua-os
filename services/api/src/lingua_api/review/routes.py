@@ -138,6 +138,7 @@ def answer_review_item(
             if body.exercise_mode is not None
             else ReviewExerciseMode.SELF_RECALL
         ),
+        validate_exercise_mode=body.exercise_mode is not None,
         submission=ReviewSubmission(
             idempotency_key=idempotency_key,
             rating=ReviewRating(body.rating.value),

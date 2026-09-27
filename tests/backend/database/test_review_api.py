@@ -1159,19 +1159,65 @@ def test_queue_cursor_is_opaque_keyset_state_and_rejects_tampering(
     assert tampered.status_code == 422
 
 
-def test_answer_routes_selected_mode_to_matching_competence_dimension(
-    api_client: TestClient, api_seed: ApiSeed
+def test_answer_rejects_client_mode_that_differs_from_server_selected_prompt(
+    api_client: TestClient,
+    api_seed: ApiSeed,
+    migrated_postgres_url: str,
 ) -> None:
+    queue = api_client.get("/v1/review/queue", headers=_auth())
+    assert queue.status_code == 200
+    selected_mode = queue.json()["data"][0]["exerciseMode"]
+    mismatched_mode = "typing" if selected_mode != "typing" else "listening"
+
     response = _answer(
         api_client,
         api_seed.review_item_id,
-        body_extra={"exerciseMode": "listening", "correct": True},
+        body_extra={"exerciseMode": mismatched_mode, "correct": True},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    with psycopg.connect(migrated_postgres_url) as connection:
+        event_count = connection.execute(
+            "SELECT count(*) FROM review_events WHERE review_item_id = %s",
+            (api_seed.review_item_id,),
+        ).fetchone()
+        state_version = connection.execute(
+            "SELECT state_version FROM fsrs_states WHERE review_item_id = %s",
+            (api_seed.review_item_id,),
+        ).fetchone()
+        learning_event_count = connection.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (api_seed.actor.id, api_seed.concept_id),
+        ).fetchone()
+    assert event_count == (0,)
+    assert state_version == (1,)
+    assert learning_event_count == (0,)
+
+
+def test_answer_routes_server_selected_mode_to_matching_competence_dimension(
+    api_client: TestClient, api_seed: ApiSeed
+) -> None:
+    queue = api_client.get("/v1/review/queue", headers=_auth())
+    selected_mode = queue.json()["data"][0]["exerciseMode"]
+    before = queue.json()["data"][0]["competence"]
+    response = _answer(
+        api_client,
+        api_seed.review_item_id,
+        body_extra={"exerciseMode": selected_mode, "correct": True},
     )
 
     assert response.status_code == 200
     competence = response.json()["data"]["competence"]
-    assert competence["listening"]["evidenceCount"] == 2
-    assert competence["production"]["evidenceCount"] == 0
+    dimension = {
+        "cloze": "recognition",
+        "listening": "listening",
+        "typing": "production",
+        "self_recall": "production",
+    }[selected_mode]
+    for name in ("recognition", "listening", "production"):
+        expected = before[name]["evidenceCount"] + (1 if name == dimension else 0)
+        assert competence[name]["evidenceCount"] == expected
 
 
 def test_fastapi_publishes_authoritative_review_operations(

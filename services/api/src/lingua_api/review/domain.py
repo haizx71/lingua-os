@@ -23,6 +23,10 @@ class InvalidReviewCursor(ValueError):
     """The opaque Review cursor is invalid, expired, or belongs to another query."""
 
 
+class ReviewModeMismatch(ValueError):
+    """A submitted Review mode differs from the server-selected prompt."""
+
+
 @dataclass(frozen=True)
 class DueReviewProjection:
     review_item_id: UUID

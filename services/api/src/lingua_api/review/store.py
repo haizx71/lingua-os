@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
@@ -91,14 +92,21 @@ class PostgresReviewReadStore:
         after_due_at: datetime | None,
         after_review_item_id: UUID | None,
         limit: int,
+        connection: Connection[tuple[object, ...]] | None = None,
+        review_item_id: UUID | None = None,
     ) -> list[DueReviewProjection]:
         boundary_sql = ""
         parameters: list[object] = [actor.id, actor.id, language_profile_id, as_of]
+        item_sql = ""
+        if review_item_id is not None:
+            item_sql = "AND review_item.id = %s"
+            parameters.append(review_item_id)
         if after_due_at is not None and after_review_item_id is not None:
             boundary_sql = "AND (state.due_at, review_item.id) > (%s, %s)"
             parameters.extend((after_due_at, after_review_item_id))
         parameters.append(limit)
-        with self.connect() as connection:
+        connection_context = self.connect() if connection is None else nullcontext(connection)
+        with connection_context as connection:
             rows = connection.execute(
                 f"""
                 SELECT review_item.id, concept.id,
@@ -208,6 +216,7 @@ class PostgresReviewReadStore:
                   AND review_item.user_language_id = %s
                   AND review_item.status = 'active'
                   AND state.due_at <= %s
+                  {item_sql}
                   {boundary_sql}
                 ORDER BY state.due_at, review_item.id
                 LIMIT %s

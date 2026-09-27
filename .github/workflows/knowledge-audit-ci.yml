@@ -178,6 +178,7 @@ jobs:
           python -m pytest -q
           tests/backend/database/test_knowledge_v2_grammar_import.py
           tests/backend/database/test_brain_api.py
+          tests/backend/database/test_review_api.py
 
   retrievability-postgres-integration:
     runs-on: ubuntu-latest

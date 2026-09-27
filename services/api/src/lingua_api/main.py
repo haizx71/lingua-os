@@ -71,7 +71,7 @@ from lingua_api.profile.service import ProfileApplication
 from lingua_api.reader.domain import ReaderMutationInFlight, ReaderValidationError
 from lingua_api.reader.routes import router as reader_router
 from lingua_api.reader.service import ReaderApplication
-from lingua_api.review.domain import InvalidReviewCursor
+from lingua_api.review.domain import InvalidReviewCursor, ReviewModeMismatch
 from lingua_api.review.models import ErrorBodyDto, ErrorCodeDto, ErrorEnvelopeDto
 from lingua_api.review.routes import router as review_router
 from lingua_api.review.service import ReviewApplication
@@ -317,6 +317,11 @@ def _register_error_handlers(application: FastAPI) -> None:
     async def invalid_cursor(request: Request, error: InvalidReviewCursor) -> JSONResponse:
         del error
         return _error(request, 422, "VALIDATION_ERROR", "The review cursor is invalid.")
+
+    @application.exception_handler(ReviewModeMismatch)
+    async def review_mode_mismatch(request: Request, error: ReviewModeMismatch) -> JSONResponse:
+        del error
+        return _error(request, 422, "VALIDATION_ERROR", "The submitted Review mode is invalid.")
 
     @application.exception_handler(InvalidContentCursor)
     async def invalid_content_cursor(request: Request, error: InvalidContentCursor) -> JSONResponse:
