@@ -82,7 +82,7 @@ Hosted Supabase staging was last confirmed `ACTIVE_HEALTHY` on migration `0017` 
 latest Render deployment metadata was not re-verified during this recovery, so this note does not
 assert a current Render SHA or health result.
 
-A read-only owner-count snapshot on 2026-09-27 found two Auth users. The authorized disposable
+A read-only owner-count snapshot captured at **2026-09-27 01:20:04.452038 UTC** found two Auth users. The active user authorized this actor for K2-06 and confirmed the later-created identity as the disposable actor; SQL used that identity only as an aggregate filter and did not return its UUID or email. The authorized disposable
 actor (the later-created identity) owns one row each in `public.users`, `learner_profiles`,
 `user_languages`, `user_concept_states`, `fsrs_states`, `review_items`,
 `user_language_projection_heads`, `user_saved_concepts`, `concept_save_intents`, and
