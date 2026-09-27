@@ -136,9 +136,7 @@ def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
         )
         connection.commit()
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == [
-        "0019"
-    ]
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == ["0019"]
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         with (
             pytest.raises(psycopg.errors.CheckViolation, match="immutable"),
