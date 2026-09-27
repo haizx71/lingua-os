@@ -2,6 +2,20 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
+## Current Knowledge V2 delivery gate — 2026-09-27
+
+- **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
+  independent review passed. The synthetic temporal fixture and cleanup limits
+  are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.
+- **TASK-K2-07: READY for promotion.** PR #19 is still open. Recheck its current
+  head, base, CI, Preview and mergeability before merge. Source promotion is
+  separate from hosted acceptance; do not claim K2-07 staging PASS from CI alone.
+- **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
+  `weak`; effective `forgotten` concepts appear in “Tất cả” but have no dedicated
+  chip. This does not reopen K2-06's Brain/Review API acceptance.
+
+Older task snapshots below are historical and do not supersede this gate.
+
 ## TASK-K2-03 — Knowledge V2 Knowledge Graph & Concurrency-Safe DAG
 
 Owner: FRONTEND
