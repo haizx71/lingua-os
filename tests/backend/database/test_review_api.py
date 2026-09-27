@@ -367,6 +367,41 @@ def _answer(
     )
 
 
+def _answer_storage_snapshot(database_url: str, seed: ApiSeed) -> tuple[object, ...]:
+    with psycopg.connect(database_url) as connection:
+        return (
+            connection.execute(
+                "SELECT count(*) FROM review_events WHERE review_item_id = %s",
+                (seed.review_item_id,),
+            ).fetchone(),
+            connection.execute(
+                "SELECT state_version, due_at FROM fsrs_states WHERE review_item_id = %s",
+                (seed.review_item_id,),
+            ).fetchone(),
+            connection.execute(
+                "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+                (seed.actor.id, seed.concept_id),
+            ).fetchone(),
+            connection.execute(
+                """
+                SELECT state_version, production_evidence_count,
+                       production_positive_mass, production_negative_mass
+                FROM user_concept_states
+                WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+                """,
+                (seed.actor.id, seed.language_profile_id, seed.concept_id),
+            ).fetchone(),
+            connection.execute(
+                """
+                SELECT skill, score, confidence, evidence_count
+                FROM user_skill_states WHERE user_id = %s AND user_language_id = %s
+                ORDER BY skill
+                """,
+                (seed.actor.id, seed.language_profile_id),
+            ).fetchall(),
+        )
+
+
 def test_queue_requires_a_valid_bearer_token(api_client: TestClient) -> None:
     missing = api_client.get("/v1/review/queue")
     invalid = api_client.get("/v1/review/queue", headers={"Authorization": "Bearer attacker-token"})
@@ -1159,6 +1194,163 @@ def test_queue_cursor_is_opaque_keyset_state_and_rejects_tampering(
     assert tampered.status_code == 422
 
 
+def test_answer_rejects_client_mode_that_differs_from_server_selected_prompt(
+    api_client: TestClient,
+    api_seed: ApiSeed,
+    migrated_postgres_url: str,
+) -> None:
+    queue = api_client.get("/v1/review/queue", headers=_auth())
+    assert queue.status_code == 200
+    selected_mode = queue.json()["data"][0]["exerciseMode"]
+    mismatched_mode = "typing" if selected_mode != "typing" else "listening"
+
+    response = _answer(
+        api_client,
+        api_seed.review_item_id,
+        body_extra={"exerciseMode": mismatched_mode},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    with psycopg.connect(migrated_postgres_url) as connection:
+        event_count = connection.execute(
+            "SELECT count(*) FROM review_events WHERE review_item_id = %s",
+            (api_seed.review_item_id,),
+        ).fetchone()
+        state_version = connection.execute(
+            "SELECT state_version FROM fsrs_states WHERE review_item_id = %s",
+            (api_seed.review_item_id,),
+        ).fetchone()
+        learning_event_count = connection.execute(
+            "SELECT count(*) FROM learning_events WHERE user_id = %s AND concept_id = %s",
+            (api_seed.actor.id, api_seed.concept_id),
+        ).fetchone()
+    assert event_count == (0,)
+    assert state_version == (1,)
+    assert learning_event_count == (0,)
+
+
+@pytest.mark.parametrize("correct", [True, False])
+def test_explicit_typed_mode_rejects_client_correctness_without_writes(
+    correct: bool,
+    api_client: TestClient,
+    api_seed: ApiSeed,
+    migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(migrated_postgres_url) as connection:
+        updated = connection.execute(
+            """
+            UPDATE user_concept_states
+            SET production = 0.1, production_confidence = 0.2,
+                production_evidence_count = 1
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.language_profile_id, api_seed.concept_id),
+        )
+        assert updated.rowcount == 1
+
+    queue = api_client.get("/v1/review/queue", headers=_auth())
+    assert queue.status_code == 200
+    assert queue.json()["data"][0]["exerciseMode"] == "typing"
+
+    before = _answer_storage_snapshot(migrated_postgres_url, api_seed)
+    response = _answer(
+        api_client,
+        api_seed.review_item_id,
+        body_extra={"exerciseMode": "typing", "correct": correct},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert _answer_storage_snapshot(migrated_postgres_url, api_seed) == before
+
+
+def test_omitted_mode_keeps_legacy_self_recall_correctness_as_self_reported_evidence(
+    api_client: TestClient, api_seed: ApiSeed, migrated_postgres_url: str
+) -> None:
+    queue = api_client.get("/v1/review/queue", headers=_auth())
+    assert queue.status_code == 200
+    selected_mode = queue.json()["data"][0]["exerciseMode"]
+    assert selected_mode == "self_recall"
+    before = queue.json()["data"][0]["competence"]
+    response = _answer(
+        api_client,
+        api_seed.review_item_id,
+        body_extra={"correct": True},
+    )
+
+    assert response.status_code == 200
+    competence = response.json()["data"]["competence"]
+    assert competence["recognition"]["evidenceCount"] == before["recognition"]["evidenceCount"]
+    assert competence["listening"]["evidenceCount"] == before["listening"]["evidenceCount"]
+    assert competence["production"]["evidenceCount"] == before["production"]["evidenceCount"] + 1
+    with psycopg.connect(migrated_postgres_url) as connection:
+        event = connection.execute(
+            """
+            SELECT payload->>'exerciseMode', payload->>'weight'
+            FROM learning_events WHERE user_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.concept_id),
+        ).fetchone()
+    assert event == ("self_recall", "0.5")
+
+
+def test_explicit_typed_mode_uses_half_weight_rating_fallback(
+    api_client: TestClient,
+    api_seed: ApiSeed,
+    migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(migrated_postgres_url) as connection:
+        updated = connection.execute(
+            """
+            UPDATE user_concept_states
+            SET production = 0.1, production_confidence = 0.2,
+                production_evidence_count = 1
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.language_profile_id, api_seed.concept_id),
+        )
+        assert updated.rowcount == 1
+
+    queue = api_client.get("/v1/review/queue", headers=_auth())
+    assert queue.status_code == 200
+    assert queue.json()["data"][0]["exerciseMode"] == "typing"
+    expected_production_count = (
+        queue.json()["data"][0]["competence"]["production"]["evidenceCount"] + 1
+    )
+    before = _answer_storage_snapshot(migrated_postgres_url, api_seed)
+
+    response = _answer(
+        api_client,
+        api_seed.review_item_id,
+        rating="easy",
+        body_extra={"exerciseMode": "typing"},
+    )
+
+    assert response.status_code == 200
+    after = _answer_storage_snapshot(migrated_postgres_url, api_seed)
+    assert after[0] == (1,)
+    assert after[2] == (1,)
+    assert after != before
+    with psycopg.connect(migrated_postgres_url) as connection:
+        production_count = connection.execute(
+            """
+            SELECT production_evidence_count FROM user_concept_states
+            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.language_profile_id, api_seed.concept_id),
+        ).fetchone()
+        event = connection.execute(
+            """
+            SELECT payload->>'exerciseMode', payload->>'correct', payload->>'weight'
+            FROM learning_events WHERE user_id = %s AND concept_id = %s
+            """,
+            (api_seed.actor.id, api_seed.concept_id),
+        ).fetchone()
+    assert production_count == (expected_production_count,)
+    assert event == ("typing", None, "0.5")
+
+
 def test_fastapi_publishes_authoritative_review_operations(
     api_client: TestClient,
 ) -> None:
@@ -1181,7 +1373,13 @@ def test_fastapi_publishes_authoritative_review_operations(
         assert actual["security"] == [{"bearerAuth": []}]
     request_schema = generated["components"]["schemas"]["ReviewAnswerRequestDto"]
     assert set(request_schema["required"]) == {"rating", "responseTimeMs"}
-    for optional_name in ("correct", "responseText", "selectedOptionId"):
+    assert (
+        request_schema["properties"]["correct"]["description"]
+        == authoritative["components"]["schemas"]["ReviewAnswerRequest"]["properties"]["correct"][
+            "description"
+        ]
+    )
+    for optional_name in ("correct", "responseText", "selectedOptionId", "exerciseMode"):
         assert "null" not in str(request_schema["properties"][optional_name])
     concept_schema = generated["components"]["schemas"]["ConceptSummaryDto"]
     assert "partOfSpeech" not in concept_schema["required"]

@@ -68,11 +68,11 @@ append-only; DELETE is permitted only during a nested FK cascade when the matchi
 projection, evidence, or learner migration changes. The hosted Auth principal's necessary grants
 were verified read-only.
 
-The hosted gate remains pending until PostgreSQL tests prove active-identity rejection, the exact
-Auth-chain cascade and trigger context, actor isolation, concurrent replay/deletion behavior,
-rollback/reapply, and a real disposable Auth deletion in staging.
-
-The post-0018 deletion attempt exposed a second existing blocker: migration 0009's `concept_save_intents` trigger rejects DELETE even inside the Auth cascade. Proposed migration 0019 allows DELETE only when the trigger is nested and the matching `auth.users` row is already absent; UPDATE and deletion while the identity exists remain immutable. It changes no table, constraint, policy, or competence state.
+The hosted acceptance gate is now complete. Migration 0019 allows deletion from `concept_save_intents`
+only during a nested Auth cascade after the matching `auth.users` identity is absent; active-identity
+DELETE and UPDATE remain immutable. It changes no table, constraint, policy, or competence state.
+PostgreSQL tests cover active-identity rejection, the exact cascade and trigger context, actor
+isolation, rollback/reapply, and the hosted disposable-actor cleanup.
 
 ## Expected changes
 
@@ -109,26 +109,24 @@ The post-0018 deletion attempt exposed a second existing blocker: migration 0009
 ## Current hosted gate status — 2026-09-27
 
 Source PR #15 is merged. Cleanup PR #17 is merged to master at
-`aa4c581cbd035b3ea447800a92a35068fbc2b0ca`; GitHub Actions run #48 passed
+`aa4c581cbd035b3ea447800a92a35068fbc2b0ca`. PR #18, containing migration 0019 and its tests,
+merged at `9c39417f29309d5dc2714082d7a28375712a79a6`; GitHub Actions run #54 passed
 `knowledge-audit`, `grammar-postgres-integration`, and
-`retrievability-postgres-integration`. The focused code and migration review found no open blocker
-before the staging retry.
+`retrievability-postgres-integration`, and the Vercel check succeeded.
 
 Staging project `lingua-os-staging` is `ACTIVE_HEALTHY`. Migration
-`0018_profile_replay_auth_erasure` is applied at version `20260927021246`. No verified backup or
-offsite export was available through the connected staging tools at apply time; the user explicitly
-directed the retry. The migration changed schema only. It did not delete or alter learner rows.
-No Render deployment was changed.
+`0018_profile_replay_auth_erasure` is applied at version `20260927021246`; migration
+`0019_concept_save_intent_auth_erasure` is applied at version `20260927034218`. Migration 0019's
+trigger function was verified as `SECURITY INVOKER` with a fixed `search_path=pg_catalog`.
+No verified backup or offsite export was available at apply time; the user explicitly directed the
+retry. Both migrations changed schema only and did not delete or alter learner rows. No Render
+deployment was changed.
 
-A read-only owner-count snapshot captured at **2026-09-27 01:20:04.452038 UTC** found two Auth users.
-The active user authorized the later-created identity as the disposable K2-06 actor. SQL used that
-identity only as an aggregate filter; no Auth UUID or email is recorded here. Before hosted
-acceptance, the disposable actor owned one row each in `public.users`, `learner_profiles`,
-`user_languages`, `user_concept_states`, `fsrs_states`, `review_items`,
-`user_language_projection_heads`, `user_saved_concepts`, `concept_save_intents`, and
-`profile_mutation_results`; three `user_skill_states`, five `learning_events`, four
-`review_events`, and one `today_plans`. It had no assessment, exposure, Reader, or Today activity
-rows.
+The pre-delete aggregate found two Auth users. The later-created disposable K2-06 actor was
+authorized for deletion. Its aggregate ownership was checked across 27 tracked tables; after
+deletion, counts and row hashes across all 27 tables exactly matched the pre-delete snapshot for the
+remaining learner. No actor-owned residue remained and Auth contained one identity. No Auth UUID or
+email is recorded here.
 
 Using the authenticated staging UI, Brain showed one effective `weak` concept in the
 “Cần củng cố” filter while the stored row remained `active`. Opening Brain detail and reading
@@ -140,17 +138,17 @@ One `Good` Review answer used `self_recall` and changed only production competen
 `production_evidence_count` advanced from 4 to 5; recognition and listening evidence counts stayed
 at 0. A second disposable-fixture review was queued by moving only that actor's FSRS timestamps into
 the past. Its answer committed once; navigating away preserved the app's pending retry receipt.
-The visible “Thử lại” recovery action replayed that same operation. Before and after the replay,
+The visible “Thử lại” recovery action replayed that same operation. Before and after replay,
 `review_events`, `learning_events`, `state_version`, and production evidence count were unchanged
 at 6, 7, 8, and 6 respectively. The other learner's aggregate counts and row hashes remained
-unchanged after both answers and the replay.
+unchanged after both answers and replay.
 
-Deleting the disposable Auth identity after 0018 was attempted once. PostgreSQL rolled the
-transaction back at the unconditional `concept_save_intents` immutability trigger; no Auth or
-learner rows were deleted. Migration 0019 and focused rollback/cascade tests are proposed on branch
-`fix/k2-06-save-intent-auth-erasure`. Keep hosted acceptance pending until CI and independent review
-pass, 0019 is applied, Auth erasure removes every disposable-owned row, and a final aggregate check
-confirms the other learner is unchanged.
+The first Auth deletion attempt after 0018 rolled back at the pre-existing `concept_save_intents`
+immutability trigger; no Auth or learner rows were deleted. After 0019 was applied, the same
+authorized disposable identity was deleted successfully. The final aggregate verification confirmed
+complete fixture cleanup and unchanged retained-learner counts and hashes. Hosted acceptance is
+**PASS**.
+
 ## Explicit non-scope
 
 - No status persistence rewrite from time decay.

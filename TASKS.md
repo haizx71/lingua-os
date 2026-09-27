@@ -7,12 +7,24 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
   are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- **TASK-K2-07: READY for promotion.** PR #19 is still open. Recheck its current
-  head, base, CI, Preview and mergeability before merge. Source promotion is
-  separate from hosted acceptance; do not claim K2-07 staging PASS from CI alone.
+- **TASK-K2-07: DOING; promotion BLOCKED pending re-verification.** Independent
+  review found that caller-supplied `correct` combined with an explicit
+  non-`self_recall` mode was treated as objective evidence without server
+  grading. The current PR fix rejects that combination and adds zero-write,
+  legacy self-recall, and rating-fallback coverage. Recheck PR #19 head, CI,
+  Preview and independent review before promotion; do not claim K2-07 staging
+  PASS from CI alone.
+  Select cloze, listening, typing, or self-recall from the weakest observed
+  competence dimension and available canonical material. Keep one primary FSRS
+  lineage through the existing atomic Memory and competence transaction.
+  No schema migration; K2-08 through K2-10 remain downstream.
 - **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
   `weak`; effective `forgotten` concepts appear in “Tất cả” but have no dedicated
   chip. This does not reopen K2-06's Brain/Review API acceptance.
+- **Follow-up (cloze, medium severity):** Cloze target offsets can disagree
+  between UTF-16 indexing and Python Unicode character indexing for
+  supplementary-plane characters. Track separately from the K2-07 HIGH fix;
+  add a focused regression test with that follow-up.
 
 Older task snapshots below are historical and do not supersede this gate.
 

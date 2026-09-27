@@ -11,7 +11,12 @@ from pydantic.json_schema import SkipJsonSchema
 
 from lingua_api.auth import AccessTokenForbidden, AccessTokenInvalid, AccessTokenVerifier
 from lingua_api.competence.domain import CompetenceProjection, CompetenceScoreProjection
-from lingua_api.memory.domain import AuthenticatedActor, ReviewRating, ReviewSubmission
+from lingua_api.memory.domain import (
+    AuthenticatedActor,
+    ReviewExerciseMode,
+    ReviewRating,
+    ReviewSubmission,
+)
 from lingua_api.review.domain import (
     DueReviewProjection,
 )
@@ -128,6 +133,12 @@ def answer_review_item(
     projection = application.answer(
         actor=actor,
         review_item_id=review_item_id,
+        exercise_mode=(
+            ReviewExerciseMode(body.exercise_mode.value)
+            if body.exercise_mode is not None
+            else ReviewExerciseMode.SELF_RECALL
+        ),
+        validate_exercise_mode=body.exercise_mode is not None,
         submission=ReviewSubmission(
             idempotency_key=idempotency_key,
             rating=ReviewRating(body.rating.value),
@@ -166,18 +177,29 @@ def _queue_item(item: DueReviewProjection) -> ReviewQueueItemDto:
             code=item.level_code,
             label=item.level_label,
         )
+
+    concept_fields: dict[str, object] = {
+        "id": item.concept_id,
+        "canonical_form": item.canonical_form,
+        "level": level,
+        "status": ConceptStatusDto(item.concept_status),
+        "is_due": True,
+    }
+    if item.part_of_speech is not None:
+        concept_fields["part_of_speech"] = item.part_of_speech
+    prompt_fields: dict[str, str] = {"prompt_text": item.prompt_text}
+    if item.context_sentence is not None:
+        prompt_fields["context_sentence"] = item.context_sentence
+    if item.translation is not None:
+        prompt_fields["translation"] = item.translation
+    if item.audio_url is not None:
+        prompt_fields["audio_url"] = item.audio_url
+
     return ReviewQueueItemDto(
         review_item_id=item.review_item_id,
-        concept=ConceptSummaryDto(
-            id=item.concept_id,
-            canonical_form=item.canonical_form,
-            part_of_speech=item.part_of_speech,
-            level=level,
-            status=ConceptStatusDto(item.concept_status),
-            is_due=True,
-        ),
-        exercise_mode=ReviewExerciseModeDto.SELF_RECALL,
-        prompt=ReviewPromptDto(prompt_text=item.prompt_text),
+        concept=ConceptSummaryDto.model_validate(concept_fields),
+        exercise_mode=ReviewExerciseModeDto(item.exercise_mode.value),
+        prompt=ReviewPromptDto.model_validate(prompt_fields),
         memory=MemorySnapshotDto(
             state=MemoryStateDto(item.memory_state.value),
             due_at=item.due_at,

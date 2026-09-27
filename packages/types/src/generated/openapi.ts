@@ -1067,6 +1067,8 @@ export interface components {
         };
         readonly ReviewAnswerRequest: {
             readonly rating: components["schemas"]["ReviewRating"];
+            readonly exerciseMode?: components["schemas"]["ReviewExerciseMode"];
+            /** @description Caller-reported correctness is accepted only for self_recall (including the legacy request that omits exerciseMode). The server does not grade other modes. */
             readonly correct?: boolean;
             readonly responseText?: string;
             /** Format: uuid */

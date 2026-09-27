@@ -114,8 +114,11 @@ Every learning event requires:
 Every concept-projectable event additionally requires `conceptId`. Review evidence requires
 `reviewEventId`, `reviewItemId`, `exerciseMode`, `evidenceMode`, `rating`, and `responseTimeMs`.
 `correct`, response text, and selected option remain optional according to the current Review
-contract. Sensitive response content is not copied into the canonical learning event unless a
-future policy explicitly needs it.
+contract. In the public answer API, caller-supplied `correct` is accepted only for `self_recall`,
+including legacy requests that omit `exerciseMode` (which the server interprets as `self_recall`).
+The server does not grade `multiple_choice`, `typing`, `cloze`, or `listening` answers, so those
+explicit modes reject caller-supplied correctness. Sensitive response content is not copied into
+the canonical learning event unless a future policy explicitly needs it.
 
 Exposure evidence requires `exposureType` and at least one owned source reference. A concept-level
 exposure event targets at most one concept. A content encounter spanning several concepts is
@@ -149,8 +152,10 @@ the same raw record independently and never duplicates FSRS equations.
 
 ### 6.1 Outcome precedence
 
-1. When `correct` is present, correctness determines the competence outcome: `true → 1`,
-   `false → 0`.
+1. When trusted correctness is present, it determines the competence outcome: `true → 1`,
+   `false → 0`. The public Review API currently accepts caller-supplied correctness only for
+   `self_recall`; other modes require a future server-side grader or trusted adapter before they
+   can produce objective correctness evidence.
 2. When `correct` is absent and rating is present, the projector uses the linear ordinal anchors:
    `again → 0`, `hard → 1/3`, `good → 2/3`, `easy → 1`.
 3. When neither is present, the event is not projectable competence evidence. It may still be a
@@ -166,8 +171,8 @@ equal intervals in a bounded observation scale, which avoids unexplained `+0.1/-
 
 | Outcome source | Effective weight | Rationale |
 | --- | ---: | --- |
-| Objective correctness from multiple-choice, typing, cloze, or listening response | `1` | One directly observed answer. |
-| Self-recall correctness | `1/2` | Learner-reported rather than independently scored. |
+| Server-validated objective correctness from a multiple-choice, typing, cloze, or listening response | `1` | One directly observed answer, after trusted grading. |
+| Caller-reported self-recall correctness | `1/2` | Learner-reported rather than independently scored. |
 | Rating-derived fallback in any mode | `1/2` | Ordered self-report with less certainty than observed correctness. |
 | Passive exposure or save intent | `0` | No demonstrated answer. |
 

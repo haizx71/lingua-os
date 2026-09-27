@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 
@@ -156,8 +156,16 @@ class ReviewQueueItemDto(ApiModel):
 
 class ReviewAnswerRequestDto(ApiModel):
     rating: ReviewRatingDto
-    correct: bool | SkipJsonSchema[None] = Field(
+    exercise_mode: ReviewExerciseModeDto | SkipJsonSchema[None] = Field(
         default=None, exclude_if=lambda value: value is None
+    )
+    correct: bool | SkipJsonSchema[None] = Field(
+        default=None,
+        description=(
+            "Caller-reported correctness is accepted only for self_recall (including the "
+            "legacy request that omits exerciseMode). The server does not grade other modes."
+        ),
+        exclude_if=lambda value: value is None,
     )
     response_text: str | SkipJsonSchema[None] = Field(
         default=None, max_length=5000, exclude_if=lambda value: value is None
@@ -166,6 +174,18 @@ class ReviewAnswerRequestDto(ApiModel):
         default=None, exclude_if=lambda value: value is None
     )
     response_time_ms: int = Field(ge=0, le=3_600_000)
+
+    @model_validator(mode="after")
+    def reject_ungraded_correctness(self) -> ReviewAnswerRequestDto:
+        if (
+            self.correct is not None
+            and self.exercise_mode is not None
+            and self.exercise_mode is not ReviewExerciseModeDto.SELF_RECALL
+        ):
+            raise ValueError(
+                "correct is accepted only for self_recall; other exercise modes are not graded"
+            )
+        return self
 
 
 class ReviewAnswerResultDto(ApiModel):

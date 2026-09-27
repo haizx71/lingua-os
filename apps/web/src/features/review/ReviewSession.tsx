@@ -29,6 +29,7 @@ import {
   mapApiErrorToUi,
   type ApiClient,
   type ReviewRating,
+  type ReviewExerciseMode,
   type ApiErrorCode,
 } from '@lingua/types';
 import type { ReviewCardItem } from '../../fixtures/reviewFixture';
@@ -60,6 +61,7 @@ export function ReviewSession({
 }: ReviewSessionProps) {
   const [focusMode, setFocusMode] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [responseText, setResponseText] = useState('');
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
 
   useEffect(() => {
@@ -101,6 +103,10 @@ export function ReviewSession({
   const getAudioEpoch = authContext?.getActorEpoch;
   const isAudioActorCurrent = authContext?.isCurrentActor;
   const audioActorId = authContext?.user?.id ?? null;
+
+  useEffect(() => {
+    setResponseText('');
+  }, [currentCard?.id]);
 
   useEffect(() => {
     setIsAudioPlaying(false);
@@ -264,6 +270,18 @@ export function ReviewSession({
   const displayDueCount = remainingDueCount !== null ? remainingDueCount : 23;
   const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : 23;
   const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
+  const hiddenAnswerMode = currentCard.exerciseMode === 'typing'
+    || currentCard.exerciseMode === 'cloze'
+    || currentCard.exerciseMode === 'listening';
+  const needsTextResponse = currentCard.exerciseMode === 'typing'
+    || currentCard.exerciseMode === 'cloze';
+  const exerciseLabels: Record<ReviewExerciseMode, string> = {
+    self_recall: 'Tự nhớ lại',
+    multiple_choice: 'Chọn đáp án',
+    typing: 'Gõ từ',
+    cloze: 'Điền từ còn thiếu',
+    listening: 'Nghe và nhớ từ',
+  };
 
   return (
     <div aria-busy={isSubmitting} className={`mx-auto w-full max-w-3xl space-y-5 sm:space-y-6 ${focusMode ? 'py-3' : ''}`}>
@@ -306,16 +324,26 @@ export function ReviewSession({
       <div ref={sessionCardRef}>
         <Card padding="none" className="relative overflow-hidden border-[var(--border-subtle)] shadow-[var(--shadow-card-hover)]">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-warm)]/55 px-5 py-4 sm:px-7">
-            <Badge variant="neutral" size="sm">Thẻ {currentIndex + 1} / {queue.length}</Badge>
-            <ConceptChip status={currentCard.status} isDue={currentCard.isDue} term={currentCard.term} size="sm" />
+            <div className="flex items-center gap-2">
+              <Badge variant="neutral" size="sm">Thẻ {currentIndex + 1} / {queue.length}</Badge>
+              <Badge variant="neutral" size="sm">{exerciseLabels[currentCard.exerciseMode]}</Badge>
+            </div>
+            <ConceptChip
+              status={currentCard.status}
+              isDue={currentCard.isDue}
+              term={hiddenAnswerMode && !isAnswerRevealed ? 'Từ cần nhớ' : currentCard.term}
+              size="sm"
+            />
           </div>
 
           <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
             <span className="lingua-kicker text-[var(--accent-teal-strong)]">
               {currentCard.pos ? 'Từ vựng tiếng Anh' : 'Khái niệm tiếng Anh'}
             </span>
-            <h2 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[var(--text-primary)] sm:text-5xl">{currentCard.term}</h2>
-            {(currentCard.ipa || currentCard.pos) && (
+            <h2 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[var(--text-primary)] sm:text-5xl">
+              {hiddenAnswerMode && !isAnswerRevealed ? 'Từ cần nhớ' : currentCard.term}
+            </h2>
+            {!hiddenAnswerMode && (currentCard.ipa || currentCard.pos) && (
               <p className="mt-2 font-mono text-sm text-[var(--text-secondary)]">
                 {[currentCard.ipa, currentCard.pos ? `(${currentCard.pos})` : undefined].filter(Boolean).join(' ')}
               </p>
@@ -326,7 +354,7 @@ export function ReviewSession({
                 variant="secondary"
                 size="icon"
                 className="min-h-[44px] min-w-[44px] rounded-2xl"
-                aria-label="Phát âm từ"
+                aria-label={currentCard.exerciseMode === 'listening' ? 'Nghe từ cần nhớ' : 'Phát âm từ'}
                 disabled={!currentCard.audioUrl}
                 onClick={handleAudioPlay}
               >
@@ -334,24 +362,51 @@ export function ReviewSession({
               </Button>
             </div>
 
-            <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/70 px-5 py-4 text-sm italic leading-6 text-[var(--text-secondary)]">
-              “{currentCard.contextSentence}”
-              {isAnswerRevealed && (
-                <p className="mt-2 not-italic text-[var(--text-muted)]">({currentCard.contextTranslationVi})</p>
+            {currentCard.exerciseMode !== 'self_recall' && (
+              <p className="mx-auto mt-5 max-w-xl text-sm font-semibold text-[var(--text-primary)]">
+                {currentCard.prompt}
+              </p>
+            )}
+
+            {(currentCard.exerciseMode === 'cloze' || currentCard.exerciseMode === 'self_recall')
+              && currentCard.contextSentence && (
+                <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/70 px-5 py-4 text-sm italic leading-6 text-[var(--text-secondary)]">
+                  “{currentCard.contextSentence}”
+                  {isAnswerRevealed && currentCard.contextTranslationVi && (
+                    <p className="mt-2 not-italic text-[var(--text-muted)]">
+                      ({currentCard.contextTranslationVi})
+                    </p>
+                  )}
+                </div>
               )}
-            </div>
+
+            {needsTextResponse && !isAnswerRevealed && (
+              <label className="mx-auto mt-6 block max-w-xl text-left text-sm font-semibold text-[var(--text-primary)]">
+                <span className="mb-2 block">Câu trả lời</span>
+                <input
+                  type="text"
+                  aria-label="Câu trả lời"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  value={responseText}
+                  onChange={(event) => setResponseText(event.target.value)}
+                  className="min-h-[48px] w-full rounded-xl border border-[var(--border-default)] bg-white px-4 text-base"
+                />
+              </label>
+            )}
 
             {!isAnswerRevealed && (
               <div className="mt-7">
                 <Button variant="primary" size="md" onClick={() => setIsAnswerRevealed(true)} className="px-6">
-                  Hiện đáp án & nghĩa (Space)
+                  {hiddenAnswerMode ? 'Hiện đáp án (Space)' : 'Hiện đáp án & nghĩa (Space)'}
                 </Button>
               </div>
             )}
 
             {isAnswerRevealed && (
               <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--status-info-border)] bg-[var(--status-info-bg)] px-5 py-4 text-sm font-bold leading-6 text-[var(--text-primary)]">
-                {currentCard.meaningVi}
+                {hiddenAnswerMode ? `Đáp án: ${currentCard.term}` : currentCard.meaningVi}
               </div>
             )}
           </div>
@@ -359,10 +414,10 @@ export function ReviewSession({
           <div className="border-t border-[var(--border-subtle)] bg-white px-5 py-5 sm:px-7">
             <p className="mb-3 text-center text-xs text-[var(--text-secondary)]">Đánh giá mức độ ghi nhớ để FSRS tối ưu lịch ôn:</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]" onClick={() => void submitRating('again')}>Quên (Again)</Button>
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]" onClick={() => void submitRating('hard')}>Khó (Hard)</Button>
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-blue)]" onClick={() => void submitRating('good')}>Tốt (Good)</Button>
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)]" onClick={() => void submitRating('easy')}>Dễ (Easy)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]" onClick={() => void submitRating('again', needsTextResponse ? responseText : undefined)}>Quên (Again)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]" onClick={() => void submitRating('hard', needsTextResponse ? responseText : undefined)}>Khó (Hard)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-blue)]" onClick={() => void submitRating('good', needsTextResponse ? responseText : undefined)}>Tốt (Good)</Button>
+              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)]" onClick={() => void submitRating('easy', needsTextResponse ? responseText : undefined)}>Dễ (Easy)</Button>
             </div>
           </div>
         </Card>

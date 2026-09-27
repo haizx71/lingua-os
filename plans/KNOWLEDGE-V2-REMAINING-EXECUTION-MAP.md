@@ -1,7 +1,7 @@
 # KNOWLEDGE V2 REMAINING EXECUTION MAP
 
 Status: ACTIVE EXECUTION MAP  
-Date: 2026-09-22  
+Date: 2026-09-27  
 Authoritative source checkpoint: `d8658c83640df88af789c915f985f921d851bc7f`  
 Hosted predecessor at discovery: application registry `0014`; `0015`, `0016`, and `0017` were subsequently applied and gated one at a time.
 
@@ -55,6 +55,10 @@ not remaining implementation waves.
 10. **Stale absolute test totals.** K2-10 cites 512 backend and 711 frontend tests, while accepted
     master reports newer suite partitions/totals. K2-10 uses the tests discovered at execution time
     and reports exact executed counts rather than forcing obsolete totals.
+
+Latest execution checkpoint — 2026-09-27: K2-04/K2-05 are accepted predecessors; K2-06
+source and hosted cleanup gates are PASS. K2-07 is the active wave on
+`feat/k2-07-modality-engine`; K2-08 through K2-10 remain sequentially downstream.
 
 ## K2-04 — Grammar Specifications and Brain Integration
 
@@ -116,37 +120,43 @@ not remaining implementation waves.
 
 ## K2-06 — Tripartite Competence and Dynamic State Reconciliation
 
+**Wave status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE: PASS (2026-09-27).**
+
 - **Exact objective:** complete the specification-defined recognition/listening/production Beta
   update and dynamic curricular-state behavior while preserving accepted TASK-006D replay
   authority and eight-status contract.
-- **Schema impact:** one bounded persistence fix was approved after hosted cleanup proved that
-  TASK-006E's append-only replay guard and `ON DELETE RESTRICT` prevented disposable Auth actor
+- **Schema impact:** two bounded cleanup-only persistence fixes were required after staging proved
+  that TASK-006E's append-only guards and `ON DELETE RESTRICT` prevented disposable Auth actor
   cleanup. Migration `0018_profile_replay_auth_erasure` permits replay cleanup only inside a nested
-  Auth deletion cascade after the Auth identity is absent; active replay snapshots remain immutable.
-  No competence, event-ledger, or retrievability schema changes.
-- **Domain/service impact:** reconcile any missing retrievability-aware derivation at read/planning
-  boundaries; do not replace the existing projector or mutate historical evidence.
+  Auth deletion cascade after the Auth identity is absent; migration
+  `0019_concept_save_intent_auth_erasure` applies the same narrow rule to
+  `concept_save_intents`. Active identity mutations remain immutable. No competence, event-ledger,
+  or retrievability schema changes.
+- **Domain/service impact:** reconcile retrievability-aware derivation at read/planning boundaries;
+  do not replace the existing projector or mutate historical evidence.
 - **Importer impact:** none.
-- **API impact:** none unless a demonstrable contract gap remains after implementation inspection;
-  any delta then requires an explicit contract checkpoint.
-- **Frontend impact:** none expected.
-- **Migration required:** **YES — `0018_profile_replay_auth_erasure`**, after the required revised
-  review checkpoint. This is limited to the proven Auth-cleanup invariant; it changes no competence
-  persistence or learner evidence.
+- **API impact:** none.
+- **Frontend impact:** none.
+- **Migration required:** **YES — `0018_profile_replay_auth_erasure` and
+  `0019_concept_save_intent_auth_erasure`**, limited to the proven Auth-cleanup invariant; no
+  competence persistence or learner evidence changes.
 - **Security impact:** preserve actor-scoped projection reads/writes, anti-IDOR, replay ownership,
   and append-only event authority.
 - **Learner-state impact:** runtime review/evidence flows intentionally update owned learner state;
-  the wave itself performs no catalog-driven learner migration.
+  migrations perform no catalog-driven learner changes.
 - **Dependencies:** K2-05 projection and accepted ADR-015/TASK-006D competence implementation.
 - **Required tests:** Beta bounds and convergence, monotonic uncertainty reduction, dimension
   routing, replay equality, accepted eight-status transitions, temporal weak/forgotten projection,
-  actor isolation, idempotency, concurrent no-lost-update, and FRLL Review/Brain regressions.
-- **Hosted acceptance:** disposable actor evidence updates only the intended dimension and owned
-  rows, replay is exact, effective decay behavior is observable without rewriting stored status,
-  the actor is removed through the authorized Auth deletion path with all owned fixtures cleaned,
-  and established learner rows outside the fixture are unchanged.
+  actor isolation, idempotency, concurrent no-lost-update, migration rollback/reapply, and FRLL
+  Review/Brain regressions.
+- **Hosted acceptance:** PASS. CI run #54 passed all three required jobs and Vercel succeeded.
+  Migration 0019 was applied after 0018. The authorized disposable Auth actor was removed; aggregate
+  counts and row hashes across 27 tracked tables exactly matched the retained learner's pre-delete
+  snapshot. No actor-owned residue remained. No Auth UUID or email is recorded in this map.
 
 ## K2-07 — Multi-Modal Review Modality Engine
+
+**Wave status: ACTIVE (2026-09-27; branch `feat/k2-07-modality-engine`).**
 
 - **Exact objective:** choose cloze, listening, spelling/typing, or self-recall prompts from the
   weakest eligible competence dimension while retaining exactly one primary FSRS lineage.
@@ -157,13 +167,15 @@ not remaining implementation waves.
   transaction.
 - **Importer impact:** canonical examples/audio availability must be consumed, not fabricated; no
   importer change unless coverage validation is needed.
-- **API impact:** intentional additive change to the actual `GET /v1/review/queue` item contract
-  (the old roadmap calls it `/v1/review/items`); include modality and bounded prompt envelope.
+- **API impact:** use the existing `GET /v1/review/queue` modality and bounded prompt envelope
+  (the old roadmap calls it `/v1/review/items`); add optional `exerciseMode` to the answer request
+  so selected modality participates in the idempotency fingerprint and exact retry.
 - **Frontend impact:** render and answer each supported modality, preserve pending-answer
   idempotency and actor-epoch protections, and never calculate FSRS/client competence.
 - **Migration required:** **NO**.
 - **Security impact:** all material is resolved server-side from the owned review item; clients
-  cannot select another concept/user or create a second lineage.
+  cannot select another concept/user or create a second lineage. The answer mode is fingerprinted
+  for exact replay; older clients omit it and retain the `self_recall` default.
 - **Learner-state impact:** answers intentionally update one FSRS state and the matching competence
   dimension atomically; queue reads remain side-effect free.
 - **Dependencies:** K2-06 and existing Review/Memory FRLL boundary.

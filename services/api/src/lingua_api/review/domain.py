@@ -7,7 +7,12 @@ from datetime import datetime
 from uuid import UUID
 
 from lingua_api.competence.domain import CompetenceProjection
-from lingua_api.memory.domain import MemoryState, MemoryStateSnapshot, ReviewOutcome
+from lingua_api.memory.domain import (
+    MemoryState,
+    MemoryStateSnapshot,
+    ReviewExerciseMode,
+    ReviewOutcome,
+)
 
 
 class ReviewProjectionUnavailable(RuntimeError):
@@ -18,6 +23,10 @@ class InvalidReviewCursor(ValueError):
     """The opaque Review cursor is invalid, expired, or belongs to another query."""
 
 
+class ReviewModeMismatch(ValueError):
+    """A submitted Review mode differs from the server-selected prompt."""
+
+
 @dataclass(frozen=True)
 class DueReviewProjection:
     review_item_id: UUID
@@ -26,6 +35,10 @@ class DueReviewProjection:
     part_of_speech: str | None
     concept_status: str
     prompt_text: str
+    exercise_mode: ReviewExerciseMode
+    context_sentence: str | None
+    translation: str | None
+    audio_url: str | None
     due_at: datetime
     last_review_at: datetime | None
     memory_state: MemoryState

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from psycopg import errors
+from psycopg import Connection, errors
 
 from lingua_api.competence.domain import CompetenceProjection
 from lingua_api.competence.service import CompetenceEngine
@@ -13,14 +13,17 @@ from lingua_api.memory.clock import Clock, SystemClock
 from lingua_api.memory.domain import (
     AuthenticatedActor,
     IdempotencyConflict,
+    MemoryItemNotFound,
     ReviewExerciseMode,
     ReviewSubmission,
 )
 from lingua_api.memory.service import PostgresMemoryEngine
+from lingua_api.memory.store import LockedMemoryItem
 from lingua_api.review.cursor import ReviewCursor, ReviewCursorCodec
 from lingua_api.review.domain import (
     InvalidReviewCursor,
     ReviewAnswerProjection,
+    ReviewModeMismatch,
     ReviewQueuePage,
 )
 from lingua_api.review.store import PostgresReviewReadStore
@@ -97,19 +100,45 @@ class ReviewApplication:
         actor: AuthenticatedActor,
         review_item_id: UUID,
         submission: ReviewSubmission,
+        exercise_mode: ReviewExerciseMode = ReviewExerciseMode.SELF_RECALL,
+        validate_exercise_mode: bool = False,
     ) -> ReviewAnswerProjection:
         reviewed_at = _utc(self._clock.now())
         feedback = "Đã ghi nhận kết quả ôn tập."
         stored_feedback: str | None
         try:
             with self._memory.connect() as connection, connection.transaction():
+
+                def validate_mode(
+                    transaction: Connection[tuple[object, ...]], locked: LockedMemoryItem
+                ) -> None:
+                    selected = self._read_store.list_due(
+                        actor=actor,
+                        language_profile_id=locked.user_language_id,
+                        as_of=datetime.max.replace(tzinfo=UTC),
+                        after_due_at=None,
+                        after_review_item_id=None,
+                        limit=1,
+                        connection=transaction,
+                        review_item_id=review_item_id,
+                    )
+                    if not selected:
+                        raise MemoryItemNotFound(
+                            "review item was not found for the authenticated actor"
+                        )
+                    if selected[0].exercise_mode != exercise_mode:
+                        raise ReviewModeMismatch(
+                            "submitted exercise mode differs from selected prompt"
+                        )
+
                 outcome, locked = self._memory.review_in_transaction(
                     connection,
                     actor=actor,
                     review_item_id=review_item_id,
-                    exercise_mode=ReviewExerciseMode.SELF_RECALL,
+                    exercise_mode=exercise_mode,
                     submission=submission,
                     reviewed_at=reviewed_at,
+                    validate_exercise_mode=validate_mode if validate_exercise_mode else None,
                 )
                 if outcome.replayed:
                     stored = self._competence.load_review_result(
@@ -131,7 +160,7 @@ class ReviewApplication:
                         concept_id=locked.concept_id,
                         review_item_id=review_item_id,
                         review_event_id=outcome.event_id,
-                        exercise_mode=ReviewExerciseMode.SELF_RECALL,
+                        exercise_mode=exercise_mode,
                         submission=submission,
                         reviewed_at=reviewed_at,
                     )
