@@ -121,6 +121,52 @@ def test_concept_save_intents_cascade_only_after_auth_identity_erasure(
         ).fetchone() == (0,)
 
 
+def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        actor_id, profile_id, concept_id = _seed_owner_and_concept(connection)
+        connection.execute(
+            """
+            INSERT INTO concept_save_intents
+                (user_id, user_language_id, concept_id, language_code)
+            VALUES (%s, %s, %s, 'en')
+            """,
+            (actor_id, profile_id, concept_id),
+        )
+        connection.commit()
+
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == [
+        "0019"
+    ]
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        with (
+            pytest.raises(psycopg.errors.CheckViolation, match="immutable"),
+            connection.transaction(),
+        ):
+            connection.execute("SET ROLE supabase_auth_admin")
+            connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+        assert connection.execute(
+            "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+        ).fetchone() == (1,)
+        assert connection.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s", (actor_id,)
+        ).fetchone() == (1,)
+
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == ["0019"]
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        connection.execute("SET ROLE supabase_auth_admin")
+        connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+        connection.execute("RESET ROLE")
+        assert connection.execute(
+            "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT count(*) FROM public.concept_save_intents WHERE user_id = %s",
+            (actor_id,),
+        ).fetchone() == (0,)
+
+
 def test_concept_save_intents_uniqueness_per_user_and_concept(
     db_connection: Connection[tuple[object, ...]],
 ) -> None:
