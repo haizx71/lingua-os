@@ -343,7 +343,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
     database_url = isolated_migrated_postgres_url
     assert migrate_down(database_url, MIGRATIONS_DIR, steps=5) == [
         "0019",
-        "0018"
+        "0018",
         "0017",
         "0016",
         "0015",
