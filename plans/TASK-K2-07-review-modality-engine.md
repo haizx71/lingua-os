@@ -1,10 +1,22 @@
 # TASK-K2-07 — Multi-Modal Review Modality Engine
 
-Status: IMPLEMENTATION IN PROGRESS  
+Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING
 Owner: CODEX single-writer lane  
 Predecessor: K2-06 SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE: PASS  
 Schema: NONE  
 Branch: `feat/k2-07-modality-engine`
+
+## Source promotion checkpoint — 2026-09-27
+
+PR #19 merged into `master` at `ac02c349f8500975a843633556daf9d1bebc49e8`.
+Final PR head `c97f3e0` passed Knowledge audit, Grammar/PostgreSQL,
+Retrievability/PostgreSQL, Review frontend regression, and Vercel Preview.
+Independent verify-fix review found the caller-supplied correctness HIGH issue
+closed and no remaining HIGH/BLOCKER. The medium UTF-16 cloze-offset issue below
+remains a separate follow-up. Render staging is live from the merge SHA with
+`/health` 200; Supabase staging migration head remains `0019`. GitHub's Vercel
+Production deployment status for the merge SHA is success. No K2-07 hosted
+disposable-actor acceptance has run, so STAGING: PASS is not claimed.
 
 ## Objective
 
