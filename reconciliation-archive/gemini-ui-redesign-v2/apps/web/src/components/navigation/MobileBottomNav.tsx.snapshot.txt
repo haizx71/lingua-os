@@ -1,0 +1,59 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, BookOpen, RotateCcw, Brain, TrendingUp } from 'lucide-react';
+import { primaryNavItems } from './NavTypes';
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Home,
+  BookOpen,
+  RotateCcw,
+  Brain,
+  TrendingUp,
+};
+
+export interface MobileBottomNavProps {
+  currentPath?: string;
+}
+
+export function MobileBottomNav({ currentPath }: MobileBottomNavProps = {}) {
+  let pathname = usePathname();
+  if (!pathname && currentPath) {
+    pathname = currentPath;
+  }
+
+  return (
+    <nav
+      aria-label="Điều hướng chính di động"
+      className="md:hidden fixed bottom-2.5 left-3 right-3 z-40 bg-[var(--surface-glass)] backdrop-blur-xl border border-[var(--surface-glass-border)] rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/30 pb-safe transition-all"
+    >
+      <div className="flex items-center justify-around h-16 px-1">
+        {primaryNavItems.map((item) => {
+          const Icon = iconMap[item.iconName] || Home;
+          const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(`${item.href}`));
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isActive ? 'page' : undefined}
+              className={`relative flex flex-col items-center justify-center flex-1 h-full min-h-[48px] py-1 text-xs transition-all active:scale-[0.95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-xl ${
+                isActive
+                  ? 'text-[var(--action-primary)] font-semibold'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              {isActive && (
+                <span className="absolute -top-1 w-6 h-1 rounded-full bg-[var(--action-primary)] shadow-sm shadow-[var(--action-primary)]/50" />
+              )}
+              <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.25px] text-[var(--action-primary)] scale-105' : 'stroke-[1.75px] text-[var(--text-muted)]'} transition-transform`} />
+              <span className="text-[11px] truncate tracking-tight">{item.labelVi}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

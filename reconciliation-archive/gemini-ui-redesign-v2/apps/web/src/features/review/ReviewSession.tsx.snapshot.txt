@@ -1,0 +1,454 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import {
+  Button,
+  Card,
+  Badge,
+  ConceptChip,
+  Progress,
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  InlineAlert,
+  componentMotionNumeric,
+  usePrefersReducedMotion,
+} from '@lingua/ui';
+import {
+  Volume2,
+  Maximize2,
+  Minimize2,
+  CheckCircle2,
+} from 'lucide-react';
+import {
+  isApiErrorCode,
+  mapApiErrorToUi,
+  type ApiClient,
+  type ReviewRating,
+  type ApiErrorCode,
+} from '@lingua/types';
+import type { ReviewCardItem } from '../../fixtures/reviewFixture';
+import { useOptionalAuth } from '../auth/AuthContext';
+import { useReviewSession } from './useReviewSession';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(useGSAP);
+}
+
+export interface ReviewSessionProps {
+  initialQueue?: ReviewCardItem[];
+  forcedState?: 'loading' | 'empty' | 'error' | 'success';
+  forcedErrorCode?: ApiErrorCode;
+  apiClient?: ApiClient;
+  languageProfileId?: string;
+  onRatingSubmit?: (cardId: string, rating: ReviewRating) => void;
+  onSessionComplete?: () => void;
+}
+
+export function ReviewSession({
+  initialQueue,
+  forcedState,
+  forcedErrorCode,
+  apiClient,
+  languageProfileId,
+  onRatingSubmit,
+  onSessionComplete,
+}: ReviewSessionProps) {
+  const [focusMode, setFocusMode] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
+
+  useEffect(() => {
+    setLocalForcedState(forcedState);
+  }, [forcedState]);
+
+  const {
+    queue,
+    currentIndex,
+    currentCard,
+    isFinished,
+    isLoading,
+    error,
+    isSubmitting,
+    actionError,
+    lastFeedback,
+    remainingDueCount,
+    reviewedCount,
+    isAnswerRevealed,
+    setIsAnswerRevealed,
+    submitRating,
+    retryLastAnswer,
+    pendingRetryOperation,
+    refetch,
+  } = useReviewSession({
+    apiClient,
+    initialQueue,
+    query: languageProfileId ? { languageProfileId } : undefined,
+    onRatingSubmit,
+    onSessionComplete,
+  });
+
+  const sessionCardRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const authContext = useOptionalAuth();
+  const getAudioEpoch = authContext?.getActorEpoch;
+  const isAudioActorCurrent = authContext?.isCurrentActor;
+  const audioActorId = authContext?.user?.id ?? null;
+
+  useEffect(() => {
+    setIsAudioPlaying(false);
+    if (!currentCard?.audioUrl) return;
+    const audio = new Audio(currentCard.audioUrl);
+    audio.preload = 'none';
+    audioRef.current = audio;
+    const epoch = getAudioEpoch?.();
+    const current = () => audioRef.current === audio &&
+      (!isAudioActorCurrent || isAudioActorCurrent(epoch ?? 0, audioActorId));
+    audio.onended = audio.onerror = () => { if (current()) setIsAudioPlaying(false); };
+    return () => {
+      audioRef.current = null;
+      audio.onended = audio.onerror = null;
+      audio.pause();
+    };
+  }, [currentCard?.id, currentCard?.audioUrl, authContext?.actorEpoch, audioActorId,
+    getAudioEpoch, isAudioActorCurrent]);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Lateral slide progression between queue cards (150ms slide distance, opacity: 0 -> 1)
+  useGSAP(
+    () => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+
+      if (!sessionCardRef.current || isFinished) return;
+
+      if (prefersReducedMotion) {
+        gsap.set(sessionCardRef.current, { x: 0, opacity: 1, clearProps: 'transform,opacity' });
+        return;
+      }
+
+      gsap.fromTo(
+        sessionCardRef.current,
+        { x: componentMotionNumeric.reviewSession.slideDistance, opacity: 0 },
+        {
+          x: 0,
+          opacity: 1,
+          duration: componentMotionNumeric.reviewSession.slideDuration,
+          ease: componentMotionNumeric.reviewSession.slideEase,
+          clearProps: 'transform',
+          overwrite: 'auto',
+        }
+      );
+    },
+    { dependencies: [currentIndex, prefersReducedMotion], scope: sessionCardRef }
+  );
+
+  // Keyboard shortcut listener (1: Again, 2: Hard, 3: Good, 4: Easy, Space: Reveal)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (isSubmitting || isLoading || error || pendingRetryOperation || localForcedState === 'error' || localForcedState === 'loading') return;
+
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        setIsAnswerRevealed((prev) => !prev);
+      } else if (e.key === '1') {
+        e.preventDefault();
+        void submitRating('again');
+      } else if (e.key === '2') {
+        e.preventDefault();
+        void submitRating('hard');
+      } else if (e.key === '3') {
+        e.preventDefault();
+        void submitRating('good');
+      } else if (e.key === '4') {
+        e.preventDefault();
+        void submitRating('easy');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSubmitting, isLoading, error, pendingRetryOperation, localForcedState, setIsAnswerRevealed, submitRating]);
+
+  const handleAudioPlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const epoch = authContext?.getActorEpoch();
+    const actorId = authContext?.user?.id ?? null;
+    void audio.play().then(() => {
+      if (audioRef.current === audio && (!authContext?.isCurrentActor || authContext.isCurrentActor(epoch ?? 0, actorId))) {
+        setIsAudioPlaying(!audio.paused);
+      }
+    }).catch(() => { /* Playback failure does not create learner evidence. */ });
+  };
+
+  const isConfiguredMode = Boolean(apiClient || (authContext?.isConfigured && authContext?.authState === 'authenticated'));
+
+  const handleRetry = () => {
+    if (localForcedState === 'error') {
+      setLocalForcedState('loading');
+    }
+    if (isConfiguredMode) {
+      setLocalForcedState(undefined);
+      void refetch();
+    } else {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = setTimeout(() => {
+        setLocalForcedState('success');
+      }, 300);
+    }
+  };
+
+  if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
+    return <LoadingState message="Đang tải hàng đợi thẻ ôn tập FSRS..." count={3} />;
+  }
+
+  if (localForcedState === 'error' || (error && !localForcedState)) {
+    const code: ApiErrorCode =
+      forcedErrorCode ??
+      (error && 'code' in error && isApiErrorCode(error.code) ? error.code : 'INTERNAL_ERROR');
+    return <ErrorState code={code} onRetry={handleRetry} />;
+  }
+
+  const recoveryAlert = (actionError || (pendingRetryOperation && !isSubmitting)) && (
+    <InlineAlert variant="danger" title="Lỗi gửi kết quả ôn tập">
+      <p>{actionError ? mapApiErrorToUi(actionError).message : 'Kết quả đang chờ xác nhận.'}</p>
+      <p>Câu trả lời được giữ trên thiết bị này để xác nhận lại, không gửi câu trả lời mới.</p>
+      <Button variant="outline" size="sm" disabled={isSubmitting || isLoading}
+        onClick={() => void retryLastAnswer()}>Thử lại</Button>
+    </InlineAlert>
+  );
+
+  if (!currentCard && pendingRetryOperation) {
+    return <div aria-busy={isSubmitting}>{recoveryAlert}</div>;
+  }
+
+  if (localForcedState === 'empty' || isFinished || (!isLoading && queue.length === 0)) {
+    return (
+      <div className="space-y-6 max-w-2xl mx-auto py-8">
+        <EmptyState
+          title="Đã hoàn thành toàn bộ hàng đợi ôn tập!"
+          description="FSRS không ghi nhận từ nào đến hạn cần ôn ngay bây giờ."
+          icon={<CheckCircle2 className="w-10 h-10 text-[var(--status-success)]" />}
+          actionLabel="Đọc bài mới trong Reader"
+          onAction={() => {
+            window.location.href = '/read';
+          }}
+        />
+        <div className="text-center pt-2">
+          <Link href="/today">
+            <Button variant="outline" size="md">
+              Về trang Hôm nay
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentCard) {
+    return null;
+  }
+
+  const displayDueCount = remainingDueCount !== null ? remainingDueCount : 23;
+  const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : 23;
+  const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
+
+  return (
+    <div aria-busy={isSubmitting} className={`space-y-6 max-w-2xl mx-auto ${focusMode ? 'py-4' : ''}`}>
+      {/* Session Header */}
+      <header className="flex items-center justify-between">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
+            Smart Review (FSRS)
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+            Hàng đợi ôn tập
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="warning" size="md">
+            {displayDueCount} từ đến hạn
+          </Badge>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setFocusMode(!focusMode)}
+            aria-label={focusMode ? 'Tắt chế độ tập trung' : 'Bật chế độ tập trung'}
+            title={focusMode ? 'Tắt Focus Mode' : 'Bật Focus Mode'}
+          >
+            {focusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </Button>
+        </div>
+      </header>
+
+      {/* Queue Progress */}
+      <Card variant="subtle" padding="sm" className="space-y-1">
+        <Progress
+          value={progressValue}
+          max={100}
+          label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`}
+          showValueText
+          size="sm"
+        />
+      </Card>
+
+      {/* Action Error / Ambiguous failure banner with retry */}
+      {recoveryAlert}
+
+      {/* Inline Rating Feedback */}
+      {!actionError && lastFeedback && (
+        <InlineAlert variant="info" title="Hệ thống FSRS">
+          {lastFeedback}
+        </InlineAlert>
+      )}
+
+      {/* Main Flashcard Card with Lateral Progression Container */}
+      <div ref={sessionCardRef}>
+        <Card
+          padding="lg"
+          className="text-center relative space-y-6 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-md dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]"
+        >
+          {/* Top Badges / Card State */}
+          <div className="flex items-center justify-between">
+            <Badge variant="neutral" size="sm" className="font-mono text-[11px]">
+              Thẻ {currentIndex + 1} / {queue.length}
+            </Badge>
+            <ConceptChip status={currentCard.status} isDue={currentCard.isDue} term={currentCard.term} size="sm" />
+          </div>
+
+          {/* Word Prompt & Pronunciation */}
+          <div className="space-y-3 py-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)] px-2.5 py-0.5 rounded-full bg-[var(--status-info-bg)] border border-[var(--status-info-border)]">
+              {currentCard.pos ? 'Từ vựng tiếng Anh' : 'Khái niệm tiếng Anh'}
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
+              {currentCard.term}
+            </h2>
+            {(currentCard.ipa || currentCard.pos) && (
+              <p className="text-sm text-[var(--text-secondary)] font-mono">
+                {[currentCard.ipa, currentCard.pos ? `(${currentCard.pos})` : undefined]
+                  .filter(Boolean)
+                  .join(' ')}
+              </p>
+            )}
+
+            <div className="flex justify-center pt-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="min-h-[44px] min-w-[44px] rounded-2xl hover:bg-[var(--surface-subtle)] border border-transparent hover:border-[var(--border-subtle)] transition-all"
+                aria-label="Phát âm từ"
+                disabled={!currentCard.audioUrl}
+                onClick={handleAudioPlay}
+              >
+                <Volume2
+                  className={`w-5 h-5 text-[var(--action-primary)] ${
+                    isAudioPlaying && !prefersReducedMotion ? 'animate-bounce' : ''
+                  }`}
+                />
+              </Button>
+            </div>
+
+            {/* Context Sentence */}
+            <div className="pt-2 px-4 max-w-md mx-auto text-xs sm:text-sm text-[var(--text-secondary)] italic bg-[var(--surface-subtle)] p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+              "{currentCard.contextSentence}"
+              {isAnswerRevealed && (
+                <p className="not-italic text-[var(--text-muted)] mt-1.5 font-sans">
+                  ({currentCard.contextTranslationVi})
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Answer Reveal Toggle Button */}
+          {!isAnswerRevealed && (
+            <div className="pt-2">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setIsAnswerRevealed(true)}
+                className="px-7 min-h-[44px] font-semibold shadow-xs hover:shadow transition-all"
+              >
+                Hiện đáp án & nghĩa (Space)
+              </Button>
+            </div>
+          )}
+
+          {/* Revealed Meaning */}
+          {isAnswerRevealed && (
+            <div className="p-4 bg-[var(--status-info-bg)] border border-[var(--status-info-border)] rounded-2xl text-sm font-semibold text-[var(--text-primary)] shadow-xs animate-fadeIn">
+              {currentCard.meaningVi}
+            </div>
+          )}
+
+          {/* Action / Rating Buttons */}
+          <div className="space-y-3 pt-4 border-t border-[var(--border-subtle)]">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+              <span>Đánh giá mức độ ghi nhớ (FSRS Algorithm):</span>
+              <span className="text-[11px] text-[var(--text-muted)]">Phím tắt: 1 • 2 • 3 • 4</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
+                className="flex flex-col items-center justify-center border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)] min-h-[48px] py-1.5 rounded-xl font-medium"
+                onClick={() => void submitRating('again')}
+              >
+                <span>Quên (Again)</span>
+                <span className="text-[10px] font-mono opacity-80">&lt; 10 phút</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
+                className="flex flex-col items-center justify-center border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)] min-h-[48px] py-1.5 rounded-xl font-medium"
+                onClick={() => void submitRating('hard')}
+              >
+                <span>Khó (Hard)</span>
+                <span className="text-[10px] font-mono opacity-80">1 ngày</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
+                className="flex flex-col items-center justify-center border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-subtle)] min-h-[48px] py-1.5 rounded-xl font-semibold"
+                onClick={() => void submitRating('good')}
+              >
+                <span>Tốt (Good)</span>
+                <span className="text-[10px] font-mono opacity-80">3 ngày</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isSubmitting || Boolean(pendingRetryOperation)}
+                className="flex flex-col items-center justify-center border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)] min-h-[48px] py-1.5 rounded-xl font-semibold"
+                onClick={() => void submitRating('easy')}
+              >
+                <span>Dễ (Easy)</span>
+                <span className="text-[10px] font-mono opacity-80">6 ngày</span>
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}

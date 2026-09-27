@@ -1,0 +1,331 @@
+'use client';
+
+import React, { useState, useRef } from 'react';
+import Link from 'next/link';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import {
+  Button,
+  Card,
+  Badge,
+  Progress,
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  componentMotionNumeric,
+  usePrefersReducedMotion,
+} from '@lingua/ui';
+import {
+  TrendingUp,
+  Calendar,
+  Zap,
+  CheckCircle2,
+  Clock,
+  Award,
+  Sparkles,
+  BookOpen,
+  RotateCcw,
+  Volume2,
+  Search,
+} from 'lucide-react';
+import { type ApiErrorCode } from '@lingua/types';
+import { defaultProgressSummary, type ProgressSummaryData } from '../../fixtures/progressFixture';
+
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(useGSAP);
+}
+
+export interface ProgressAnalyticsProps {
+  initialData?: ProgressSummaryData;
+  forcedState?: 'loading' | 'empty' | 'error' | 'success';
+  forcedErrorCode?: ApiErrorCode;
+}
+
+export function ProgressAnalytics({
+  initialData = defaultProgressSummary,
+  forcedState = 'success',
+  forcedErrorCode = 'INTERNAL_ERROR',
+}: ProgressAnalyticsProps) {
+  const [data] = useState<ProgressSummaryData>(initialData);
+  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
+  const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
+  const [timeWindow, setTimeWindow] = useState<'7d' | '30d'>('7d');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  // Coordinated staggered entrance on mount & timeWindow toggle
+  useGSAP(
+    () => {
+      if (currentState !== 'success') return;
+
+      if (prefersReducedMotion) {
+        gsap.set('.analytics-bar-fill', { scaleX: 1, opacity: 1, clearProps: 'transform,opacity' });
+        return;
+      }
+
+      gsap.fromTo(
+        '.analytics-bar-fill',
+        {
+          scaleX: 0,
+          opacity: 0.3,
+        },
+        {
+          scaleX: 1,
+          opacity: 1,
+          duration: componentMotionNumeric.progressAnalytics.barDuration,
+          stagger: componentMotionNumeric.progressAnalytics.barStagger,
+          ease: componentMotionNumeric.progressAnalytics.barEase,
+          transformOrigin: 'left center',
+          overwrite: 'auto',
+          clearProps: 'transform,opacity',
+        }
+      );
+    },
+    { dependencies: [timeWindow, currentState, prefersReducedMotion], scope: containerRef }
+  );
+
+  const handleRetry = () => {
+    setCurrentState('loading');
+    setTimeout(() => {
+      setCurrentState('success');
+    }, 400);
+  };
+
+  if (currentState === 'loading') {
+    return <LoadingState message="Đang phân tích đường cong ghi nhớ và dữ liệu tiến độ..." count={4} />;
+  }
+
+  if (currentState === 'error') {
+    return <ErrorState code={errorCode} onRetry={handleRetry} />;
+  }
+
+  if (currentState === 'empty') {
+    return (
+      <EmptyState
+        title="Chưa có dữ liệu tiến độ"
+        description="Hãy hoàn thành bài học đầu tiên hôm nay để hệ thống tổng hợp báo cáo tiến độ học tập cho bạn."
+        actionLabel="Học ngay hôm nay"
+        onAction={() => {
+          window.location.href = '/today';
+        }}
+      />
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="space-y-6 max-w-4xl">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)] px-2.5 py-0.5 rounded-full bg-[var(--status-info-bg)] border border-[var(--status-info-border)]">
+              Learning Evidence & Trends
+            </span>
+            <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--surface-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+              FSRS Analytics
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
+            Tiến độ học thực tế
+          </h1>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Đo lường sự tiến bộ dựa trên bằng chứng ghi nhớ thực tế, không dựa trên điểm thưởng hay XP ảo.
+          </p>
+        </div>
+
+        {/* Time Window Switcher */}
+        <div className="flex items-center gap-1 bg-[var(--surface-subtle)] p-1 rounded-2xl self-start sm:self-center border border-[var(--border-subtle)] shadow-xs">
+          <button
+            type="button"
+            onClick={() => setTimeWindow('7d')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              timeWindow === '7d'
+                ? 'bg-[var(--surface)] text-[var(--action-primary)] shadow-sm font-bold border border-[var(--border-subtle)]'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            7 ngày qua
+          </button>
+          <button
+            type="button"
+            onClick={() => setTimeWindow('30d')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              timeWindow === '30d'
+                ? 'bg-[var(--surface)] text-[var(--action-primary)] shadow-sm font-bold border border-[var(--border-subtle)]'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            30 ngày qua
+          </button>
+        </div>
+      </header>
+
+      {/* Weekly Highlights Card — Bento Grid */}
+      <Card variant="default" padding="lg" className="space-y-4 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-sm dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+        <h2 className="text-base font-bold tracking-tight text-[var(--text-primary)] flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-[var(--action-primary)]" />
+          <span>Bằng chứng tuần này</span>
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div className="p-4 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)] shadow-xs hover:border-[var(--action-primary)]/40 transition-all">
+            <span className="text-xs text-[var(--text-secondary)] font-semibold">
+              Từ mới đã tiếp nạp
+            </span>
+            <div className="text-2xl sm:text-3xl font-extrabold text-[var(--action-primary)] mt-1.5 font-data">
+              +{data.newWordsAcquired} từ
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)] font-medium mt-1">Qua các bài đọc Reader</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)] shadow-xs hover:border-[var(--status-success)]/40 transition-all">
+            <span className="text-xs text-[var(--text-secondary)] font-semibold">
+              Từ đã củng cố vững chắc
+            </span>
+            <div className="text-2xl sm:text-3xl font-extrabold text-[var(--status-success)] mt-1.5 font-data">
+              +{data.wordsSolidified} từ
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)] font-medium mt-1">Đạt chuẩn trí nhớ dài hạn</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)] shadow-xs hover:border-[var(--action-primary)]/40 transition-all">
+            <span className="text-xs text-[var(--text-secondary)] font-semibold">
+              Ngày học thành công
+            </span>
+            <div className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] mt-1.5 font-data">
+              {data.activeDaysCount} / {data.weeklyTargetDays} ngày
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)] font-medium mt-1">Đạt mục tiêu học hàng ngày</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Starting Level Estimate & Confidence (ADR-009) */}
+      <Card variant="default" padding="lg" className="space-y-4 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-sm dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)] px-2.5 py-0.5 rounded-full bg-[var(--status-info-bg)] border border-[var(--status-info-border)]">
+              Định vị năng lực (ADR-009)
+            </span>
+            <h3 className="text-lg font-bold text-[var(--text-primary)] mt-1.5">
+              Ước lượng khởi điểm: A2 Elementary
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">
+              Độ tin cậy: Vừa • Dựa trên 582 bằng chứng tiếp xúc và tỷ lệ nhớ {data.retentionScore}%
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="success" size="md">
+              Tỷ lệ duy trì: {data.retentionScore}%
+            </Badge>
+            <Link href="/onboarding">
+              <Button variant="outline" size="sm" className="font-semibold">
+                Kiểm tra lại
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Level Progression Stepper */}
+        <div className="grid grid-cols-6 gap-2 pt-2 text-center text-xs font-medium">
+          {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) => {
+            const isCurrent = lvl === 'A2';
+            const isCompleted = lvl === 'A1';
+            return (
+              <div
+                key={lvl}
+                className={`p-2.5 rounded-2xl border transition-all ${
+                  isCurrent
+                    ? 'bg-[var(--status-info-bg)] border-[var(--action-primary)] text-[var(--action-primary)] font-bold shadow-xs'
+                    : isCompleted
+                    ? 'bg-[var(--status-success-bg)] border-[var(--status-success-border)] text-[var(--status-success)] font-semibold'
+                    : 'bg-[var(--surface-subtle)] border-[var(--border-subtle)] text-[var(--text-muted)]'
+                }`}
+              >
+                <div className="text-sm font-bold font-data">{lvl}</div>
+                <div className="text-[10px] mt-0.5 font-medium">
+                  {isCurrent ? 'Hiện tại' : isCompleted ? 'Đã đạt' : 'Mục tiêu'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Study Time Breakdown by Activity */}
+      <Card variant="default" padding="lg" className="space-y-4">
+        <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <Clock className="w-4 h-4 text-[var(--action-primary)]" />
+          <span>
+            Thời gian học theo hoạt động ({timeWindow === '7d' ? 'Tuần này: 160 phút' : '30 ngày: 640 phút'})
+          </span>
+        </h3>
+        <div className="space-y-3">
+          {[
+            {
+              id: 'fsrs',
+              icon: RotateCcw,
+              iconColor: 'text-[var(--status-warning)]',
+              barVariant: 'bg-[var(--status-warning)]',
+              title: 'Ôn tập thông minh (FSRS)',
+              timeText: timeWindow === '7d' ? '45 phút (28%)' : '180 phút (28%)',
+              percentage: 28,
+            },
+            {
+              id: 'reader',
+              icon: BookOpen,
+              iconColor: 'text-[var(--action-primary)]',
+              barVariant: 'bg-[var(--action-primary)]',
+              title: 'Đọc hiểu ngữ cảnh (Reader)',
+              timeText: timeWindow === '7d' ? '60 phút (38%)' : '245 phút (38%)',
+              percentage: 38,
+            },
+            {
+              id: 'listening',
+              icon: Volume2,
+              iconColor: 'text-[var(--status-info)]',
+              barVariant: 'bg-[var(--status-info)]',
+              title: 'Luyện nghe phản xạ câu',
+              timeText: timeWindow === '7d' ? '30 phút (19%)' : '125 phút (19%)',
+              percentage: 19,
+            },
+            {
+              id: 'dict',
+              icon: Search,
+              iconColor: 'text-[var(--status-success)]',
+              barVariant: 'bg-[var(--status-success)]',
+              title: 'Khám phá từ mới & Tra từ điển',
+              timeText: timeWindow === '7d' ? '25 phút (15%)' : '90 phút (15%)',
+              percentage: 15,
+            },
+          ].map((activity) => {
+            const Icon = activity.icon;
+            return (
+              <div key={activity.id} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${activity.iconColor}`} />
+                    <span className="text-[var(--text-secondary)]">{activity.title}</span>
+                  </span>
+                  <span className="font-semibold text-[var(--text-primary)]">{activity.timeText}</span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-valuenow={activity.percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${activity.title}: ${activity.timeText}`}
+                  className="w-full h-2 bg-[var(--surface-subtle)] rounded-full overflow-hidden border border-[var(--border-subtle)]"
+                >
+                  <div
+                    className={`analytics-bar-fill h-full rounded-full will-change-transform ${activity.barVariant}`}
+                    style={{ width: `${activity.percentage}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
