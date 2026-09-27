@@ -13,6 +13,12 @@ on:
       - 'database/**'
       - 'services/api/src/lingua_api/memory/**'
       - 'tests/backend/**'
+      - 'services/api/src/lingua_api/review/**'
+      - 'contracts/openapi.yaml'
+      - 'packages/types/src/generated/openapi.ts'
+      - 'apps/web/src/features/review/**'
+      - 'tests/frontend/e2e/f06-smart-review.test.tsx'
+      - 'tests/frontend/pendingAnswer.test.ts'
       - 'scripts/verify_frll_database.py'
       - 'requirements/**'
       - 'pyproject.toml'
@@ -204,12 +210,28 @@ jobs:
       - name: Verify Python formatting, lint, and types
         run: |
           python -m ruff format --check \
+            services/api/src/lingua_api/review/domain.py \
+            services/api/src/lingua_api/review/modality.py \
+            services/api/src/lingua_api/review/models.py \
+            services/api/src/lingua_api/review/routes.py \
+            services/api/src/lingua_api/review/service.py \
+            services/api/src/lingua_api/review/store.py \
+            tests/backend/test_review_modality.py \
+            tests/backend/database/test_review_api.py \
             services/api/src/lingua_api/memory/retrievability.py \
             tests/backend/memory/test_retrievability.py \
             tests/backend/database/test_knowledge_v2_retrievability.py \
             tests/backend/database/test_profile_schema.py \
             scripts/verify_frll_database.py
           python -m ruff check \
+            services/api/src/lingua_api/review/domain.py \
+            services/api/src/lingua_api/review/modality.py \
+            services/api/src/lingua_api/review/models.py \
+            services/api/src/lingua_api/review/routes.py \
+            services/api/src/lingua_api/review/service.py \
+            services/api/src/lingua_api/review/store.py \
+            tests/backend/test_review_modality.py \
+            tests/backend/database/test_review_api.py \
             services/api/src/lingua_api/memory/retrievability.py \
             tests/backend/memory/test_retrievability.py \
             tests/backend/database/test_knowledge_v2_retrievability.py \
@@ -219,6 +241,30 @@ jobs:
       - name: Verify py-fsrs equivalence and private PostgreSQL projection
         run: >-
           python -m pytest -q
+          tests/backend/test_review_modality.py
           tests/backend/memory/test_retrievability.py
           tests/backend/database
           -k 'not test_bootstrap_ps1_fails_closed_when_database_url_missing'
+
+  review-frontend-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify Review frontend and contract
+        run: |
+          pnpm contracts:check-generated
+          pnpm exec vitest run tests/frontend/e2e/f06-smart-review.test.tsx tests/frontend/pendingAnswer.test.ts
+          pnpm --filter @lingua/web typecheck
