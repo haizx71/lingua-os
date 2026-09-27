@@ -47,7 +47,7 @@ export function TabletRail({ currentPath }: TabletRailProps = {}) {
         {/* Brand Icon */}
         <Link
           href="/today"
-          className="w-10 h-10 rounded-xl bg-[var(--action-primary)] flex items-center justify-center text-[var(--action-primary-text)] font-bold text-lg shadow-sm focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-indigo-500/20 ring-1 ring-white/20 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-transform hover:scale-105"
           aria-label="Trang chủ LINGUA OS"
         >
           L
@@ -65,16 +65,16 @@ export function TabletRail({ currentPath }: TabletRailProps = {}) {
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 title={item.labelVi}
-                className={`relative flex flex-col items-center justify-center w-full h-14 rounded-xl text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                className={`relative flex flex-col items-center justify-center w-full h-14 rounded-xl text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                   isActive
-                    ? 'bg-[var(--status-info-bg)] text-[var(--action-primary)] font-semibold shadow-xs'
+                    ? 'bg-[var(--status-info-bg)] text-[var(--action-primary)] font-semibold shadow-xs border border-[var(--status-info-border)]/60'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {isActive && (
                   <span className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[var(--action-primary)]" />
                 )}
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px] text-[var(--action-primary)]' : 'stroke-[1.75px]'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.25px] text-[var(--action-primary)]' : 'stroke-[1.75px] text-[var(--text-muted)]'}`} />
                 <span className="text-[10px] mt-1 truncate">{item.labelVi}</span>
               </Link>
             );

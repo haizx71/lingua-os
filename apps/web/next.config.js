@@ -18,7 +18,10 @@ const securityHeaders = [
   },
 ];
 
+const path = require('path');
+
 const nextConfig = {
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   transpilePackages: ['@lingua/ui', '@lingua/types'],
   async headers() {
     return [
