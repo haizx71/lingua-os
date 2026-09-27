@@ -1237,7 +1237,7 @@ def test_0005_rollback_refuses_reader_activity(isolated_migrated_postgres_url: s
 
     assert migrate_down(
         isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=10
-    ) == ["0019", "0018" "0017", "0016", "0015", "0014", "0013", "0012", "0011", "0010"]
+    ) == ["0019", "0018", "0017", "0016", "0015", "0014", "0013", "0012", "0011", "0010"]
     assert migrate_down(
         isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
     ) == ["0009"]
