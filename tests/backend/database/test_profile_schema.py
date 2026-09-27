@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import shutil
 import uuid
-from concurrent.futures import ThreadPoolExecutor
-from threading import Event
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from time import monotonic, sleep
 from pathlib import Path
+from threading import Event
+from time import monotonic, sleep
 
 import psycopg
 import pytest
