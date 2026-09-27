@@ -1,27 +1,24 @@
 # LINGUA OS — MVP Task Board
 
-## TASK-K2-07 — Multi-Modal Review Modality Engine
-
-Owner: CODEX single-writer lane  
-Status: DOING (implementation and verification in progress)  
-Dependencies: TASK-K2-06 hosted acceptance; accepted Review/Memory FRLL boundary  
-Schema: NONE
-
-Select cloze, listening, typing, or self-recall from the weakest observed competence dimension and
-available canonical material. Keep a single primary FSRS lineage; pass the selected mode through
-the existing atomic Memory + competence transaction. K2-08 through K2-10 remain sequentially
-blocked until this wave is accepted.
-
-## TASK-K2-06 — Tripartite Competence and Dynamic State Reconciliation
-
-Owner: CODEX single-writer lane  
-Status: DONE (source promoted and hosted acceptance passed)  
-Migrations: 0018 and cleanup-only 0019  
-Evidence: PR #18 merged; CI run #54 and Vercel passed; staging cleanup removed the authorized
-disposable actor and aggregate counts/hashes across 27 tracked tables matched the retained learner
-snapshot exactly. See `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
+
+## Current Knowledge V2 delivery gate — 2026-09-27
+
+- **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
+  independent review passed. The synthetic temporal fixture and cleanup limits
+  are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.
+- **TASK-K2-07: READY for promotion.** PR #19 is still open. Recheck its current
+  head, base, CI, Preview and mergeability before merge. Source promotion is
+  separate from hosted acceptance; do not claim K2-07 staging PASS from CI alone.
+  Select cloze, listening, typing, or self-recall from the weakest observed
+  competence dimension and available canonical material. Keep one primary FSRS
+  lineage through the existing atomic Memory and competence transaction.
+  No schema migration; K2-08 through K2-10 remain downstream.
+- **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
+  `weak`; effective `forgotten` concepts appear in “Tất cả” but have no dedicated
+  chip. This does not reopen K2-06's Brain/Review API acceptance.
+
+Older task snapshots below are historical and do not supersede this gate.
 
 ## TASK-K2-03 — Knowledge V2 Knowledge Graph & Concurrency-Safe DAG
 

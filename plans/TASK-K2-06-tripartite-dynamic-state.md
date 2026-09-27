@@ -1,9 +1,43 @@
 # TASK-K2-06 — Tripartite Competence and Dynamic State Reconciliation
 
-Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE: PASS  
+Status: SOURCE PROMOTED: PASS / STAGING ACCEPTANCE: PASS (2026-09-27)
 Owner: CODEX single-writer lane  
 Predecessor: K2-05 STAGING: PASS  
-Migrations: `0018_profile_replay_auth_erasure` and `0019_concept_save_intent_auth_erasure` (cleanup-only; no competence-state change)
+Migrations: `0018_profile_replay_auth_erasure` and `0019_concept_save_intent_auth_erasure` (applied in staging; cleanup-only; no competence-state change)
+
+## Final hosted acceptance — 2026-09-27
+
+**K2-06 STAGING: PASS.** The later disposable-actor run supersedes the pending
+checkpoint below. GitHub/local `master`, Render staging, and the verified Vercel
+Production deployment served source `9c39417`; Supabase staging migration head was
+`20260927034218` (`0019`). The owner first signed out the real learner and registered
+a new disposable actor. The browser JWT subject and authenticated `/api/v1/me`
+identified that new actor, not the existing learner; `/api/health` returned 200.
+
+The actor saved one existing published fixture and received one `self_recall` Review
+answer. The answer changed production evidence once, leaving recognition and
+listening evidence at zero. Replaying the same idempotency key/body returned the
+same parsed JSON `data` with no second state, FSRS, event, or evidence change.
+Brain and Review reads did not write learner state. For the temporal downgrade
+check, a **synthetic disposable-actor-only diagnostic fixture** set a stored
+`active` state with an old FSRS review timestamp; Brain and Review returned
+effective `forgotten` while the stored status, evidence, version, and event
+history stayed unchanged. This verifies the deployed read-time overlay, not
+natural progression to `active` through the current public API.
+
+After the actor signed out, narrowly guarded Auth deletion removed the actor.
+One orphan Auth signup flow row was removed with a separate guarded deletion.
+Final checks found zero disposable rows across 13 Auth ownership tables and
+27 public learner tables. All 27 retained learner-table count/hash snapshots
+matched the pre-run 55-row reference. No real-learner mutation, Vercel Share
+link, or protection-setting change was made. Independent read-only final review
+found no K2-06 blocker; it did not independently query staging. The Brain
+“Cần củng cố” chip selects `weak`, while this fixture was `forgotten`; the
+default “Tất cả” view still includes forgotten items. Track this as a
+low-severity frontend discoverability follow-up, outside K2-06 acceptance.
+
+This closes the K2-06 dependency gate for K2-07 promotion. Historical pending
+notes below record earlier attempts and should not be read as the current gate.
 
 ## Objective
 
