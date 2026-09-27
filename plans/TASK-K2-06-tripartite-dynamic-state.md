@@ -3,7 +3,7 @@
 Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING  
 Owner: CODEX single-writer lane  
 Predecessor: K2-05 STAGING: PASS  
-Migration: `0018_profile_replay_auth_erasure` (cleanup-only exception; no competence-state change)
+Migrations: `0018_profile_replay_auth_erasure` and proposed `0019_concept_save_intent_auth_erasure` (cleanup-only; no competence-state change)
 
 ## Objective
 
@@ -38,6 +38,8 @@ The hosted gate remains pending until PostgreSQL tests prove active-identity rej
 Auth-chain cascade and trigger context, actor isolation, concurrent replay/deletion behavior,
 rollback/reapply, and a real disposable Auth deletion in staging.
 
+The post-0018 deletion attempt exposed a second existing blocker: migration 0009's `concept_save_intents` trigger rejects DELETE even inside the Auth cascade. Proposed migration 0019 allows DELETE only when the trigger is nested and the matching `auth.users` row is already absent; UPDATE and deletion while the identity exists remain immutable. It changes no table, constraint, policy, or competence state.
+
 ## Expected changes
 
 - Add internal Beta posterior variance to the pure dimension projection for explicit uncertainty
@@ -46,7 +48,7 @@ rollback/reapply, and a real disposable Auth deletion in staging.
   queue reads, actor/profile/concept scoped.
 - Use effective status for filtering and response projection while keeping all competence scores,
   confidence, evidence history, FSRS scheduling fields, and persistence unchanged.
-- Add pure and PostgreSQL acceptance tests. No contract, frontend, importer, or competence-state schema change; the cleanup-only migration `0018_profile_replay_auth_erasure` is the explicit exception described above.
+- Add pure and PostgreSQL acceptance tests. No contract, frontend, importer, or competence-state schema change; the cleanup-only migrations `0018_profile_replay_auth_erasure` and `0019_concept_save_intent_auth_erasure` are the explicit exceptions described above.
 
 ## Acceptance checks
 
@@ -72,32 +74,49 @@ rollback/reapply, and a real disposable Auth deletion in staging.
 
 ## Current hosted gate status — 2026-09-27
 
-Source PR #15 merged at `f0dd8bd67d5ef9aa2a75ef51d1226b8e69cf3ef0`. GitHub Actions run
-`35874384258` passed all three jobs: `knowledge-audit`,
-`retrievability-postgres-integration`, and `grammar-postgres-integration`. The latest observed
-master is `d0cb203a82ba09fa50550c0a805a0a26caf29490`.
+Source PR #15 is merged. Cleanup PR #17 is merged to master at
+`aa4c581cbd035b3ea447800a92a35068fbc2b0ca`; GitHub Actions run #48 passed
+`knowledge-audit`, `grammar-postgres-integration`, and
+`retrievability-postgres-integration`. The focused code and migration review found no open blocker
+before the staging retry.
 
-Hosted Supabase staging was last confirmed `ACTIVE_HEALTHY` on migration `0017` (version
-`20260923081253`). Migration 0018 is in PR #17 source and has not been applied to staging. The
-latest Render deployment metadata was not re-verified during this recovery, so this note does not
-assert a current Render SHA or health result.
+Staging project `lingua-os-staging` is `ACTIVE_HEALTHY`. Migration
+`0018_profile_replay_auth_erasure` is applied at version `20260927021246`. No verified backup or
+offsite export was available through the connected staging tools at apply time; the user explicitly
+directed the retry. The migration changed schema only. It did not delete or alter learner rows.
+No Render deployment was changed.
 
-A read-only owner-count snapshot captured at **2026-09-27 01:20:04.452038 UTC** found two Auth users. The active user authorized this actor for K2-06 and confirmed the later-created identity as the disposable actor; SQL used that identity only as an aggregate filter and did not return its UUID or email. The authorized disposable
-actor (the later-created identity) owns one row each in `public.users`, `learner_profiles`,
+A read-only owner-count snapshot captured at **2026-09-27 01:20:04.452038 UTC** found two Auth users.
+The active user authorized the later-created identity as the disposable K2-06 actor. SQL used that
+identity only as an aggregate filter; no Auth UUID or email is recorded here. Before hosted
+acceptance, the disposable actor owned one row each in `public.users`, `learner_profiles`,
 `user_languages`, `user_concept_states`, `fsrs_states`, `review_items`,
 `user_language_projection_heads`, `user_saved_concepts`, `concept_save_intents`, and
 `profile_mutation_results`; three `user_skill_states`, five `learning_events`, four
-`review_events`, and one `today_plans`. It has no assessment, exposure, Reader, or Today activity
-rows. Keep this actor until migration 0018 is applied and the final acceptance and cleanup complete.
-No Auth identifiers or email values are recorded here.
+`review_events`, and one `today_plans`. It had no assessment, exposure, Reader, or Today activity
+rows.
 
-The PR #17 hosted-attempt record says the behavioral assertions passed before actor deletion failed
-under migration 0007's unconditional replay DELETE trigger and `ON DELETE RESTRICT` foreign key.
-The durable record still lacks the full before/after snapshot, exact replay, temporal effective-status
-no-write, and post-migration cleanup proof. Keep K2-06 hosted acceptance pending until those checks
-are revalidated and the separate learner snapshot is unchanged after the disposable actor and its
-fixtures are deleted.
+Using the authenticated staging UI, Brain showed one effective `weak` concept in the
+“Cần củng cố” filter while the stored row remained `active`. Opening Brain detail and reading
+Review left `state_version`, evidence masses/counts, learning-event history, actor row counts, and
+the other learner's aggregate row hashes unchanged. The stored status and `effective_status`
+remained `active` and `weak` respectively through those read-only checks.
 
+One `Good` Review answer used `self_recall` and changed only production competence:
+`production_evidence_count` advanced from 4 to 5; recognition and listening evidence counts stayed
+at 0. A second disposable-fixture review was queued by moving only that actor's FSRS timestamps into
+the past. Its answer committed once; navigating away preserved the app's pending retry receipt.
+The visible “Thử lại” recovery action replayed that same operation. Before and after the replay,
+`review_events`, `learning_events`, `state_version`, and production evidence count were unchanged
+at 6, 7, 8, and 6 respectively. The other learner's aggregate counts and row hashes remained
+unchanged after both answers and the replay.
+
+Deleting the disposable Auth identity after 0018 was attempted once. PostgreSQL rolled the
+transaction back at the unconditional `concept_save_intents` immutability trigger; no Auth or
+learner rows were deleted. Migration 0019 and focused rollback/cascade tests are proposed on branch
+`fix/k2-06-save-intent-auth-erasure`. Keep hosted acceptance pending until CI and independent review
+pass, 0019 is applied, Auth erasure removes every disposable-owned row, and a final aggregate check
+confirms the other learner is unchanged.
 ## Explicit non-scope
 
 - No status persistence rewrite from time decay.
