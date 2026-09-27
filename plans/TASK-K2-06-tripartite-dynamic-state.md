@@ -86,7 +86,7 @@ A read-only owner-count snapshot on 2026-09-27 found two Auth users. The authori
 actor (the later-created identity) owns one row each in `public.users`, `learner_profiles`,
 `user_languages`, `user_concept_states`, `fsrs_states`, `review_items`,
 `user_language_projection_heads`, `user_saved_concepts`, `concept_save_intents`, and
-`profile_mutation_results); three `user_skill_states`, five `learning_events`, four
+`profile_mutation_results`; three `user_skill_states`, five `learning_events`, four
 `review_events`, and one `today_plans`. It has no assessment, exposure, Reader, or Today activity
 rows. Keep this actor until migration 0018 is applied and the final acceptance and cleanup complete.
 No Auth identifiers or email values are recorded here.
