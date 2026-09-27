@@ -27,9 +27,7 @@ def _competence(
     )
 
 
-def _select(
-    competence: CompetenceProjection, material: ReviewMaterial
-) -> ReviewPromptSelection:
+def _select(competence: CompetenceProjection, material: ReviewMaterial) -> ReviewPromptSelection:
     return select_review_prompt(
         fallback_prompt_text="Một cuộc hẹn.",
         competence=competence,
