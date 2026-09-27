@@ -119,16 +119,20 @@ not remaining implementation waves.
 - **Exact objective:** complete the specification-defined recognition/listening/production Beta
   update and dynamic curricular-state behavior while preserving accepted TASK-006D replay
   authority and eight-status contract.
-- **Schema impact:** none expected. Existing event ledger, parameter sets, and materialized
-  projections are authoritative.
+- **Schema impact:** one bounded persistence fix was approved after hosted cleanup proved that
+  TASK-006E's append-only replay guard and `ON DELETE RESTRICT` prevented disposable Auth actor
+  cleanup. Migration `0018_profile_replay_auth_erasure` permits replay cleanup only inside a nested
+  Auth deletion cascade after the Auth identity is absent; active replay snapshots remain immutable.
+  No competence, event-ledger, or retrievability schema changes.
 - **Domain/service impact:** reconcile any missing retrievability-aware derivation at read/planning
   boundaries; do not replace the existing projector or mutate historical evidence.
 - **Importer impact:** none.
 - **API impact:** none unless a demonstrable contract gap remains after implementation inspection;
   any delta then requires an explicit contract checkpoint.
 - **Frontend impact:** none expected.
-- **Migration required:** **NO** unless repository inspection proves a persistence invariant cannot
-  be enforced otherwise; such a discovery requires a revised review checkpoint before DDL.
+- **Migration required:** **YES — `0018_profile_replay_auth_erasure`**, after the required revised
+  review checkpoint. This is limited to the proven Auth-cleanup invariant; it changes no competence
+  persistence or learner evidence.
 - **Security impact:** preserve actor-scoped projection reads/writes, anti-IDOR, replay ownership,
   and append-only event authority.
 - **Learner-state impact:** runtime review/evidence flows intentionally update owned learner state;
@@ -139,7 +143,8 @@ not remaining implementation waves.
   actor isolation, idempotency, concurrent no-lost-update, and FRLL Review/Brain regressions.
 - **Hosted acceptance:** disposable actor evidence updates only the intended dimension and owned
   rows, replay is exact, effective decay behavior is observable without rewriting stored status,
-  cleanup succeeds, and established learner rows outside the fixture are unchanged.
+  the actor is removed through the authorized Auth deletion path with all owned fixtures cleaned,
+  and established learner rows outside the fixture are unchanged.
 
 ## K2-07 — Multi-Modal Review Modality Engine
 

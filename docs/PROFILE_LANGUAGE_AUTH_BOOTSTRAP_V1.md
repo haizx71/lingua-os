@@ -472,7 +472,9 @@ Replay rules:
 - replay never rebuilds the creation response from mutable current profile state. Later changes to
   goal, daily minutes, target level, status, timestamps, or revisions do not alter the historical
   creation replay;
-- the idempotency result remains for the life of the profile because v1 has no delete operation.
+- the idempotency result remains immutable while its Auth identity exists. Migration 0018 removes
+  it only through Auth identity erasure; there is still no profile DELETE or reset endpoint, and a
+  deleted identity cannot replay the request.
 
 Natural uniqueness alone is insufficient because it cannot distinguish a retry from a distinct
 duplicate intent or replay the original response.
@@ -596,7 +598,9 @@ Frozen intended migration `0007_profile_language_auth_bootstrap_v1`:
 6. Add actor-owned `profile_mutation_results` solely for `create-language-profile-v1`, keyed by
    `(user_id, idempotency_key)`, with operation type/version, SHA-256 request fingerprint,
    language-profile ID, HTTP status fixed to 201, exact JSON result-data snapshot, original strong
-   ETag, completed/created timestamps, and an owned composite resource FK using `ON DELETE RESTRICT`.
+   ETag, completed/created timestamps, and an owned composite resource FK. Migration 0007 starts
+   with `ON DELETE RESTRICT`; migration 0018 changes it to `ON DELETE CASCADE` solely for actual
+   Auth identity erasure, guarded by the append-only trigger.
 7. Enable RLS on the new table, add authenticated own-row SELECT defence, grant no browser writes,
    and revoke anonymous access. Service-role SQL must still bind both actor and key.
 8. Add migration preflight assertions for invalid timezones, invalid goals, ambiguous/unsupported
@@ -616,7 +620,7 @@ Persistence responsibility map:
 | `user_languages.daily_minutes` | daily target consumed by Today | complete | none | existing 5..180 check | none |
 | `user_languages.goal` | approved learner goal | broad nonblank only | exact five-value check | existing owned row | down would weaken validation only; invalid legacy data blocks up |
 | `user_languages.revision` | individual Language Profile version | absent | monotonic bigint from 1 | per row; existing own SELECT | down loses concurrency lineage once writes exist |
-| `profile_mutation_results` | exact create replay | absent | new narrow append-only result table | PK `(user_id,key)`; owned FK/RLS; no client writes | down must refuse after results exist to avoid replay loss |
+| `profile_mutation_results` | exact create replay | absent | immutable while Auth identity exists; migration 0018 removes it only on Auth erasure | PK `(user_id,key)`; owned FK/RLS; no client writes | down must refuse after results exist to avoid replay loss |
 
 `reader_mutation_results` is not reused: it is intentionally Reader-owned, constrains operation
 types to Reader commands, and has Reader-specific lifecycle/rollback rules. A Profile-specific
@@ -841,7 +845,7 @@ JWT A + valid timezone + active vi→en profile + no assessment result
 | Profile enumeration through ETag | ownership checked before version comparison |
 | Timezone poisoning | runtime IANA validation, no offsets/server default, length bound, Today fail closed |
 | Idempotency-key payload swap | canonical request fingerprint and 409 IDEMPOTENCY_KEY_REUSED |
-| Cascading history loss | no delete/reset endpoint; archive only; account deletion deferred |
+| Cascading history loss | no product delete/reset endpoint; archive remains the profile lifecycle action; separate Auth identity erasure removes owned rows through the existing FK chain, including replay snapshots |
 
 ## 31. Acceptance criteria for future runtime
 

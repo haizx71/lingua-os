@@ -207,11 +207,13 @@ jobs:
             services/api/src/lingua_api/memory/retrievability.py \
             tests/backend/memory/test_retrievability.py \
             tests/backend/database/test_knowledge_v2_retrievability.py \
+            tests/backend/database/test_profile_schema.py \
             scripts/verify_frll_database.py
           python -m ruff check \
             services/api/src/lingua_api/memory/retrievability.py \
             tests/backend/memory/test_retrievability.py \
             tests/backend/database/test_knowledge_v2_retrievability.py \
+            tests/backend/database/test_profile_schema.py \
             scripts/verify_frll_database.py
           python -m mypy services/api/src
       - name: Verify py-fsrs equivalence and private PostgreSQL projection

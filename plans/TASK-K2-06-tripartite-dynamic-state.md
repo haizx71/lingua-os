@@ -3,7 +3,7 @@
 Status: SOURCE PROMOTED: PASS / HOSTED ACCEPTANCE PENDING  
 Owner: CODEX single-writer lane  
 Predecessor: K2-05 STAGING: PASS  
-Migration: none
+Migration: `0018_profile_replay_auth_erasure` (cleanup-only exception; no competence-state change)
 
 ## Objective
 
@@ -22,6 +22,22 @@ rewriting the replayable `competence-beta-v1` projection or adding a ninth publi
   behavior reconciliation, not a public schema change.
 - Today remediation policy remains K2-08 scope; K2-06 does not alter Today packing.
 
+## Revised persistence checkpoint — 2026-09-26
+
+Hosted acceptance exposed a cleanup invariant that cannot be met under migration 0007:
+`profile_mutation_results` blocks Auth deletion through both its unconditional DELETE trigger and
+its composite `ON DELETE RESTRICT` foreign key. This prevented deleting the authorized disposable
+K2-06 actor even though the behavioral assertions passed. The independent PostgreSQL/security
+review approved a narrow migration design before DDL: UPDATE and active-identity DELETE remain
+append-only; DELETE is permitted only during a nested FK cascade when the matching
+`auth.users` row is absent. The FK becomes `ON DELETE CASCADE`. No browser ACL, API, competence
+projection, evidence, or learner migration changes. The hosted Auth principal's necessary grants
+were verified read-only.
+
+The hosted gate remains pending until PostgreSQL tests prove active-identity rejection, the exact
+Auth-chain cascade and trigger context, actor isolation, concurrent replay/deletion behavior,
+rollback/reapply, and a real disposable Auth deletion in staging.
+
 ## Expected changes
 
 - Add internal Beta posterior variance to the pure dimension projection for explicit uncertainty
@@ -30,7 +46,7 @@ rewriting the replayable `competence-beta-v1` projection or adding a ninth publi
   queue reads, actor/profile/concept scoped.
 - Use effective status for filtering and response projection while keeping all competence scores,
   confidence, evidence history, FSRS scheduling fields, and persistence unchanged.
-- Add pure and PostgreSQL acceptance tests. No contract, frontend, importer, or migration change.
+- Add pure and PostgreSQL acceptance tests. No contract, frontend, importer, or competence-state schema change; the cleanup-only migration `0018_profile_replay_auth_erasure` is the explicit exception described above.
 
 ## Acceptance checks
 
@@ -42,7 +58,7 @@ rewriting the replayable `competence-beta-v1` projection or adding a ninth publi
 - Review queue uses temporal effective status while retaining one FSRS lineage and zero-write reads.
 - A decay downgrade leaves stored status, state version, evidence mass, and learning-event history
   unchanged.
-- No OpenAPI/generated/frontend diff and no schema migration.
+- No OpenAPI/generated/frontend diff or competence-feature schema migration; cleanup-only migration 0018 is the explicit exception needed to delete the disposable staging actor.
 
 ## Verification gates
 
@@ -61,18 +77,26 @@ Source PR #15 merged at `f0dd8bd67d5ef9aa2a75ef51d1226b8e69cf3ef0`. GitHub Actio
 `retrievability-postgres-integration`, and `grammar-postgres-integration`. The latest observed
 master is `d0cb203a82ba09fa50550c0a805a0a26caf29490`.
 
-Hosted Supabase staging remains at migration `0017` (version
-`20260923081253`) and reports `ACTIVE_HEALTHY`. Render deployment
-`dep-daq9ed0u01pc73cjknv0` is live on the latest master; `GET /health` returned HTTP 200.
-Read-only aggregate verification found one retrievability row, one learner-concept state, one
-joined row, zero decayed rows, and zero browser-role SELECT grants. This supports one-row
-cardinality and privilege checks only; there is no hosted temporal-decay behavior proof.
+Hosted Supabase staging was last confirmed `ACTIVE_HEALTHY` on migration `0017` (version
+`20260923081253`). Migration 0018 is in PR #17 source and has not been applied to staging. The
+latest Render deployment metadata was not re-verified during this recovery, so this note does not
+assert a current Render SHA or health result.
 
-The required disposable authenticated actor acceptance has not run because no authorized
-disposable Auth credentials or pre-provisioned test actor are available. A browser sign-in attempt
-was denied before authentication; no account or learner state was changed. Keep K2-06 hosted
-acceptance pending and do not record STAGING PASS until the complete disposable-actor, replay,
-isolation, no-rewrite, snapshot, and cleanup proof succeeds.
+A read-only owner-count snapshot captured at **2026-09-27 01:20:04.452038 UTC** found two Auth users. The active user authorized this actor for K2-06 and confirmed the later-created identity as the disposable actor; SQL used that identity only as an aggregate filter and did not return its UUID or email. The authorized disposable
+actor (the later-created identity) owns one row each in `public.users`, `learner_profiles`,
+`user_languages`, `user_concept_states`, `fsrs_states`, `review_items`,
+`user_language_projection_heads`, `user_saved_concepts`, `concept_save_intents`, and
+`profile_mutation_results`; three `user_skill_states`, five `learning_events`, four
+`review_events`, and one `today_plans`. It has no assessment, exposure, Reader, or Today activity
+rows. Keep this actor until migration 0018 is applied and the final acceptance and cleanup complete.
+No Auth identifiers or email values are recorded here.
+
+The PR #17 hosted-attempt record says the behavioral assertions passed before actor deletion failed
+under migration 0007's unconditional replay DELETE trigger and `ON DELETE RESTRICT` foreign key.
+The durable record still lacks the full before/after snapshot, exact replay, temporal effective-status
+no-write, and post-migration cleanup proof. Keep K2-06 hosted acceptance pending until those checks
+are revalidated and the separate learner snapshot is unchanged after the disposable actor and its
+fixtures are deleted.
 
 ## Explicit non-scope
 
