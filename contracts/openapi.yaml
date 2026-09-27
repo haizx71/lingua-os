@@ -1769,7 +1769,11 @@ components:
       properties:
         rating: { $ref: '#/components/schemas/ReviewRating' }
         exerciseMode: { $ref: '#/components/schemas/ReviewExerciseMode' }
-        correct: { type: boolean }
+        correct:
+          type: boolean
+          description: >-
+            Caller-reported correctness is accepted only for self_recall (including the legacy
+            request that omits exerciseMode). The server does not grade other modes.
         responseText: { type: string, maxLength: 5000 }
         selectedOptionId: { type: string, format: uuid }
         responseTimeMs: { type: integer, minimum: 0, maximum: 3600000 }

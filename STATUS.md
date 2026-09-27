@@ -21,9 +21,13 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 promotio
 - Supabase staging migration head: `20260927034218` (`0019`). Render staging
   source: `9c39417`. Vercel Production deployment
   `3X1RipweSgvkj656Xcf4zQz9rDaQ` was Ready from `9c39417`; no Share link or
-  protection change was made. K2-07 PR #19 remains open, with CI and Vercel
-  Preview successful at the time of this checkpoint. Promote only after this
-  K2-06 result is recorded and PR gates are rechecked.
+  protection change was made. K2-07 PR #19 remains open. Its initial CI and
+  Vercel Preview were successful, but independent review found a HIGH trust-
+  boundary issue: caller-supplied `correct` with an explicit non-`self_recall`
+  mode was counted as objective evidence without server grading. The current
+  fix rejects this combination; promotion remains blocked until the updated
+  head passes CI and independent review. See
+  `plans/TASK-K2-07-review-modality-engine.md`.
 - K2-07 Multi-Modal Review Modality Engine is the active source wave on
   `feat/k2-07-modality-engine`. K2-08 through K2-10 remain downstream.
 
