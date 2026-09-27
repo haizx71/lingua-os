@@ -4,9 +4,9 @@ import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
-from time import monotonic, sleep
 from collections.abc import Iterator
 from contextlib import contextmanager
+from time import monotonic, sleep
 from pathlib import Path
 
 import psycopg
@@ -326,9 +326,14 @@ def test_auth_identity_erasure_cascades_replay_only_for_erased_actor(
     assert probe[0][0] > 1
     assert probe[0][1] is False
 
-    for table in ("users", "learner_profiles", "user_languages", "profile_mutation_results"):
+    for table, owner_key in (
+        ("users", "id"),
+        ("learner_profiles", "user_id"),
+        ("user_languages", "user_id"),
+        ("profile_mutation_results", "user_id"),
+    ):
         assert db_connection.execute(
-            f"SELECT count(*) FROM public.{table} WHERE user_id = %s", (actor_id,)
+            f"SELECT count(*) FROM public.{table} WHERE {owner_key} = %s", (actor_id,)
         ).fetchone() == (0,)
     assert db_connection.execute(
         "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
