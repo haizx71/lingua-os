@@ -1,7 +1,32 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-01, K2-02, K2-03 integrated and verified locally
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 promotion pending
+
+## Current Knowledge V2 checkpoint — 2026-09-27
+
+- Local `master` and authoritative `origin/master` were reconciled at
+  `9c39417f29309d5dc2714082d7a28375712a79a6` before this documentation update.
+  Earlier K2-04/K2-05/K2-06 source and migrations through `0019` are represented
+  in that baseline; no historical branch recovery is required for this gate.
+- **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
+  browser session before acceptance. One Review answer updated production only;
+  exact replay made no second state/event change. Brain and Review projected a
+  synthetic actor-only `active`→`forgotten` decay without read-time writes.
+  After guarded Auth cleanup, zero disposable rows remained across 13 Auth and
+  27 public learner tables, and all 27 retained learner-table snapshots matched
+  the pre-run baseline. Independent read-only review found no K2-06 blocker.
+  The synthetic fixture does not establish natural API progression to `active`.
+  See `plans/TASK-K2-06-tripartite-dynamic-state.md`.
+- Supabase staging migration head: `20260927034218` (`0019`). Render staging
+  source: `9c39417`. Vercel Production deployment
+  `3X1RipweSgvkj656Xcf4zQz9rDaQ` was Ready from `9c39417`; no Share link or
+  protection change was made. K2-07 PR #19 remains open, with CI and Vercel
+  Preview successful at the time of this checkpoint. Promote only after this
+  K2-06 result is recorded and PR gates are rechecked.
+
+The dated sections below preserve earlier checkpoints; their pending statements
+do not override this current result.
 
 ## Knowledge V2 K2-02 & K2-03 Integration & Verification — 2026-09-22
 
