@@ -80,6 +80,91 @@ def test_concept_save_intents_immutability_enforced(
         )
 
 
+def test_concept_save_intents_cascade_only_after_auth_identity_erasure(
+    db_connection: Connection[tuple[object, ...]],
+) -> None:
+    actor_id, profile_id, concept_id = _seed_owner_and_concept(db_connection)
+    intent_id = uuid.uuid4()
+    db_connection.execute(
+        """
+        INSERT INTO concept_save_intents
+            (id, user_id, user_language_id, concept_id, language_code)
+        VALUES (%s, %s, %s, %s, 'en')
+        """,
+        (intent_id, actor_id, profile_id, concept_id),
+    )
+
+    with (
+        pytest.raises(psycopg.errors.CheckViolation, match="immutable"),
+        db_connection.transaction(),
+    ):
+        db_connection.execute("DELETE FROM public.users WHERE id = %s", (actor_id,))
+
+    assert db_connection.execute(
+        "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+    ).fetchone() == (1,)
+    assert db_connection.execute(
+        "SELECT count(*) FROM concept_save_intents WHERE user_id = %s", (actor_id,)
+    ).fetchone() == (1,)
+
+    db_connection.execute("SET ROLE supabase_auth_admin")
+    db_connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+    db_connection.execute("RESET ROLE")
+
+    for table, owner_key in (
+        ("auth.users", "id"),
+        ("public.users", "id"),
+        ("public.concept_save_intents", "user_id"),
+    ):
+        assert db_connection.execute(
+            f"SELECT count(*) FROM {table} WHERE {owner_key} = %s", (actor_id,)
+        ).fetchone() == (0,)
+
+
+def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        actor_id, profile_id, concept_id = _seed_owner_and_concept(connection)
+        connection.execute(
+            """
+            INSERT INTO concept_save_intents
+                (user_id, user_language_id, concept_id, language_code)
+            VALUES (%s, %s, %s, 'en')
+            """,
+            (actor_id, profile_id, concept_id),
+        )
+        connection.commit()
+
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == ["0019"]
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        with (
+            pytest.raises(psycopg.errors.CheckViolation, match="immutable"),
+            connection.transaction(),
+        ):
+            connection.execute("SET ROLE supabase_auth_admin")
+            connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+        assert connection.execute(
+            "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+        ).fetchone() == (1,)
+        assert connection.execute(
+            "SELECT count(*) FROM concept_save_intents WHERE user_id = %s", (actor_id,)
+        ).fetchone() == (1,)
+
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == ["0019"]
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        connection.execute("SET ROLE supabase_auth_admin")
+        connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
+        connection.execute("RESET ROLE")
+        assert connection.execute(
+            "SELECT count(*) FROM auth.users WHERE id = %s", (actor_id,)
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT count(*) FROM public.concept_save_intents WHERE user_id = %s",
+            (actor_id,),
+        ).fetchone() == (0,)
+
+
 def test_concept_save_intents_uniqueness_per_user_and_concept(
     db_connection: Connection[tuple[object, ...]],
 ) -> None:
@@ -167,7 +252,8 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_exists is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=9) == [
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=10) == [
+        "0019",
         "0018",
         "0017",
         "0016",
@@ -200,6 +286,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         "0016",
         "0017",
         "0018",
+        "0019",
     ]
 
     with psycopg.connect(isolated_migrated_postgres_url) as connection:

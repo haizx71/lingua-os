@@ -419,19 +419,26 @@ def test_profile_replay_insert_racing_auth_erasure_cannot_leave_orphan(
         ).fetchone() == (0,)
 
 
-def test_0018_auth_erasure_migration_rolls_back_and_reapplies_without_data_loss(
+def test_0018_0019_auth_erasure_migrations_roll_back_and_reapply_without_data_loss(
     isolated_migrated_postgres_url: str,
 ) -> None:
     actor_id = uuid.uuid4()
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         _insert_profile_replay(connection, actor_id=actor_id)
         connection.commit()
-        migration = connection.execute(
+        migration_0018 = connection.execute(
             "SELECT name, checksum FROM schema_migrations WHERE version = '0018'"
         ).fetchone()
-        assert migration is not None
+        migration_0019 = connection.execute(
+            "SELECT name, checksum FROM schema_migrations WHERE version = '0019'"
+        ).fetchone()
+        assert migration_0018 is not None
+        assert migration_0019 is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1) == ["0018"]
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=2) == [
+        "0019",
+        "0018",
+    ]
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         foreign_key = connection.execute(
             """
@@ -449,7 +456,7 @@ def test_0018_auth_erasure_migration_rolls_back_and_reapplies_without_data_loss(
             (actor_id,),
         ).fetchone() == (1,)
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == ["0018"]
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == ["0018", "0019"]
     assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == []
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         foreign_key = connection.execute(
@@ -487,6 +494,7 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
         "0016",
         "0017",
         "0018",
+        "0019",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
@@ -577,7 +585,8 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
 
-        assert migrate_down(database_url, MIGRATIONS, steps=9) == [
+        assert migrate_down(database_url, MIGRATIONS, steps=10) == [
+            "0019",
             "0018",
             "0017",
             "0016",
