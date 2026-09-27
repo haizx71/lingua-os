@@ -177,7 +177,13 @@ def _queue_item(item: DueReviewProjection) -> ReviewQueueItemDto:
             label=item.level_label,
         )
 
-    concept_fields: dict[str, str] = {}
+    concept_fields: dict[str, object] = {
+        "id": item.concept_id,
+        "canonical_form": item.canonical_form,
+        "level": level,
+        "status": ConceptStatusDto(item.concept_status),
+        "is_due": True,
+    }
     if item.part_of_speech is not None:
         concept_fields["part_of_speech"] = item.part_of_speech
     prompt_fields: dict[str, str] = {"prompt_text": item.prompt_text}
@@ -190,16 +196,9 @@ def _queue_item(item: DueReviewProjection) -> ReviewQueueItemDto:
 
     return ReviewQueueItemDto(
         review_item_id=item.review_item_id,
-        concept=ConceptSummaryDto(
-            id=item.concept_id,
-            canonical_form=item.canonical_form,
-            **concept_fields,
-            level=level,
-            status=ConceptStatusDto(item.concept_status),
-            is_due=True,
-        ),
+        concept=ConceptSummaryDto.model_validate(concept_fields),
         exercise_mode=ReviewExerciseModeDto(item.exercise_mode.value),
-        prompt=ReviewPromptDto(**prompt_fields),
+        prompt=ReviewPromptDto.model_validate(prompt_fields),
         memory=MemorySnapshotDto(
             state=MemoryStateDto(item.memory_state.value),
             due_at=item.due_at,
