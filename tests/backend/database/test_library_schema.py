@@ -288,6 +288,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         "0016",
         "0017",
         "0018",
+        "0019",
     ]
 
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
