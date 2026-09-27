@@ -854,7 +854,7 @@ def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
     )
     assert migrate_down(seed.database_url, MIGRATIONS, steps=10) == [
         "0019",
-        "0018"
+        "0018",
         "0017",
         "0016",
         "0015",
