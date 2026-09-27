@@ -11,7 +11,7 @@ from typing import Final, cast
 import psycopg
 import pytest
 import yaml
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx2 import Response
 from jsonschema import Draft202012Validator, FormatChecker  # type: ignore[import-untyped]
@@ -313,18 +313,15 @@ def api_seed(migrated_postgres_url: str, api_clock: MutableApiClock) -> Iterator
 def api_client(
     migrated_postgres_url: str, api_seed: ApiSeed, api_clock: MutableApiClock
 ) -> TestClient:
-    app = create_app(
-        database_url=migrated_postgres_url,
-        token_verifier=StubTokenVerifier(api_seed.actor),
-        clock=api_clock,
-        cursor_secret=b"review-api-test-cursor-secret-32-bytes",
+    return TestClient(
+        create_app(
+            database_url=migrated_postgres_url,
+            token_verifier=StubTokenVerifier(api_seed.actor),
+            clock=api_clock,
+            cursor_secret=b"review-api-test-cursor-secret-32-bytes",
+        ),
+        raise_server_exceptions=False,
     )
-
-    async def rethrow_unhandled(_request: Request, error: Exception) -> None:
-        raise error
-
-    app.add_exception_handler(Exception, rethrow_unhandled)
-    return TestClient(app)
 
 
 def _auth() -> dict[str, str]:
