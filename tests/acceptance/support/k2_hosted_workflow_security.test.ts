@@ -76,7 +76,14 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(JSON.stringify(securityWorkflow)).not.toContain('id-token');
     expect(securityGate.env).toBeUndefined();
     expect(asMap(securityGate.permissions, 'security gate permissions')).toEqual({ contents: 'read' });
-    for (const step of stepsFor(securityGate)) {
+    const securitySteps = stepsFor(securityGate);
+    expect(securitySteps.find(step => step.uses?.startsWith('actions/setup-python@'))?.uses)
+      .toMatch(/^[\w./-]+@[a-f0-9]{40}(?:\s+#.*)?$/);
+    expect(stepNamed(securityGate, 'Install locked Python dependencies from wheels only').run)
+      .toContain('--only-binary=:all: -r requirements/backend-dev.lock');
+    expect(stepNamed(securityGate, 'Run read-only hosted probe tests').run)
+      .toContain('python -m pytest -q tests/acceptance/support/test_k2_hosted_probe.py');
+    for (const step of securitySteps) {
       if (step.uses) expect(step.uses).toMatch(/^[\w./-]+@[a-f0-9]{40}(?:\s+#.*)?$/);
       expect(JSON.stringify(step)).not.toContain('secrets.');
     }
