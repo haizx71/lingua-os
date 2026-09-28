@@ -18,6 +18,24 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   competence dimension and available canonical material. Keep one primary FSRS
   lineage through the existing atomic Memory and competence transaction.
   No schema migration; K2-08 through K2-10 remain downstream of hosted PASS.
+- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED RUN BLOCKED.** Independent security review
+  passed for the isolated `codex/k2-hosted-acceptance-harness` branch, which implements the shared two-actor wave lifecycle, K2-07
+  weakest-dimension/available-material plugin, per-response Render source-SHA verification,
+  cross-actor isolation, exact replay, one competence plus FSRS lineage, complete retained-state
+  comparison, Auth-only cleanup, in-memory finalizer retry, and bounded same-run crash recovery for
+  unmarked partial creation. The workflow separates a credential-free Chromium redirect
+  gate, acceptance, TTL-only janitor, and current-run cleanup; provider credentials are step-scoped
+  to the operation that needs them. Hosted acceptance must not run until the protected
+  `k2-staging` environment and exact Vercel Trusted Source rule are
+  provisioned; there is no repository-secret fallback, and private-repository protected environments
+  may require a paid GitHub plan. The already-authorized staging run requires no additional approval.
+  Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
+  missing published aligned content/HTTPS audio. Read-only checks confirmed staging at migration
+  `0019` and the built-in `supabase_read_only_user` has broad `BYPASSRLS` read access without
+  `pg_write_all_data` membership, but its protected CI connection credential is unavailable.
+  Source checks passed: 47/47 harness Vitest, 6/6 probe pytest, 1/1 real Chromium redirect,
+  workspace typecheck, and `pnpm backend:check` (600 backend tests). No schema migration or hosted
+  state mutation is planned.
 - **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
   `weak`; effective `forgotten` concepts appear in “Tất cả” but have no dedicated
   chip. This does not reopen K2-06's Brain/Review API acceptance.

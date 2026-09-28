@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
@@ -92,6 +93,18 @@ class HealthResponse(BaseModel):
     service: Literal["lingua-api"] = "lingua-api"
     status: Literal["ok"] = "ok"
     version: str = APP_VERSION
+    source_sha: str | None = Field(
+        default=None,
+        serialization_alias="sourceSha",
+        exclude_if=lambda value: value is None,
+    )
+
+
+def _render_source_sha() -> str | None:
+    if os.getenv("RENDER_SERVICE_NAME", "").strip() != "lingua-api-staging":
+        return None
+    value = os.getenv("RENDER_GIT_COMMIT", "").strip()
+    return value if re.fullmatch(r"[a-f0-9]{40}", value) else None
 
 
 class _MissingTokenVerifier:
@@ -177,7 +190,11 @@ def create_app(
     @application.middleware("http")
     async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.request_id = uuid4()
-        return await call_next(request)
+        response = await call_next(request)
+        source_sha = _render_source_sha()
+        if source_sha is not None:
+            response.headers["X-Lingua-Source-Sha"] = source_sha
+        return response
 
     _register_error_handlers(application)
     application.include_router(admin_router)
@@ -192,8 +209,9 @@ def create_app(
     application.include_router(library_router)
 
     @application.get("/health", response_model=HealthResponse, include_in_schema=False)
-    async def health() -> HealthResponse:
-        return HealthResponse()
+    async def health(response: Response) -> HealthResponse:
+        response.headers["Cache-Control"] = "no-store"
+        return HealthResponse(source_sha=_render_source_sha())
 
     return application
 

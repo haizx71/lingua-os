@@ -1,10 +1,13 @@
+import pytest
 from fastapi.testclient import TestClient
 from lingua_api.main import app
 
 client = TestClient(app)
 
 
-def test_health_reports_the_api_is_ready() -> None:
+def test_health_reports_the_api_is_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("RENDER_SERVICE_NAME", raising=False)
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
     response = client.get("/health")
 
     assert response.status_code == 200
@@ -13,6 +16,62 @@ def test_health_reports_the_api_is_ready() -> None:
         "status": "ok",
         "version": "0.1.0",
     }
+    assert response.headers.get("cache-control") == "no-store"
+    assert "x-lingua-source-sha" not in response.headers
+
+
+def test_health_reports_only_a_valid_render_source_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RENDER_SERVICE_NAME", "lingua-api-staging")
+    source_sha = "a" * 40
+    monkeypatch.setenv("RENDER_GIT_COMMIT", source_sha)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "service": "lingua-api",
+        "status": "ok",
+        "version": "0.1.0",
+        "sourceSha": source_sha,
+    }
+    assert response.headers["x-lingua-source-sha"] == source_sha
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_health_omits_malformed_render_source_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RENDER_SERVICE_NAME", "lingua-api-staging")
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "not-a-commit")
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert "sourceSha" not in response.json()
+
+
+def test_product_api_responses_include_only_the_runtime_source_sha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RENDER_SERVICE_NAME", "lingua-api-staging")
+    source_sha = "b" * 40
+    monkeypatch.setenv("RENDER_GIT_COMMIT", source_sha)
+
+    response = client.get("/v1/me")
+
+    assert response.status_code == 401
+    assert response.headers["x-lingua-source-sha"] == source_sha
+
+
+def test_non_staging_render_service_does_not_publish_source_sha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RENDER_SERVICE_NAME", "lingua-api")
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "c" * 40)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert "sourceSha" not in response.json()
+    assert "x-lingua-source-sha" not in response.headers
 
 
 def test_application_publishes_only_the_authorized_implemented_endpoints() -> None:

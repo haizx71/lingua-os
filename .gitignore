@@ -23,4 +23,5 @@ storybook-static/
 .gemini/
 .agents/
 test-results/
+test-results-k2-hosted/
 playwright-report/

@@ -20,6 +20,13 @@ info:
     GET /v1/me creates `public.users` or `learner_profiles`; an authenticated actor without that
     application identity receives 404 NOT_FOUND from downstream product operations and must call
     `/v1/me`. Bootstrap never creates a Language Profile or learning state.
+
+    When running on Render with a valid platform-provided `RENDER_GIT_COMMIT`, API responses may
+    include the optional `X-Lingua-Source-Sha` response header containing that lowercase 40-hex
+    source commit. It is emitted only by the Render service named `lingua-api-staging`. Clients
+    must not use this operational attestation for authorization; the hosted acceptance harness
+    requires it to match the tested deployment SHA on every API response.
+
   license:
     name: LINGUA OS private API contract
     identifier: LicenseRef-LINGUA-OS-Private
