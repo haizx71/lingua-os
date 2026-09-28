@@ -41,7 +41,7 @@ function config(overrides: Partial<K2HostedConfig> = {}): K2HostedConfig {
     publishableKey: 'test-publishable-placeholder',
     secretKey: 'test-admin-placeholder',
     readonlyDatabaseUrl:
-      `postgresql://supabase_read_only_user:placeholder@db.${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co/postgres?sslmode=require`,
+      `postgresql://${K2_HOSTED_READONLY_DATABASE_ROLE}.${K2_HOSTED_STAGING_SUPABASE_REF}:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full`,
     githubRepository: 'haizx71/lingua-os',
     githubRef: 'refs/heads/master',
     githubEventName: 'workflow_dispatch',
@@ -65,7 +65,7 @@ function validEnvironment(): Record<string, string> {
     K2_STAGING_SUPABASE_PUBLISHABLE_KEY: 'placeholder',
     K2_STAGING_SUPABASE_SECRET_KEY: 'placeholder',
     K2_STAGING_READONLY_DATABASE_URL:
-      `postgresql://${K2_HOSTED_READONLY_DATABASE_ROLE}:placeholder@db.${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co/postgres?sslmode=require`,
+      `postgresql://${K2_HOSTED_READONLY_DATABASE_ROLE}.${K2_HOSTED_STAGING_SUPABASE_REF}:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full`,
     GITHUB_REPOSITORY: 'haizx71/lingua-os',
     GITHUB_REF: 'refs/heads/master',
     GITHUB_EVENT_NAME: 'workflow_dispatch',
@@ -147,12 +147,16 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       K2_STAGING_SUPABASE_PROJECT_REF: 'productionref123456',
       K2_STAGING_SUPABASE_URL: 'https://productionref123456.supabase.co',
       K2_STAGING_READONLY_DATABASE_URL:
-        'postgresql://supabase_read_only_user:placeholder@db.productionref123456.supabase.co/postgres?sslmode=require',
+        'postgresql://k2_hosted_acceptance_reader.productionref123456:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full',
     })).toThrow('Supabase project reference is invalid');
     expect(() => validateK2HostedEnvironment({
       ...env,
       K2_STAGING_READONLY_DATABASE_URL:
         `postgresql://postgres:placeholder@db.${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co/postgres?sslmode=require`,
+    })).toThrow('read-only database URL');
+    expect(() => validateK2HostedEnvironment({
+      ...env,
+      K2_STAGING_READONLY_DATABASE_URL: env.K2_STAGING_READONLY_DATABASE_URL.replace(':5432/', ':6543/'),
     })).toThrow('read-only database URL');
   });
 

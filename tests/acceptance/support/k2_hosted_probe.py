@@ -42,8 +42,16 @@ EXPECTED_LEARNER_TABLES = (
     "user_skill_states",
     "users",
 )
-EXPECTED_READONLY_ROLE = "supabase_read_only_user"
-EXPECTED_APP_MIGRATION_HEAD = "0019"
+EXPECTED_CATALOG_TABLES = (
+    "audio_assets", "concepts", "content_concepts", "content_items",
+    "content_metrics", "content_segments", "content_versions", "data_sources",
+    "lexemes", "licenses", "phonetic_transcriptions", "proficiency_levels",
+    "schema_migrations", "sentence_audio", "sentence_concepts", "sentence_translations",
+    "sentences", "source_records", "word_senses",
+)
+EXPECTED_READONLY_ROLE = "k2_hosted_acceptance_reader"
+EXPECTED_APP_MIGRATION_HEAD = "0017"
+EXPECTED_SUPABASE_MIGRATION_HEAD = "k2_hosted_acceptance_reader_staging"
 K2_ANCHOR_CONCEPT_ID = UUID("7f110000-0000-4000-8000-000000000004")
 K2_ANCHOR_LEMMA = "frll-anchor"
 MAX_ROWS_PER_TABLE = 100_000
@@ -65,11 +73,16 @@ def _connection():
     status = connection.execute(
         """SELECT current_user,
                   current_setting('transaction_read_only'),
+                  current_setting('default_transaction_read_only'),
                   role.rolsuper,
                   role.rolcreaterole,
                   role.rolcreatedb,
                   role.rolreplication,
                   role.rolbypassrls,
+                  role.rolinherit,
+                  role.rolcanlogin,
+                  role.rolconnlimit,
+                  (SELECT count(*) FROM pg_auth_members WHERE member = role.oid),
                   has_schema_privilege(current_user, 'public', 'CREATE'),
                   has_database_privilege(current_user, current_database(), 'CREATE')
            FROM pg_roles AS role
@@ -78,10 +91,10 @@ def _connection():
     if (
         status is None
         or status[0] != EXPECTED_READONLY_ROLE
-        or status[1] != "on"
-        or status[2:6] != (False, False, False, False)
-        or status[6] is not True
-        or status[7:9] != (False, False)
+        or status[1:3] != ("on", "on")
+        or status[3:9] != (False, False, False, False, False, False)
+        or status[9:12] != (True, 5, 0)
+        or status[12:14] != (False, False)
     ):
         connection.close()
         raise ProbeError
@@ -155,17 +168,65 @@ def _table_inventory(connection) -> tuple[str, ...]:
 
     all_public_privileges = connection.execute(
         """SELECT relation.relname,
+                  has_table_privilege(current_user, relation.oid, 'SELECT'),
                   has_table_privilege(current_user, relation.oid, 'INSERT'),
                   has_table_privilege(current_user, relation.oid, 'UPDATE'),
                   has_table_privilege(current_user, relation.oid, 'DELETE'),
                   has_table_privilege(current_user, relation.oid, 'TRUNCATE'),
-                  has_table_privilege(current_user, relation.oid, 'TRIGGER')
+                  has_table_privilege(current_user, relation.oid, 'TRIGGER'),
+                  has_table_privilege(current_user, relation.oid, 'REFERENCES'),
+                  has_table_privilege(current_user, relation.oid, 'MAINTAIN')
            FROM pg_class AS relation
            JOIN pg_namespace AS relation_schema ON relation_schema.oid = relation.relnamespace
            WHERE relation_schema.nspname = 'public'
-             AND relation.relkind IN ('r', 'p')"""
+             AND relation.relkind IN ('r', 'p', 'v', 'm')"""
     ).fetchall()
-    if any(any(row[1:]) for row in all_public_privileges):
+    readable = {row[0] for row in all_public_privileges if row[1] is True}
+    if (
+        readable != set(EXPECTED_LEARNER_TABLES) | set(EXPECTED_CATALOG_TABLES)
+        or any(any(row[2:]) for row in all_public_privileges)
+    ):
+        raise ProbeError
+
+    policy_rows = connection.execute(
+        """SELECT relation.relname, relation.relrowsecurity,
+                  relation.relforcerowsecurity,
+                  EXISTS (
+                      SELECT 1 FROM pg_policy AS policy
+                      WHERE policy.polrelid = relation.oid
+                        AND policy.polname = 'k2_hosted_acceptance_reader_select_all'
+                        AND policy.polcmd = 'r'
+                        AND policy.polpermissive
+                        AND policy.polroles = ARRAY[(SELECT oid FROM pg_roles
+                                                     WHERE rolname = current_user)]::oid[]
+                        AND pg_get_expr(policy.polqual, policy.polrelid) = 'true'
+                  ) AS exact_reader_policy,
+                  EXISTS (
+                      SELECT 1 FROM pg_policy AS policy
+                      WHERE policy.polrelid = relation.oid
+                        AND NOT policy.polpermissive
+                        AND policy.polcmd IN ('r', '*')
+                        AND (0 = ANY(policy.polroles)
+                             OR (SELECT oid FROM pg_roles WHERE rolname = current_user)
+                                = ANY(policy.polroles))
+                  ) AS restrictive_policy
+           FROM pg_class AS relation
+           JOIN pg_namespace AS schema ON schema.oid = relation.relnamespace
+           WHERE schema.nspname = 'public'
+             AND relation.relname = ANY(%s)
+             AND relation.relkind IN ('r', 'p')
+           ORDER BY relation.relname""",
+        (list(EXPECTED_LEARNER_TABLES),),
+    ).fetchall()
+    if len(policy_rows) != len(EXPECTED_LEARNER_TABLES):
+        raise ProbeError
+    without_rls = {"assessment_attempt_items", "assessment_idempotency_log"}
+    if any(
+        forced or restrictive or
+        (not enabled and (name not in without_rls or exact)) or
+        (enabled and (name in without_rls or not exact))
+        for name, enabled, forced, exact, restrictive in policy_rows
+    ):
         raise ProbeError
     return actual
 
@@ -216,8 +277,33 @@ def _migration_head(connection) -> dict[str, Any]:
     rows = connection.execute(
         "SELECT version, name FROM public.schema_migrations ORDER BY version"
     ).fetchall()
-    expected = [f"{number:04d}" for number in range(1, 20)]
-    if [row[0] for row in rows] != expected or rows[-1][1] != "concept_save_intent_auth_erasure":
+    expected = [f"{number:04d}" for number in range(1, 18)]
+    if [row[0] for row in rows] != expected or rows[-1][1] != "knowledge_v2_learner_retrievability":
+        raise ProbeError
+    migration_rows = connection.execute(
+        "SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version"
+    ).fetchall()
+    if (
+        len(migration_rows) < 2
+        or migration_rows[-2][1] != "concept_save_intent_auth_erasure_0019"
+        or migration_rows[-1][1] != EXPECTED_SUPABASE_MIGRATION_HEAD
+        or migration_rows[-1][0] <= migration_rows[-2][0]
+    ):
+        raise ProbeError
+    privileges = connection.execute(
+        """SELECT has_column_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                        'version', 'SELECT'),
+                  has_column_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                        'name', 'SELECT'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations', 'SELECT'),
+                  has_column_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                        'statements', 'SELECT'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations', 'INSERT'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations', 'UPDATE'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations', 'DELETE'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations', 'TRUNCATE')"""
+    ).fetchone()
+    if privileges != (True, True, False, False, False, False, False, False):
         raise ProbeError
     return {"appMigrationHead": rows[-1][0], "appliedMigrations": len(rows)}
 

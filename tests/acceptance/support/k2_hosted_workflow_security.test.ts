@@ -35,6 +35,7 @@ function stepNamed(job: YamlMap, name: string): WorkflowStep {
 
 const SECRET_WORKFLOW_PATH = '.github/workflows/k2-hosted-acceptance.yml';
 const SECURITY_WORKFLOW_PATH = '.github/workflows/k2-hosted-security-gate.yml';
+const DB_PREFLIGHT_WORKFLOW_PATH = '.github/workflows/k2-hosted-db-preflight.yml';
 const OWNER = 'haizx71';
 const REPOSITORY = 'haizx71/lingua-os';
 const WORKFLOW_REF = `${REPOSITORY}/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`;
@@ -50,12 +51,44 @@ const STAGING_SECRET_NAMES = [
 describe('K2 hosted workflow credential boundary', () => {
   const secretWorkflow = readWorkflow(SECRET_WORKFLOW_PATH);
   const securityWorkflow = readWorkflow(SECURITY_WORKFLOW_PATH);
+  const dbPreflightWorkflow = readWorkflow(DB_PREFLIGHT_WORKFLOW_PATH);
   const secretJobs = asMap(secretWorkflow.jobs, 'secret workflow jobs');
   const securityJobs = asMap(securityWorkflow.jobs, 'security workflow jobs');
   const acceptance = asMap(secretJobs['hosted-acceptance'], 'hosted-acceptance job');
   const janitor = asMap(secretJobs.janitor, 'janitor job');
   const cleanup = asMap(secretJobs['current-run-cleanup'], 'current-run-cleanup job');
   const securityGate = asMap(securityJobs['security-gate'], 'security-gate job');
+  const dbPreflight = asMap(asMap(dbPreflightWorkflow.jobs, 'db preflight jobs')['readonly-preflight'], 'readonly-preflight job');
+
+  it('runs database preflight without actor credentials or pull-request access', () => {
+    expect(Object.keys(asMap(dbPreflightWorkflow.on, 'db preflight triggers'))).toEqual(['workflow_dispatch']);
+    expect(asMap(dbPreflightWorkflow.permissions, 'db preflight permissions')).toEqual({ contents: 'read' });
+    expect(asMap(dbPreflightWorkflow.concurrency, 'db preflight concurrency')).toMatchObject({
+      group: 'k2-hosted-acceptance-staging', 'cancel-in-progress': false,
+    });
+    const guard = String(dbPreflight.if);
+    for (const condition of [
+      "github.repository == 'haizx71/lingua-os'",
+      "github.ref == 'refs/heads/master'",
+      "github.workflow_ref == 'haizx71/lingua-os/.github/workflows/k2-hosted-db-preflight.yml@refs/heads/master'",
+      "github.actor == 'haizx71'",
+      "github.triggering_actor == 'haizx71'",
+    ]) expect(guard).toContain(condition);
+    const steps = stepsFor(dbPreflight);
+    const shaCheck = stepNamed(dbPreflight, 'Verify exact current master before reading staging secret');
+    const probe = stepNamed(dbPreflight, 'Prove session pooler and read-only privileges without actors');
+    expect(steps.indexOf(shaCheck)).toBeLessThan(steps.indexOf(probe));
+    expect(JSON.stringify(shaCheck)).not.toContain('secrets.');
+    expect(probe.run).toContain('k2_readonly_privilege_probe');
+    expect(asMap(probe.env, 'db preflight environment')).toEqual({
+      K2_STAGING_READONLY_DATABASE_URL: '${{ secrets.K2_STAGING_READONLY_DATABASE_URL }}',
+    });
+    expect(JSON.stringify(dbPreflightWorkflow)).not.toContain('K2_STAGING_SUPABASE_SECRET_KEY');
+    expect(JSON.stringify(dbPreflightWorkflow)).not.toContain('id-token');
+    for (const step of steps) {
+      if (step.uses) expect(step.uses).toMatch(/^[\w./-]+@[a-f0-9]{40}(?:\s+#.*)?$/);
+    }
+  });
 
   it('keeps the secret-bearing workflow off pull requests and serializes hosted mutations', () => {
     const triggers = asMap(secretWorkflow.on, 'secret workflow triggers');

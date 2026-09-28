@@ -13,7 +13,7 @@ export const K2_HOSTED_OWNER_LOGIN = 'haizx71';
 export const K2_HOSTED_WORKFLOW_REF =
   `${K2_HOSTED_REPOSITORY}/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`;
 export const K2_HOSTED_STAGING_SUPABASE_REF = 'bdmtdvvnbicgkfririjo';
-export const K2_HOSTED_READONLY_DATABASE_ROLE = 'supabase_read_only_user';
+export const K2_HOSTED_READONLY_DATABASE_ROLE = 'k2_hosted_acceptance_reader';
 export const K2_HOSTED_MARKER_KEY = 'lingua_k2_hosted_acceptance';
 export const K2_HOSTED_ACTOR_TTL_MS = 2 * 60 * 60 * 1000;
 export const K2_HOSTED_UNMARKED_RECOVERY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -194,19 +194,17 @@ export function validateK2HostedEnvironment(
     throw new Error('K2 hosted acceptance Supabase URL does not match the declared staging project.');
   }
   const databaseUsername = decodeURIComponent(databaseUrl.username);
-  const directDatabaseTarget =
-    databaseUrl.hostname === `db.${supabaseProjectRef}.supabase.co` &&
-    databaseUsername === K2_HOSTED_READONLY_DATABASE_ROLE;
   const poolerDatabaseTarget =
-    /^aws-\d-[a-z0-9-]+\.pooler\.supabase\.com$/.test(databaseUrl.hostname) &&
-    databaseUrl.hostname.endsWith('.pooler.supabase.com') &&
+    databaseUrl.hostname === 'aws-0-ap-southeast-1.pooler.supabase.com' &&
+    databaseUrl.port === '5432' &&
     databaseUsername === `${K2_HOSTED_READONLY_DATABASE_ROLE}.${supabaseProjectRef}`;
   if (
     !['postgres:', 'postgresql:'].includes(databaseUrl.protocol) ||
-    (!directDatabaseTarget && !poolerDatabaseTarget) ||
+    !poolerDatabaseTarget ||
     !databaseUrl.password ||
     databaseUrl.pathname !== '/postgres' ||
-    !['require', 'verify-ca', 'verify-full'].includes(databaseUrl.searchParams.get('sslmode') ?? '')
+    databaseUrl.search !== '?sslmode=verify-full' ||
+    databaseUrl.hash !== ''
   ) {
     throw new Error('K2 hosted acceptance read-only database URL does not match the staging project.');
   }
