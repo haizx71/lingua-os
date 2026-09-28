@@ -96,6 +96,32 @@ def _prove_permissions(connection: psycopg.Connection) -> None:
     ):
         raise probe.ProbeError
 
+    public_grant_options = connection.execute(
+        """SELECT count(*) FROM (
+             SELECT acl.is_grantable FROM pg_database AS database
+               CROSS JOIN LATERAL aclexplode(database.datacl) AS acl
+               WHERE acl.grantee = 0
+             UNION ALL
+             SELECT acl.is_grantable FROM pg_namespace AS schema
+               CROSS JOIN LATERAL aclexplode(schema.nspacl) AS acl
+               WHERE acl.grantee = 0
+             UNION ALL
+             SELECT acl.is_grantable FROM pg_class AS relation
+               CROSS JOIN LATERAL aclexplode(relation.relacl) AS acl
+               WHERE acl.grantee = 0
+             UNION ALL
+             SELECT acl.is_grantable FROM pg_attribute AS attribute
+               CROSS JOIN LATERAL aclexplode(attribute.attacl) AS acl
+               WHERE acl.grantee = 0
+             UNION ALL
+             SELECT acl.is_grantable FROM pg_proc AS routine
+               CROSS JOIN LATERAL aclexplode(routine.proacl) AS acl
+               WHERE acl.grantee = 0
+           ) AS inherited WHERE is_grantable"""
+    ).fetchone()
+    if public_grant_options != (0,):
+        raise probe.ProbeError
+
     explicit_grants = connection.execute(
         """WITH target AS (SELECT oid FROM pg_roles WHERE rolname = current_user),
            grants AS (
