@@ -173,7 +173,9 @@ def _table_inventory(connection) -> tuple[str, ...]:
                   has_table_privilege(current_user, relation.oid, 'UPDATE'),
                   has_table_privilege(current_user, relation.oid, 'DELETE'),
                   has_table_privilege(current_user, relation.oid, 'TRUNCATE'),
-                  has_table_privilege(current_user, relation.oid, 'TRIGGER')
+                  has_table_privilege(current_user, relation.oid, 'TRIGGER'),
+                  has_table_privilege(current_user, relation.oid, 'REFERENCES'),
+                  has_table_privilege(current_user, relation.oid, 'MAINTAIN')
            FROM pg_class AS relation
            JOIN pg_namespace AS relation_schema ON relation_schema.oid = relation.relnamespace
            WHERE relation_schema.nspname = 'public'

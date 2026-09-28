@@ -48,7 +48,7 @@ class InventoryConnection:
         if "has_table_privilege(current_user, relation.oid, 'SELECT')" in statement:
             names = sorted(set(probe.EXPECTED_LEARNER_TABLES) | set(probe.EXPECTED_CATALOG_TABLES))
             return Result(rows=[
-                (name, True, self.write_grant and name == "users", False, False, False, False)
+                (name, True, self.write_grant and name == "users", False, False, False, False, False, False)
                 for name in names
             ])
         if "FROM pg_policy AS policy" in statement:
