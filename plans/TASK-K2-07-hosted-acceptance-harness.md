@@ -10,7 +10,7 @@ The acceptance runner may create exactly two fresh confirmed Auth actors: a prim
 and a disposable observer for cross-actor isolation. Both receive server-owned `app_metadata`
 ownership marks, use normal Supabase password sign-in, and are removed through Auth Admin deletion.
 The run never selects or mutates an existing learner. Each mark binds its actor to the exact staging
-Supabase project, GitHub repository, protected environment, workflow ref, run and attempt, and
+Supabase project, GitHub repository, logical `k2-staging` label, workflow ref, run and attempt, and
 bounded expiry. Cleanup re-fetches the Auth user and requires the exact mark and reserved
 `example.invalid` address to remain unchanged before deletion. Fresh create results are kept in memory
 for finalizer retries. If a process stops after an unmarked partial create, same-run recovery accepts
@@ -18,16 +18,34 @@ only exact reserved addresses for this workflow run and attempts within 24 hours
 email, no sign-in, complete pagination, exact re-fetch, Auth 404, and zero actor-owned rows. This
 recovery does not broaden the TTL janitor, which remains server-marker-only.
 
-The workflow is serial per staging project; its credential-free security gate also runs on pull
-requests to `master`, while mutation jobs run only from protected `master` dispatch/schedule. Staging
-provider credentials are step-scoped from GitHub's protected `k2-staging` environment. The runner
-derives the exact immutable Vercel Production origin from successful GitHub deployment/status records
-for the current SHA; it requires matching `environment_url`, `target_url`, and `log_url`, the
-`vercel[bot]` creator, and a protected OIDC challenge/access check. Protected Vercel access uses
-GitHub Actions OIDC Trusted Sources in memory. Missing staging settings, protected access, or OIDC
-configuration fails closed before actor creation. The runner creates no share links, does not
-alter deployment protection, and never writes credentials, JWTs, actor IDs, or email addresses to
-files, artifacts, logs, or reports.
+The secret-bearing workflow is serial per staging project and has only manual dispatch and scheduled
+triggers; acceptance is manual dispatch from the exact repository/master workflow ref by owner
+`haizx71` as both actor and triggering actor. A separate credential-free workflow runs the security
+gate only for pull requests to `master`. Six repository secrets are mapped only to the step that
+uses them; a no-secret GitHub API preflight checks the dispatch SHA against the live master tip
+before those secrets are mapped, and the runner checks again immediately before actor creation.
+Current-run cleanup is conditioned on the hosted job having started, retains exact repository/ref/
+workflow/owner guards, and does not recheck the current master SHA so cleanup remains possible if
+master advances after a failure. The runner derives the exact immutable Vercel Production origin from
+successful GitHub deployment/status records for the current SHA; it requires matching
+`environment_url`, `target_url`, and `log_url`, the `vercel[bot]` creator, and a protected OIDC
+challenge/access check. Protected Vercel access uses GitHub Actions OIDC Trusted Sources in memory.
+The required trust rule binds audience `https://vercel.com`, repository `haizx71/lingua-os`,
+`ref=refs/heads/master`, exact
+`workflow_ref=haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`, and
+`event_name=workflow_dispatch`. It must not depend on a GitHub environment claim or assumed `sub`
+shape; this manual rule is not yet configured or verified. Missing staging settings, protected
+access, or OIDC configuration fails closed before actor creation. The runner creates no share links,
+does not alter deployment protection, and never writes credentials, JWTs, actor IDs, or email
+addresses to files, artifacts, logs, or reports.
+
+The six staging values are repository-level secrets because GitHub environment secrets are not
+available under the current plan. No plan upgrade is needed for this path, but any workflow in the
+repository can read the values if it references them. This leaves a cross-workflow secret risk and
+assumes `haizx71` is the only trusted writer/merger of workflow code. Do not grant untrusted
+collaborators write access; review every workflow change. The current repository secret list is
+empty, so hosted acceptance remains blocked until the secret names are securely populated. No secret
+values have been read into this plan or the source tree.
 
 Before baseline or actor creation, the run reaps expired exact-marker actors and cleans marked
 actors from earlier attempts of the same workflow run. A separate crash-recovery path may clean an
@@ -60,26 +78,31 @@ cleanup gates.
 ## Bounded implementation and gates
 
 1. Add a durable staging acceptance plan and read-only schema fingerprint/probe.
-2. Add exact-environment preflight, in-process actor lifecycle, protected OIDC transport, and a
+2. Add exact-repository/ref/owner preflight, in-process actor lifecycle, protected OIDC transport, and a
    marker-only guarded janitor with bounded pagination and re-fetch before deletion.
 3. Add the K2-07 Playwright/HTTP plugin: bootstrap a new learner, save the canonical anchor, verify
    selected mode, answer/replay, and confirm one scheduler lineage plus complete retained-state
    equality.
-4. Add focused adversarial unit coverage and a protected GitHub Actions environment workflow with
-   an unprivileged pull-request gate, a single staging mutation lock, and unconditional current-run
-   cleanup.
+4. Add focused adversarial unit coverage and separate pull-request-only and secret-bearing GitHub
+   workflows with a single staging mutation lock and guarded current-run cleanup.
 5. Add the staging-only Render source attestation to operational health and every API response,
    document its optional response-header contract, and update `STATUS.md` and `TASKS.md`. No
    database migration or hosted state change is in scope.
 
 The harness requests GPT-6 Luna Max; this runtime does not expose the actual model or reasoning
-effort for independent verification. Independent source security review passed. Local verification
-passed 47/47 hosted-harness Vitest tests, 6/6 Python probe tests, the 1/1 real Chromium redirect
-test, workspace typecheck, and `pnpm backend:check` (600 backend tests). It creates no actors and
-does not establish hosted acceptance. Read-only staging checks confirmed migration `0019` and the
+effort for independent verification. The prior source snapshot passed independent security review;
+the current workflow/cleanup delta is awaiting review. Current local verification passed 61/61
+focused hosted-harness Vitest tests (including workflow security), 6/6 Python probe tests, the 1/1
+real Chromium redirect test, and workspace typecheck. `pnpm backend:check` passed on the prior
+source snapshot (600 backend tests); this revision changes no backend or Python runtime code. It
+creates no actors and does not establish hosted acceptance. Read-only staging checks confirmed migration `0019` and the
 built-in `supabase_read_only_user` has broad `BYPASSRLS` read capability without `pg_write_all_data`
-membership; the protected CI connection URL/password remains unavailable. The already-authorized
-hosted run will proceed only after independent code review and
-protected staging environment setup; it does not need another owner approval round. The current
-repository has no `k2-staging` environment secrets, and private-repository protected environments
-may require a paid GitHub plan, so CI must fail closed until that secure infrastructure exists.
+membership; the repository-level staging secret names and protected CI connection URL/password are
+not provisioned. The already-authorized hosted run will proceed only after independent code review,
+secret provisioning, and Vercel Trusted Source configuration; it does not need another approval
+round. No GitHub plan upgrade is needed for this path, but repository-wide secret availability
+requires the documented owner-only trusted-writer assumption. CI must fail closed until secure setup
+is complete. Cleanup and the TTL janitor do not require migration head `0019` before attempting
+owner-marker-guarded Auth deletion; their post-delete residue proof remains strict and fails if the
+known schema inventory cannot be proven. Acceptance still requires migration head `0019` before any
+wave actors are created.

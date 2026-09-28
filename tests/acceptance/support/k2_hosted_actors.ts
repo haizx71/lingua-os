@@ -9,6 +9,7 @@ import {
 export const K2_HOSTED_ENVIRONMENT = 'k2-staging';
 export const K2_HOSTED_WORKFLOW = 'K2 Hosted Acceptance';
 export const K2_HOSTED_REPOSITORY = 'haizx71/lingua-os';
+export const K2_HOSTED_OWNER_LOGIN = 'haizx71';
 export const K2_HOSTED_WORKFLOW_REF =
   `${K2_HOSTED_REPOSITORY}/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`;
 export const K2_HOSTED_STAGING_SUPABASE_REF = 'bdmtdvvnbicgkfririjo';
@@ -138,7 +139,14 @@ export function validateK2HostedEnvironment(
     'ACTIONS_ID_TOKEN_REQUEST_URL',
     'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
   ] as const;
-  const missing = [...required, ...(mode === 'acceptance' ? acceptanceRequired : [])]
+  const ownerActorRequired = mode !== 'janitor' || env.GITHUB_EVENT_NAME === 'workflow_dispatch';
+  const githubApiTokenRequired = mode !== 'cleanup-current';
+  const missing = [
+    ...required,
+    ...(mode === 'acceptance' ? acceptanceRequired : []),
+    ...(githubApiTokenRequired && mode !== 'acceptance' ? ['K2_GITHUB_TOKEN'] : []),
+    ...(ownerActorRequired ? ['GITHUB_ACTOR', 'GITHUB_TRIGGERING_ACTOR'] : []),
+  ]
     .filter(name => !env[name]?.trim());
   if (missing.length > 0) {
     throw new Error(`K2 hosted acceptance is not configured: missing ${missing.join(', ')}.`);
@@ -211,9 +219,13 @@ export function validateK2HostedEnvironment(
     env.GITHUB_WORKFLOW_REF !== K2_HOSTED_WORKFLOW_REF ||
     !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA!.trim()) ||
     !/^\d{1,20}$/.test(env.GITHUB_RUN_ID!) ||
-    !/^\d{1,5}$/.test(env.GITHUB_RUN_ATTEMPT!)
+    !/^\d{1,5}$/.test(env.GITHUB_RUN_ATTEMPT!) ||
+    (ownerActorRequired && (
+      env.GITHUB_ACTOR!.trim().toLowerCase() !== K2_HOSTED_OWNER_LOGIN ||
+      env.GITHUB_TRIGGERING_ACTOR!.trim().toLowerCase() !== K2_HOSTED_OWNER_LOGIN
+    ))
   ) {
-    throw new Error('K2 hosted acceptance must run as a protected master dispatch in its declared repository.');
+    throw new Error('K2 hosted acceptance must run from the exact master workflow under the repository owner.');
   }
 
   return {
@@ -676,7 +688,7 @@ async function recoverUnmarkedSameRunActors(
   admin: K2AdminClient,
   verifyDeletedActor?: (actorId: string) => Promise<void>,
   now = Date.now(),
-): Promise<number> {
+): Promise<{ readonly recovered: number; readonly verificationFailed: boolean }> {
   const users = await listUsersBounded(admin);
   const currentAttempt = Number(config.githubRunAttempt);
   const candidates: User[] = [];
@@ -697,6 +709,7 @@ async function recoverUnmarkedSameRunActors(
     throw new Error('K2 hosted acceptance same-run recovery exceeded its bounded actor count.');
   }
 
+  let verificationFailed = false;
   for (const listed of candidates) {
     let current;
     try { current = await admin.auth.admin.getUserById(listed.id); }
@@ -704,7 +717,7 @@ async function recoverUnmarkedSameRunActors(
     if (isCanonicalUserNotFound(current.error)) {
       if (verifyDeletedActor) {
         try { await verifyDeletedActor(listed.id); }
-        catch { throw new Error('K2 hosted acceptance same-run recovery residue proof failed.'); }
+        catch { verificationFailed = true; }
       }
       continue;
     }
@@ -731,10 +744,10 @@ async function recoverUnmarkedSameRunActors(
     }
     if (verifyDeletedActor) {
       try { await verifyDeletedActor(user.id); }
-      catch { throw new Error('K2 hosted acceptance same-run recovery residue proof failed.'); }
+      catch { verificationFailed = true; }
     }
   }
-  return candidates.length;
+  return { recovered: candidates.length, verificationFailed };
 }
 
 /** Cleans actors from this workflow run across interrupted/retried attempts only. */
@@ -758,9 +771,10 @@ export async function cleanupK2RunActors(
       catch { verificationFailed = true; }
     }
   }
+  const recovery = await recoverUnmarkedSameRunActors(config, admin, verifyDeletedActor, now);
+  verificationFailed ||= recovery.verificationFailed;
   if (verificationFailed) throw new Error('K2 hosted acceptance deleted actor residue proof failed.');
-  const unmarkedRecovered = await recoverUnmarkedSameRunActors(config, admin, verifyDeletedActor, now);
-  return owned.length + unmarkedRecovered;
+  return owned.length + recovery.recovered;
 }
 
 /** No marked staging actor may be absorbed into the retained baseline. */
@@ -1021,6 +1035,50 @@ async function githubApiPages<T>(
   }
   if (next) throw new Error('K2 hosted acceptance GitHub pagination exceeded its bound.');
   return records;
+}
+
+/** Fails closed unless this run's immutable source SHA is still the live master tip. */
+export async function verifyK2HostedCurrentMasterSha(
+  config: K2HostedConfig,
+  request: typeof fetch = fetch,
+): Promise<void> {
+  const url = new URL(`https://api.github.com/repos/${K2_HOSTED_REPOSITORY}/git/ref/heads/master`);
+  let response: Response;
+  try {
+    response = await request(url, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${config.githubToken}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      signal: AbortSignal.timeout(15_000),
+      redirect: 'error',
+    });
+  } catch {
+    throw new Error('K2 hosted acceptance could not verify the current master source SHA.');
+  }
+  if (!response.ok) {
+    throw new Error('K2 hosted acceptance could not verify the current master source SHA.');
+  }
+  let payload: unknown;
+  try { payload = await response.json(); }
+  catch { throw new Error('K2 hosted acceptance current master response was invalid.'); }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('K2 hosted acceptance current master response was invalid.');
+  }
+  const ref = payload as { readonly ref?: unknown; readonly object?: unknown };
+  const object = ref.object && typeof ref.object === 'object' && !Array.isArray(ref.object)
+    ? ref.object as { readonly type?: unknown; readonly sha?: unknown }
+    : null;
+  if (
+    ref.ref !== 'refs/heads/master' ||
+    object?.type !== 'commit' ||
+    typeof object.sha !== 'string' ||
+    !/^[a-f0-9]{40}$/.test(object.sha) ||
+    object.sha !== config.githubSha
+  ) {
+    throw new Error('K2 hosted acceptance source SHA is not the current master tip.');
+  }
 }
 
 function immutableVercelDeploymentOrigin(value: unknown): string | null {

@@ -13,6 +13,7 @@ import {
   reapExpiredK2Actors,
   validateK2HostedEnvironment,
   verifyK2HostedDeploymentAttestations,
+  verifyK2HostedCurrentMasterSha,
   verifyK2StagingApiHealth,
   verifyProtectedVercelOrigin,
   type K2AdminClient,
@@ -221,6 +222,7 @@ export async function runK2HostedWave(
     if (config.supabaseProjectRef !== K2_HOSTED_STAGING_SUPABASE_REF) {
       throw new Error('K2 hosted acceptance refused a non-staging Supabase project.');
     }
+    await verifyK2HostedCurrentMasterSha(config);
     const vercelOrigin = await verifyK2HostedDeploymentAttestations(config);
     const oidc = await createGithubTrustedSourceToken(config);
     await verifyProtectedVercelOrigin(vercelOrigin, oidc);
@@ -240,6 +242,7 @@ export async function runK2HostedWave(
     await assertNoK2ActorsRemain(config, admin as unknown as K2AdminClient);
     retainedBaseline = await runK2HostedProbe('retained_snapshot', config.readonlyDatabaseUrl) as K2RetainedSnapshot;
 
+    await verifyK2HostedCurrentMasterSha(config);
     const primary = await createK2HostedActor(
       config,
       admin as unknown as K2AdminClient,

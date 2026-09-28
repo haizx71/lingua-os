@@ -2,6 +2,7 @@ import { AuthApiError, type User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   K2_HOSTED_MARKER_KEY,
+  K2_HOSTED_OWNER_LOGIN,
   K2_HOSTED_READONLY_DATABASE_ROLE,
   K2_HOSTED_STAGING_SUPABASE_REF,
   K2_HOSTED_UNMARKED_RECOVERY_MAX_AGE_MS,
@@ -18,6 +19,7 @@ import {
   validateK2HostedEnvironment,
   verifyK2StagingApiHealth,
   verifyK2HostedDeploymentAttestations,
+  verifyK2HostedCurrentMasterSha,
   verifyProtectedVercelOrigin,
   type K2AdminClient,
   type K2HostedActor,
@@ -52,6 +54,31 @@ function config(overrides: Partial<K2HostedConfig> = {}): K2HostedConfig {
     oidcRequestUrl: 'https://pipelines.actions.githubusercontent.com/runtime/token',
     oidcRequestToken: 'test-oidc-placeholder',
     ...overrides,
+  };
+}
+
+function validEnvironment(): Record<string, string> {
+  return {
+    K2_STAGING_API_ORIGIN: 'https://lingua-api-staging.onrender.com',
+    K2_STAGING_SUPABASE_URL: `https://${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co`,
+    K2_STAGING_SUPABASE_PROJECT_REF: K2_HOSTED_STAGING_SUPABASE_REF,
+    K2_STAGING_SUPABASE_PUBLISHABLE_KEY: 'placeholder',
+    K2_STAGING_SUPABASE_SECRET_KEY: 'placeholder',
+    K2_STAGING_READONLY_DATABASE_URL:
+      `postgresql://${K2_HOSTED_READONLY_DATABASE_ROLE}:placeholder@db.${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co/postgres?sslmode=require`,
+    GITHUB_REPOSITORY: 'haizx71/lingua-os',
+    GITHUB_REF: 'refs/heads/master',
+    GITHUB_EVENT_NAME: 'workflow_dispatch',
+    GITHUB_RUN_ID: '123456789',
+    GITHUB_RUN_ATTEMPT: '1',
+    GITHUB_WORKFLOW: 'K2 Hosted Acceptance',
+    GITHUB_WORKFLOW_REF: K2_HOSTED_WORKFLOW_REF,
+    GITHUB_SHA: 'a'.repeat(40),
+    GITHUB_ACTOR: K2_HOSTED_OWNER_LOGIN,
+    GITHUB_TRIGGERING_ACTOR: K2_HOSTED_OWNER_LOGIN,
+    K2_GITHUB_TOKEN: 'placeholder',
+    ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runtime/token',
+    ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'placeholder',
   };
 }
 
@@ -113,26 +140,7 @@ function adminWithUsers(users: readonly User[]): K2AdminClient {
 
 describe('K2 hosted actor lifecycle boundaries', () => {
   it('pins staging project and the read-only database identity before any hosted client is created', () => {
-    const env = {
-      K2_STAGING_API_ORIGIN: 'https://lingua-api-staging.onrender.com',
-      K2_STAGING_SUPABASE_URL: `https://${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co`,
-      K2_STAGING_SUPABASE_PROJECT_REF: K2_HOSTED_STAGING_SUPABASE_REF,
-      K2_STAGING_SUPABASE_PUBLISHABLE_KEY: 'placeholder',
-      K2_STAGING_SUPABASE_SECRET_KEY: 'placeholder',
-      K2_STAGING_READONLY_DATABASE_URL:
-        `postgresql://${K2_HOSTED_READONLY_DATABASE_ROLE}:placeholder@db.${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co/postgres?sslmode=require`,
-      GITHUB_REPOSITORY: 'haizx71/lingua-os',
-      GITHUB_REF: 'refs/heads/master',
-      GITHUB_EVENT_NAME: 'workflow_dispatch',
-      GITHUB_RUN_ID: '123456789',
-      GITHUB_RUN_ATTEMPT: '1',
-      GITHUB_WORKFLOW: 'K2 Hosted Acceptance',
-      GITHUB_WORKFLOW_REF: K2_HOSTED_WORKFLOW_REF,
-      GITHUB_SHA: 'a'.repeat(40),
-      K2_GITHUB_TOKEN: 'placeholder',
-      ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runtime/token',
-      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'placeholder',
-    };
+    const env = validEnvironment();
     expect(validateK2HostedEnvironment(env).supabaseProjectRef).toBe(K2_HOSTED_STAGING_SUPABASE_REF);
     expect(() => validateK2HostedEnvironment({
       ...env,
@@ -146,6 +154,20 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       K2_STAGING_READONLY_DATABASE_URL:
         `postgresql://postgres:placeholder@db.${K2_HOSTED_STAGING_SUPABASE_REF}.supabase.co/postgres?sslmode=require`,
     })).toThrow('read-only database URL');
+  });
+
+  it('requires both the repository owner and owner-triggered acceptance dispatch', () => {
+    const env = validEnvironment();
+    expect(() => validateK2HostedEnvironment({ ...env, GITHUB_ACTOR: 'trusted-collaborator' }))
+      .toThrow('repository owner');
+    expect(() => validateK2HostedEnvironment({ ...env, GITHUB_TRIGGERING_ACTOR: 'trusted-collaborator' }))
+      .toThrow('repository owner');
+    expect(validateK2HostedEnvironment({
+      ...env,
+      GITHUB_EVENT_NAME: 'schedule',
+      GITHUB_ACTOR: '',
+      GITHUB_TRIGGERING_ACTOR: '',
+    }, 'janitor').supabaseProjectRef).toBe(K2_HOSTED_STAGING_SUPABASE_REF);
   });
 
   it('uses marker comparison independent of JSONB key order and confirms canonical Auth absence', async () => {
@@ -488,6 +510,69 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(verifyDeleted).toHaveBeenCalledWith(oldActor.id);
   });
 
+  it('attempts guarded Auth deletion before reporting an unverifiable zero-residue snapshot', async () => {
+    const cfg = config();
+    const actor = authUser(
+      '550e8400-e29b-41d4-a716-446655440050',
+      'k2ha-123456789-2-eeeeeeeeeeeeeeee@example.invalid',
+      ownership(cfg, new Date(NOW.getTime() - 10_000)),
+    );
+    const admin = adminWithUsers([actor]);
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user: actor }, error: null })
+      .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
+    const residueProof = vi.fn(async () => { throw new Error('schema fingerprint changed'); });
+
+    await expect(cleanupK2RunActors(cfg, admin, residueProof, NOW.getTime()))
+      .rejects.toThrow('deleted actor residue proof failed');
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledOnce();
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(actor.id);
+    expect(residueProof).toHaveBeenCalledOnce();
+    expect(residueProof).toHaveBeenCalledWith(actor.id);
+  });
+
+  it('continues all eligible same-run deletions when one post-delete residue proof fails', async () => {
+    const cfg = config({ githubRunAttempt: '2' });
+    const markedActor = authUser(
+      '550e8400-e29b-41d4-a716-446655440051',
+      'k2ha-123456789-2-eeeeeeeeeeeeeeee@example.invalid',
+      ownership(cfg, new Date(NOW.getTime() - 10_000)),
+    );
+    const unmarkedActor = authUser(
+      '550e8400-e29b-41d4-a716-446655440052',
+      'k2ha-123456789-1-ffffffffffffffff@example.invalid',
+      null,
+    );
+    const secondUnmarkedActor = authUser(
+      '550e8400-e29b-41d4-a716-446655440053',
+      'k2ha-123456789-1-1111111111111111@example.invalid',
+      null,
+    );
+    const admin = adminWithUsers([markedActor, unmarkedActor, secondUnmarkedActor]);
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user: markedActor }, error: null })
+      .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') })
+      .mockResolvedValueOnce({ data: { user: unmarkedActor }, error: null })
+      .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') })
+      .mockResolvedValueOnce({ data: { user: secondUnmarkedActor }, error: null })
+      .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
+    const residueProof = vi.fn()
+      .mockRejectedValueOnce(new Error('schema fingerprint changed'))
+      .mockRejectedValueOnce(new Error('schema fingerprint still changed'))
+      .mockResolvedValueOnce(undefined);
+
+    await expect(cleanupK2RunActors(cfg, admin, residueProof, NOW.getTime()))
+      .rejects.toThrow('deleted actor residue proof failed');
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledTimes(3);
+    expect(admin.auth.admin.deleteUser).toHaveBeenNthCalledWith(1, markedActor.id);
+    expect(admin.auth.admin.deleteUser).toHaveBeenNthCalledWith(2, unmarkedActor.id);
+    expect(admin.auth.admin.deleteUser).toHaveBeenNthCalledWith(3, secondUnmarkedActor.id);
+    expect(residueProof).toHaveBeenCalledTimes(3);
+    expect(residueProof).toHaveBeenNthCalledWith(1, markedActor.id);
+    expect(residueProof).toHaveBeenNthCalledWith(2, unmarkedActor.id);
+    expect(residueProof).toHaveBeenNthCalledWith(3, secondUnmarkedActor.id);
+  });
+
   it('recovers only a confirmed, never-signed-in unmarked actor from this run attempt prefix', async () => {
     const current = config({ githubRunAttempt: '3' });
     const actor = authUser(
@@ -720,6 +805,40 @@ describe('K2 hosted actor lifecycle boundaries', () => {
         log_url: 'https://lingua-os-preview.vercel.app',
       }]),
     )).rejects.toThrow('no successful Vercel Production deployment');
+  });
+
+  it('requires an exact live master ref before staging preflight can continue', async () => {
+    const expectedSha = 'a'.repeat(40);
+    const request = vi.fn(async () => new Response(JSON.stringify({
+      ref: 'refs/heads/master',
+      object: { type: 'commit', sha: expectedSha },
+    }), { status: 200 }));
+    await expect(verifyK2HostedCurrentMasterSha(config({ githubSha: expectedSha }), request))
+      .resolves.toBeUndefined();
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ href: 'https://api.github.com/repos/haizx71/lingua-os/git/ref/heads/master' }),
+      expect.objectContaining({ redirect: 'error' }),
+    );
+  });
+
+  it.each([
+    [{ ref: 'refs/heads/master', object: { type: 'commit', sha: 'b'.repeat(40) } }],
+    [{ ref: 'refs/heads/other', object: { type: 'commit', sha: 'a'.repeat(40) } }],
+    [{ ref: 'refs/heads/master', object: { type: 'tag', sha: 'a'.repeat(40) } }],
+    [{ ref: 'refs/heads/master', object: { type: 'commit', sha: 'malformed' } }],
+  ])('fails closed when live master differs or the ref response is malformed', async payload => {
+    const request = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    await expect(verifyK2HostedCurrentMasterSha(config(), request))
+      .rejects.toThrow('source SHA is not the current master tip');
+  });
+
+  it('fails closed if current-master lookup errors or redirects', async () => {
+    const failure = vi.fn(async () => { throw new Error('provider details are not surfaced'); });
+    await expect(verifyK2HostedCurrentMasterSha(config(), failure))
+      .rejects.toThrow('could not verify the current master source SHA');
+    const redirect = vi.fn(async () => new Response(null, { status: 302, headers: { location: 'https://attacker.example/' } }));
+    await expect(verifyK2HostedCurrentMasterSha(config(), redirect))
+      .rejects.toThrow('could not verify the current master source SHA');
   });
 
   it.each([

@@ -1,9 +1,6 @@
 name: K2 Hosted Acceptance
 
 on:
-  pull_request:
-    branches:
-      - master
   workflow_dispatch:
     inputs:
       mode:
@@ -25,52 +22,17 @@ permissions:
   contents: read
 
 jobs:
-  security-gate:
-    if: github.repository == 'haizx71/lingua-os' && ((github.event_name == 'pull_request' && github.base_ref == 'master') || (github.event_name != 'pull_request' && github.ref == 'refs/heads/master'))
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-        with:
-          version: 11.22.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Install locked JavaScript dependencies without lifecycle scripts
-        run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Install Chromium for the local redirect security test
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Run real-browser OIDC redirect security gate
-        run: >-
-          pnpm exec playwright test
-          --config=playwright.k2-hosted.config.ts
-          --workers=1
-          --grep "real cross-origin redirect"
-          tests/acceptance/k2_playwright_network.spec.ts
-      - name: Run hosted-harness unit and type checks
-        run: >-
-          pnpm exec vitest run
-          tests/acceptance/support/k2_hosted_acceptance_helpers.test.ts
-          tests/acceptance/support/k2_hosted_actors.test.ts
-          tests/acceptance/support/k2_hosted_probe_client.test.ts
-          tests/acceptance/support/k2_hosted_wave_k2_07.test.ts
-          tests/acceptance/support/k2_playwright_network.test.ts
-          --maxWorkers=1
-      - name: Typecheck workspace contracts and packages
-        run: pnpm typecheck
-
   hosted-acceptance:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'acceptance' && github.repository == 'haizx71/lingua-os' && github.ref == 'refs/heads/master'
-    needs: security-gate
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.mode == 'acceptance' &&
+      github.repository == 'haizx71/lingua-os' &&
+      github.ref == 'refs/heads/master' &&
+      github.workflow_ref == 'haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master' &&
+      github.actor == 'haizx71' &&
+      github.triggering_actor == 'haizx71'
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    environment: k2-staging
     permissions:
       contents: read
       deployments: read
@@ -91,10 +53,46 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements/backend-dev.lock
-      - name: Install locked dependencies without JavaScript lifecycle scripts
+      - name: Install locked dependencies without lifecycle scripts
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
           python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements/backend-dev.lock
+      - name: Verify run SHA is still the master tip before staging secrets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          K2_EXPECTED_WORKFLOW_REF: haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master
+        run: |
+          node --input-type=module <<'NODE'
+          const expectedRepository = 'haizx71/lingua-os';
+          if (process.env.GITHUB_REPOSITORY !== expectedRepository ||
+              process.env.GITHUB_REF !== 'refs/heads/master' ||
+              process.env.GITHUB_WORKFLOW_REF !== process.env.K2_EXPECTED_WORKFLOW_REF) {
+            throw new Error('K2 hosted acceptance workflow identity is invalid.');
+          }
+          let response;
+          try {
+            response = await fetch(`https://api.github.com/repos/${expectedRepository}/git/ref/heads/master`, {
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${process.env.GH_TOKEN}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+              redirect: 'error',
+              signal: AbortSignal.timeout(15000),
+            });
+          } catch {
+            throw new Error('K2 hosted acceptance could not verify the current master SHA.');
+          }
+          if (!response.ok) throw new Error('K2 hosted acceptance could not verify the current master SHA.');
+          let ref;
+          try { ref = await response.json(); }
+          catch { throw new Error('K2 hosted acceptance current master response was invalid.'); }
+          if (ref?.ref !== 'refs/heads/master' || ref?.object?.type !== 'commit' ||
+              !/^[a-f0-9]{40}$/.test(ref?.object?.sha ?? '') ||
+              ref.object.sha !== process.env.GITHUB_SHA) {
+            throw new Error('K2 hosted acceptance dispatch SHA is not the current master tip.');
+          }
+          NODE
       - name: Install Chromium for the hosted browser flow
         run: pnpm exec playwright install --with-deps chromium
       - name: Run protected K2-07 acceptance
@@ -107,6 +105,8 @@ jobs:
           K2_STAGING_SUPABASE_SECRET_KEY: ${{ secrets.K2_STAGING_SUPABASE_SECRET_KEY }}
           K2_STAGING_READONLY_DATABASE_URL: ${{ secrets.K2_STAGING_READONLY_DATABASE_URL }}
           K2_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         run: >-
           pnpm exec playwright test
           --config=playwright.k2-hosted.config.ts
@@ -115,11 +115,15 @@ jobs:
           tests/acceptance/k2_hosted_acceptance.spec.ts
 
   janitor:
-    if: (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'janitor')) && github.repository == 'haizx71/lingua-os' && github.ref == 'refs/heads/master'
-    needs: security-gate
+    if: >-
+      github.repository == 'haizx71/lingua-os' &&
+      github.ref == 'refs/heads/master' &&
+      github.workflow_ref == 'haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.mode == 'janitor' &&
+        github.actor == 'haizx71' && github.triggering_actor == 'haizx71'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: k2-staging
     permissions:
       contents: read
     steps:
@@ -138,10 +142,46 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements/backend-dev.lock
-      - name: Install locked dependencies without JavaScript lifecycle scripts
+      - name: Install locked dependencies without lifecycle scripts
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
           python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements/backend-dev.lock
+      - name: Verify dispatch SHA is still the master tip before staging secrets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          K2_EXPECTED_WORKFLOW_REF: haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master
+        run: |
+          node --input-type=module <<'NODE'
+          const expectedRepository = 'haizx71/lingua-os';
+          if (process.env.GITHUB_REPOSITORY !== expectedRepository ||
+              process.env.GITHUB_REF !== 'refs/heads/master' ||
+              process.env.GITHUB_WORKFLOW_REF !== process.env.K2_EXPECTED_WORKFLOW_REF) {
+            throw new Error('K2 hosted janitor workflow identity is invalid.');
+          }
+          let response;
+          try {
+            response = await fetch(`https://api.github.com/repos/${expectedRepository}/git/ref/heads/master`, {
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${process.env.GH_TOKEN}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+              redirect: 'error',
+              signal: AbortSignal.timeout(15000),
+            });
+          } catch {
+            throw new Error('K2 hosted janitor could not verify the current master SHA.');
+          }
+          if (!response.ok) throw new Error('K2 hosted janitor could not verify the current master SHA.');
+          let ref;
+          try { ref = await response.json(); }
+          catch { throw new Error('K2 hosted janitor current master response was invalid.'); }
+          if (ref?.ref !== 'refs/heads/master' || ref?.object?.type !== 'commit' ||
+              !/^[a-f0-9]{40}$/.test(ref?.object?.sha ?? '') ||
+              ref.object.sha !== process.env.GITHUB_SHA) {
+            throw new Error('K2 hosted janitor dispatch SHA is not the current master tip.');
+          }
+          NODE
       - name: Run guarded TTL janitor only
         env:
           K2_ACCEPTANCE_MODE: janitor
@@ -149,6 +189,9 @@ jobs:
           K2_STAGING_SUPABASE_PROJECT_REF: ${{ secrets.K2_STAGING_SUPABASE_PROJECT_REF }}
           K2_STAGING_SUPABASE_SECRET_KEY: ${{ secrets.K2_STAGING_SUPABASE_SECRET_KEY }}
           K2_STAGING_READONLY_DATABASE_URL: ${{ secrets.K2_STAGING_READONLY_DATABASE_URL }}
+          K2_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         run: >-
           pnpm exec playwright test
           --config=playwright.k2-hosted.config.ts
@@ -157,11 +200,19 @@ jobs:
           tests/acceptance/k2_hosted_acceptance.spec.ts
 
   current-run-cleanup:
-    if: always() && needs.security-gate.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.mode == 'acceptance' && github.repository == 'haizx71/lingua-os' && github.ref == 'refs/heads/master'
-    needs: [security-gate, hosted-acceptance]
+    if: >-
+      always() &&
+      needs.hosted-acceptance.result != 'skipped' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.mode == 'acceptance' &&
+      github.repository == 'haizx71/lingua-os' &&
+      github.ref == 'refs/heads/master' &&
+      github.workflow_ref == 'haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master' &&
+      github.actor == 'haizx71' &&
+      github.triggering_actor == 'haizx71'
+    needs: [hosted-acceptance]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: k2-staging
     permissions:
       contents: read
     steps:
@@ -180,7 +231,7 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements/backend-dev.lock
-      - name: Install locked dependencies without JavaScript lifecycle scripts
+      - name: Install locked dependencies without lifecycle scripts
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
           python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements/backend-dev.lock
@@ -191,6 +242,8 @@ jobs:
           K2_STAGING_SUPABASE_PROJECT_REF: ${{ secrets.K2_STAGING_SUPABASE_PROJECT_REF }}
           K2_STAGING_SUPABASE_SECRET_KEY: ${{ secrets.K2_STAGING_SUPABASE_SECRET_KEY }}
           K2_STAGING_READONLY_DATABASE_URL: ${{ secrets.K2_STAGING_READONLY_DATABASE_URL }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         run: >-
           pnpm exec playwright test
           --config=playwright.k2-hosted.config.ts

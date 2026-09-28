@@ -4,6 +4,7 @@ import {
   createK2AdminClient,
   reapExpiredK2Actors,
   validateK2HostedEnvironment,
+  verifyK2HostedCurrentMasterSha,
 } from './support/k2_hosted_actors';
 import { resolveK2HostedRunMode } from './support/k2_hosted_acceptance_helpers';
 import { runK2HostedProbe } from './support/k2_hosted_probe_client';
@@ -19,13 +20,6 @@ async function verifyActorGone(config: ReturnType<typeof validateK2HostedEnviron
   }
 }
 
-async function requireAcceptedMigrationHead(config: ReturnType<typeof validateK2HostedEnvironment>): Promise<void> {
-  const result = await runK2HostedProbe('migrations', config.readonlyDatabaseUrl);
-  if (!('appMigrationHead' in result) || result.appMigrationHead !== '0019') {
-    throw new Error('K2 hosted acceptance staging migration head is not approved.');
-  }
-}
-
 test.describe('K2 protected hosted acceptance lifecycle', () => {
   test.setTimeout(12 * 60_000);
 
@@ -38,7 +32,7 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
   test('strict TTL janitor only reaps marked expired actors', async () => {
     test.skip(RUN_MODE !== 'janitor', 'The configured run mode is not janitor.');
     const config = validateK2HostedEnvironment(process.env, 'janitor');
-    await requireAcceptedMigrationHead(config);
+    await verifyK2HostedCurrentMasterSha(config);
     const removed = await reapExpiredK2Actors(
       config,
       undefined,
@@ -51,7 +45,6 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
   test('unconditional current-run cleanup recovery', async () => {
     test.skip(RUN_MODE !== 'cleanup-current', 'The configured run mode is not cleanup recovery.');
     const config = validateK2HostedEnvironment(process.env, 'cleanup-current');
-    await requireAcceptedMigrationHead(config);
     const removed = await cleanupK2RunActors(
       config,
       createK2AdminClient(config) as never,

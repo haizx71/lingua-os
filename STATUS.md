@@ -42,29 +42,44 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted h
   each API response expose it for exact SHA checks. It is an operational attestation, not product
   authorization. The optional response header is documented in the OpenAPI description; `/health`
   remains intentionally excluded from the public OpenAPI paths.
-- Hosted acceptance has not run and K2-07 is not hosted-verified. It remains blocked on a protected
-  `k2-staging` GitHub environment holding the exact staging API/Supabase
-  settings and Auth Admin/read-only database credentials, and an exact-repository/environment
-  Vercel Trusted Source rule. The private repository may also require a paid GitHub plan for
-  protected environment secrets; there is no repository-secret fallback. The exact immutable Vercel Production origin is derived from GitHub's
-  successful deployment/status records for the current SHA, then checked through the protected OIDC
-  challenge; no per-deployment URL secret or Share link is used. The workflow does not fall back to
-  repository secrets. At implementation start, that environment and its required secrets were not
-  available;
-  protected environment support for this private repository may require a paid GitHub plan. Once
-  secure setup and review are complete, the previously authorized hosted run can proceed without
-  another approval round. Staging currently supports self-recall and typing only; listening and
-  cloze remain untested because no HTTPS audio or published aligned target is present.
+- Hosted acceptance has not run and K2-07 is not hosted-verified. It remains blocked on six
+  repository-level staging secrets: `K2_STAGING_API_ORIGIN`,
+  `K2_STAGING_SUPABASE_URL`, `K2_STAGING_SUPABASE_PROJECT_REF`,
+  `K2_STAGING_SUPABASE_PUBLISHABLE_KEY`, `K2_STAGING_SUPABASE_SECRET_KEY`, and
+  `K2_STAGING_READONLY_DATABASE_URL`; as checked on 2026-09-28, the repository secret list was
+  empty. Repository
+  secrets do not require a GitHub plan upgrade, but any workflow in this repository that requests
+  them can read them. This design therefore assumes `haizx71` is the only trusted writer/merger of
+  workflow changes; review every workflow change and do not grant untrusted collaborators write
+  access. The credential-free security gate is a separate PR-only workflow, while the secret-bearing
+  K2 workflow has only dispatch/schedule triggers and requires both actor identities to be
+  `haizx71` for manual acceptance.
+- As checked on 2026-09-28, Vercel Trusted Source remained unconfigured and unverified. Its required rule must match audience
+  `https://vercel.com`, repository `haizx71/lingua-os`, ref `refs/heads/master`, exact workflow ref
+  `haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`, and
+  `event_name=workflow_dispatch`; it must not depend on a GitHub environment claim or an assumed
+  `sub` format. The immutable Vercel Production origin is derived from the successful deployment
+  status for the current SHA and checked through the protection challenge; no per-deployment URL
+  secret or Share link is used. A no-secret preflight compares the dispatch SHA with live master
+  before secrets are mapped, and the runner repeats that check before actor creation. Cleanup remains
+  eligible after a started acceptance failure even if master advances. The hosted run was already
+  authorized and needs no additional approval after this infrastructure is configured. Staging
+  currently supports self-recall and typing only; listening and cloze remain untested because no
+  HTTPS audio or published aligned target is present.
 - Staging read-only checks confirmed migration head `0019` and the built-in
   `supabase_read_only_user` identity with `BYPASSRLS`, `pg_read_all_data`, and no
   `pg_write_all_data` membership; the schema probe verifies read-only transaction
-  mode and no table DML grants. The protected CI connection URL/password is not
-  available, so this does not unblock hosted comparison. This role has broad
-  read visibility and must remain confined to the protected staging job.
-- Source verification passed: 47/47 hosted-harness Vitest tests, 6/6 Python
-  probe tests, 1/1 real Chromium redirect test, workspace typecheck, and
-  `pnpm backend:check` (including 600 backend tests). No hosted actor was created
-  and no hosted state was changed.
+  mode and no table DML grants. The CI connection URL/password is not available,
+  so this does not unblock hosted comparison. This role has broad read visibility
+  and must remain confined to the owner-gated staging workflow step. The exact
+  migration-head gate remains mandatory before acceptance baseline/actor creation;
+  cleanup-only paths attempt guarded Auth deletion first and fail afterward if the
+  schema-dependent zero-residue proof cannot establish the complete inventory.
+- Current source verification passed: 61/61 focused hosted-harness Vitest tests
+  (including workflow security checks), 6/6 Python probe tests, 1/1 real Chromium
+  redirect test, and workspace typecheck. `pnpm backend:check` had passed on the
+  prior source snapshot (600 backend tests); this revision changes no backend or
+  Python runtime code. No hosted actor was created and no hosted state was changed.
 - Requested model/effort: GPT-6 Luna Max. The implementation runtime does not expose its actual
   model identity or reasoning effort for independent verification.
 
