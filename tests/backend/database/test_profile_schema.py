@@ -323,6 +323,7 @@ def test_auth_identity_erasure_cascades_replay_only_for_erased_actor(
         (actor_id,),
     ).fetchall()
     assert len(probe) == 1
+    assert isinstance(probe[0][0], int)
     assert probe[0][0] > 1
     assert probe[0][1] is False
 

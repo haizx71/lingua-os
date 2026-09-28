@@ -1,14 +1,14 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 source promoted, hosted acceptance pending
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted harness source ready after independent security review; hosted acceptance blocked on secure infrastructure
 
-## Current Knowledge V2 checkpoint — 2026-09-27
+## Current Knowledge V2 checkpoint — 2026-09-28
 
-- Local `master` and authoritative `origin/master` were reconciled at
-  `9c39417f29309d5dc2714082d7a28375712a79a6` before this documentation update.
-  Earlier K2-04/K2-05/K2-06 source and migrations through `0019` are represented
-  in that baseline; no historical branch recovery is required for this gate.
+- The isolated hosted-harness branch is based on `origin/master`
+  `223bd53538db02f04113d7aa59a6d59af7c95ee7`. Earlier K2-04/K2-05/K2-06
+  source and migrations through `0019` are represented in that baseline; no
+  historical branch recovery is required for this gate.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
   browser session before acceptance. One Review answer updated production only;
   exact replay made no second state/event change. Brain and Review projected a
@@ -31,6 +31,57 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 source p
   success; direct Vercel connector lookup was unavailable. No Share link or
   protection setting changed. K2-08 through K2-10 remain downstream of K2-07
   hosted acceptance.
+- **K2-07 HOSTED HARNESS: SOURCE READY; NOT HOSTED-VERIFIED.** Independent security review passed.
+  The isolated
+  `codex/k2-hosted-acceptance-harness` work adds a shared wave lifecycle, a K2-07 fixture plugin,
+  two server-marked disposable actors, real browser OIDC redirect protection, Auth-cascade cleanup,
+  complete retained-state comparison, and a TTL-only janitor. Fresh create results stay in memory
+  for finalizer retry; separate recovery handles exact same-run unmarked partial creates only within
+  a 24-hour age bound and rechecks UUID/email/timestamp/absence of marker before deletion. Render source SHA is read from its
+  platform `RENDER_GIT_COMMIT` only when `RENDER_SERVICE_NAME=lingua-api-staging`; `/health` and
+  each API response expose it for exact SHA checks. It is an operational attestation, not product
+  authorization. The optional response header is documented in the OpenAPI description; `/health`
+  remains intentionally excluded from the public OpenAPI paths.
+- Hosted acceptance has not run and K2-07 is not hosted-verified. It remains blocked on six
+  repository-level staging secrets: `K2_STAGING_API_ORIGIN`,
+  `K2_STAGING_SUPABASE_URL`, `K2_STAGING_SUPABASE_PROJECT_REF`,
+  `K2_STAGING_SUPABASE_PUBLISHABLE_KEY`, `K2_STAGING_SUPABASE_SECRET_KEY`, and
+  `K2_STAGING_READONLY_DATABASE_URL`; as checked on 2026-09-28, the repository secret list was
+  empty. Repository
+  secrets do not require a GitHub plan upgrade, but any workflow in this repository that requests
+  them can read them. This design therefore assumes `haizx71` is the only trusted writer/merger of
+  workflow changes; review every workflow change and do not grant untrusted collaborators write
+  access. The credential-free security gate is a separate PR-only workflow, while the secret-bearing
+  K2 workflow has only dispatch/schedule triggers and requires both actor identities to be
+  `haizx71` for manual acceptance.
+- As checked on 2026-09-28, Vercel Trusted Source remained unconfigured and unverified. Its required rule must match audience
+  `https://vercel.com`, repository `haizx71/lingua-os`, ref `refs/heads/master`, exact workflow ref
+  `haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`, and
+  `event_name=workflow_dispatch`; it must not depend on a GitHub environment claim or an assumed
+  `sub` format. The immutable Vercel Production origin is derived from the successful deployment
+  status for the current SHA and checked through the protection challenge; no per-deployment URL
+  secret or Share link is used. A no-secret preflight compares the dispatch SHA with live master
+  before secrets are mapped, and the runner repeats that check before actor creation. Cleanup remains
+  eligible after a started acceptance failure even if master advances. The hosted run was already
+  authorized and needs no additional approval after this infrastructure is configured. Staging
+  currently supports self-recall and typing only; listening and cloze remain untested because no
+  HTTPS audio or published aligned target is present.
+- Staging read-only checks confirmed migration head `0019` and the built-in
+  `supabase_read_only_user` identity with `BYPASSRLS`, `pg_read_all_data`, and no
+  `pg_write_all_data` membership; the schema probe verifies read-only transaction
+  mode and no table DML grants. The CI connection URL/password is not available,
+  so this does not unblock hosted comparison. This role has broad read visibility
+  and must remain confined to the owner-gated staging workflow step. The exact
+  migration-head gate remains mandatory before acceptance baseline/actor creation;
+  cleanup-only paths attempt guarded Auth deletion first and fail afterward if the
+  schema-dependent zero-residue proof cannot establish the complete inventory.
+- Current source verification passed: 61/61 focused hosted-harness Vitest tests
+  (including workflow security checks), 6/6 Python probe tests, 1/1 real Chromium
+  redirect test, and workspace typecheck. `pnpm backend:check` had passed on the
+  prior source snapshot (600 backend tests); this revision changes no backend or
+  Python runtime code. No hosted actor was created and no hosted state was changed.
+- Requested model/effort: GPT-6 Luna Max. The implementation runtime does not expose its actual
+  model identity or reasoning effort for independent verification.
 
 The dated sections below preserve earlier checkpoints; their pending statements
 do not override this current result.

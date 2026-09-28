@@ -2,7 +2,7 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
-## Current Knowledge V2 delivery gate — 2026-09-27
+## Current Knowledge V2 delivery gate — 2026-09-28
 
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
@@ -18,6 +18,33 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   competence dimension and available canonical material. Keep one primary FSRS
   lineage through the existing atomic Memory and competence transaction.
   No schema migration; K2-08 through K2-10 remain downstream of hosted PASS.
+- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED RUN BLOCKED.** Independent security review
+  passed for the isolated `codex/k2-hosted-acceptance-harness` branch, which implements the shared two-actor wave lifecycle, K2-07
+  weakest-dimension/available-material plugin, per-response Render source-SHA verification,
+  cross-actor isolation, exact replay, one competence plus FSRS lineage, complete retained-state
+  comparison, Auth-only cleanup, in-memory finalizer retry, and bounded same-run crash recovery for
+  unmarked partial creation. The workflow has a separate credential-free PR gate; the secret-bearing
+  workflow has manual/scheduled triggers, step-scoped repo-secret mappings, a global staging
+  mutation lock, and guarded cleanup. Acceptance is owner-only for both actor identities and
+  checks the live master SHA before secret mapping and again before actor creation. As checked on
+  2026-09-28, the six repository secret names were absent; no GitHub plan upgrade is needed to use repo
+  secrets. Their residual risk is cross-workflow access by any workflow that references them, so
+  the security assumption is that only owner `haizx71` has trusted write/merge access to workflow
+  code. As checked on 2026-09-28, the Vercel Trusted Source rule was not configured/verified and must bind audience
+  `https://vercel.com`, repo `haizx71/lingua-os`, master ref, exact `workflow_ref`, and
+  `event_name=workflow_dispatch` without an environment claim or assumed `sub` shape. The
+  already-authorized staging run requires no additional approval.
+  Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
+  missing published aligned content/HTTPS audio. Read-only checks confirmed staging at migration
+  `0019` and the built-in `supabase_read_only_user` has broad `BYPASSRLS` read access without
+  `pg_write_all_data` membership, but its CI connection credential was unavailable at this check.
+  Current source checks passed: 61/61 focused harness Vitest (including workflow security),
+  6/6 probe pytest, 1/1 real Chromium redirect, and workspace typecheck. `pnpm backend:check`
+  passed on the prior source snapshot (600 backend tests); this revision changes no backend or
+  Python runtime code. No schema migration or hosted
+  state mutation is planned. Cleanup and the TTL janitor attempt exact-marker Auth deletion before
+  the schema-dependent residue proof; if the frozen inventory no longer matches, they fail after
+  deletion rather than being blocked by the acceptance-only migration-head gate.
 - **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
   `weak`; effective `forgotten` concepts appear in “Tất cả” but have no dedicated
   chip. This does not reopen K2-06's Brain/Review API acceptance.
