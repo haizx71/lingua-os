@@ -44,4 +44,5 @@ jobs:
       - name: Prove session pooler and read-only privileges without actors
         env:
           K2_STAGING_READONLY_DATABASE_URL: ${{ secrets.K2_STAGING_READONLY_DATABASE_URL }}
+          PGSSLROOTCERT: ${{ github.workspace }}/database/certs/supabase-prod-ca-2021.crt
         run: python -m tests.acceptance.support.k2_readonly_privilege_probe
