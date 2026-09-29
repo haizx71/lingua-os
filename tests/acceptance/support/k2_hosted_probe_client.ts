@@ -179,6 +179,7 @@ export function buildK2ProbeChildEnvironment(
 ): NodeJS.ProcessEnv {
   return {
     PATH: systemEnv.PATH,
+    ...(systemEnv.PGSSLROOTCERT ? { PGSSLROOTCERT: systemEnv.PGSSLROOTCERT } : {}),
     K2_STAGING_READONLY_DATABASE_URL: databaseUrl,
     K2_ACCEPTANCE_PROBE_ACTION: action,
     ...(actorId ? { K2_ACCEPTANCE_ACTOR_ID: actorId } : {}),
