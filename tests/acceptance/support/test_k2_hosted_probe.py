@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -115,8 +116,9 @@ def test_probe_connection_rejects_noncanonical_or_writable_database_roles(monkey
 
     monkeypatch.setenv(
         "K2_STAGING_READONLY_DATABASE_URL",
-        "postgresql://k2_hosted_acceptance_reader.example:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full",
+        "postgresql://k2_hosted_acceptance_reader.bdmtdvvnbicgkfririjo:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full",
     )
+    monkeypatch.setenv("PGSSLROOTCERT", str(Path(probe.__file__).resolve().parents[3] / "database/certs/supabase-prod-ca-2021.crt"))
     safe_status = (
         "k2_hosted_acceptance_reader", "on", "on", False, False, False, False,
         False, False, True, 5, 0, False, False,
@@ -133,6 +135,24 @@ def test_probe_connection_rejects_noncanonical_or_writable_database_roles(monkey
     with pytest.raises(probe.ProbeError):
         probe._connection()  # noqa: SLF001
     assert unsafe.closed
+
+
+def test_probe_requires_exact_pooler_tenant_verified_tls_and_pinned_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    root = Path(probe.__file__).resolve().parents[3] / "database/certs/supabase-prod-ca-2021.crt"
+    monkeypatch.setenv("PGSSLROOTCERT", str(root))
+    good = "postgresql://k2_hosted_acceptance_reader.bdmtdvvnbicgkfririjo:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full"
+    probe._require_verified_staging_connection(good)  # noqa: SLF001
+    for bad in (
+        good.replace("verify-full", "require"),
+        good + "&sslrootcert=/tmp/untrusted.crt",
+        good.replace("bdmtdvvnbicgkfririjo", "otherproject"),
+        good.replace("aws-0-ap-southeast-1.pooler.supabase.com", "db.example.invalid"),
+    ):
+        with pytest.raises(probe.ProbeError):
+            probe._require_verified_staging_connection(bad)  # noqa: SLF001
+    monkeypatch.delenv("PGSSLROOTCERT")
+    with pytest.raises(probe.ProbeError):
+        probe._require_verified_staging_connection(good)  # noqa: SLF001
 
 
 def test_probe_failure_output_never_echoes_database_url(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

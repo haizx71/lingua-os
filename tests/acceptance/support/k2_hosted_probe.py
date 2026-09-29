@@ -6,9 +6,10 @@ import hashlib
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
-from uuid import UUID
 from urllib.parse import urlsplit
+from uuid import UUID
 
 import psycopg
 from psycopg import sql
@@ -64,10 +65,34 @@ class ProbeError(Exception):
     pass
 
 
+def _require_verified_staging_connection(database_url: str) -> None:
+    try:
+        parsed = urlsplit(database_url)
+        root = Path(os.environ["PGSSLROOTCERT"]).resolve(strict=True)
+        pinned_root = (Path(__file__).resolve().parents[3]
+                       / "database" / "certs" / "supabase-prod-ca-2021.crt").resolve(strict=True)
+        valid = (
+            parsed.scheme == "postgresql"
+            and parsed.username == "k2_hosted_acceptance_reader.bdmtdvvnbicgkfririjo"
+            and bool(parsed.password)
+            and parsed.hostname == "aws-0-ap-southeast-1.pooler.supabase.com"
+            and parsed.port == 5432
+            and parsed.path == "/postgres"
+            and parsed.query == "sslmode=verify-full"
+            and not parsed.fragment
+            and root == pinned_root
+        )
+    except (KeyError, OSError, ValueError):
+        valid = False
+    if not valid:
+        raise ProbeError
+
+
 def _connection():
     database_url = os.environ.get("K2_STAGING_READONLY_DATABASE_URL", "").strip()
     if not database_url:
         raise ProbeError
+    _require_verified_staging_connection(database_url)
     connection = psycopg.connect(database_url, autocommit=False)
     connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
     status = connection.execute(
