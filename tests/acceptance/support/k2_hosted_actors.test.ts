@@ -932,6 +932,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
   it.each([
     ['global', 'https://pipelines.actions.githubusercontent.com/runtime/token', 'pipelines.actions.githubusercontent.com'],
     ['regional', 'https://pipelinesghubeus6.actions.githubusercontent.com/runtime/token', 'pipelinesghubeus6.actions.githubusercontent.com'],
+    ['runner Azure', 'https://run-actions-1-azure-eastus.actions.githubusercontent.com/runtime/token', 'run-actions-1-azure-eastus.actions.githubusercontent.com'],
   ])('accepts the %s GitHub Actions OIDC host and refuses redirects', async (
     _kind: string,
     oidcRequestUrl: string,
@@ -959,6 +960,10 @@ describe('K2 hosted actor lifecycle boundaries', () => {
   it.each([
     ['a nested subdomain', 'https://pipelines.attacker.actions.githubusercontent.com/runtime/token'],
     ['a suffix lookalike', 'https://pipelines.actions.githubusercontent.com.attacker.example/runtime/token'],
+    ['a nested runner host', 'https://run-actions-1-azure-eastus.attacker.actions.githubusercontent.com/runtime/token'],
+    ['a runner-host suffix lookalike', 'https://run-actions-1-azure-eastus.actions.githubusercontent.com.attacker.example/runtime/token'],
+    ['a runner-host lookalike outside Actions', 'https://run-actions-1-azure-eastus.actions.example.com/runtime/token'],
+    ['a runner host with a nonnumeric slot', 'https://run-actions-eastus-azure-eastus.actions.githubusercontent.com/runtime/token'],
     ['an insecure scheme', 'http://pipelines.actions.githubusercontent.com/runtime/token'],
     ['a nonstandard port', 'https://pipelines.actions.githubusercontent.com:8443/runtime/token'],
     ['userinfo', 'https://attacker@pipelines.actions.githubusercontent.com/runtime/token'],
