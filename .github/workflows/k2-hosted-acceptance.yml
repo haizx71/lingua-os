@@ -98,6 +98,7 @@ jobs:
       - name: Run protected K2-07 acceptance
         env:
           K2_ACCEPTANCE_MODE: acceptance
+          PGSSLROOTCERT: ${{ github.workspace }}/database/certs/supabase-prod-ca-2021.crt
           K2_STAGING_API_ORIGIN: ${{ secrets.K2_STAGING_API_ORIGIN }}
           K2_STAGING_SUPABASE_URL: ${{ secrets.K2_STAGING_SUPABASE_URL }}
           K2_STAGING_SUPABASE_PROJECT_REF: ${{ secrets.K2_STAGING_SUPABASE_PROJECT_REF }}
@@ -185,6 +186,7 @@ jobs:
       - name: Run guarded TTL janitor only
         env:
           K2_ACCEPTANCE_MODE: janitor
+          PGSSLROOTCERT: ${{ github.workspace }}/database/certs/supabase-prod-ca-2021.crt
           K2_STAGING_SUPABASE_URL: ${{ secrets.K2_STAGING_SUPABASE_URL }}
           K2_STAGING_SUPABASE_PROJECT_REF: ${{ secrets.K2_STAGING_SUPABASE_PROJECT_REF }}
           K2_STAGING_SUPABASE_SECRET_KEY: ${{ secrets.K2_STAGING_SUPABASE_SECRET_KEY }}
@@ -238,6 +240,7 @@ jobs:
       - name: Recover only actors marked for this workflow run
         env:
           K2_ACCEPTANCE_MODE: cleanup-current
+          PGSSLROOTCERT: ${{ github.workspace }}/database/certs/supabase-prod-ca-2021.crt
           K2_STAGING_SUPABASE_URL: ${{ secrets.K2_STAGING_SUPABASE_URL }}
           K2_STAGING_SUPABASE_PROJECT_REF: ${{ secrets.K2_STAGING_SUPABASE_PROJECT_REF }}
           K2_STAGING_SUPABASE_SECRET_KEY: ${{ secrets.K2_STAGING_SUPABASE_SECRET_KEY }}

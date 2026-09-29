@@ -30,6 +30,25 @@ def _require_denied(connection: psycopg.Connection, statement: str, sqlstate: st
         raise probe.ProbeError
 
 
+def _require_grant_ineffective(connection: psycopg.Connection) -> None:
+    acl_query = "SELECT relacl::text FROM pg_class WHERE oid = 'public.schema_migrations'::regclass"
+    before = connection.execute(acl_query).fetchone()
+    connection.execute("SAVEPOINT k2_grant_attempt")
+    try:
+        try:
+            connection.execute("GRANT SELECT ON public.schema_migrations TO PUBLIC")
+        except psycopg.Error as error:
+            if error.sqlstate != "42501":
+                raise
+            connection.execute("ROLLBACK TO SAVEPOINT k2_grant_attempt")
+        after = connection.execute(acl_query).fetchone()
+    finally:
+        connection.execute("ROLLBACK TO SAVEPOINT k2_grant_attempt")
+        connection.execute("RELEASE SAVEPOINT k2_grant_attempt")
+    if before != after:
+        raise probe.ProbeError
+
+
 def _prove_permissions(connection: psycopg.Connection) -> None:
     effective_writes = connection.execute(
         """SELECT count(*)
@@ -68,7 +87,7 @@ def _prove_permissions(connection: psycopg.Connection) -> None:
            JOIN pg_class AS relation ON relation.oid = attribute.attrelid
            JOIN pg_namespace AS schema ON schema.oid = relation.relnamespace
            WHERE attribute.attnum > 0 AND NOT attribute.attisdropped
-             AND schema.nspname NOT LIKE 'pg_%'
+             AND schema.nspname NOT LIKE 'pg_%%'
              AND schema.nspname <> 'information_schema'
              AND relation.relkind IN ('r', 'p', 'v', 'm')
              AND (
@@ -196,10 +215,10 @@ def _prove_permissions(connection: psycopg.Connection) -> None:
         "CREATE ROLE k2_denied_role",
         "ALTER ROLE postgres NOCREATEDB",
         "SET ROLE postgres",
-        "GRANT SELECT ON public.schema_migrations TO PUBLIC",
         "UPDATE supabase_migrations.schema_migrations SET name = name WHERE false",
     ):
         _require_denied(connection, statement)
+    _require_grant_ineffective(connection)
     connection.rollback()
 
 

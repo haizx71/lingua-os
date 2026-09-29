@@ -43,7 +43,7 @@ describe('K2 read-only probe client', () => {
   });
 
   it('passes only the read-only URL, action, actor identity, and available runner basics to the probe child', () => {
-    const systemEnv = { PATH: 'runner-path', SUPABASE_SECRET_KEY: 'must-not-inherit', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'must-not-inherit' };
+    const systemEnv = { PATH: 'runner-path', PGSSLROOTCERT: '/runner/supabase-root.crt', SUPABASE_SECRET_KEY: 'must-not-inherit', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'must-not-inherit' };
     const environment = buildK2ProbeChildEnvironment(
       'actor_absent',
       'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require',
@@ -52,6 +52,7 @@ describe('K2 read-only probe client', () => {
     );
     expect(environment).toEqual(expect.objectContaining({
       PATH: 'runner-path',
+      PGSSLROOTCERT: '/runner/supabase-root.crt',
       K2_ACCEPTANCE_PROBE_ACTION: 'actor_absent',
       K2_ACCEPTANCE_ACTOR_ID: '550e8400-e29b-41d4-a716-446655440000',
     }));
@@ -62,6 +63,7 @@ describe('K2 read-only probe client', () => {
       'K2_ACCEPTANCE_PROBE_ACTION',
       'K2_STAGING_READONLY_DATABASE_URL',
       'PATH',
+      'PGSSLROOTCERT',
       ...(process.platform === 'win32' && systemEnv.SystemRoot ? ['SystemRoot'] : []),
     ].sort());
   });
