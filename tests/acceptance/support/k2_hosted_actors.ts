@@ -22,6 +22,8 @@ const USER_EMAIL_SUFFIX = '@example.invalid';
 const USER_PAGE_SIZE = 200;
 const MAX_USER_PAGES = 100;
 const MAX_UNMARKED_RECOVERY_ACTORS_PER_RUN = 20;
+// GitHub may add a region suffix to `pipelines`; keep it to one label in its Actions domain.
+const GITHUB_ACTIONS_OIDC_HOST = /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/;
 
 export interface K2HostedConfig {
   readonly apiOrigin: string;
@@ -883,7 +885,7 @@ export function createGithubTrustedSourceToken(
     catch { throw new Error('K2 hosted acceptance OIDC request endpoint is invalid.'); }
     if (
       requestUrl.protocol !== 'https:' ||
-      requestUrl.hostname !== 'pipelines.actions.githubusercontent.com' ||
+      !GITHUB_ACTIONS_OIDC_HOST.test(requestUrl.hostname) ||
       requestUrl.port !== '' ||
       requestUrl.username !== '' ||
       requestUrl.password !== '' ||

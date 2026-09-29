@@ -871,6 +871,52 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(request).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['global', 'https://pipelines.actions.githubusercontent.com/runtime/token', 'pipelines.actions.githubusercontent.com'],
+    ['regional', 'https://pipelinesghubeus6.actions.githubusercontent.com/runtime/token', 'pipelinesghubeus6.actions.githubusercontent.com'],
+  ])('accepts the %s GitHub Actions OIDC host and refuses redirects', async (
+    _kind: string,
+    oidcRequestUrl: string,
+    expectedHostname: string,
+  ) => {
+    let requestedHostname = '';
+    let authorization = '';
+    let redirectMode: RequestRedirect | undefined;
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      requestedHostname = new URL(String(input)).hostname;
+      authorization = new Headers(init?.headers).get('authorization') ?? '';
+      redirectMode = init?.redirect;
+      return new Response(JSON.stringify({ value: 'trusted-source-token-placeholder' }), { status: 200 });
+    });
+
+    await expect(createGithubTrustedSourceToken({
+      oidcRequestUrl,
+      oidcRequestToken: 'runtime-oidc-token-placeholder',
+    }, request)).resolves.toBe('trusted-source-token-placeholder');
+    expect(requestedHostname).toBe(expectedHostname);
+    expect(authorization).toBe('Bearer runtime-oidc-token-placeholder');
+    expect(redirectMode).toBe('error');
+  });
+
+  it.each([
+    ['a nested subdomain', 'https://pipelines.attacker.actions.githubusercontent.com/runtime/token'],
+    ['a suffix lookalike', 'https://pipelines.actions.githubusercontent.com.attacker.example/runtime/token'],
+    ['an insecure scheme', 'http://pipelines.actions.githubusercontent.com/runtime/token'],
+    ['a nonstandard port', 'https://pipelines.actions.githubusercontent.com:8443/runtime/token'],
+    ['userinfo', 'https://attacker@pipelines.actions.githubusercontent.com/runtime/token'],
+    ['a fragment', 'https://pipelines.actions.githubusercontent.com/runtime/token#fragment'],
+  ])('rejects an OIDC endpoint with %s before sending the runtime request token', async (
+    _case: string,
+    oidcRequestUrl: string,
+  ) => {
+    const request = vi.fn();
+    await expect(createGithubTrustedSourceToken({
+      oidcRequestUrl,
+      oidcRequestToken: 'runtime-secret-placeholder',
+    }, request)).rejects.toThrow('OIDC request endpoint is invalid');
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('fails closed on a public Vercel deployment before sending the trusted-source token', async () => {
     const request = vi.fn(async () => new Response('public', { status: 200 }));
     await expect(verifyProtectedVercelOrigin(
