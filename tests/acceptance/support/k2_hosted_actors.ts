@@ -22,8 +22,15 @@ const USER_EMAIL_SUFFIX = '@example.invalid';
 const USER_PAGE_SIZE = 200;
 const MAX_USER_PAGES = 100;
 const MAX_UNMARKED_RECOVERY_ACTORS_PER_RUN = 20;
-// GitHub may add a region suffix to `pipelines`; keep it to one label in its Actions domain.
-const GITHUB_ACTIONS_OIDC_HOST = /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/;
+// Keep accepted OIDC hosts to the observed GitHub Actions runner endpoint families.
+const GITHUB_ACTIONS_OIDC_HOSTS = [
+  /^pipelines[a-z0-9-]*\.actions\.githubusercontent\.com$/,
+  /^run-actions-[0-9]+-azure-[a-z0-9]+(?:-[a-z0-9]+)*\.actions\.githubusercontent\.com$/,
+] as const;
+
+function isAllowedGithubActionsOidcHostname(hostname: string): boolean {
+  return GITHUB_ACTIONS_OIDC_HOSTS.some(pattern => pattern.test(hostname));
+}
 
 export interface K2HostedConfig {
   readonly apiOrigin: string;
@@ -891,7 +898,7 @@ export function createGithubTrustedSourceToken(
     }
     if (
       requestUrl.protocol !== 'https:' ||
-      !GITHUB_ACTIONS_OIDC_HOST.test(requestUrl.hostname) ||
+      !isAllowedGithubActionsOidcHostname(requestUrl.hostname) ||
       requestUrl.port !== '' ||
       requestUrl.username !== '' ||
       requestUrl.password !== '' ||
@@ -903,7 +910,7 @@ export function createGithubTrustedSourceToken(
       throw new Error(
         'K2 hosted acceptance OIDC request endpoint is invalid ' +
         `(parseFailure=false; hostname=${safeHostname}; ` +
-        `hostnameAllowed=${GITHUB_ACTIONS_OIDC_HOST.test(requestUrl.hostname)}; ` +
+        `hostnameAllowed=${isAllowedGithubActionsOidcHostname(requestUrl.hostname)}; ` +
         `httpsInvalid=${requestUrl.protocol !== 'https:'}; portInvalid=${requestUrl.port !== ''}; ` +
         `userinfoInvalid=${requestUrl.username !== '' || requestUrl.password !== ''}; ` +
         `fragmentInvalid=${requestUrl.hash !== ''}).`,
