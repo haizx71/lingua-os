@@ -882,7 +882,13 @@ export function createGithubTrustedSourceToken(
   return (async () => {
     let requestUrl: URL;
     try { requestUrl = new URL(config.oidcRequestUrl); }
-    catch { throw new Error('K2 hosted acceptance OIDC request endpoint is invalid.'); }
+    catch {
+      throw new Error(
+        'K2 hosted acceptance OIDC request endpoint is invalid ' +
+        '(parseFailure=true; hostname=unavailable; httpsInvalid=unknown; portInvalid=unknown; ' +
+        'userinfoInvalid=unknown; fragmentInvalid=unknown).',
+      );
+    }
     if (
       requestUrl.protocol !== 'https:' ||
       !GITHUB_ACTIONS_OIDC_HOST.test(requestUrl.hostname) ||
@@ -891,7 +897,17 @@ export function createGithubTrustedSourceToken(
       requestUrl.password !== '' ||
       requestUrl.hash !== ''
     ) {
-      throw new Error('K2 hosted acceptance OIDC request endpoint is invalid.');
+      const githubActionsHostname = requestUrl.hostname === 'actions.githubusercontent.com' ||
+        requestUrl.hostname.endsWith('.actions.githubusercontent.com');
+      const safeHostname = githubActionsHostname ? requestUrl.hostname : 'other';
+      throw new Error(
+        'K2 hosted acceptance OIDC request endpoint is invalid ' +
+        `(parseFailure=false; hostname=${safeHostname}; ` +
+        `hostnameAllowed=${GITHUB_ACTIONS_OIDC_HOST.test(requestUrl.hostname)}; ` +
+        `httpsInvalid=${requestUrl.protocol !== 'https:'}; portInvalid=${requestUrl.port !== ''}; ` +
+        `userinfoInvalid=${requestUrl.username !== '' || requestUrl.password !== ''}; ` +
+        `fragmentInvalid=${requestUrl.hash !== ''}).`,
+      );
     }
     requestUrl.searchParams.set('audience', 'https://vercel.com');
     let response: Response;

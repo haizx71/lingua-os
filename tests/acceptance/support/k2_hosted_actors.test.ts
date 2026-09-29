@@ -864,10 +864,68 @@ describe('K2 hosted actor lifecycle boundaries', () => {
 
   it('rejects an arbitrary OIDC URL before sending the runtime request token', async () => {
     const request = vi.fn();
-    await expect(createGithubTrustedSourceToken({
-      oidcRequestUrl: 'https://attacker.example/steal',
-      oidcRequestToken: 'runtime-secret-placeholder',
-    }, request)).rejects.toThrow('OIDC request endpoint is invalid');
+    let failureMessage = '';
+    try {
+      await createGithubTrustedSourceToken({
+        oidcRequestUrl: 'https://attacker.example/hidden-path?redacted-query=redacted-value',
+        oidcRequestToken: 'runtime-secret-placeholder',
+      }, request);
+    } catch (error) {
+      if (error instanceof Error) failureMessage = error.message;
+    }
+    expect(failureMessage).toContain('hostname=other');
+    expect(failureMessage).toContain('hostnameAllowed=false');
+    expect(failureMessage).not.toContain('attacker.example');
+    expect(failureMessage).not.toContain('hidden-path');
+    expect(failureMessage).not.toContain('redacted-query');
+    expect(failureMessage).not.toContain('redacted-value');
+    expect(failureMessage).not.toContain('runtime-secret-placeholder');
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('reports a trusted-domain hostname and validation flags without endpoint values', async () => {
+    const request = vi.fn();
+    let failureMessage = '';
+    try {
+      await createGithubTrustedSourceToken({
+        oidcRequestUrl: 'http://runtime-user:runtime-password@vstoken.actions.githubusercontent.com:8443/private-path?redacted-query=redacted-value#redacted-fragment',
+        oidcRequestToken: 'runtime-secret-placeholder',
+      }, request);
+    } catch (error) {
+      if (error instanceof Error) failureMessage = error.message;
+    }
+    expect(failureMessage).toContain('hostname=vstoken.actions.githubusercontent.com');
+    expect(failureMessage).toContain('hostnameAllowed=false');
+    expect(failureMessage).toContain('httpsInvalid=true');
+    expect(failureMessage).toContain('portInvalid=true');
+    expect(failureMessage).toContain('userinfoInvalid=true');
+    expect(failureMessage).toContain('fragmentInvalid=true');
+    for (const hiddenValue of [
+      'runtime-user', 'runtime-password', 'private-path', 'redacted-query',
+      'redacted-value', 'redacted-fragment', 'runtime-secret-placeholder',
+    ]) {
+      expect(failureMessage).not.toContain(hiddenValue);
+    }
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('reports malformed OIDC endpoints without echoing their input', async () => {
+    const request = vi.fn();
+    let failureMessage = '';
+    try {
+      await createGithubTrustedSourceToken({
+        oidcRequestUrl: 'malformed endpoint query-redacted-value',
+        oidcRequestToken: 'runtime-secret-placeholder',
+      }, request);
+    } catch (error) {
+      if (error instanceof Error) failureMessage = error.message;
+    }
+    expect(failureMessage).toContain('parseFailure=true');
+    expect(failureMessage).toContain('hostname=unavailable');
+    expect(failureMessage).toContain('httpsInvalid=unknown');
+    expect(failureMessage).not.toContain('malformed endpoint');
+    expect(failureMessage).not.toContain('query-redacted-value');
+    expect(failureMessage).not.toContain('runtime-secret-placeholder');
     expect(request).not.toHaveBeenCalled();
   });
 
