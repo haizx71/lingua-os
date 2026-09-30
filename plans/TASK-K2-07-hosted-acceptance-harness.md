@@ -1,10 +1,29 @@
 # TASK-K2-07 — Hosted Acceptance Harness
 
-Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED DURING LEARNER PROFILE BOOTSTRAP
+Status: SOURCE READY; HOSTED ACCEPTANCE PASS (2026-10-01)
 Scope: Reusable, staging-only hosted acceptance runner; K2-07 first, later waves
 Owner: BACKEND / acceptance tooling
 
 ## Latest hosted gate evidence — 2026-10-01
+
+Hosted run [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)
+completed successfully on `master` SHA `c696ac935852c4ebcd9e1183521996e5b12ad273`.
+Acceptance job `110108944244` passed (one test, 12 minutes); separate current-run cleanup
+job `110113728287` passed (43 seconds). Independent GPT-6 Luna / Max verification confirmed
+the ordered allowlisted gate markers through preflights, retained baseline, both disposable
+actors/auth/profiles, `wave_k2_07`, self-recall and typing assertions, replay, cross-actor
+isolation, finalizer actor cleanup, fresh-identity cleanup, retained-state comparison, and
+`finalizer_complete`. K2-07 hosted acceptance and retained comparison are PASS.
+
+The run exercised self-recall and typing only. Listening and cloze remain untested because
+eligible published staging content is unavailable; no pass is claimed for those modalities.
+K2-08 is READY for its bounded implementation task, not complete. Preserve K2-06 accepted
+Save/Learn semantics and K2-07 history below. Documentation update: GPT-6 Luna / Medium;
+independent formal verification: GPT-6 Luna / Max. Reviewer confirmation is limited to the
+recorded workflow terminal state and ordered allowlisted gate markers; this document does not
+reproduce raw logs, actor identities, learner data, or secret values.
+
+## Previous hosted gate evidence — learner profile bootstrap — 2026-10-01
 
 Hosted run `36751277032` on `master` at `e01cc21624bda37f59c982498686a6a709ca2264` passed
 protected-origin access, API health, application and Supabase migration verification, the runner

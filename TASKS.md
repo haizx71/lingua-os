@@ -4,21 +4,36 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## Current Knowledge V2 delivery gate — 2026-10-01
 
+- **TASK-K2-07: DONE; HOSTED ACCEPTANCE: PASS** at master SHA
+  `c696ac935852c4ebcd9e1183521996e5b12ad273`. Hosted workflow run
+  [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)
+  passed; acceptance job `110108944244` succeeded (one test, 12 minutes), and
+  separate current-run-cleanup job `110113728287` succeeded (43 seconds).
+  Independent GPT-6 Luna / Max verification confirmed the ordered gates through
+  baseline, two disposable actors, profiles, `wave_k2_07`, self-recall/typing,
+  replay, isolation, both cleanup checks, retained-state comparison, and
+  `finalizer_complete`. This does not cover listening or cloze: eligible staging
+  material is not published. See `reviews/K2-07-hosted-acceptance-review.md` and
+  `plans/TASK-K2-07-hosted-acceptance-harness.md`.
+- **TASK-K2-08: READY.** K2-07 hosted and retained-comparison gates are complete.
+  Begin only the bounded Today Engine Heuristic V2 work in the remaining execution
+  map; preserve accepted Today v1, learner-state, repeatability, and ownership
+  invariants. K2-08 is not complete.
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
   are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- **TASK-K2-07: SOURCE DONE; HOSTED ACCEPTANCE BLOCKED.** PR #19 merged at
+- **TASK-K2-07: SOURCE DONE; HOSTED ACCEPTANCE PASS.** PR #19 merged at
   `ac02c349f8500975a843633556daf9d1bebc49e8` after the HIGH correctness
   trust-boundary fix, four passing CI jobs, successful Vercel Preview, and
   independent verify-fix review. The fix rejects caller `correct` for explicit
   modes without server grading; tests cover zero writes on rejection, legacy
   self-recall, and rating-fallback weight. Hosted disposable-actor validation
-  remains required before K2-07 STAGING: PASS.
+  was required before hosted K2-07 acceptance, now passed as recorded above.
   Select cloze, listening, typing, or self-recall from the weakest observed
   competence dimension and available canonical material. Keep one primary FSRS
   lineage through the existing atomic Memory and competence transaction.
   No schema migration; K2-08 through K2-10 remain downstream of hosted PASS.
-- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE BLOCKED.** PR #28 adds the
+- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE PASS.** PR #28 adds the
   fail-closed protected-origin diagnostic. Independent combined-HEAD review at
   `459bb45813a8dfae9c1c04c7333ce1325877af65` passed with no HIGH/BLOCKER findings; CI security
   gate and exact-SHA Production deployment passed. PR #28 merged to `master` at
@@ -34,8 +49,9 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   checks the live master SHA before secret mapping and again before actor creation. All six
   repository-level secret names are configured, including the read-only database secret; a dedicated
   `k2_hosted_acceptance_reader` staging role is configured. DB-only preflight run `36593505143`
-  passed at `3af469084b8106557dcca877572338040a8dc804`. No secret values were inspected and no
-  disposable-actor preflight has run. Their residual risk is cross-workflow access by any workflow that references them, so
+  passed at `3af469084b8106557dcca877572338040a8dc804`. No secret values were inspected; the
+  later hosted run `36780407824` completed disposable-actor acceptance. Their residual risk is
+  cross-workflow access by any workflow that references them, so
   the security assumption is that only owner `haizx71` has trusted write/merge access to workflow
   code. Owner-confirmed on 2026-09-30, the Vercel Trusted Source rule binds issuer
   `https://token.actions.githubusercontent.com`, repository `haizx71/lingua-os`, workflow display

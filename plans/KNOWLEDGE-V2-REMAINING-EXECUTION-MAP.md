@@ -56,9 +56,12 @@ not remaining implementation waves.
     master reports newer suite partitions/totals. K2-10 uses the tests discovered at execution time
     and reports exact executed counts rather than forcing obsolete totals.
 
-Latest execution checkpoint — 2026-09-27: K2-04/K2-05 are accepted predecessors; K2-06
-source and hosted cleanup gates are PASS. K2-07 is the active wave on
-`feat/k2-07-modality-engine`; K2-08 through K2-10 remain sequentially downstream.
+Latest execution checkpoint — 2026-10-01: K2-04 through K2-06 are accepted predecessors;
+K2-07 source, hosted acceptance, cleanup, and retained-state comparison are PASS at master
+`c696ac935852c4ebcd9e1183521996e5b12ad273`. K2-08 is READY to begin; K2-09 and K2-10 remain
+sequentially downstream. K2-07 staging exercised self-recall and typing; listening and cloze
+remain untested because eligible published staging material is unavailable. See
+`reviews/K2-07-hosted-acceptance-review.md` for bounded acceptance evidence.
 
 ## K2-04 — Grammar Specifications and Brain Integration
 
@@ -187,6 +190,18 @@ source and hosted cleanup gates are PASS. K2-07 is the active wave on
   dimension and one FSRS lineage; replay and cleanup pass.
 
 ## K2-08 — Today Engine Heuristic V2, Remediation First
+
+**Readiness: READY (2026-10-01).** K2-07 hosted and retained-state comparison gates passed at
+the current master checkpoint. Start with the existing Today v1 authority and compatibility
+rules in `docs/TODAY_ENGINE_HEURISTIC_V1.md`, its implementation record in
+`docs/TODAY_ENGINE_IMPLEMENTATION_V1.md`, and accepted K2-08 objective below. Keep the first
+implementation bounded to policy/candidate ranking and allocation plus focused tests. Verify
+the actual repository contracts, persistence, and existing tests before deciding whether any
+contract change or migration is needed; none is assumed by this plan. Preserve Today v1 behavior,
+actor/profile scoping, repeatable-read generation, deterministic same-input output, daily budget
+and content anti-starvation, and zero writes to learner evidence, FSRS, or competence. Required
+verification includes disposable PostgreSQL coverage for persistence/concurrency and the Today
+Phase C regression; hosted acceptance remains a later gate, not part of readiness.
 
 - **Exact objective:** deterministically pack due review and decayed weak/forgotten remediation
   ahead of new curriculum work, within the learner's persisted daily budget and existing content
