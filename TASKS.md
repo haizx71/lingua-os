@@ -74,11 +74,23 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   actor-residue, or retained-comparison error replacing the 409; logs did not expose explicit row
   counts. Separate current-run cleanup passed in 44 seconds. K2-07 remains BLOCKED; K2-08 remains
   locked. Do not report hosted acceptance as PASS.
+  Hosted run `36755374459` on master SHA `df0947c2ed0dddbedebdcc2652bf83f01b53eff3` passed
+  profile-timezone setup and canonical concept fetch/save, then failed the post-save primary
+  snapshot row-count assertion (`wave`, line 191), before later K2-07 assertions, replay, or
+  isolation. The primary snapshot expectations listed zero `user_concept_states` and lineage-state
+  rows. Max review traced the conflict to the zero-row `user_concept_states` expectation: ADR-022
+  requires one zero-evidence projection row marked `has_learning_intent` after explicit Save/Learn.
+  The observer-row, Review/FSRS-row, and zero-evidence/mass expectations remain correct. Runtime
+  row counts were not logged and are not reported. The main finalizer completed
+  without overriding the original error and reached Auth deletion, actor-row absence, and retained-
+  comparison equality by control flow; separate current-run cleanup passed in 42 seconds. No K2-07
+  acceptance PASS: K2-07 remains BLOCKED and K2-08 remains locked. K2-06's accepted
+  Save/Learn semantics remain unchanged.
   Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
   missing published aligned content/HTTPS audio. The Supabase ledger is at migration `0019`; the dedicated `k2_hosted_acceptance_reader` role
   is configured with broad read access without
   `pg_write_all_data` membership. DB-only preflight passed; no disposable-actor preflight has run.
-  Local source checks passed before the latest hosted run: 61/61 focused harness Vitest
+  Local source checks passed before hosted run `36755374459`: 61/61 focused harness Vitest
   (including workflow security), 6/6 probe pytest, 1/1 real Chromium redirect, and workspace
   typecheck. `pnpm backend:check` passed on the prior source snapshot (600 backend tests); this
   revision changes no backend or Python runtime code. These local checks did not create hosted

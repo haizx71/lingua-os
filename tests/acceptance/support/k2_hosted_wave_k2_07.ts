@@ -13,6 +13,48 @@ const DIMENSION_ORDER: readonly DimensionName[] = ['recognition', 'listening', '
 const ANCHOR_ID = '7f110000-0000-4000-8000-000000000004';
 const ANCHOR_LEMMA = 'frll-anchor';
 
+export const K2_07_PRIMARY_AFTER_SAVE_ROWS = {
+  users: 1,
+  learner_profiles: 1,
+  user_languages: 1,
+  concept_save_intents: 1,
+  learning_events: 1,
+  user_concept_states: 1,
+  review_items: 1,
+  fsrs_states: 1,
+  review_events: 0,
+} as const;
+
+export const K2_07_OBSERVER_AFTER_PRIMARY_SAVE_ROWS = {
+  users: 1,
+  learner_profiles: 1,
+  user_languages: 1,
+  concept_save_intents: 0,
+  learning_events: 0,
+  user_concept_states: 0,
+  review_items: 0,
+  fsrs_states: 0,
+  review_events: 0,
+} as const;
+
+export const K2_07_PRIMARY_AFTER_SAVE_LINEAGE = {
+  stateRows: 1,
+  reviewItems: 1,
+  fsrsStates: 1,
+  productionEvidence: 0,
+  negativeMass: 0,
+  events: 0,
+} as const;
+
+const K2_07_OBSERVER_AFTER_PRIMARY_SAVE_LINEAGE = {
+  stateRows: 0,
+  reviewItems: 0,
+  fsrsStates: 0,
+  productionEvidence: 0,
+  negativeMass: 0,
+  events: 0,
+} as const;
+
 function record(value: unknown, message: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(message);
   return value as Record<string, unknown>;
@@ -44,7 +86,7 @@ export function selectK2HostedExerciseMode(
   return 'self_recall';
 }
 
-function requireLineage(
+export function requireK2HostedLineage(
   proof: K2HostedActorLineageProof,
   expected: {
     readonly stateRows: number;
@@ -188,35 +230,14 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
     if (saved.isSaved !== true) throw new Error('K2 hosted acceptance canonical anchor was not saved.');
 
     const savedState = await context.actorSnapshot(context.primaryActor.id);
-    context.requireSnapshotRows(savedState, {
-      users: 1,
-      learner_profiles: 1,
-      user_languages: 1,
-      concept_save_intents: 1,
-      learning_events: 1,
-      user_concept_states: 0,
-      review_items: 1,
-      fsrs_states: 1,
-      review_events: 0,
-    });
+    context.requireSnapshotRows(savedState, K2_07_PRIMARY_AFTER_SAVE_ROWS);
     const observerState = await context.actorSnapshot(context.observerActor.id);
-    context.requireSnapshotRows(observerState, {
-      users: 1,
-      learner_profiles: 1,
-      user_languages: 1,
-      concept_save_intents: 0,
-      learning_events: 0,
-      user_concept_states: 0,
-      review_items: 0,
-      fsrs_states: 0,
-      review_events: 0,
-    });
-    requireLineage(await context.actorLineage(context.primaryActor.id), {
-      stateRows: 0, reviewItems: 1, fsrsStates: 1, productionEvidence: 0, negativeMass: 0, events: 0,
-    });
-    requireLineage(await context.actorLineage(context.observerActor.id), {
-      stateRows: 0, reviewItems: 0, fsrsStates: 0, productionEvidence: 0, negativeMass: 0, events: 0,
-    });
+    context.requireSnapshotRows(observerState, K2_07_OBSERVER_AFTER_PRIMARY_SAVE_ROWS);
+    requireK2HostedLineage(await context.actorLineage(context.primaryActor.id), K2_07_PRIMARY_AFTER_SAVE_LINEAGE);
+    requireK2HostedLineage(
+      await context.actorLineage(context.observerActor.id),
+      K2_07_OBSERVER_AFTER_PRIMARY_SAVE_LINEAGE,
+    );
 
     const observerItems = queueItems((await context.apiRequest(
       context.observerSession.accessToken,
@@ -258,7 +279,7 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
       user_concept_states: 1, review_items: 1, fsrs_states: 1, review_events: 1,
     });
     const selfRecallLineage = await context.actorLineage(context.primaryActor.id);
-    requireLineage(selfRecallLineage, {
+    requireK2HostedLineage(selfRecallLineage, {
       stateRows: 1, reviewItems: 1, fsrsStates: 1, productionEvidence: 1, negativeMass: 0.5, events: 1,
     });
     requireEvent(selfRecallLineage, 'self_recall', 1);
@@ -275,7 +296,7 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
       user_concept_states: 1, review_items: 1, fsrs_states: 1, review_events: 2,
     });
     const finalLineage = await context.actorLineage(context.primaryActor.id);
-    requireLineage(finalLineage, {
+    requireK2HostedLineage(finalLineage, {
       stateRows: 1, reviewItems: 1, fsrsStates: 1, productionEvidence: 2, negativeMass: 1, events: 2,
     });
     requireEvent(finalLineage, 'self_recall', 1);
