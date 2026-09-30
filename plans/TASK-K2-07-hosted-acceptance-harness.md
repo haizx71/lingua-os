@@ -1,10 +1,34 @@
 # TASK-K2-07 — Hosted Acceptance Harness
 
-Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT APPLICATION MIGRATION HEAD CHECK
+Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED DURING LEARNER PROFILE BOOTSTRAP
 Scope: Reusable, staging-only hosted acceptance runner; K2-07 first, later waves
 Owner: BACKEND / acceptance tooling
 
 ## Latest hosted gate evidence — 2026-10-01
+
+Hosted run `36751277032` on `master` at `e01cc21624bda37f59c982498686a6a709ca2264` passed
+protected-origin access, API health, application and Supabase migration verification, the runner
+recheck, and browser authentication. Two disposable actors were created and authenticated; the
+primary actor's first `POST /v1/me/languages` returned HTTP 409 `INVALID_STATE_TRANSITION` instead
+of 201. `GET /v1/me` had bootstrapped a learner profile with `time_zone = NULL`; the harness had
+not persisted a valid IANA timezone first. The backend correctly rejects language creation until
+this ADR-019 precondition is met. The K2-07 plugin's save, answer/replay, and isolation assertions
+were not reached, so K2-07 remains BLOCKED and K2-08 remains locked.
+
+The runner correction in this source branch uses each learner ETag returned by bootstrap to
+`PATCH /v1/me` with `Asia/Ho_Chi_Minh`, requires HTTP 200, matching actor identity, persisted
+timezone, and an updated ETag, then confirms an empty language-profile list before a strict HTTP
+201 create. It performs this independently for primary and observer actors. Implementation and
+focused verification used GPT-6 Luna / Max. Verification passes 19/19 K2 runner/plugin tests,
+workspace typecheck, and changed-file lint. No API contract, backend, migration, or hosted staging
+state changed.
+
+The finalizer preserved the original 409. Independent source/sanitized-log review found no cleanup,
+actor-residue, or retained-comparison error replacing it; the logs did not expose explicit row
+counts. The separate current-run cleanup job passed in 44 seconds. These cleanup observations do
+not establish K2-07 learner-state acceptance.
+
+## Previous hosted gate evidence — application migration registry — 2026-10-01
 
 Hosted run `36747649793` on `master` at `fdb4036e436e8b82b9fb67b1358413a2a5b31367` passed the
 protected-origin and staging API checks, then failed at the TypeScript migration adapter before

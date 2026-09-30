@@ -1,12 +1,12 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked at application migration-head verification; K2-08 locked
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked during disposable learner bootstrap; K2-08 locked
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The authoritative current `master` baseline is
-  `fdb4036e436e8b82b9fb67b1358413a2a5b31367`. Earlier K2-04/K2-05/K2-06
+  `e01cc21624bda37f59c982498686a6a709ca2264`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
@@ -71,8 +71,7 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   passed in hosted run `36747649793` on `master` at
   `fdb4036e436e8b82b9fb67b1358413a2a5b31367`; the run then failed the separate application
   migration-head gate before actor creation. Its current-run cleanup passed in 45 seconds. No
-  retained baseline or learner comparison gate was reached; K2-07 remains BLOCKED and K2-08
-  remains locked. Staging
+  retained baseline or learner comparison gate was reached in that run; see the later run below. Staging
   currently supports self-recall and typing only; listening and cloze remain untested because no
   HTTPS audio or published aligned target is present.
 - Run `36734233167` (`workflow_dispatch` on `master` at `477663743d438364f34fb34f9712cfcf82d47949`)
@@ -96,21 +95,36 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   application entries `0001`–`0017`; the Python probe reported application head `0017` and 17
   applied migrations, while the TypeScript adapter incorrectly treated the application as head
   `0019` with 19 applied migrations. The Supabase ledger still requires `0019` plus the custom
-  read-only role, confirmed separately. Keep these two registries distinct; the migration-head
-  diagnosis is a blocker, not a pass. The reader role has broad read visibility and must remain
+  read-only role, confirmed separately. Keep these registries distinct. This mismatch blocked
+  run `36747649793`; the later run `36751277032` passed migration verification. The reader role
+  has broad read visibility and must remain
   confined to the owner-gated staging workflow step. The exact application migration-head gate
   remains mandatory before acceptance baseline/actor creation;
   cleanup-only paths attempt guarded Auth deletion first and fail afterward if the
   schema-dependent zero-residue proof cannot establish the complete inventory.
-- Current source verification passed: 61/61 focused hosted-harness Vitest tests
-  (including workflow security checks), 6/6 Python probe tests, 1/1 real Chromium
-  redirect test, and workspace typecheck. `pnpm backend:check` had passed on the
-  prior source snapshot (600 backend tests); this revision changes no backend or
-  Python runtime code. No hosted actor was created and no hosted state was changed.
-- Historical hosted-harness implementation runtime and effort remain unverified. PR #28
-  diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review: GPT-6 Luna /
-  Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation update:
-  GPT-6 Luna / Medium.
+- Hosted run `36751277032` on master SHA `e01cc21624bda37f59c982498686a6a709ca2264` passed
+  protected-origin access, API health, migration verification, the runner recheck, and browser
+  authentication. It created and authenticated two disposable actors, then failed with HTTP 409
+  `INVALID_STATE_TRANSITION` on the first primary actor `POST /v1/me/languages` (expected 201).
+  The learner profile still had a null timezone: the harness omitted the required ETag-protected
+  `PATCH /v1/me` to persist a valid IANA timezone before language creation, as required by
+  ADR-019. This is a harness setup precondition failure; the K2-07 plugin assertions, replay, and
+  isolation checks were not reached. The main finalizer completed without overriding the original
+  error. Independent source/sanitized-log review found no cleanup, actor-residue, or retained-
+  comparison error replacing the 409; the logs did not expose explicit row counts. The separate
+  current-run-cleanup job passed in 44 seconds. Do not mark K2-07 hosted acceptance PASS; K2-07
+  remains BLOCKED and K2-08 remains locked.
+- Local source verification passed before the latest hosted run: 61/61 focused
+  hosted-harness Vitest tests (including workflow security checks), 6/6 Python probe
+  tests, 1/1 real Chromium redirect test, and workspace typecheck. `pnpm backend:check`
+  had passed on the prior source snapshot (600 backend tests); this source verification
+  did not create hosted actors or change hosted state.
+- Documentation update for the latest hosted-gate evidence: GPT-6 Luna / Medium. The source/log
+  review supports the failure-finalizer control flow; a passing K2-07 hosted learner-state run is
+  still required before task closure.
+- PR #28 diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review:
+  GPT-6 Luna / Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation
+  update: GPT-6 Luna / Medium.
 
 The dated sections below preserve earlier checkpoints; their pending statements
 do not override this current result.

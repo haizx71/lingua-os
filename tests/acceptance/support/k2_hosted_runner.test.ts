@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  createLearnerProfile,
   runK2ProtectedAuthUiSignIn,
   type K2ProtectedAuthUiInteractions,
   type K2ProtectedAuthUiResponse,
 } from './k2_hosted_runner';
+import type { K2AuthenticatedActor, K2HostedConfig } from './k2_hosted_actors';
 
 const actor = {
   id: 'fake-actor-id-marker',
@@ -34,7 +36,7 @@ function interactions(
   };
 }
 
-async function rejectedError(operation: Promise<void>): Promise<Error> {
+async function rejectedError(operation: Promise<unknown>): Promise<Error> {
   try {
     await operation;
   } catch (error) {
@@ -43,7 +45,233 @@ async function rejectedError(operation: Promise<void>): Promise<Error> {
   throw new Error('Expected the protected sign-in helper to reject.');
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe('createLearnerProfile', () => {
+  const config = {
+    apiOrigin: 'https://staging.example.test',
+    githubSha: 'accepted-source-sha-marker',
+  } as K2HostedConfig;
+  const session: K2AuthenticatedActor = {
+    userId: 'fake-actor-id-marker',
+    accessToken: 'fake-access-token-marker',
+  };
+
+  const observerSession: K2AuthenticatedActor = {
+    userId: 'fake-observer-id-marker',
+    accessToken: 'fake-observer-access-token-marker',
+  };
+
+  it('persists each actor timezone with that actor bootstrap ETag before creating either language profile', async () => {
+    const actors = [
+      {
+        label: 'primary',
+        session,
+        bootstrapEtag: '"primary-bootstrap"',
+        profileId: 'fake-primary-language-profile-marker',
+      },
+      {
+        label: 'observer',
+        session: observerSession,
+        bootstrapEtag: '"observer-bootstrap"',
+        profileId: 'fake-observer-language-profile-marker',
+      },
+    ] as const;
+    const observed: Array<{
+      actor: string;
+      route: string;
+      method: string;
+      headers: Headers;
+      body: unknown;
+    }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const route = new URL(input.toString()).pathname;
+      const method = init?.method ?? 'GET';
+      const headers = new Headers(init?.headers);
+      const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+      const actor = actors.find(item => headers.get('authorization') === `Bearer ${item.session.accessToken}`);
+      if (!actor) return apiResponse(401, { error: { code: 'UNEXPECTED_TEST_ACTOR' } });
+      observed.push({ actor: actor.label, route, method, headers, body });
+
+      if (route === '/v1/me' && method === 'GET') {
+        return apiResponse(200, { data: { id: actor.session.userId, timeZone: null } }, {
+          etag: actor.bootstrapEtag,
+        });
+      }
+      if (route === '/v1/me' && method === 'PATCH') {
+        return apiResponse(200, { data: { id: actor.session.userId, timeZone: 'Asia/Ho_Chi_Minh' } }, {
+          etag: `${actor.bootstrapEtag}-updated`,
+        });
+      }
+      if (route === '/v1/me/languages' && method === 'GET') {
+        return apiResponse(200, { data: [] });
+      }
+      if (route === '/v1/me/languages' && method === 'POST') {
+        return apiResponse(201, { data: { id: actor.profileId } });
+      }
+      return apiResponse(500, { error: { code: 'UNEXPECTED_TEST_REQUEST' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    for (const actor of actors) {
+      await expect(createLearnerProfile(config, actor.session)).resolves.toBe(actor.profileId);
+    }
+
+    expect(observed.map(({ actor, method, route }) => [actor, method, route])).toEqual([
+      ['primary', 'GET', '/v1/me'],
+      ['primary', 'PATCH', '/v1/me'],
+      ['primary', 'GET', '/v1/me/languages'],
+      ['primary', 'POST', '/v1/me/languages'],
+      ['observer', 'GET', '/v1/me'],
+      ['observer', 'PATCH', '/v1/me'],
+      ['observer', 'GET', '/v1/me/languages'],
+      ['observer', 'POST', '/v1/me/languages'],
+    ]);
+    for (const actor of actors) {
+      const actorCalls = observed.filter(call => call.actor === actor.label);
+      expect(actorCalls[1]?.headers.get('if-match')).toBe(actor.bootstrapEtag);
+      expect(actorCalls[1]?.body).toEqual({ timeZone: 'Asia/Ho_Chi_Minh' });
+      expect(actorCalls.filter(call => call.method !== 'PATCH')
+        .every(call => call.headers.get('if-match') === null)).toBe(true);
+    }
+  });
+
+  it('stops before profile requests when bootstrap did not supply a usable ETag', async () => {
+    const observed: Array<{ method: string; route: string }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const route = new URL(input.toString()).pathname;
+      const method = init?.method ?? 'GET';
+      observed.push({ route, method });
+      return apiResponse(200, { data: { id: session.userId, timeZone: null } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const error = await rejectedError(createLearnerProfile(config, session));
+
+    expect(error.message).toBe('K2 hosted acceptance learner profile ETag was missing.');
+    expect(observed).toEqual([{ method: 'GET', route: '/v1/me' }]);
+  });
+
+  it.each([
+    ['a stale ETag response', 412],
+    ['another API failure', 503],
+  ])('stops before language creation after %s and suppresses response details', async (_case, status) => {
+    const etag = '"fake-current-profile-version"';
+    const responseMarker = 'fake-private-response-marker';
+    const observed: Array<{ method: string; route: string; headers: Headers }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const route = new URL(input.toString()).pathname;
+      const method = init?.method ?? 'GET';
+      const headers = new Headers(init?.headers);
+      observed.push({ route, method, headers });
+      if (route === '/v1/me' && method === 'GET') {
+        return apiResponse(200, { data: { id: session.userId, timeZone: null } }, { etag });
+      }
+      if (route === '/v1/me' && method === 'PATCH') {
+        return apiResponse(status, { privateDetail: responseMarker });
+      }
+      return apiResponse(500, {});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const error = await rejectedError(createLearnerProfile(config, session));
+
+    expect(error.message).toBe(`K2 hosted acceptance staging API returned HTTP ${status}.`);
+    expect(error.message).not.toContain(responseMarker);
+    expect(error.message).not.toContain(session.userId);
+    expect(error.message).not.toContain(session.accessToken);
+    expect(observed.map(({ method, route }) => [method, route])).toEqual([
+      ['GET', '/v1/me'],
+      ['PATCH', '/v1/me'],
+    ]);
+    expect(observed[1]?.headers.get('if-match')).toBe(etag);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('does not accept an unexpected timezone response before creating a profile', async () => {
+    const observed: Array<{ method: string; route: string }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const route = new URL(input.toString()).pathname;
+      const method = init?.method ?? 'GET';
+      observed.push({ route, method });
+      if (route === '/v1/me' && method === 'GET') {
+        return apiResponse(200, { data: { id: session.userId, timeZone: null } }, {
+          etag: '"fake-profile-version"',
+        });
+      }
+      if (route === '/v1/me' && method === 'PATCH') {
+        return apiResponse(200, { data: { id: session.userId, timeZone: null } }, {
+          etag: '"fake-updated-profile-version"',
+        });
+      }
+      return apiResponse(500, {});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(createLearnerProfile(config, session))
+      .rejects.toThrow('K2 hosted acceptance learner timezone was not persisted.');
+
+    expect(observed.map(({ method, route }) => [method, route])).toEqual([
+      ['GET', '/v1/me'],
+      ['PATCH', '/v1/me'],
+    ]);
+  });
+
+  it('continues to require HTTP 201 for language profile creation', async () => {
+    const observed: Array<{ method: string; route: string }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const route = new URL(input.toString()).pathname;
+      const method = init?.method ?? 'GET';
+      observed.push({ route, method });
+      if (route === '/v1/me' && method === 'GET') {
+        return apiResponse(200, { data: { id: session.userId, timeZone: null } }, {
+          etag: '"fake-profile-version"',
+        });
+      }
+      if (route === '/v1/me' && method === 'PATCH') {
+        return apiResponse(200, { data: { id: session.userId, timeZone: 'Asia/Ho_Chi_Minh' } }, {
+          etag: '"fake-updated-profile-version"',
+        });
+      }
+      if (route === '/v1/me/languages' && method === 'GET') return apiResponse(200, { data: [] });
+      if (route === '/v1/me/languages' && method === 'POST') {
+        return apiResponse(409, { privateDetail: 'fake-private-conflict-marker' });
+      }
+      return apiResponse(500, {});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const error = await rejectedError(createLearnerProfile(config, session));
+
+    expect(error.message).toBe('K2 hosted acceptance staging API returned HTTP 409.');
+    expect(error.message).not.toContain('fake-private-conflict-marker');
+    expect(observed.map(({ method, route }) => [method, route])).toEqual([
+      ['GET', '/v1/me'],
+      ['PATCH', '/v1/me'],
+      ['GET', '/v1/me/languages'],
+      ['POST', '/v1/me/languages'],
+    ]);
+  });
+});
+
+function apiResponse(
+  status: number,
+  payload: unknown,
+  headers: Record<string, string> = {},
+): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'x-lingua-source-sha': 'accepted-source-sha-marker',
+      ...headers,
+    },
+  });
+}
 
 describe('runK2ProtectedAuthUiSignIn', () => {
   it('preserves the normal sign-in identity check and destination wait', async () => {
