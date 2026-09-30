@@ -48,6 +48,14 @@ changed-file lint passed, the real cross-origin browser redirect test passed, an
 production build registered `/api/k2-vercel-attestation` as a dynamic route. This source has not
 been merged or deployed; no hosted acceptance result or actor lifecycle is claimed from it.
 
+Independent review of PR #29 then found a HIGH reporting issue in the browser sign-in helper:
+Playwright 1.63 can include `.fill(value)` arguments in action errors, which the list reporter may
+print if the error escapes the helper. The follow-up wraps credential fills, submit, response
+handling, and destination waits in a fixed error with no original cause, and consumes the response
+wait rejection even when an earlier fill fails. Fake in-memory email/password markers cover those
+failure stages; no live credentials or actors are used. PR #29 remains unmerged pending delta review
+and its credential-free CI rerun.
+
 ## Contract
 
 The acceptance runner may create exactly two fresh confirmed Auth actors: a primary fixture actor

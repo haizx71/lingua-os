@@ -126,6 +126,7 @@ describe('K2 hosted workflow credential boundary', () => {
       .toContain('python -m pytest -q tests/acceptance/support/test_k2_hosted_probe.py');
     const harnessTests = stepNamed(securityGate, 'Run hosted-harness unit and workflow security checks').run;
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_workflow_security.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_runner.test.ts');
     expect(harnessTests).toContain('tests/frontend/k2-vercel-attestation.test.ts');
     for (const step of securitySteps) {
       if (step.uses) expect(step.uses).toMatch(/^[\w./-]+@[a-f0-9]{40}(?:\s+#.*)?$/);

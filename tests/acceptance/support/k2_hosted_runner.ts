@@ -167,6 +167,61 @@ async function createLearnerProfile(config: K2HostedConfig, session: K2Authentic
   return profile.id;
 }
 
+export interface K2ProtectedAuthUiResponse {
+  status(): number;
+  json(): Promise<unknown>;
+}
+
+export interface K2ProtectedAuthUiInteractions {
+  fillEmail(value: string): Promise<void>;
+  fillPassword(value: string): Promise<void>;
+  clickSubmit(): Promise<void>;
+  waitForSignInResponse(): Promise<K2ProtectedAuthUiResponse>;
+  waitForDestination(): Promise<void>;
+}
+
+const K2_AUTH_UI_SIGN_IN_FAILURE =
+  'K2 hosted acceptance browser sign-in failed; sensitive browser details were suppressed.';
+
+export async function runK2ProtectedAuthUiSignIn(
+  actor: Pick<K2HostedActor, 'email' | 'password' | 'id'>,
+  interactions: K2ProtectedAuthUiInteractions,
+): Promise<void> {
+  // Attach a rejection handler as soon as the response wait is created. A
+  // credential fill can fail before this promise is awaited, but its later
+  // timeout/error must not become an unhandled rejection.
+  let signInResponse: Promise<K2ProtectedAuthUiResponse | null>;
+  try {
+    signInResponse = interactions.waitForSignInResponse()
+      .then(response => response, () => null);
+  } catch {
+    throw new Error(K2_AUTH_UI_SIGN_IN_FAILURE);
+  }
+
+  try {
+    await interactions.fillEmail(actor.email);
+    await interactions.fillPassword(actor.password);
+    await interactions.clickSubmit();
+
+    const response = await signInResponse;
+    if (!response || response.status() !== 200) {
+      throw new Error('K2 hosted acceptance browser sign-in failed.');
+    }
+
+    const result = await response.json();
+    const user = object(result, 'K2 hosted acceptance browser sign-in response was invalid.').user;
+    if (!user || typeof user !== 'object' || (user as JsonObject).id !== actor.id) {
+      throw new Error('K2 hosted acceptance browser sign-in identity did not match the confirmed actor.');
+    }
+
+    await interactions.waitForDestination();
+  } catch {
+    // Playwright errors can include fill values, request details, or the
+    // destination URL. Never attach the original error or its cause.
+    throw new Error(K2_AUTH_UI_SIGN_IN_FAILURE);
+  }
+}
+
 async function verifyAuthUiSignIn(page: Page, actor: K2HostedActor, vercelOrigin: string, config: K2HostedConfig): Promise<void> {
   const pageResponse = await page.goto(new URL('/auth', vercelOrigin).href, { waitUntil: 'domcontentloaded' });
   if (!pageResponse || pageResponse.status() !== 200) {
@@ -177,24 +232,20 @@ async function verifyAuthUiSignIn(page: Page, actor: K2HostedActor, vercelOrigin
   const submitButton = page.locator('button[type="submit"]', { hasText: 'Đăng nhập' });
   await emailInput.waitFor({ state: 'visible', timeout: 30_000 });
   await passwordInput.waitFor({ state: 'visible', timeout: 30_000 });
-  const signInResponse = page.waitForResponse(response => {
-    const url = new URL(response.url());
-    return url.origin === config.supabaseUrl && url.pathname === '/auth/v1/token' &&
-      url.searchParams.get('grant_type') === 'password';
-  }, { timeout: 30_000 });
-  await emailInput.fill(actor.email);
-  await passwordInput.fill(actor.password);
-  await submitButton.click();
-  const response = await signInResponse;
-  if (response.status() !== 200) throw new Error('K2 hosted acceptance browser sign-in failed.');
-  let result: unknown;
-  try { result = await response.json(); }
-  catch { throw new Error('K2 hosted acceptance browser sign-in response was invalid.'); }
-  const user = object(result, 'K2 hosted acceptance browser sign-in response was invalid.').user;
-  if (!user || typeof user !== 'object' || (user as JsonObject).id !== actor.id) {
-    throw new Error('K2 hosted acceptance browser sign-in identity did not match the confirmed actor.');
-  }
-  await page.waitForURL(url => ['/onboarding', '/today'].includes(url.pathname), { timeout: 30_000 });
+  await runK2ProtectedAuthUiSignIn(actor, {
+    fillEmail: value => emailInput.fill(value),
+    fillPassword: value => passwordInput.fill(value),
+    clickSubmit: () => submitButton.click(),
+    waitForSignInResponse: () => page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.origin === config.supabaseUrl && url.pathname === '/auth/v1/token' &&
+        url.searchParams.get('grant_type') === 'password';
+    }, { timeout: 30_000 }),
+    waitForDestination: () => page.waitForURL(
+      url => ['/onboarding', '/today'].includes(url.pathname),
+      { timeout: 30_000 },
+    ),
+  });
 }
 
 /**
