@@ -967,6 +967,12 @@ export async function verifyProtectedVercelOrigin(
     'immutable-anonymous-auth',
     request,
   );
+  await requireVercelAuthenticationChallenge(
+    immutableOrigin,
+    K2_VERCEL_ATTESTATION_PATH,
+    'immutable-anonymous-attestation',
+    request,
+  );
   const immutableAttestation = await requestProtectedVercelAttestation(
     immutableOrigin,
     trustedSourceToken,
@@ -1071,6 +1077,7 @@ interface VerifiedK2VercelOperationalAttestation {
 
 type ProtectedVercelStage =
   | 'immutable-anonymous-auth'
+  | 'immutable-anonymous-attestation'
   | 'immutable-attestation'
   | 'immutable-auth-redirect'
   | 'canonical-anonymous-attestation'

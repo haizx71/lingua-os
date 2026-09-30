@@ -72,6 +72,7 @@ function acceptedGateResponses(
 ): Response[] {
   return [
     vercelChallenge(),
+    vercelChallenge(),
     overrides.immutable ?? attestationResponse(),
     overrides.redirect ?? new Response(null, {
       status: 308,
@@ -1085,11 +1086,12 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       'a'.repeat(40),
       request,
     )).resolves.toBe(CANONICAL_VERCEL_ORIGIN);
-    expect(request).toHaveBeenCalledTimes(7);
+    expect(request).toHaveBeenCalledTimes(8);
 
     const callUrls = request.mock.calls.map(([input]) => new URL(String(input)).href);
     expect(callUrls).toEqual([
       `${IMMUTABLE_VERCEL_ORIGIN}/auth`,
+      `${IMMUTABLE_VERCEL_ORIGIN}${K2_VERCEL_ATTESTATION_PATH}`,
       `${IMMUTABLE_VERCEL_ORIGIN}${K2_VERCEL_ATTESTATION_PATH}`,
       `${IMMUTABLE_VERCEL_ORIGIN}/auth`,
       `${CANONICAL_VERCEL_ORIGIN}${K2_VERCEL_ATTESTATION_PATH}`,
@@ -1098,7 +1100,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       `${CANONICAL_VERCEL_ORIGIN}/auth`,
     ]);
 
-    const tokenCalls = new Set([1, 2, 5, 6]);
+    const tokenCalls = new Set([2, 3, 6, 7]);
     request.mock.calls.forEach(([input, init], index) => {
       const url = new URL(String(input));
       const headers = new Headers(init?.headers);
@@ -1114,7 +1116,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
         expect(init?.body).toBeUndefined();
       }
       expect(init?.cache).toBe('no-store');
-      expect(init?.redirect).toBe(['manual', 'error', 'manual', 'manual', 'manual', 'error', 'manual'][index]);
+      expect(init?.redirect).toBe(['manual', 'manual', 'error', 'manual', 'manual', 'manual', 'error', 'manual'][index]);
     });
   });
 
@@ -1136,9 +1138,9 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       request,
     ));
     expect(failureMessage).toMatch(/Vercel deployment attestation did not match|canonical-attestation response was invalid/);
-    expect(request).toHaveBeenCalledTimes(6);
-    expect(new URL(String(request.mock.calls[5][0])).origin).toBe(CANONICAL_VERCEL_ORIGIN);
-    expect(new URL(String(request.mock.calls[5][0])).pathname).toBe(K2_VERCEL_ATTESTATION_PATH);
+    expect(request).toHaveBeenCalledTimes(7);
+    expect(new URL(String(request.mock.calls[6][0])).origin).toBe(CANONICAL_VERCEL_ORIGIN);
+    expect(new URL(String(request.mock.calls[6][0])).pathname).toBe(K2_VERCEL_ATTESTATION_PATH);
     expect(failureMessage).not.toContain('https://');
     expect(failureMessage).not.toContain('trusted-source-token-placeholder');
   });
@@ -1164,7 +1166,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       request,
     ));
     expect(failureMessage).toContain('protected Vercel access is not authorized');
-    expect(request).toHaveBeenCalledTimes(3);
+    expect(request).toHaveBeenCalledTimes(4);
     expect(request.mock.calls.some(([input, init]) =>
       new URL(String(input)).origin === CANONICAL_VERCEL_ORIGIN &&
       new Headers(init?.headers).has(K2_VERCEL_TRUSTED_SOURCE_HEADER),
@@ -1174,7 +1176,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(failureMessage).not.toContain('private-fragment-marker');
   });
 
-  it.each([4, 5])('stops before canonical OIDC when anonymous canonical request %i is not challenged', async requestNumber => {
+  it.each([5, 6])('stops before canonical OIDC when anonymous canonical request %i is not challenged', async requestNumber => {
     const responses = acceptedGateResponses();
     responses[requestNumber - 1] = new Response('public', { status: 200 });
     const request = mockFetchSequence(responses);
@@ -1230,6 +1232,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
 
   it('reports only bounded response facts for a rejected trusted metadata request', async () => {
     const request = mockFetchSequence([
+      vercelChallenge(),
       vercelChallenge(),
       new Response('private-response-body-marker', {
         status: 403,

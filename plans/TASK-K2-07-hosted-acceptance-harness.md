@@ -42,6 +42,12 @@ closed before creating any actor. Separate current-run-cleanup job `109964874290
 seconds. No retained baseline or learner comparison gate was reached. K2-07 remains BLOCKED and
 K2-08 remains locked; no hosted acceptance pass is established.
 
+The canonical-origin correction is implemented in isolated source commits and remains under
+independent review. Its local focused security gate passed 114/114 tests, workspace typecheck and
+changed-file lint passed, the real cross-origin browser redirect test passed, and the Next.js
+production build registered `/api/k2-vercel-attestation` as a dynamic route. This source has not
+been merged or deployed; no hosted acceptance result or actor lifecycle is claimed from it.
+
 ## Contract
 
 The acceptance runner may create exactly two fresh confirmed Auth actors: a primary fixture actor
@@ -77,6 +83,35 @@ on a GitHub environment claim or assumed `sub` shape. Missing staging settings, 
 access, or OIDC configuration fails closed before actor creation. The runner creates no share links,
 does not alter deployment protection, and never writes credentials, JWTs, actor IDs, or email
 addresses to files, artifacts, logs, or reports.
+
+The protected-origin gate also requires independent evidence for the browser-facing canonical host.
+The operational `GET /api/k2-vercel-attestation` route is dynamic and returns a private, no-store
+JSON object with this versioned shape: `schemaVersion`, `sourceSha`, `deploymentOrigin`,
+`deploymentId`, `environment`, `repositoryOwner`, `repositorySlug`, and `canonicalOrigin`. Its
+values come from Vercel-managed runtime variables (`VERCEL_GIT_COMMIT_SHA`, `VERCEL_URL`,
+`VERCEL_DEPLOYMENT_ID`, `VERCEL_ENV`, `VERCEL_GIT_REPO_OWNER`, and `VERCEL_GIT_REPO_SLUG`) plus
+the effective canonical origin constrained to the repository-owned
+`DEFAULT_CANONICAL_WEB_ORIGIN`. Missing or malformed runtime values and any non-production,
+repository, SHA, deployment, or canonical mismatch fail closed. The route does not read `Host` or
+forwarded-host headers and does not return request data or secrets. It is operational deployment
+metadata, not a learner/product API; it is intentionally excluded from `contracts/openapi.yaml`.
+
+For the immutable deployment origin already attested by successful GitHub Production statuses, the
+runner first requires anonymous Vercel challenges on `/auth` and the operational route, then
+OIDC-fetches that route with redirects disabled and checks the metadata against `GITHUB_SHA`, the
+exact immutable origin, repository, and Production environment. It next requires the authenticated
+immutable `/auth` response to be the exact 308 to the metadata-bound canonical `/auth` path over
+HTTPS, with no userinfo, port, query, or fragment. Only after that does it challenge anonymous
+access at canonical `/api/k2-vercel-attestation` and `/auth`, then OIDC-fetch the canonical
+operational route. The canonical response must report
+the same exact SHA, immutable Vercel URL, deployment ID, repository, Production environment, and
+code-owned canonical origin; the canonical authenticated `/auth` response must be HTTP 200 with
+`x-vercel-id` and `text/html`. Redirects are never followed with the OIDC token. The runner returns
+only the independently verified canonical origin to Playwright, whose request guard scopes the
+OIDC header to that exact origin. Vercel system-variable behavior is documented at
+[Vercel System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables);
+Trusted Sources uses the `x-vercel-trusted-oidc-idp-token` request header as documented at
+[Vercel Trusted Sources](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/trusted-sources).
 
 The six staging values are repository-level secrets because GitHub environment secrets are not
 available under the current plan. No plan upgrade is needed for this path, but any workflow in the
