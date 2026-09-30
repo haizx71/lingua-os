@@ -988,8 +988,45 @@ export async function verifyProtectedVercelOrigin(
     throw new Error('K2 hosted acceptance protected Vercel preflight failed; no actor was created.');
   }
   if (trustedResponse.status !== 200 || !trustedResponse.headers.has('x-vercel-id')) {
-    throw new Error('K2 hosted acceptance protected Vercel access is not authorized; no actor was created.');
+    throw new Error(
+      'K2 hosted acceptance protected Vercel access is not authorized ' +
+      `(status=${trustedResponse.status}; ` +
+      `x-vercel-id=${trustedResponse.headers.has('x-vercel-id')}; ` +
+      `redirect=${classifyProtectedVercelRedirect(trustedResponse, origin)}); ` +
+      'no actor was created.',
+    );
   }
+}
+
+type ProtectedVercelRedirectClass =
+  | 'none'
+  | 'invalid'
+  | 'insecure'
+  | 'same-origin'
+  | 'vercel-auth'
+  | 'vercel-app'
+  | 'other-https';
+
+function classifyProtectedVercelRedirect(
+  response: Response,
+  origin: string,
+): ProtectedVercelRedirectClass {
+  const location = response.headers.get('location');
+  if (!location) return 'none';
+
+  let target: URL;
+  try { target = new URL(location, origin); }
+  catch { return 'invalid'; }
+
+  if (target.username || target.password) return 'invalid';
+  if (target.protocol !== 'https:') return 'insecure';
+  if (target.origin === origin) return 'same-origin';
+  if (
+    target.hostname === 'vercel.com' &&
+    ['/sso-api', '/login', '/auth'].includes(target.pathname)
+  ) return 'vercel-auth';
+  if (target.hostname.endsWith('.vercel.app')) return 'vercel-app';
+  return 'other-https';
 }
 
 interface GithubDeploymentRecord {
