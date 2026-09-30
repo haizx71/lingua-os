@@ -2,7 +2,7 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
-## Current Knowledge V2 delivery gate — 2026-09-30
+## Current Knowledge V2 delivery gate — 2026-10-01
 
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
@@ -54,9 +54,17 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   as `vercel-app`; the guard stopped before actor creation. Current-run-cleanup job
   `109964874290` passed (41 seconds). No retained baseline/learner comparison gate was reached.
   K2-07 remains BLOCKED and K2-08 remains locked; hosted acceptance is not established.
+  Hosted run `36747649793` on master SHA `fdb4036e436e8b82b9fb67b1358413a2a5b31367` passed
+  protected Vercel access and then failed the application migration-head gate before actor
+  creation. Its current-run cleanup passed in 45 seconds. No retained baseline or learner
+  comparison gate was reached. The app registry diagnosis was: `public.schema_migrations` had
+  `0001`–`0017`; the Python probe reported app head `0017` / 17 applied, while the TypeScript
+  adapter incorrectly reported app head `0019` / 19 applied. The Supabase migration ledger
+  separately requires `0019` plus the custom read-only role, both confirmed; this does not make
+  the app registry gate pass. K2-07 remains BLOCKED and K2-08 remains locked.
   Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
-  missing published aligned content/HTTPS audio. Read-only checks confirmed staging at migration
-  `0019` and the dedicated `k2_hosted_acceptance_reader` role has broad read access without
+  missing published aligned content/HTTPS audio. The Supabase ledger is at migration `0019`; the dedicated `k2_hosted_acceptance_reader` role
+  is configured with broad read access without
   `pg_write_all_data` membership. DB-only preflight passed; no disposable-actor preflight has run.
   Current source checks passed: 61/61 focused harness Vitest (including workflow security),
   6/6 probe pytest, 1/1 real Chromium redirect, and workspace typecheck. `pnpm backend:check`
