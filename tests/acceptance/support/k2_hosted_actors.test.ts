@@ -1036,6 +1036,84 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
+  it('reports only bounded response facts when the protected request is rejected', async () => {
+    let calls = 0;
+    const request = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: 'https://vercel.com/sso-api',
+            'x-vercel-id': 'region::request-id',
+          },
+        });
+      }
+      return new Response('private-response-body-marker', {
+        status: 308,
+        headers: {
+          location: 'https://lingua-os-web-mocha.vercel.app/auth?email=learner%40example.test&token=private-query-marker',
+          'x-vercel-id': 'region::request-id',
+          'set-cookie': 'session=private-cookie-marker',
+        },
+      });
+    });
+
+    let failureMessage = '';
+    try {
+      await verifyProtectedVercelOrigin(
+        'https://lingua-os-preview.vercel.app',
+        'trusted-source-token-placeholder',
+        request,
+      );
+    } catch (error) {
+      if (error instanceof Error) failureMessage = error.message;
+    }
+
+    expect(failureMessage).toContain('status=308');
+    expect(failureMessage).toContain('x-vercel-id=true');
+    expect(failureMessage).toContain('redirect=vercel-app');
+    expect(failureMessage).toContain('no actor was created');
+    expect(failureMessage).not.toContain('lingua-os-web-mocha.vercel.app');
+    expect(failureMessage).not.toContain('learner%40example.test');
+    expect(failureMessage).not.toContain('private-query-marker');
+    expect(failureMessage).not.toContain('private-cookie-marker');
+    expect(failureMessage).not.toContain('private-response-body-marker');
+  });
+
+  it('distinguishes a bare Vercel rejection without exposing response contents', async () => {
+    let calls = 0;
+    const request = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: 'https://vercel.com/sso-api',
+            'x-vercel-id': 'region::request-id',
+          },
+        });
+      }
+      return new Response('private-response-body-marker', { status: 403 });
+    });
+
+    let failureMessage = '';
+    try {
+      await verifyProtectedVercelOrigin(
+        'https://lingua-os-preview.vercel.app',
+        'trusted-source-token-placeholder',
+        request,
+      );
+    } catch (error) {
+      if (error instanceof Error) failureMessage = error.message;
+    }
+
+    expect(failureMessage).toContain('status=403');
+    expect(failureMessage).toContain('x-vercel-id=false');
+    expect(failureMessage).toContain('redirect=none');
+    expect(failureMessage).not.toContain('private-response-body-marker');
+  });
+
   it('normal actor sign-in suppresses provider details and checks identity parity', async () => {
     const actor = makeActor();
     const signInWithPassword = vi.fn(async () => ({
