@@ -110,17 +110,18 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   `PATCH /v1/me` to persist a valid IANA timezone before language creation, as required by
   ADR-019. This is a harness setup precondition failure; the K2-07 plugin assertions, replay, and
   isolation checks were not reached. The main finalizer completed without overriding the original
-  error and reported Auth deletion, actor-row absence, and retained before/after equality; the
-  separate current-run-cleanup job passed in 44 seconds. Independent review of cleanup and retained
-  comparison evidence is pending. Do not mark K2-07 hosted acceptance PASS; K2-07 remains BLOCKED
-  and K2-08 remains locked.
+  error. Independent source/sanitized-log review found no cleanup, actor-residue, or retained-
+  comparison error replacing the 409; the logs did not expose explicit row counts. The separate
+  current-run-cleanup job passed in 44 seconds. Do not mark K2-07 hosted acceptance PASS; K2-07
+  remains BLOCKED and K2-08 remains locked.
 - Local source verification passed before the latest hosted run: 61/61 focused
   hosted-harness Vitest tests (including workflow security checks), 6/6 Python probe
   tests, 1/1 real Chromium redirect test, and workspace typecheck. `pnpm backend:check`
   had passed on the prior source snapshot (600 backend tests); this source verification
   did not create hosted actors or change hosted state.
-- Documentation update for the latest hosted-gate evidence: GPT-6 Luna / Medium. The K2-07
-  harness-only follow-up and independent cleanup/retained-state review remain separate pending work.
+- Documentation update for the latest hosted-gate evidence: GPT-6 Luna / Medium. The source/log
+  review supports the failure-finalizer control flow; a passing K2-07 hosted learner-state run is
+  still required before task closure.
 - PR #28 diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review:
   GPT-6 Luna / Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation
   update: GPT-6 Luna / Medium.

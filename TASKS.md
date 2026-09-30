@@ -70,10 +70,10 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   Its learner profile timezone was null; the harness omitted the required ETag-protected
   `PATCH /v1/me` to persist a valid IANA timezone before language creation (ADR-019). K2-07
   plugin assertions, replay, and isolation were not reached. The main finalizer completed without
-  overriding the original error and reported Auth deletion, actor-row absence, and retained
-  before/after equality. Separate current-run cleanup passed in 44 seconds; independent review
-  of cleanup/retained evidence is pending. K2-07 remains BLOCKED; K2-08 remains locked. Do not
-  report hosted acceptance as PASS.
+  overriding the original error. Independent source/sanitized-log review found no cleanup,
+  actor-residue, or retained-comparison error replacing the 409; logs did not expose explicit row
+  counts. Separate current-run cleanup passed in 44 seconds. K2-07 remains BLOCKED; K2-08 remains
+  locked. Do not report hosted acceptance as PASS.
   Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
   missing published aligned content/HTTPS audio. The Supabase ledger is at migration `0019`; the dedicated `k2_hosted_acceptance_reader` role
   is configured with broad read access without

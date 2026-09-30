@@ -41,7 +41,12 @@ export type K2HostedApiResult = {
 export type K2HostedApiRequest = (
   accessToken: string,
   route: string,
-  options?: { readonly method?: string; readonly body?: unknown; readonly idempotencyKey?: string },
+  options?: {
+    readonly method?: string;
+    readonly body?: unknown;
+    readonly idempotencyKey?: string;
+    readonly ifMatch?: string;
+  },
   expectedStatuses?: readonly number[],
 ) => Promise<K2HostedApiResult>;
 
@@ -82,7 +87,12 @@ export async function requestK2HostedApi(
   config: K2HostedConfig,
   accessToken: string,
   route: string,
-  options: { readonly method?: string; readonly body?: unknown; readonly idempotencyKey?: string } = {},
+  options: {
+    readonly method?: string;
+    readonly body?: unknown;
+    readonly idempotencyKey?: string;
+    readonly ifMatch?: string;
+  } = {},
   expectedStatuses: readonly number[] = [200],
 ): Promise<K2HostedApiResult> {
   let response: Response;
@@ -93,6 +103,7 @@ export async function requestK2HostedApi(
         Authorization: `Bearer ${accessToken}`,
         ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}),
+        ...(options.ifMatch === undefined ? {} : { 'If-Match': options.ifMatch }),
       },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       signal: AbortSignal.timeout(30_000),
@@ -148,11 +159,29 @@ async function verifyActorGone(config: K2HostedConfig, actorId: string): Promise
   }
 }
 
-async function createLearnerProfile(config: K2HostedConfig, session: K2AuthenticatedActor): Promise<string> {
-  const me = dataObject((await requestK2HostedApi(config, session.accessToken, '/v1/me')).payload,
+export async function createLearnerProfile(config: K2HostedConfig, session: K2AuthenticatedActor): Promise<string> {
+  const meResponse = await requestK2HostedApi(config, session.accessToken, '/v1/me');
+  const me = dataObject(meResponse.payload,
     'K2 hosted acceptance application identity bootstrap was invalid.');
   if (me.id !== session.userId) {
     throw new Error('K2 hosted acceptance application identity did not match the confirmed Auth actor.');
+  }
+  const learnerProfileEtag = meResponse.response.headers.get('etag');
+  if (!learnerProfileEtag) {
+    throw new Error('K2 hosted acceptance learner profile ETag was missing.');
+  }
+  if (me.timeZone !== 'Asia/Ho_Chi_Minh') {
+    const timezoneResponse = await requestK2HostedApi(config, session.accessToken, '/v1/me', {
+      method: 'PATCH',
+      ifMatch: learnerProfileEtag,
+      body: { timeZone: 'Asia/Ho_Chi_Minh' },
+    }, [200]);
+    const updatedMe = dataObject(timezoneResponse.payload,
+      'K2 hosted acceptance timezone update response was invalid.');
+    if (updatedMe.id !== session.userId || updatedMe.timeZone !== 'Asia/Ho_Chi_Minh' ||
+        !timezoneResponse.response.headers.get('etag')) {
+      throw new Error('K2 hosted acceptance learner timezone was not persisted.');
+    }
   }
   const existing = parseK2LanguageProfileList(
     (await requestK2HostedApi(config, session.accessToken, '/v1/me/languages')).payload,
