@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import pytest
 
@@ -11,7 +12,9 @@ from tests.acceptance.support import k2_hosted_probe as probe
 
 
 class Result:
-    def __init__(self, rows: list[tuple[Any, ...]] | None = None, row: tuple[Any, ...] | None = None):
+    def __init__(
+        self, rows: list[tuple[Any, ...]] | None = None, row: tuple[Any, ...] | None = None
+    ):
         self._rows = rows or []
         self._row = row
 
@@ -24,8 +27,12 @@ class Result:
 
 class InventoryConnection:
     def __init__(
-        self, *, extra_table: bool = False, select_missing: bool = False,
-        write_grant: bool = False, missing_policy: bool = False,
+        self,
+        *,
+        extra_table: bool = False,
+        select_missing: bool = False,
+        write_grant: bool = False,
+        missing_policy: bool = False,
         restrictive_policy: bool = False,
     ):
         self.calls: list[str] = []
@@ -48,59 +55,82 @@ class InventoryConnection:
             return Result(row=(not self.select_missing, False, False, False, False, False))
         if "has_table_privilege(current_user, relation.oid, 'SELECT')" in statement:
             names = sorted(set(probe.EXPECTED_LEARNER_TABLES) | set(probe.EXPECTED_CATALOG_TABLES))
-            return Result(rows=[
-                (name, True, self.write_grant and name == "users", False, False, False, False, False, False)
-                for name in names
-            ])
+            return Result(
+                rows=[
+                    (
+                        name,
+                        True,
+                        self.write_grant and name == "users",
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                    )
+                    for name in names
+                ]
+            )
         if "FROM pg_policy AS policy" in statement:
             without_rls = {"assessment_attempt_items", "assessment_idempotency_log"}
-            return Result(rows=[
-                (
-                    name, name not in without_rls, False,
-                    name not in without_rls and not (self.missing_policy and name == "users"),
-                    self.restrictive_policy and name == "users",
-                )
-                for name in sorted(probe.EXPECTED_LEARNER_TABLES)
-            ])
+            return Result(
+                rows=[
+                    (
+                        name,
+                        name not in without_rls,
+                        False,
+                        name not in without_rls and not (self.missing_policy and name == "users"),
+                        self.restrictive_policy and name == "users",
+                    )
+                    for name in sorted(probe.EXPECTED_LEARNER_TABLES)
+                ]
+            )
         raise AssertionError("unexpected probe query")
 
 
 def test_inventory_uses_unfiltered_catalog_and_checks_select_and_all_write_privileges() -> None:
     connection = InventoryConnection()
-    names = probe._table_inventory(connection)  # noqa: SLF001
+    names = probe._table_inventory(connection)
 
     assert names == tuple(sorted(probe.EXPECTED_LEARNER_TABLES))
     assert "pg_class" in connection.calls[0]
     assert "pg_attribute" in connection.calls[0]
     assert "information_schema" not in connection.calls[0]
-    assert sum("has_table_privilege(current_user, %s, 'SELECT')" in statement
-               for statement in connection.calls) == 27
+    assert (
+        sum(
+            "has_table_privilege(current_user, %s, 'SELECT')" in statement
+            for statement in connection.calls
+        )
+        == 27
+    )
     assert any("relation.oid, 'TRIGGER'" in statement for statement in connection.calls)
     assert any("FROM pg_policy AS policy" in statement for statement in connection.calls)
 
 
 def test_inventory_fails_if_pg_catalog_finds_an_unpinned_owner_table() -> None:
     with pytest.raises(probe.ProbeError):
-        probe._table_inventory(InventoryConnection(extra_table=True))  # noqa: SLF001
+        probe._table_inventory(InventoryConnection(extra_table=True))
 
 
 def test_inventory_fails_if_any_pinned_table_is_not_selectable() -> None:
     with pytest.raises(probe.ProbeError):
-        probe._table_inventory(InventoryConnection(select_missing=True))  # noqa: SLF001
+        probe._table_inventory(InventoryConnection(select_missing=True))
 
 
 def test_inventory_fails_if_read_role_has_any_effective_public_write_grant() -> None:
     with pytest.raises(probe.ProbeError):
-        probe._table_inventory(InventoryConnection(write_grant=True))  # noqa: SLF001
+        probe._table_inventory(InventoryConnection(write_grant=True))
 
 
 @pytest.mark.parametrize("policy_failure", ["missing_policy", "restrictive_policy"])
 def test_inventory_fails_if_rls_cannot_prove_complete_snapshot(policy_failure: str) -> None:
     with pytest.raises(probe.ProbeError):
-        probe._table_inventory(InventoryConnection(**{policy_failure: True}))  # noqa: SLF001
+        probe._table_inventory(InventoryConnection(**{policy_failure: True}))
 
 
-def test_probe_connection_rejects_noncanonical_or_writable_database_roles(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_connection_rejects_noncanonical_or_writable_database_roles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class FakeConnection:
         def __init__(self, status: tuple[Any, ...]):
             self.status = status
@@ -118,30 +148,61 @@ def test_probe_connection_rejects_noncanonical_or_writable_database_roles(monkey
         "K2_STAGING_READONLY_DATABASE_URL",
         "postgresql://k2_hosted_acceptance_reader.bdmtdvvnbicgkfririjo:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full",
     )
-    monkeypatch.setenv("PGSSLROOTCERT", str(Path(probe.__file__).resolve().parents[3] / "database/certs/supabase-prod-ca-2021.crt"))
+    monkeypatch.setenv(
+        "PGSSLROOTCERT",
+        str(Path(probe.__file__).resolve().parents[3] / "database/certs/supabase-prod-ca-2021.crt"),
+    )
     safe_status = (
-        "k2_hosted_acceptance_reader", "on", "on", False, False, False, False,
-        False, False, True, 5, 0, False, False,
+        "k2_hosted_acceptance_reader",
+        "on",
+        "on",
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        5,
+        0,
+        False,
+        False,
     )
     safe = FakeConnection(safe_status)
     monkeypatch.setattr(probe.psycopg, "connect", lambda *_args, **_kwargs: safe)
-    assert probe._connection() is safe  # noqa: SLF001
+    assert probe._connection() is safe
 
-    unsafe = FakeConnection((
-        "k2_hosted_acceptance_reader", "on", "on", False, False, False, False,
-        True, False, True, 5, 0, False, False,
-    ))
+    unsafe = FakeConnection(
+        (
+            "k2_hosted_acceptance_reader",
+            "on",
+            "on",
+            False,
+            False,
+            False,
+            False,
+            True,
+            False,
+            True,
+            5,
+            0,
+            False,
+            False,
+        )
+    )
     monkeypatch.setattr(probe.psycopg, "connect", lambda *_args, **_kwargs: unsafe)
     with pytest.raises(probe.ProbeError):
-        probe._connection()  # noqa: SLF001
+        probe._connection()
     assert unsafe.closed
 
 
-def test_probe_requires_exact_pooler_tenant_verified_tls_and_pinned_root(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_requires_exact_pooler_tenant_verified_tls_and_pinned_root(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     root = Path(probe.__file__).resolve().parents[3] / "database/certs/supabase-prod-ca-2021.crt"
     monkeypatch.setenv("PGSSLROOTCERT", str(root))
     good = "postgresql://k2_hosted_acceptance_reader.bdmtdvvnbicgkfririjo:placeholder@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full"
-    probe._require_verified_staging_connection(good)  # noqa: SLF001
+    probe._require_verified_staging_connection(good)
     for bad in (
         good.replace("verify-full", "require"),
         good + "&sslrootcert=/tmp/untrusted.crt",
@@ -149,13 +210,15 @@ def test_probe_requires_exact_pooler_tenant_verified_tls_and_pinned_root(monkeyp
         good.replace("aws-0-ap-southeast-1.pooler.supabase.com", "db.example.invalid"),
     ):
         with pytest.raises(probe.ProbeError):
-            probe._require_verified_staging_connection(bad)  # noqa: SLF001
+            probe._require_verified_staging_connection(bad)
     monkeypatch.delenv("PGSSLROOTCERT")
     with pytest.raises(probe.ProbeError):
-        probe._require_verified_staging_connection(good)  # noqa: SLF001
+        probe._require_verified_staging_connection(good)
 
 
-def test_probe_failure_output_never_echoes_database_url(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_probe_failure_output_never_echoes_database_url(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setenv("K2_STAGING_READONLY_DATABASE_URL", "")
     monkeypatch.setenv("K2_ACCEPTANCE_PROBE_ACTION", "migrations")
     monkeypatch.delenv("K2_ACCEPTANCE_ACTOR_ID", raising=False)
@@ -169,21 +232,30 @@ def test_migration_probe_distinguishes_application_and_supabase_ledgers() -> Non
     class MigrationConnection:
         def execute(self, query: str) -> Result:
             if "FROM public.schema_migrations" in query:
-                return Result(rows=[
-                    (f"{number:04d}", "knowledge_v2_learner_retrievability" if number == 17 else "older")
-                    for number in range(1, 18)
-                ])
+                return Result(
+                    rows=[
+                        (
+                            f"{number:04d}",
+                            "today_remediation_reason_codes" if number == 20 else "older",
+                        )
+                        for number in range(1, 21)
+                    ]
+                )
             if "FROM supabase_migrations.schema_migrations" in query:
-                return Result(rows=[
-                    ("20260927034218", "concept_save_intent_auth_erasure_0019"),
-                    ("20260928000000", "k2_hosted_acceptance_reader_staging"),
-                ])
+                return Result(
+                    rows=[
+                        ("20260927034218", "concept_save_intent_auth_erasure_0019"),
+                        ("20260928000000", "k2_hosted_acceptance_reader_staging"),
+                        ("20261001000000", "today_remediation_reason_codes_0020"),
+                    ]
+                )
             if "has_column_privilege" in query:
                 return Result(row=(True, True, False, False, False, False, False, False))
             raise AssertionError("unexpected migration query")
 
-    assert probe._migration_head(MigrationConnection()) == {  # noqa: SLF001
-        "appMigrationHead": "0017", "appliedMigrations": 17,
+    assert probe._migration_head(MigrationConnection()) == {
+        "appMigrationHead": "0020",
+        "appliedMigrations": 20,
     }
 
 
@@ -191,32 +263,125 @@ def test_migration_probe_fails_if_supabase_ledger_is_not_at_reader_migration() -
     class OlderMigrationConnection:
         def execute(self, query: str) -> Result:
             if "FROM public.schema_migrations" in query:
-                return Result(rows=[
-                    (f"{number:04d}", "knowledge_v2_learner_retrievability" if number == 17 else "older")
-                    for number in range(1, 18)
-                ])
+                return Result(
+                    rows=[
+                        (
+                            f"{number:04d}",
+                            "today_remediation_reason_codes" if number == 20 else "older",
+                        )
+                        for number in range(1, 21)
+                    ]
+                )
             return Result(rows=[("20260927034218", "concept_save_intent_auth_erasure_0019")])
 
     with pytest.raises(probe.ProbeError):
-        probe._migration_head(OlderMigrationConnection())  # noqa: SLF001
+        probe._migration_head(OlderMigrationConnection())
 
 
 def test_migration_probe_requires_supabase_0019_before_the_reader_migration() -> None:
     class Missing0019Connection:
         def execute(self, query: str) -> Result:
             if "FROM public.schema_migrations" in query:
-                return Result(rows=[
-                    (f"{number:04d}", "knowledge_v2_learner_retrievability" if number == 17 else "older")
-                    for number in range(1, 18)
-                ])
+                return Result(
+                    rows=[
+                        (
+                            f"{number:04d}",
+                            "today_remediation_reason_codes" if number == 20 else "older",
+                        )
+                        for number in range(1, 21)
+                    ]
+                )
             if "FROM supabase_migrations.schema_migrations" in query:
-                return Result(rows=[
-                    ("20260927021246", "profile_replay_auth_erasure_0018"),
-                    ("20260928000000", "k2_hosted_acceptance_reader_staging"),
-                ])
+                return Result(
+                    rows=[
+                        ("20260927021246", "profile_replay_auth_erasure_0018"),
+                        ("20260928000000", "k2_hosted_acceptance_reader_staging"),
+                        ("20261001000000", "today_remediation_reason_codes_0020"),
+                    ]
+                )
             if "has_column_privilege" in query:
                 return Result(row=(True, True, False, False, False, False, False, False))
             raise AssertionError("unexpected migration query")
 
     with pytest.raises(probe.ProbeError):
-        probe._migration_head(Missing0019Connection())  # noqa: SLF001
+        probe._migration_head(Missing0019Connection())
+
+
+def test_migration_probe_rejects_platform_migrations_after_the_approved_0020_tail() -> None:
+    class UnexpectedPlatformMigrationConnection:
+        def execute(self, query: str) -> Result:
+            if "FROM public.schema_migrations" in query:
+                return Result(
+                    rows=[
+                        (
+                            f"{number:04d}",
+                            "today_remediation_reason_codes" if number == 20 else "older",
+                        )
+                        for number in range(1, 21)
+                    ]
+                )
+            if "FROM supabase_migrations.schema_migrations" in query:
+                return Result(
+                    rows=[
+                        ("20260927034218", "concept_save_intent_auth_erasure_0019"),
+                        ("20260928000000", "k2_hosted_acceptance_reader_staging"),
+                        ("20261001000000", "today_remediation_reason_codes_0020"),
+                        ("20261002000000", "unapproved_later_migration"),
+                    ]
+                )
+            if "has_column_privilege" in query:
+                return Result(row=(True, True, False, False, False, False, False, False))
+            raise AssertionError("unexpected migration query")
+
+    with pytest.raises(probe.ProbeError):
+        probe._migration_head(UnexpectedPlatformMigrationConnection())
+
+
+def test_today_review_targets_probe_returns_only_a_bounded_ordered_actor_mapping() -> None:
+    actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    review_ids = [
+        UUID("00000000-0000-4000-8000-000000000001"),
+        UUID("00000000-0000-4000-8000-000000000002"),
+    ]
+
+    class ActorPlanConnection:
+        statement = ""
+
+        def execute(self, query: str, params: tuple[object, ...]) -> Result:
+            self.statement = query
+            assert params == (actor_id, actor_id, actor_id)
+            return Result(row=("today-heuristic-v2", 1, 1, 2, review_ids))
+
+    connection = ActorPlanConnection()
+    result = probe._today_review_targets(connection, actor_id)
+
+    assert result == {
+        "engineVersion": "today-heuristic-v2",
+        "activityCount": 1,
+        "reviewActivityCount": 1,
+        "targetCount": 2,
+        "reviewItemIds": [str(value) for value in review_ids],
+    }
+    assert "WHERE user_id = %s" in connection.statement
+    assert "LIMIT 182" in connection.statement
+    assert str(actor_id) not in str(result)
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        ("today-heuristic-v2", 1, 1, 2, [UUID("00000000-0000-4000-8000-000000000001")]),
+        ("today-heuristic-v2", 21, 1, 1, [UUID("00000000-0000-4000-8000-000000000001")]),
+    ],
+)
+def test_today_review_targets_probe_fails_closed_on_invalid_or_unbounded_plan_rows(
+    row: tuple[object, ...],
+) -> None:
+    class InvalidPlanConnection:
+        def execute(self, query: str, params: tuple[object, ...]) -> Result:
+            return Result(row=row)
+
+    with pytest.raises(probe.ProbeError):
+        probe._today_review_targets(
+            InvalidPlanConnection(), UUID("550e8400-e29b-41d4-a716-446655440000")
+        )

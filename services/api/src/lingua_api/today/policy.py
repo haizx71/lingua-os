@@ -34,7 +34,38 @@ class TodayPolicy:
     content_candidate_limit: int = 20
 
 
-TODAY_HEURISTIC_V1 = TodayPolicy()
+TODAY_HEURISTIC_V1 = TodayPolicy(
+    version="today-heuristic-v1",
+    review_minutes_per_item=1,
+    content_block_min_minutes=5,
+    content_block_max_minutes=10,
+    content_reserve_minutes=8,
+    listening_block_minutes=5,
+    max_read_activities=2,
+    max_listen_activities=1,
+    max_new_content=1,
+    max_new_unseen_concepts=4,
+    recent_exposure_window_hours=48,
+    review_candidate_limit_max=181,
+    competence_candidate_limit=50,
+    content_candidate_limit=20,
+)
+TODAY_HEURISTIC_V2 = TodayPolicy(
+    version="today-heuristic-v2",
+    review_minutes_per_item=1,
+    content_block_min_minutes=5,
+    content_block_max_minutes=10,
+    content_reserve_minutes=8,
+    listening_block_minutes=5,
+    max_read_activities=2,
+    max_listen_activities=1,
+    max_new_content=1,
+    max_new_unseen_concepts=4,
+    recent_exposure_window_hours=48,
+    review_candidate_limit_max=181,
+    competence_candidate_limit=50,
+    content_candidate_limit=20,
+)
 
 
 def build_today_decision(
@@ -55,19 +86,26 @@ def build_today_decision(
     eligible_content = tuple(
         sorted(
             (item for item in content if _eligible_content(item, policy)),
-            key=_content_order,
+            key=lambda item: _content_order(
+                item, remediation_first=policy.version == TODAY_HEURISTIC_V2.version
+            ),
         )
     )
 
     activities: list[TodayActivityDecision] = []
     remaining = context.target_minutes
     if ordered_reviews:
-        reserve = (
-            policy.content_reserve_minutes
-            if context.target_minutes >= 15
-            and _has_packable_content(eligible_content, remaining, policy)
-            else 0
-        )
+        if context.target_minutes >= 15:
+            if policy.version == TODAY_HEURISTIC_V2.version:
+                reserve = _v2_content_reserve(eligible_content, remaining, policy)
+            else:
+                reserve = (
+                    policy.content_reserve_minutes
+                    if _has_packable_content(eligible_content, remaining, policy)
+                    else 0
+                )
+        else:
+            reserve = 0
         review_capacity = max(0, remaining - reserve)
         selected = ordered_reviews[: review_capacity // policy.review_minutes_per_item]
         if selected:
@@ -84,28 +122,24 @@ def build_today_decision(
             break
         if candidate.content_id in selected_content:
             continue
-        is_new = not candidate.is_unfinished and not candidate.is_saved
+        is_new = _is_new(candidate, policy)
         if is_new and new_count >= policy.max_new_content:
             continue
         weakness = _weakness(candidate, due_concepts)
         use_listen = candidate.has_audio and weakness == "WEAK_LISTENING"
-        if use_listen:
-            if listen_count >= policy.max_listen_activities:
-                continue
-            minutes = policy.listening_block_minutes
-        else:
-            if read_count >= policy.max_read_activities:
-                continue
-            minutes = min(
-                policy.content_block_max_minutes,
-                max(policy.content_block_min_minutes, candidate.estimated_minutes),
-            )
-        if minutes > remaining:
-            minutes = remaining
-        if minutes < policy.content_block_min_minutes:
+        if use_listen and listen_count >= policy.max_listen_activities:
+            continue
+        if not use_listen and read_count >= policy.max_read_activities:
+            continue
+        minutes = _content_minutes(candidate, use_listen, remaining, policy)
+        if minutes is None:
             continue
 
-        reason_codes = _content_reasons(candidate, weakness, is_new)
+        reason_codes = (
+            _v2_content_reasons(candidate, weakness, is_new)
+            if policy.version == TODAY_HEURISTIC_V2.version
+            else _content_reasons(candidate, weakness, is_new)
+        )
         source = _candidate_source(candidate)
         activity_type: Literal["read", "listen"] = "listen" if use_listen else "read"
         activities.append(
@@ -161,17 +195,34 @@ def build_today_decision(
 def _eligible_content(candidate: ContentCandidate, policy: TodayPolicy) -> bool:
     if candidate.is_completed:
         return False
-    is_recommended_new = not candidate.is_unfinished and not candidate.is_saved
+    is_recommended_new = (
+        not candidate.is_unfinished
+        and not candidate.is_saved
+        and not (
+            policy.version == TODAY_HEURISTIC_V2.version
+            and candidate.remediation_status is not None
+        )
+    )
     return not (
         is_recommended_new and candidate.unseen_concept_count > policy.max_new_unseen_concepts
     )
 
 
-def _content_order(candidate: ContentCandidate) -> tuple[object, ...]:
+def _content_order(
+    candidate: ContentCandidate, *, remediation_first: bool = False
+) -> tuple[object, ...]:
     if candidate.is_unfinished:
         return (0, _descending_time(candidate.last_opened_at), candidate.content_id)
     if candidate.is_saved:
         return (1, _descending_time(candidate.saved_at), candidate.content_id)
+    if remediation_first:
+        if candidate.remediation_status == "forgotten":
+            return (2, 0, candidate.source_rank, candidate.content_id)
+        if candidate.remediation_status == "weak":
+            return (2, 1, candidate.source_rank, candidate.content_id)
+        if candidate.recently_exposed:
+            return (2, 2, candidate.source_rank, candidate.content_id)
+        return (2, 3, candidate.source_rank, candidate.content_id)
     if candidate.forgotten:
         boost = 0
     elif _has_weakness(candidate):
@@ -191,6 +242,84 @@ def _has_packable_content(
     candidates: tuple[ContentCandidate, ...], remaining: int, policy: TodayPolicy
 ) -> bool:
     return bool(candidates) and remaining >= policy.content_block_min_minutes
+
+
+def _is_new(candidate: ContentCandidate, policy: TodayPolicy) -> bool:
+    if policy.version == TODAY_HEURISTIC_V2.version and candidate.remediation_status is not None:
+        return False
+    return not candidate.is_unfinished and not candidate.is_saved
+
+
+def _content_minutes(
+    candidate: ContentCandidate,
+    use_listen: bool,
+    remaining: int,
+    policy: TodayPolicy,
+) -> int | None:
+    minutes = (
+        policy.listening_block_minutes
+        if use_listen
+        else min(
+            policy.content_block_max_minutes,
+            max(policy.content_block_min_minutes, candidate.estimated_minutes),
+        )
+    )
+    minutes = min(minutes, remaining)
+    return minutes if minutes >= policy.content_block_min_minutes else None
+
+
+def _v2_content_reserve(
+    candidates: tuple[ContentCandidate, ...],
+    remaining: int,
+    policy: TodayPolicy,
+) -> int:
+    reserve_limit = min(policy.content_reserve_minutes, remaining)
+    if reserve_limit < policy.content_block_min_minutes:
+        return 0
+
+    reserved = 0
+    read_count = 0
+    listen_count = 0
+    for candidate in candidates:
+        if _is_new(candidate, policy):
+            continue
+        weakness = _weakness(candidate, set())
+        use_listen = candidate.has_audio and weakness == "WEAK_LISTENING"
+        if use_listen and listen_count >= policy.max_listen_activities:
+            continue
+        if not use_listen and read_count >= policy.max_read_activities:
+            continue
+        minutes = _content_minutes(candidate, use_listen, reserve_limit - reserved, policy)
+        if minutes is None:
+            continue
+        reserved += minutes
+        if use_listen:
+            listen_count += 1
+        else:
+            read_count += 1
+        if reserved >= reserve_limit:
+            break
+    return reserved
+
+
+def _v2_content_reasons(
+    candidate: ContentCandidate,
+    weakness: str | None,
+    is_new: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if candidate.remediation_status == "forgotten":
+        reasons.append("FORGOTTEN_REMEDIATION")
+    elif candidate.remediation_status == "weak":
+        reasons.append("WEAK_REMEDIATION")
+    reasons.append("CONTENT_FIT")
+    if weakness is not None:
+        reasons.append(weakness)
+    if is_new and candidate.recently_exposed:
+        reasons.append("RECENT_EXPOSURE")
+    if is_new and weakness is None:
+        reasons.append("NEW_CONCEPT_BUDGET")
+    return tuple(reasons)
 
 
 def _review_activity(
@@ -260,6 +389,10 @@ def _content_reasons(
 
 
 def _reason_text(reason_codes: tuple[str, ...]) -> str:
+    if "FORGOTTEN_REMEDIATION" in reason_codes:
+        return "Nội dung giúp ôn lại khái niệm đã quên."
+    if "WEAK_REMEDIATION" in reason_codes:
+        return "Nội dung giúp củng cố khái niệm đang suy giảm."
     if "WEAK_LISTENING" in reason_codes:
         return "Nội dung phù hợp và củng cố kỹ năng nghe đang yếu."
     if "WEAK_RECOGNITION" in reason_codes:
@@ -284,6 +417,10 @@ def _priority_tier(candidate: ContentCandidate, weakness: str | None) -> str:
         return "CONTINUE_READER"
     if candidate.is_saved:
         return "SAVED_NOT_STARTED"
+    if candidate.remediation_status == "forgotten":
+        return "FORGOTTEN_REMEDIATION"
+    if candidate.remediation_status == "weak":
+        return "WEAK_REMEDIATION"
     if candidate.forgotten:
         return "FORGOTTEN_REINFORCEMENT"
     if weakness is not None:

@@ -834,7 +834,7 @@ export interface components {
         /** @enum {string} */
         readonly TodayActivityStatus: "pending" | "completed" | "skipped";
         /** @enum {string} */
-        readonly TodayReasonCode: "FSRS_DUE" | "WEAK_RECOGNITION" | "WEAK_LISTENING" | "LOW_PRODUCTION_EVIDENCE" | "CONTENT_FIT" | "RECENT_EXPOSURE" | "NEW_CONCEPT_BUDGET";
+        readonly TodayReasonCode: "FSRS_DUE" | "FORGOTTEN_REMEDIATION" | "WEAK_REMEDIATION" | "WEAK_RECOGNITION" | "WEAK_LISTENING" | "LOW_PRODUCTION_EVIDENCE" | "CONTENT_FIT" | "RECENT_EXPOSURE" | "NEW_CONCEPT_BUDGET";
         /** @enum {string} */
         readonly ContentType: "article" | "story" | "dialogue" | "lesson" | "transcript";
         /** @enum {string} */

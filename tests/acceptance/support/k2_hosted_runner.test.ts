@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createLearnerProfile,
+  k2HostedWaveCheckpoint,
   markK2HostedCheckpoint,
   markK2HostedFinalizerComplete,
   runK2ProtectedAuthUiSignIn,
@@ -73,6 +74,12 @@ describe('K2 hosted phase diagnostics', () => {
       type: 'k2-hosted-phase',
       description: 'primary_profile_bootstrap:start',
     }]);
+  });
+
+  it('keeps the due-only subcase on its own closed checkpoint', () => {
+    expect(k2HostedWaveCheckpoint('K2-07')).toBe('wave_k2_07');
+    expect(k2HostedWaveCheckpoint('K2-08-DUE-ONLY')).toBe('wave_k2_08_due_only');
+    expect(() => k2HostedWaveCheckpoint('K2-08' as never)).toThrow('wave is not implemented');
   });
 
   it('rejects an unlisted phase without logging or retaining its value', () => {

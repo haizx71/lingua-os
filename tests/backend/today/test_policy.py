@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import UUID
 
 from lingua_api.today.domain import ContentCandidate, ReviewCandidate, TodayContext
-from lingua_api.today.policy import TODAY_HEURISTIC_V1, build_today_decision
+from lingua_api.today.policy import TODAY_HEURISTIC_V1, TODAY_HEURISTIC_V2, build_today_decision
 
 AS_OF = datetime(2026, 9, 1, 1, 0, tzinfo=UTC)
 
@@ -32,6 +34,7 @@ def _content(
     completed: bool = False,
     audio: bool = False,
     weak_listening: bool = False,
+    remediation_status: Literal["weak", "forgotten"] | None = None,
     recent: bool = False,
     rank: int | None = None,
 ) -> ContentCandidate:
@@ -46,6 +49,7 @@ def _content(
         is_completed=completed,
         has_audio=audio,
         weak_listening=weak_listening,
+        remediation_status=remediation_status,
         recently_exposed=recent,
         last_opened_at=AS_OF - timedelta(hours=value) if unfinished else None,
         saved_at=AS_OF - timedelta(hours=value) if saved else None,
@@ -61,6 +65,7 @@ def test_policy_constants_are_frozen_under_one_version() -> None:
     assert TODAY_HEURISTIC_V1.content_reserve_minutes == 8
     assert TODAY_HEURISTIC_V1.max_new_unseen_concepts == 4
     assert TODAY_HEURISTIC_V1.recent_exposure_window_hours == 48
+    assert replace(TODAY_HEURISTIC_V1, version=TODAY_HEURISTIC_V2.version) == TODAY_HEURISTIC_V2
 
 
 def test_new_learner_uses_easiest_eligible_content_and_underfills() -> None:
@@ -229,3 +234,104 @@ def test_budget_is_never_exceeded_and_atomic_content_below_five_minutes_is_not_p
 
     assert sum(item.estimated_minutes for item in decision.activities) <= 7
     assert [item.activity_type for item in decision.activities] == ["review"]
+
+
+def test_v2_treats_forgotten_and_weak_as_remediation_before_new_content() -> None:
+    decision = build_today_decision(
+        _context(20),
+        (),
+        (
+            _content(1, remediation_status="weak", rank=0),
+            _content(2, remediation_status="forgotten", rank=3),
+            _content(3, remediation_status="forgotten", rank=1),
+            _content(4, unseen=1, rank=0),
+        ),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert [item.content_id for item in decision.activities] == [
+        _uuid(2003),
+        _uuid(2002),
+    ]
+    assert decision.activities[0].reason_codes[:2] == (
+        "FORGOTTEN_REMEDIATION",
+        "CONTENT_FIT",
+    )
+
+    weak_before_new = build_today_decision(
+        _context(20),
+        (),
+        (
+            _content(1, remediation_status="weak", rank=3),
+            _content(2, unseen=1, rank=0),
+        ),
+        policy=TODAY_HEURISTIC_V2,
+    )
+    assert [item.content_id for item in weak_before_new.activities] == [
+        _uuid(2001),
+        _uuid(2002),
+    ]
+    assert weak_before_new.activities[0].reason_codes[:2] == (
+        "WEAK_REMEDIATION",
+        "CONTENT_FIT",
+    )
+
+
+def test_v2_15_minutes_and_twenty_due_items_do_not_spend_reserve_on_new_content() -> None:
+    decision = build_today_decision(
+        _context(15),
+        tuple(_review(value) for value in range(1, 21)),
+        (_content(1, minutes=8, unseen=1),),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert [(item.activity_type, item.estimated_minutes) for item in decision.activities] == [
+        ("review", 15),
+    ]
+    assert decision.activities[0].target_count == 15
+    assert decision.activities[0].review_item_ids == tuple(
+        _uuid(value) for value in range(20, 5, -1)
+    )
+    assert decision.unused_minutes == 0
+
+
+def test_v2_familiar_content_uses_only_its_eight_minute_reserve_and_replays_policy_version() -> (
+    None
+):
+    decision = build_today_decision(
+        _context(15),
+        tuple(_review(value) for value in range(1, 21)),
+        (
+            _content(1, minutes=10, saved=True),
+            _content(2, minutes=10, unseen=1),
+        ),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert [(item.activity_type, item.estimated_minutes) for item in decision.activities] == [
+        ("review", 7),
+        ("read", 8),
+    ]
+    assert decision.activities[1].content_id == _uuid(2001)
+    assert decision.activities[1].diagnostics is not None
+    assert decision.activities[1].diagnostics["policyVersion"] == "today-heuristic-v2"
+    assert decision.unused_minutes == 0
+
+
+def test_v2_non_due_remediation_can_use_reserve_without_being_counted_as_new() -> None:
+    decision = build_today_decision(
+        _context(15),
+        tuple(_review(value) for value in range(1, 21)),
+        (_content(1, minutes=5, unseen=5, remediation_status="weak"),),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert [(item.activity_type, item.estimated_minutes) for item in decision.activities] == [
+        ("review", 10),
+        ("read", 5),
+    ]
+    assert decision.activities[1].reason_codes[:2] == (
+        "WEAK_REMEDIATION",
+        "CONTENT_FIT",
+    )
+    assert decision.unused_minutes == 0

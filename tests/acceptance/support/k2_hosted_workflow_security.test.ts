@@ -136,6 +136,10 @@ describe('K2 hosted workflow credential boundary', () => {
 
   it('restricts acceptance to an owner dispatch from the exact master workflow and current SHA', () => {
     const guard = String(acceptance.if);
+    const dispatchInputs = asMap(asMap(secretWorkflow.on, 'secret workflow triggers').workflow_dispatch,
+      'workflow_dispatch trigger').inputs;
+    const waveInput = asMap(asMap(dispatchInputs, 'workflow_dispatch inputs').wave, 'wave selector input');
+    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY']);
     expect(guard).toContain("github.event_name == 'workflow_dispatch'");
     expect(guard).toContain("github.repository == 'haizx71/lingua-os'");
     expect(guard).toContain("github.ref == 'refs/heads/master'");
@@ -143,18 +147,27 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(guard).toContain(`github.actor == '${OWNER}'`);
     expect(guard).toContain(`github.triggering_actor == '${OWNER}'`);
     expect(guard).toContain("inputs.mode == 'acceptance'");
-    const preflight = stepNamed(acceptance, 'Verify run SHA is still the master tip before staging secrets');
-    const acceptanceStep = stepNamed(acceptance, 'Run protected K2-07 acceptance');
+    expect(guard).toContain("inputs.wave == 'K2-07'");
+    expect(guard).toContain("inputs.wave == 'K2-08-DUE-ONLY'");
+    const preflight = stepNamed(acceptance, 'Verify run SHA and selected wave before staging secrets');
+    const acceptanceStep = stepNamed(acceptance, 'Run protected selected K2 hosted subcase');
     expect(stepsFor(acceptance).indexOf(preflight)).toBeLessThan(stepsFor(acceptance).indexOf(acceptanceStep));
     expect(preflight.run).toContain('redirect: \'error\'');
     expect(preflight.run).toContain('process.env.GITHUB_SHA');
     expect(preflight.run).toContain('/git/ref/heads/master');
+    expect(preflight.run).toContain('K2_REQUESTED_WAVE');
+    expect(preflight.run).toContain("'K2-08-DUE-ONLY'");
     expect(JSON.stringify(preflight)).not.toContain('secrets.');
+    expect(acceptanceStep.run).toContain('--grep "hosted lifecycle"');
+    expect(asMap(acceptanceStep.env, 'selected hosted subcase environment').K2_ACCEPTANCE_WAVE)
+      .toBe('${{ inputs.wave }}');
     expect(asMap(acceptance.permissions, 'acceptance permissions')).toEqual({
       contents: 'read',
       deployments: 'read',
       'id-token': 'write',
     });
+    expect(String(acceptanceStep.run)).toContain('tests/acceptance/k2_hosted_acceptance.spec.ts');
+    expect(String(acceptanceStep.run)).not.toContain('wave_k2_08');
   });
 
   it('maps repository secrets only to the acceptance, janitor, and recovery steps', () => {
@@ -173,11 +186,15 @@ describe('K2 hosted workflow credential boundary', () => {
     }
     expect(secretSteps.map(({ job, step }) => `${job}:${step}`).sort()).toEqual([
       'current-run-cleanup:Recover only actors marked for this workflow run',
-      'hosted-acceptance:Run protected K2-07 acceptance',
+      'hosted-acceptance:Run protected selected K2 hosted subcase',
       'janitor:Run guarded TTL janitor only',
     ]);
-    const acceptanceEnv = asMap(stepNamed(acceptance, 'Run protected K2-07 acceptance').env, 'acceptance step env');
+    const acceptanceEnv = asMap(
+      stepNamed(acceptance, 'Run protected selected K2 hosted subcase').env,
+      'acceptance step env',
+    );
     expect(acceptanceEnv.PGSSLROOTCERT).toBe(SUPABASE_CA_ENV);
+    expect(acceptanceEnv.K2_ACCEPTANCE_WAVE).toBe('${{ inputs.wave }}');
     expect(STAGING_SECRET_NAMES.every(name => typeof acceptanceEnv[name] === 'string' &&
       String(acceptanceEnv[name]).includes(`secrets.${name}`))).toBe(true);
     for (const job of [janitor, cleanup]) {

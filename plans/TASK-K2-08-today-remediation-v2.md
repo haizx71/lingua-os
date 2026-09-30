@@ -38,8 +38,9 @@ learner-state authorities.
   past/future retrieval-only behavior, 404 existence hiding, and the existing Today completion
   proof/idempotency contract.
 - New plan generation may write only accepted Today plan, activity, review-target, and diagnostic
-  rows. It must not write evidence, FSRS, competence, Library, Reader, or content state. No schema
-  migration is expected.
+  rows. It must not write evidence, FSRS, competence, Library, Reader, or content state. No learner-
+  state schema change is expected. Migration 0020 is required only to extend the persisted Today
+  reason-code CHECK for the two closed-contract remediation codes.
 - Do not modify `STATUS.md` or `TASKS.md` in this task; the K2-07 closeout update has a separate
   owner.
 - No hosted state, actor, secret, deployment, or external credential changes are in scope.
@@ -101,7 +102,9 @@ learner-state authorities.
 ## Hosted K2-08 plugin and fixture boundary
 
 - Extend only the existing K2 Hosted Acceptance workflow and reusable `K2HostedWavePlugin` runner.
-  Add a `k2HostedWaveK208` plugin and an allowlisted wave dispatch. Preserve the current
+  Keep the accepted K2-07 selector and add only the explicitly named `K2-08-DUE-ONLY` selector and
+  `k2HostedWaveK208DueOnly` plugin. Use the closed phase label `wave_k2_08_due_only`; never emit a
+  full-wave `wave_k2_08` pass marker. Preserve the current
   `workflow_dispatch`-only trigger, exact repository and `master` ref checks, owner/actor checks,
   minimal permissions, existing Production environment and OIDC audience, and validate the selected
   wave before exposing secrets. Do not create another workflow or alter trusted-source rules.
@@ -124,7 +127,10 @@ learner-state authorities.
   the ordered 15-item Review prefix and no content activity because staging currently has no
   Reader-published content. This proves due allocation/replay/isolation/Today-only generation for
   that subcase only; it does not prove content reserve behavior or remediation-first allocation.
-  The 15-minute / 20-due/no-new policy regression and database tests prove those local semantics.
+  The shared runner keeps actor creation, normal sign-in, source/migration preflight, current-run
+  cleanup, zero-residue proof, and retained-state comparison in force. The run reports this selector
+  as a subcase and cannot satisfy or announce overall K2-08 hosted acceptance. The 15-minute /
+  20-due/no-new policy regression and PostgreSQL tests prove those local semantics.
 - Source review establishes a bootstrap limit for a fresh hosted actor under the default
   per-concept competence policy: `services/api/src/lingua_api/review/modality.py` ranks only
   dimensions with existing evidence and otherwise selects `self_recall`; Save/Learn creates
@@ -161,12 +167,44 @@ learner-state authorities.
 
 ## Risk/decision notes
 
-- The Today reason registry is closed in the current Pydantic/OpenAPI/enums sources, so adding the
-  two explicit remediation reasons is a required additive contract update, not an optional string
-  extension.
+- The Today reason registry and persisted `today_plan_activities.reason_codes` CHECK are closed.
+  Adding the two explicit remediation reasons therefore requires same-task updates to Pydantic,
+  OpenAPI, `contracts/enums.json`, generated TypeScript, and additive migration 0020. Its rollback
+  must refuse to run while either new reason is present in persisted plans.
 - The current service captures application-clock `asOf` before opening the database transaction,
   while K2-05 computes `calculated_at` with `transaction_timestamp()`. V2 will capture the database
   transaction instant once and pass it through the whole generation request. Existing persisted
   v1 plans are returned without regeneration.
 - Policy generation consumes K2-05's effective status as a projection only. It will not introduce
   an `at_risk` status, recompute decay in Today, activate memory, or create learning evidence.
+
+## Migration and rollout record
+
+- Canonical application migrations 0018 and 0019 already exist in source. Migration 0020 is the next
+  application migration and changes only the persisted Today reason-code constraint. Do not edit or
+  renumber historical migration files. Before any staging rollout, first verify that already-applied
+  0018/0019 Auth-erasure functions and foreign-key semantics match the accepted source. Then reconcile
+  the application `public.schema_migrations` registry to the exact canonical 0018/0019 source
+  checksums while preserving those semantics, and apply canonical application migration 0020. The
+  current source runner's paired-byte checksums (`up\0` bytes followed by `down\0` bytes) are:
+  `0018 profile_replay_auth_erasure` =
+  `235df17290f98606a7964674a77c6cadef1fb1b1fdd83eaa766e1486077e84f1`,
+  `0019 concept_save_intent_auth_erasure` =
+  `62fb829f1db617db5e84b2219a4270989de0b6df314c38e92c2f7747aec39f2c`, and
+  `0020 today_remediation_reason_codes` =
+  `afe0163c081ba91f0d2f42d24b3059feb809fc26e40f1c9cc7b615b2e0f389e3`. These source values do
+  not establish that the live registry has been reconciled or that any cloud migration was applied.
+- The Supabase platform migration ledger is a separate registry. Its approved post-rollout tail is
+  exactly, in increasing version order, `concept_save_intent_auth_erasure_0019`,
+  `k2_hosted_acceptance_reader_staging`, and `today_remediation_reason_codes_0020`. The K2 probe
+  checks the application registry as exactly versions 0001–0020 with final name
+  `today_remediation_reason_codes`, and checks this exact three-name platform tail plus the existing
+  read-only role privilege tuple. It must fail on a missing, reordered, or additional later platform
+  migration. This source change does not apply either registry to staging; root owns that operation
+  after review and CI.
+- Disposable PostgreSQL migration tests exercise the new allowed codes, reject unknown codes,
+  reapply 0020, and prove down refuses before changing the constraint when a v2 reason is persisted.
+  The Today PostgreSQL CI job runs the focused Today schema and API suites against an ephemeral
+  PostgreSQL service with no repository secrets.
+- Worker execution record for this bounded source task: GPT-6 Luna / Max. This identifies execution
+  provenance only; it is not review or acceptance evidence.

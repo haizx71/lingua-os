@@ -37,6 +37,7 @@ export type K2ProbeAction =
   | 'retained_snapshot'
   | 'actor_snapshot'
   | 'actor_lineage'
+  | 'today_review_targets'
   | 'migrations'
   | 'actor_absent'
   | 'anchor_material';
@@ -69,12 +70,20 @@ export type K2HostedActorLineageProof = Readonly<{
     resultProductionEvidenceCount: number | null;
   }>[];
 }>;
-export const K2_APPROVED_APP_MIGRATION_HEAD = '0017' as const;
-const K2_APPROVED_APP_MIGRATION_COUNT = 17 as const;
+export type K2HostedTodayReviewTargets = Readonly<{
+  engineVersion: string | null;
+  activityCount: number;
+  reviewActivityCount: number;
+  targetCount: number;
+  reviewItemIds: readonly string[];
+}>;
+export const K2_APPROVED_APP_MIGRATION_HEAD = '0020' as const;
+const K2_APPROVED_APP_MIGRATION_COUNT = 20 as const;
 export type K2HostedProbeResult =
   | K2RetainedSnapshot
   | K2HostedAnchorMaterial
   | K2HostedActorLineageProof
+  | K2HostedTodayReviewTargets
   | {
       readonly appMigrationHead: typeof K2_APPROVED_APP_MIGRATION_HEAD;
       readonly appliedMigrations: typeof K2_APPROVED_APP_MIGRATION_COUNT;
@@ -145,12 +154,38 @@ export function parseK2HostedMigrationProof(value: unknown): {
     migration.appMigrationHead !== K2_APPROVED_APP_MIGRATION_HEAD ||
     migration.appliedMigrations !== K2_APPROVED_APP_MIGRATION_COUNT
   ) {
-    throw new Error('K2 hosted acceptance staging migration head does not match the accepted K2-07 source.');
+    throw new Error('K2 hosted acceptance staging migration head does not match the accepted Today schema source.');
   }
   return {
     appMigrationHead: K2_APPROVED_APP_MIGRATION_HEAD,
     appliedMigrations: K2_APPROVED_APP_MIGRATION_COUNT,
   };
+}
+
+export function parseK2HostedTodayReviewTargets(value: unknown): K2HostedTodayReviewTargets {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('K2 hosted acceptance Today target probe returned invalid output.');
+  }
+  const record = value as Record<string, unknown>;
+  const countFields = ['activityCount', 'reviewActivityCount', 'targetCount'] as const;
+  if (!(record.engineVersion === null || typeof record.engineVersion === 'string') ||
+      countFields.some(field => !isSafeCount(record[field])) ||
+      (record.activityCount as number) > 20 ||
+      (record.reviewActivityCount as number) > 1 ||
+      (record.targetCount as number) > 181 ||
+      !Array.isArray(record.reviewItemIds) || record.reviewItemIds.length !== record.targetCount ||
+      record.reviewItemIds.length > 181 ||
+      record.reviewItemIds.some(id => typeof id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) ||
+      new Set(record.reviewItemIds).size !== record.reviewItemIds.length) {
+    throw new Error('K2 hosted acceptance Today target probe returned invalid output.');
+  }
+  if (record.engineVersion === null &&
+      (record.activityCount !== 0 || record.reviewActivityCount !== 0 ||
+       record.targetCount !== 0 || record.reviewItemIds.length !== 0)) {
+    throw new Error('K2 hosted acceptance Today target probe returned invalid output.');
+  }
+  return record as unknown as K2HostedTodayReviewTargets;
 }
 
 export function parseK2HostedActorLineage(value: unknown): K2HostedActorLineageProof {
@@ -222,11 +257,13 @@ export async function runK2HostedProbe(
   if (!databaseUrl.trim()) {
     throw new Error('K2 hosted acceptance read-only probe configuration is missing.');
   }
-  if ((action === 'actor_snapshot' || action === 'actor_lineage' || action === 'actor_absent') &&
+  if ((action === 'actor_snapshot' || action === 'actor_lineage' || action === 'actor_absent' ||
+       action === 'today_review_targets') &&
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '')) {
     throw new Error('K2 hosted acceptance actor probe requires a canonical actor identity.');
   }
-  if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' && actorId !== undefined) {
+  if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' &&
+      action !== 'today_review_targets' && actorId !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected actor identity.');
   }
 
@@ -253,6 +290,7 @@ export async function runK2HostedProbe(
   if (action === 'retained_snapshot') return parseK2RetainedSnapshot(value);
   if (action === 'actor_snapshot' || action === 'actor_absent') return parseK2ActorSnapshot(value);
   if (action === 'actor_lineage') return parseK2HostedActorLineage(value);
+  if (action === 'today_review_targets') return parseK2HostedTodayReviewTargets(value);
   if (action === 'anchor_material') return parseK2HostedAnchorMaterial(value);
   return parseK2HostedMigrationProof(value);
 }

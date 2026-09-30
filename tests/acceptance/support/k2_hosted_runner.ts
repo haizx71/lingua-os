@@ -28,6 +28,7 @@ import {
   runK2HostedProbe,
   type K2HostedActorLineageProof,
   type K2HostedAnchorMaterial,
+  type K2HostedTodayReviewTargets,
   type K2RetainedSnapshot,
 } from './k2_hosted_probe_client';
 import { installK2BrowserRequestGuard } from './k2_playwright_network';
@@ -72,6 +73,15 @@ const K2_HOSTED_PHASES = [
   'primary_profile_bootstrap',
   'observer_profile_bootstrap',
   'wave_k2_07',
+  'wave_k2_08_due_only',
+  'fixture_k208_due_only_dictionary_search',
+  'fixture_k208_due_only_save_backlog',
+  'fixture_k208_due_only_seed_snapshot',
+  'fixture_k208_due_only_review_queue',
+  'fixture_k208_due_only_today_generate',
+  'fixture_k208_due_only_target_mapping',
+  'fixture_k208_due_only_replay',
+  'fixture_k208_due_only_profile_isolation',
   'fixture_anchor_material',
   'fixture_canonical_concept_fetch',
   'fixture_primary_save',
@@ -146,14 +156,21 @@ export interface K2HostedWaveContext {
   readonly apiRequest: K2HostedApiRequest;
   readonly actorSnapshot: (actorId: string) => Promise<K2RetainedSnapshot>;
   readonly actorLineage: (actorId: string) => Promise<K2HostedActorLineageProof>;
+  readonly actorTodayReviewTargets: (actorId: string) => Promise<K2HostedTodayReviewTargets>;
   readonly anchorMaterial: () => Promise<K2HostedAnchorMaterial>;
   readonly requireSnapshotRows: (snapshot: K2RetainedSnapshot, expected: Readonly<Record<string, number>>) => void;
   readonly checkpoint: (phase: K2HostedPhase, event: K2HostedCheckpointEvent) => void;
 }
 
 export interface K2HostedWavePlugin {
-  readonly waveId: 'K2-07' | 'K2-08' | 'K2-09' | 'K2-10';
+  readonly waveId: 'K2-07' | 'K2-08-DUE-ONLY';
   run(context: K2HostedWaveContext): Promise<void>;
+}
+
+export function k2HostedWaveCheckpoint(waveId: K2HostedWavePlugin['waveId']): K2HostedPhase {
+  if (waveId === 'K2-07') return 'wave_k2_07';
+  if (waveId === 'K2-08-DUE-ONLY') return 'wave_k2_08_due_only';
+  throw new Error('K2 hosted acceptance wave is not implemented.');
 }
 
 type JsonObject = Record<string, unknown>;
@@ -225,6 +242,17 @@ async function actorSnapshot(config: K2HostedConfig, actorId: string): Promise<K
 async function actorLineage(config: K2HostedConfig, actorId: string): Promise<K2HostedActorLineageProof> {
   const result = await runK2HostedProbe('actor_lineage', config.readonlyDatabaseUrl, actorId);
   if (!('events' in result)) throw new Error('K2 hosted acceptance actor lineage proof was invalid.');
+  return result;
+}
+
+async function actorTodayReviewTargets(
+  config: K2HostedConfig,
+  actorId: string,
+): Promise<K2HostedTodayReviewTargets> {
+  const result = await runK2HostedProbe('today_review_targets', config.readonlyDatabaseUrl, actorId);
+  if (!('reviewItemIds' in result)) {
+    throw new Error('K2 hosted acceptance Today target probe was invalid.');
+  }
   return result;
 }
 
@@ -363,7 +391,7 @@ async function verifyAuthUiSignIn(page: Page, actor: K2HostedActor, vercelOrigin
 }
 
 /**
- * Shared harness lifecycle for K2-07 through K2-10. Plugins own only their
+ * Shared harness lifecycle for K2-07 and the bounded K2-08 due-only subcase. Plugins own only their
  * wave fixtures and assertions; target attestation, two disposable actors,
  * read-only snapshots, normal sign-in, strict janitor, and cleanup are shared.
  */
@@ -491,7 +519,8 @@ export async function runK2HostedWave(
     checkpoint('observer_profile_bootstrap', 'start');
     const observerProfileId = await createLearnerProfile(config, observerSession);
     checkpoint('observer_profile_bootstrap', 'pass');
-    checkpoint('wave_k2_07', 'start');
+    const wavePhase = k2HostedWaveCheckpoint(plugin.waveId);
+    checkpoint(wavePhase, 'start');
     await plugin.run({
       config,
       primaryActor: primary,
@@ -506,11 +535,12 @@ export async function runK2HostedWave(
         requestK2HostedApi(config, accessToken, route, options, statuses),
       actorSnapshot: actorId => actorSnapshot(config, actorId),
       actorLineage: actorId => actorLineage(config, actorId),
+      actorTodayReviewTargets: actorId => actorTodayReviewTargets(config, actorId),
       anchorMaterial: () => anchorMaterial(config),
       requireSnapshotRows: requireK2ActorSnapshotRows,
       checkpoint,
     });
-    checkpoint('wave_k2_07', 'pass');
+    checkpoint(wavePhase, 'pass');
   } finally {
     checkpoint('finalizer_begin', 'start');
     try { await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); }
