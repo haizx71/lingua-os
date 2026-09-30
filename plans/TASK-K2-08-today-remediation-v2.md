@@ -1,7 +1,7 @@
 # TASK-K2-08 — Today Remediation-First Policy v2
 
 Status: PROPOSED FOR INDEPENDENT SPEC REVIEW
-Source baseline: `2c3284a2deb4fac18683b660a751039e36b007f`
+Source baseline: `2c3284a2deb4fac18683b660a751039e36b007f7`
 Implementation worker: GPT-6 Luna / Max
 
 ## Objective
@@ -53,10 +53,12 @@ learner-state authorities.
    duplicating the K2-05 formula.
 2. Read active due Review rows in the existing authoritative `(due_at, review_item_id)` order. Keep
    one minute per selected Review target and never re-rank or mutate Review/FSRS state.
-3. Enrich bounded Content candidates from the existing Content Engine and the actor/profile-scoped
-   K2-05 view. Use `effective_status` for weak/forgotten remediation. Exclude every active due
-   concept from remediation, including due concepts beyond the bounded Review slice, before
-   candidates reach the pure policy.
+3. Enrich the existing bounded Content candidate set from the Content Engine and actor/profile-
+   scoped K2-05 view. Use `effective_status` for weak/forgotten remediation. Exclude every active
+   due concept from remediation, including due concepts beyond the bounded Review slice, with a
+   candidate-scoped correlated `NOT EXISTS` against the authoritative active-due relation before
+   candidates reach the pure policy. Do not materialize an unbounded Review backlog to perform
+   this exclusion; the Review query remains budget-bounded and ordered.
 4. Keep accepted unfinished-Reader and saved-not-started precedence. Within remediation, rank
    forgotten before weak, then by existing Content source rank and stable content ID. Rank
    remediation ahead of recommended-new curriculum; retain current novelty cap, new-item cap,
@@ -95,6 +97,44 @@ learner-state authorities.
    Max review of this plan before runtime source edits, then independent review
    of the implementation and exact tested HEAD before root integration. Hosted acceptance and merge
    remain root-owned later gates.
+
+## Hosted K2-08 plugin and fixture boundary
+
+- Extend only the existing K2 Hosted Acceptance workflow and reusable `K2HostedWavePlugin` runner.
+  Add a `k2HostedWaveK208` plugin and an allowlisted wave dispatch. Preserve the current
+  `workflow_dispatch`-only trigger, exact repository and `master` ref checks, owner/actor checks,
+  minimal permissions, existing Production environment and OIDC audience, and validate the selected
+  wave before exposing secrets. Do not create another workflow or alter trusted-source rules.
+- The hosted plugin may use only the existing normal, authorized API flow for disposable,
+  owner-controlled actors and the controlled catalog. It may seed a due backlog through normal
+  Save/Learn operations and seed eligible familiar/saved content through accepted APIs. It must not
+  use SQL, a write-capable database credential, a fixture-only write endpoint, forged timestamps,
+  changed janitor TTL, real learner data, or manual actor/credential creation.
+- Before the Today generation request, capture the actor-scoped baseline after all fixture seeding.
+  For the due/familiar subcase, use a 15-minute profile, 20 due targets, and an eligible saved or
+  unfinished content candidate whose supported estimate packs to eight minutes. The expected plan
+  is the seven-item ordered Review prefix plus that eight-minute familiar activity, with no new
+  curriculum. Verify exact replay identity/order and actor/profile isolation. Compare learner-state
+  snapshots around generation: only accepted Today plan/activity/target/diagnostic rows may change;
+  evidence, FSRS, and competence state must remain unchanged. The shared runner's `finally` cleanup
+  and retained comparison remain mandatory and must pass.
+- K2-05 uses elapsed whole days from PostgreSQL `transaction_timestamp()`, so passive decay alone
+  does not create aged hosted fixtures during one run. Before implementation, trace all accepted
+  Review-answer transitions and K2-05 thresholds to determine whether a deterministic normal-API
+  sequence can produce an eligible, non-due weak or forgotten candidate within one hosted run,
+  with the real database clock and without changing learner-state authorities. If viable, the
+  hosted K2-08 plugin must prove remediation-first
+  allocation against new curriculum using that fixture. If not viable, retain an explicit blocked
+  hosted remediation criterion and report the exact transition/time constraint with a safe proposal;
+  do not claim K2-08 hosted acceptance or promote K2-08 based on the due/familiar subcase or CI alone.
+- Disposable PostgreSQL tests must separately prove effective weak/forgotten status and remediation
+  ordering using actor-scoped synthetic aged state, while snapshotting learner-state tables around
+  generation to prove no Today-generation deltas. That database proof does not substitute for the
+  hosted remediation-first acceptance criterion. Report each evidence surface separately.
+- If the existing authorized API flow cannot seed the hosted due backlog and familiar/saved
+  candidates deterministically, stop at that exact fixture gap and propose a narrower safe fixture
+  before expanding any mutation surface. Do not fabricate temporal decay or weaken the K2-08
+  combined acceptance criteria.
 
 ## Risk/decision notes
 
