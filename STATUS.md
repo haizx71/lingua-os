@@ -1,12 +1,12 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance remains blocked after protected Vercel origin verification; K2-08 locked
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked at application migration-head verification; K2-08 locked
 
-## Current Knowledge V2 checkpoint — 2026-09-30
+## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The authoritative current `master` baseline is
-  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5`. Earlier K2-04/K2-05/K2-06
+  `fdb4036e436e8b82b9fb67b1358413a2a5b31367`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
@@ -67,9 +67,12 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   status for the current SHA and checked through the protection challenge; no per-deployment URL
   secret or Share link is used. A no-secret preflight compares the dispatch SHA with live master
   before secrets are mapped, and the runner repeats that check before actor creation. Cleanup remains
-  eligible after a started acceptance failure even if master advances. The attempted hosted run
-  failed before actor creation at the protected Vercel check; a new hosted attempt must pass that
-  gate before actor creation. Staging
+  eligible after a started acceptance failure even if master advances. Protected Vercel access
+  passed in hosted run `36747649793` on `master` at
+  `fdb4036e436e8b82b9fb67b1358413a2a5b31367`; the run then failed the separate application
+  migration-head gate before actor creation. Its current-run cleanup passed in 45 seconds. No
+  retained baseline or learner comparison gate was reached; K2-07 remains BLOCKED and K2-08
+  remains locked. Staging
   currently supports self-recall and typing only; listening and cloze remain untested because no
   HTTPS audio or published aligned target is present.
 - Run `36734233167` (`workflow_dispatch` on `master` at `477663743d438364f34fb34f9712cfcf82d47949`)
@@ -81,19 +84,22 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   findings; its security gate passed. PR #28 merged to current `master` at
   `10a00b6c009e83301ba0d4cea4f32cf5714e89a5`. Exact-SHA GitHub Production deployment
   `6763405633` by `vercel[bot]` has status `success`.
-- Hosted run `36737740694` on current master SHA
-  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5` FAILED the protected-origin check
-  `verifyProtectedVercelOrigin`: HTTP 308 with `x-vercel-id` present, classified as a
-  `vercel-app` redirect. The guard failed closed before creating any actor. Separate
-  current-run-cleanup job `109964874290` passed (41 seconds). No retained baseline or learner
-  comparison gate was reached; this is not hosted acceptance. K2-07 remains BLOCKED and K2-08
-  remains locked. PR #24 TLS certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname
-  fixes are merged in current `master`. Do not create a Share link, bypass
-  protection, or change global protection settings.
-- Staging read-only checks confirmed migration head `0019` and the dedicated
-  `k2_hosted_acceptance_reader` role; the DB-only preflight above passed. The role has broad
-  read visibility and must remain confined to the owner-gated staging workflow step. The exact
-  migration-head gate remains mandatory before acceptance baseline/actor creation;
+- Hosted run `36737740694` on master SHA
+  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5` failed the protected-origin check
+  `verifyProtectedVercelOrigin`; the guard stopped before actor creation. Its separate cleanup
+  job `109964874290` passed in 41 seconds. No retained baseline or learner comparison was
+  reached. The later run and migration-registry diagnosis are recorded below. PR #24 TLS
+  certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname fixes are merged.
+- The Supabase migration ledger separately reports migration `0019` and the dedicated
+  `k2_hosted_acceptance_reader` role is configured. This ledger state does not establish the
+  application migration registry gate. In run `36747649793`, `public.schema_migrations` held
+  application entries `0001`–`0017`; the Python probe reported application head `0017` and 17
+  applied migrations, while the TypeScript adapter incorrectly treated the application as head
+  `0019` with 19 applied migrations. The Supabase ledger still requires `0019` plus the custom
+  read-only role, confirmed separately. Keep these two registries distinct; the migration-head
+  diagnosis is a blocker, not a pass. The reader role has broad read visibility and must remain
+  confined to the owner-gated staging workflow step. The exact application migration-head gate
+  remains mandatory before acceptance baseline/actor creation;
   cleanup-only paths attempt guarded Auth deletion first and fail afterward if the
   schema-dependent zero-residue proof cannot establish the complete inventory.
 - Current source verification passed: 61/61 focused hosted-harness Vitest tests

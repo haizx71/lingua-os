@@ -24,6 +24,7 @@ import {
 } from './k2_hosted_actors';
 import {
   assertK2RetainedStateUnchanged,
+  K2_APPROVED_APP_MIGRATION_HEAD,
   runK2HostedProbe,
   type K2HostedActorLineageProof,
   type K2HostedAnchorMaterial,
@@ -283,7 +284,7 @@ export async function runK2HostedWave(
     );
     await verifyK2StagingApiHealth(config.apiOrigin, config.githubSha);
     const migration = await runK2HostedProbe('migrations', config.readonlyDatabaseUrl);
-    if (!('appMigrationHead' in migration) || migration.appMigrationHead !== '0019') {
+    if (!('appMigrationHead' in migration) || migration.appMigrationHead !== K2_APPROVED_APP_MIGRATION_HEAD) {
       throw new Error('K2 hosted acceptance staging migration head is not approved.');
     }
 

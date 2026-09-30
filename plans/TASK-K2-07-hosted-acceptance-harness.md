@@ -1,8 +1,34 @@
 # TASK-K2-07 — Hosted Acceptance Harness
 
-Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT PROTECTED VERCEL ORIGIN VERIFICATION
+Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT APPLICATION MIGRATION HEAD CHECK
 Scope: Reusable, staging-only hosted acceptance runner; K2-07 first, later waves
 Owner: BACKEND / acceptance tooling
+
+## Latest hosted gate evidence — 2026-10-01
+
+Hosted run `36747649793` on `master` at `fdb4036e436e8b82b9fb67b1358413a2a5b31367` passed the
+protected-origin and staging API checks, then failed at the TypeScript migration adapter before
+actor creation. The adapter expected application head `0019`/19, while the application registry
+contract is `0017`/17. Read-only Supabase migration listing confirmed platform migration
+`20260927034218` (`concept_save_intent_auth_erasure_0019`) followed by
+`20260928164141` (`k2_hosted_acceptance_reader_staging`); these entries belong to the separate
+Supabase platform registry checked by the Python probe. The current-run cleanup job
+`109998391323` passed in 45 seconds. No disposable actor was created and the retained learner
+comparison was not reached, so hosted acceptance is not established.
+
+## Migration-head semantics — 2026-10-01
+
+The migration probe checks two independent registries. The application registry in
+`public.schema_migrations` must contain exactly `0001`–`0017`, ending at
+`knowledge_v2_learner_retrievability`, and returns application head `0017` with count 17. The
+Supabase platform registry in `supabase_migrations.schema_migrations` must end with
+`concept_save_intent_auth_erasure_0019` followed by
+`k2_hosted_acceptance_reader_staging` at a strictly later version. The reader role may select
+only the `version` and `name` columns; it must lack table-level SELECT, `statements` SELECT, and
+INSERT/UPDATE/DELETE/TRUNCATE privileges. Supabase migration `0019` is therefore not the
+application migration head. The TypeScript adapter validates the application `0017`/17 proof and
+the runner requires the resulting approved `0017` head; the Python probe retains the independent
+Supabase `0019` plus staging-reader checks.
 
 ## Current hosted gate evidence — 2026-09-30
 

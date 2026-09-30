@@ -199,3 +199,24 @@ def test_migration_probe_fails_if_supabase_ledger_is_not_at_reader_migration() -
 
     with pytest.raises(probe.ProbeError):
         probe._migration_head(OlderMigrationConnection())  # noqa: SLF001
+
+
+def test_migration_probe_requires_supabase_0019_before_the_reader_migration() -> None:
+    class Missing0019Connection:
+        def execute(self, query: str) -> Result:
+            if "FROM public.schema_migrations" in query:
+                return Result(rows=[
+                    (f"{number:04d}", "knowledge_v2_learner_retrievability" if number == 17 else "older")
+                    for number in range(1, 18)
+                ])
+            if "FROM supabase_migrations.schema_migrations" in query:
+                return Result(rows=[
+                    ("20260927021246", "profile_replay_auth_erasure_0018"),
+                    ("20260928000000", "k2_hosted_acceptance_reader_staging"),
+                ])
+            if "has_column_privilege" in query:
+                return Result(row=(True, True, False, False, False, False, False, False))
+            raise AssertionError("unexpected migration query")
+
+    with pytest.raises(probe.ProbeError):
+        probe._migration_head(Missing0019Connection())  # noqa: SLF001
