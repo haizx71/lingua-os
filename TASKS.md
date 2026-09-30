@@ -90,6 +90,13 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   missing published aligned content/HTTPS audio. The Supabase ledger is at migration `0019`; the dedicated `k2_hosted_acceptance_reader` role
   is configured with broad read access without
   `pg_write_all_data` membership. DB-only preflight passed; no disposable-actor preflight has run.
+  Hosted run `36758861641` on master SHA `5a3920907bb31213d2327995e83107c56d5a8c34` ended
+  after the 12-minute test timeout following a long Chromium installation. The internal stage is
+  UNKNOWN: only the pre-secret SHA and Chromium checks are verified PASS; no protected-origin, API
+  health, migration, profile, or wave gate is recorded as passing. Separate current-run cleanup job
+  `110044096458` passed, but this does not prove completion of the original run's finalizer or its
+  retained-baseline comparison. No K2-07 acceptance PASS is established; K2-07 remains BLOCKED and
+  K2-08 remains locked. No actor identifiers, secret values, or unlogged runtime counts are recorded.
   Local source checks passed before hosted run `36755374459`: 61/61 focused harness Vitest
   (including workflow security), 6/6 probe pytest, 1/1 real Chromium redirect, and workspace
   typecheck. `pnpm backend:check` passed on the prior source snapshot (600 backend tests); this

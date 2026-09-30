@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createLearnerProfile,
+  markK2HostedCheckpoint,
+  markK2HostedFinalizerComplete,
   runK2ProtectedAuthUiSignIn,
   type K2ProtectedAuthUiInteractions,
   type K2ProtectedAuthUiResponse,
 } from './k2_hosted_runner';
 import type { K2AuthenticatedActor, K2HostedConfig } from './k2_hosted_actors';
+import type { TestInfo } from '@playwright/test';
 
 const actor = {
   id: 'fake-actor-id-marker',
@@ -48,6 +51,74 @@ async function rejectedError(operation: Promise<unknown>): Promise<Error> {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe('K2 hosted phase diagnostics', () => {
+  function diagnosticTestInfo(): TestInfo {
+    return { annotations: [] } as unknown as TestInfo;
+  }
+
+  it('emits only a fixed phase and event in JSON and the test annotation', () => {
+    const testInfo = diagnosticTestInfo();
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    markK2HostedCheckpoint(testInfo, 'primary_profile_bootstrap', 'start');
+
+    expect(log).toHaveBeenCalledWith(JSON.stringify({
+      type: 'k2_hosted_phase',
+      phase: 'primary_profile_bootstrap',
+      event: 'start',
+    }));
+    expect(testInfo.annotations).toEqual([{
+      type: 'k2-hosted-phase',
+      description: 'primary_profile_bootstrap:start',
+    }]);
+  });
+
+  it('rejects an unlisted phase without logging or retaining its value', () => {
+    const testInfo = diagnosticTestInfo();
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const error = new Error('K2 hosted acceptance diagnostic checkpoint was invalid.');
+
+    expect(() => markK2HostedCheckpoint(testInfo, 'unexpected_private_phase_marker', 'start'))
+      .toThrow(error.message);
+    expect(log).not.toHaveBeenCalled();
+    expect(testInfo.annotations).toEqual([]);
+  });
+
+  it('marks finalizer completion only after actor cleanup and retained comparison pass', () => {
+    const testInfo = diagnosticTestInfo();
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const successfulProof = {
+      cleanupError: false,
+      actorCleanupPassed: true,
+      freshIdentityCleanupPassed: true,
+      retainedComparisonPassed: true,
+    } as const;
+
+    markK2HostedCheckpoint(testInfo, 'finalizer_actor_cleanup', 'pass');
+    markK2HostedCheckpoint(testInfo, 'finalizer_fresh_identity_cleanup', 'pass');
+    markK2HostedCheckpoint(testInfo, 'finalizer_retained_comparison', 'pass');
+    expect(markK2HostedFinalizerComplete(testInfo, successfulProof)).toBe(true);
+
+    expect(testInfo.annotations.map(annotation => annotation.description)).toEqual([
+      'finalizer_actor_cleanup:pass',
+      'finalizer_fresh_identity_cleanup:pass',
+      'finalizer_retained_comparison:pass',
+      'finalizer_complete:pass',
+    ]);
+    for (const failedProof of [
+      { ...successfulProof, cleanupError: true },
+      { ...successfulProof, actorCleanupPassed: false },
+      { ...successfulProof, freshIdentityCleanupPassed: false },
+      { ...successfulProof, retainedComparisonPassed: false },
+    ]) {
+      const failedTestInfo = diagnosticTestInfo();
+      expect(markK2HostedFinalizerComplete(failedTestInfo, failedProof)).toBe(false);
+      expect(failedTestInfo.annotations).toEqual([]);
+    }
+    expect(log).toHaveBeenCalledTimes(4);
+  });
 });
 
 describe('createLearnerProfile', () => {

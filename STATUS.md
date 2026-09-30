@@ -1,12 +1,12 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked at post-save snapshot verification; K2-08 locked
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked after a 12-minute test timeout with internal stage unknown; K2-08 locked
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The authoritative current `master` baseline is
-  `df0947c2ed0dddbedebdcc2652bf83f01b53eff3`. Earlier K2-04/K2-05/K2-06
+  `5a3920907bb31213d2327995e83107c56d5a8c34`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
@@ -126,14 +126,21 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   actor-row absence, and retained-comparison equality by control flow; the separate
   current-run-cleanup job passed in 42 seconds. This is not K2-07 acceptance: K2-07 remains BLOCKED
   and K2-08 remains locked. K2-06's accepted Save/Learn behavior remains unchanged.
+- Hosted run `36758861641` on master SHA `5a3920907bb31213d2327995e83107c56d5a8c34` ended
+  after the 12-minute test timeout following a long Chromium installation. Its internal test stage
+  is UNKNOWN. The verified pre-secret SHA and Chromium checks passed; no protected-origin, API
+  health, migration, profile, or wave gate is recorded as passing for this run. Separate current-run
+  cleanup job `110044096458` passed. That separate cleanup result does not establish completion of
+  the original run's finalizer or retained-baseline comparison. No K2-07 hosted acceptance PASS is
+  established; K2-07 remains BLOCKED and K2-08 remains locked. No actor identifiers, secret values, or runtime counts are claimed.
 - Local source verification passed before hosted run `36755374459`: 61/61 focused
   hosted-harness Vitest tests (including workflow security checks), 6/6 Python probe
   tests, 1/1 real Chromium redirect test, and workspace typecheck. `pnpm backend:check`
   had passed on the prior source snapshot (600 backend tests); this source verification
   did not create hosted actors or change hosted state.
-- Documentation update for hosted run `36755374459`: GPT-6 Luna / Medium. Max review confirmed
-  the snapshot-expectation cause; K2-07 remains blocked pending the harness correction and a full
-  hosted learner-state acceptance run.
+- Documentation update for hosted run `36758861641`: GPT-6 Luna / Medium. The run's internal
+  test stage and completion of its main-run retained comparison remain unverified; K2-07 hosted
+  acceptance is still blocked.
 - PR #28 diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review:
   GPT-6 Luna / Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation
   update: GPT-6 Luna / Medium.
