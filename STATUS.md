@@ -1,14 +1,28 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked after a 12-minute test timeout with internal stage unknown; K2-08 locked
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 READY for bounded implementation
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The authoritative current `master` baseline is
-  `5a3920907bb31213d2327995e83107c56d5a8c34`. Earlier K2-04/K2-05/K2-06
+  `c696ac935852c4ebcd9e1183521996e5b12ad273`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
+- **K2-07 HOSTED ACCEPTANCE: PASS.** Workflow run [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)
+  (`workflow_dispatch`, `master`, attempt 1) completed successfully on that exact master SHA. Hosted job `110108944244`
+  passed (one acceptance test, 12 minutes); separate current-run cleanup job
+  `110113728287` passed (43 seconds). Independent GPT-6 Luna / Max verification
+  confirmed the allowlisted gate markers in order through preflights, retained
+  baseline, both disposable actors/auth/profiles, `wave_k2_07`, self-recall and
+  typing assertions, replay, cross-actor isolation, finalizer actor cleanup,
+  fresh-identity cleanup, retained comparison, and `finalizer_complete`.
+  The comparison result is PASS; no actor identifiers or learner data are recorded.
+  This staging catalog exercised self-recall and typing only. Listening and
+  cloze remain untested because eligible published material is unavailable; this
+  run does not establish those modalities. K2-07 is closed for its bounded hosted
+  acceptance scope; K2-08 is READY, not complete. See
+  `reviews/K2-07-hosted-acceptance-review.md` and the detailed run history below.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
   browser session before acceptance. One Review answer updated production only;
   exact replay made no second state/event change. Brain and Review projected a
@@ -18,7 +32,7 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   the pre-run baseline. Independent read-only review found no K2-06 blocker.
   The synthetic fixture does not establish natural API progression to `active`.
   See `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- **K2-07 SOURCE PROMOTED: PASS; HOSTED ACCEPTANCE: BLOCKED.** PR #19 merged
+- **K2-07 SOURCE PROMOTED: PASS; HOSTED ACCEPTANCE: PASS.** PR #19 merged
   into `master` at `ac02c349f8500975a843633556daf9d1bebc49e8` after the
   caller-supplied `correct` HIGH finding was fixed and independently verified.
   All four GitHub Actions jobs and Vercel Preview passed at PR head `c97f3e0`.
@@ -31,7 +45,7 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   success; direct Vercel connector lookup was unavailable. No Share link or
   protection setting changed. K2-08 through K2-10 remain downstream of K2-07
   hosted acceptance.
-- **K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE BLOCKED.** Independent security review passed.
+- **K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE PASS.** Independent security review passed.
   The isolated
   `codex/k2-hosted-acceptance-harness` work adds a shared wave lifecycle, a K2-07 fixture plugin,
   two server-marked disposable actors, real browser OIDC redirect protection, Auth-cascade cleanup,
@@ -50,7 +64,8 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   `k2_hosted_acceptance_reader` staging role and its repository secret are configured.
   The DB-only GitHub preflight run `36593505143` passed at harness commit
   `3af469084b8106557dcca877572338040a8dc804`; this proves the read-only database
-  connection gate only. No disposable-actor preflight has run. Repository
+  connection gate only. A later full disposable-actor acceptance passed as
+  recorded above. Repository
   secrets do not require a GitHub plan upgrade, but any workflow in this repository that requests
   them can read them. This design therefore assumes `haizx71` is the only trusted writer/merger of
   workflow changes; review every workflow change and do not grant untrusted collaborators write
@@ -140,7 +155,13 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   did not create hosted actors or change hosted state.
 - Documentation update for hosted run `36758861641`: GPT-6 Luna / Medium. The run's internal
   test stage and completion of its main-run retained comparison remain unverified; K2-07 hosted
-  acceptance is still blocked.
+  acceptance was still blocked at that historical checkpoint. Run `36780407824` subsequently
+  passed the complete hosted acceptance and retained comparison, as documented above.
+- K2-07 hosted-acceptance documentation and K2-08 readiness update: GPT-6 Luna / Medium.
+- Independent K2-07 hosted acceptance verification: GPT-6 Luna / Max; PASS for the complete
+  ordered run markers and separate cleanup result. Reviewer checked the run's recorded terminal
+  evidence and allowlisted markers; no raw logs, actor identity values, or secret-bearing output
+  are reproduced here.
 - PR #28 diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review:
   GPT-6 Luna / Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation
   update: GPT-6 Luna / Medium.
