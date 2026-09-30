@@ -111,18 +111,20 @@ learner-state authorities.
   use SQL, a write-capable database credential, a fixture-only write endpoint, forged timestamps,
   changed janitor TTL, real learner data, or manual actor/credential creation.
 - Before the Today generation request, capture the actor-scoped baseline after all fixture seeding.
-- Root must first obtain a read-only inventory of the live staging catalog through the existing
-  hosted orchestration. The committed FRLL seed contains exactly one published English word
-  concept and no aligned published sentence/audio fixture; the wider first-party manifests remain
-  candidate/proposal data, and `task008_reader_mvp.sql` is a test-only seed. Do not infer live
-  staging inventory from those files. If the live accepted catalog lacks the fixture set, report
-  that exact gap rather than seed catalog/learner rows through SQL or broaden fixture privileges.
-- If live staging has at least 20 accessible published concepts and an eligible saved/unfinished
-  content candidate whose supported estimate packs to eight minutes, the due/familiar subcase uses
-  a 15-minute profile and 20 due targets. Its expected plan is the seven-item ordered Review prefix
-  plus that eight-minute familiar activity, with no new curriculum. Otherwise this subcase remains
-  blocked pending a separately reviewed and published controlled catalog fixture; the 15-minute /
-  20-due pure-policy regression still proves allocation behavior locally.
+- Root-owned read-only staging inventory (2026-10-01, aggregate counts only) found 94
+  Dictionary-eligible English word/phrase concepts; 78 English words, 16 phrases, 8 grammar
+  concepts, and 7 skills total; zero English content passing the Reader publication gate; zero
+  linked eligible word/phrase content; zero published cloze targets; no published-content duration
+  and zero selected HTTPS audio; and zero immutable per-concept competence override rows. The
+  committed FRLL seed remains one published English word with no aligned sentence/audio fixture,
+  wider first-party manifests remain candidate/proposal data, and `task008_reader_mvp.sql` is a
+  test-only seed. Do not treat those test/candidate files as staging data.
+- The due-only hosted subcase is feasible through normal Save/Learn API calls for 20 distinct
+  Dictionary-eligible concepts. With a 15-minute profile and 20 due targets, its expected plan is
+  the ordered 15-item Review prefix and no content activity because staging currently has no
+  Reader-published content. This proves due allocation/replay/isolation/Today-only generation for
+  that subcase only; it does not prove content reserve behavior or remediation-first allocation.
+  The 15-minute / 20-due/no-new policy regression and database tests prove those local semantics.
 - Source review establishes a bootstrap limit for a fresh hosted actor under the default
   per-concept competence policy: `services/api/src/lingua_api/review/modality.py` ranks only
   dimensions with existing evidence and otherwise selects `self_recall`; Save/Learn creates
@@ -131,19 +133,20 @@ learner-state authorities.
   requires evidence mass in each required dimension for mastery, and weak/forgotten requires prior
   familiar/active/mastered achievement. More material alone cannot initialize unobserved dimensions
   through this selector. The immutable `concept_competence_policies` table allows a previously
-  accepted production-only override to change which dimensions are required; root's read-only live
-  inventory has identified possible eligible overrides. Do not create or change an override,
-  fabricate mode responses, or bypass the server-selected prompt. A candidate override is only a
-  hosted fixture path after its catalog/material eligibility and normal-API achievement-to-weak /
-  forgotten sequence are demonstrated with its existing immutable policy.
+  accepted production-only override to change which dimensions are required, but the live inventory
+  found zero override rows. Do not create or change an override, fabricate mode responses, or bypass
+  the server-selected prompt.
   K2-05 uses elapsed whole days from PostgreSQL `transaction_timestamp()`. Passive decay therefore
   does not create aged hosted fixtures during one run.
-- The hosted remediation-first criterion remains blocked until a root-owned read-only inventory
-  confirms an eligible existing immutable override plus content material, and a deterministic
-  normal-API sequence proves actor-scoped prior achievement followed by non-due weak/forgotten
-  status. Otherwise report the exact bootstrap gap and seek a separately reviewed proposal before
-  broadening any fixture surface. Do not claim overall K2-08 hosted acceptance or promote K2-08
-  based on due/familiar evidence or CI alone.
+- Hosted content reserve and remediation-first criteria remain blocked. There is no current
+  Reader-published content, no existing production-only policy override, and the default fresh
+  actor flow cannot bootstrap required recognition/listening evidence through the Review selector.
+  Unblock only after a separately reviewed, authorized fixture path plus content/policy inventory
+  permits a deterministic normal-API sequence to establish actor-scoped prior achievement and
+  non-due weak/forgotten status. Otherwise report the exact bootstrap gap and seek a separately
+  reviewed proposal before broadening any fixture surface. The hosted due-only test must be labeled
+  as a subcase; do not claim overall K2-08 hosted acceptance or promote K2-08 based on due-only or CI
+  evidence.
 - When fixtures are available and that criterion is unblocked, the hosted plugin must verify
   remediation ahead of new curriculum, exact replay identity/order, and actor/profile isolation.
   Capture learner-state snapshots after all setup and before generation: only accepted Today
@@ -154,10 +157,7 @@ learner-state authorities.
   ordering using actor-scoped synthetic aged state, while snapshotting learner-state tables around
   generation to prove no Today-generation deltas. That database proof does not substitute for the
   hosted remediation-first acceptance criterion. Report each evidence surface separately.
-- If the existing authorized API flow cannot seed the hosted due backlog and familiar/saved
-  candidates deterministically, stop at that exact fixture gap and propose a narrower safe fixture
-  before expanding any mutation surface. Do not fabricate temporal decay or weaken the K2-08
-  combined acceptance criteria.
+- Do not fabricate temporal decay or weaken the K2-08 combined acceptance criteria.
 
 ## Risk/decision notes
 
