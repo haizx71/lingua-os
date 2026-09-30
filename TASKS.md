@@ -60,17 +60,30 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   comparison gate was reached. The app registry diagnosis was: `public.schema_migrations` had
   `0001`–`0017`; the Python probe reported app head `0017` / 17 applied, while the TypeScript
   adapter incorrectly reported app head `0019` / 19 applied. The Supabase migration ledger
-  separately requires `0019` plus the custom read-only role, both confirmed; this does not make
-  the app registry gate pass. K2-07 remains BLOCKED and K2-08 remains locked.
+  separately requires `0019` plus the custom read-only role, both confirmed. The mismatch blocked
+  this run; the later run `36751277032` passed migration verification before failing at language
+  creation. K2-07 remains BLOCKED and K2-08 remains locked.
+  Hosted run `36751277032` on master SHA `e01cc21624bda37f59c982498686a6a709ca2264` passed
+  protected-origin access, API health, migration verification, the runner recheck, and browser
+  authentication. Two disposable actors were created/authenticated, then the first primary
+  actor `POST /v1/me/languages` returned HTTP 409 `INVALID_STATE_TRANSITION` instead of 201.
+  Its learner profile timezone was null; the harness omitted the required ETag-protected
+  `PATCH /v1/me` to persist a valid IANA timezone before language creation (ADR-019). K2-07
+  plugin assertions, replay, and isolation were not reached. The main finalizer completed without
+  overriding the original error and reported Auth deletion, actor-row absence, and retained
+  before/after equality. Separate current-run cleanup passed in 44 seconds; independent review
+  of cleanup/retained evidence is pending. K2-07 remains BLOCKED; K2-08 remains locked. Do not
+  report hosted acceptance as PASS.
   Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
   missing published aligned content/HTTPS audio. The Supabase ledger is at migration `0019`; the dedicated `k2_hosted_acceptance_reader` role
   is configured with broad read access without
   `pg_write_all_data` membership. DB-only preflight passed; no disposable-actor preflight has run.
-  Current source checks passed: 61/61 focused harness Vitest (including workflow security),
-  6/6 probe pytest, 1/1 real Chromium redirect, and workspace typecheck. `pnpm backend:check`
-  passed on the prior source snapshot (600 backend tests); this revision changes no backend or
-  Python runtime code. No schema migration or hosted
-  state mutation is planned. Cleanup and the TTL janitor attempt exact-marker Auth deletion before
+  Local source checks passed before the latest hosted run: 61/61 focused harness Vitest
+  (including workflow security), 6/6 probe pytest, 1/1 real Chromium redirect, and workspace
+  typecheck. `pnpm backend:check` passed on the prior source snapshot (600 backend tests); this
+  revision changes no backend or Python runtime code. These local checks did not create hosted
+  actors or mutate hosted state. No schema migration is planned. Cleanup and the TTL janitor
+  attempt exact-marker Auth deletion before
   the schema-dependent residue proof; if the frozen inventory no longer matches, they fail after
   deletion rather than being blocked by the acceptance-only migration-head gate.
 - **Follow-up (frontend, low severity):** Brain's “Cần củng cố” chip selects
