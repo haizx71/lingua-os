@@ -123,21 +123,27 @@ learner-state authorities.
   plus that eight-minute familiar activity, with no new curriculum. Otherwise this subcase remains
   blocked pending a separately reviewed and published controlled catalog fixture; the 15-minute /
   20-due pure-policy regression still proves allocation behavior locally.
-- Source review establishes a bootstrap limit for a fresh hosted actor:
-  `services/api/src/lingua_api/review/modality.py` ranks only dimensions with existing evidence and
-  otherwise selects `self_recall`; Save/Learn creates learning intent with zero competence evidence.
-  The ordinary fresh-actor Save/Learn + Review flow therefore starts with production evidence only.
-  `services/api/src/lingua_api/competence/projector.py` requires evidence mass in each required
-  dimension for mastery, and weak/forgotten requires prior familiar/active/mastered achievement.
-  More catalog material alone cannot initialize an unobserved recognition/listening dimension
-  through this selector. Do not fabricate mode responses or bypass the server-selected prompt.
+- Source review establishes a bootstrap limit for a fresh hosted actor under the default
+  per-concept competence policy: `services/api/src/lingua_api/review/modality.py` ranks only
+  dimensions with existing evidence and otherwise selects `self_recall`; Save/Learn creates
+  learning intent with zero competence evidence. The ordinary fresh-actor Save/Learn + Review flow
+  therefore starts with production evidence only. `services/api/src/lingua_api/competence/projector.py`
+  requires evidence mass in each required dimension for mastery, and weak/forgotten requires prior
+  familiar/active/mastered achievement. More material alone cannot initialize unobserved dimensions
+  through this selector. The immutable `concept_competence_policies` table allows a previously
+  accepted production-only override to change which dimensions are required; root's read-only live
+  inventory has identified possible eligible overrides. Do not create or change an override,
+  fabricate mode responses, or bypass the server-selected prompt. A candidate override is only a
+  hosted fixture path after its catalog/material eligibility and normal-API achievement-to-weak /
+  forgotten sequence are demonstrated with its existing immutable policy.
   K2-05 uses elapsed whole days from PostgreSQL `transaction_timestamp()`. Passive decay therefore
   does not create aged hosted fixtures during one run.
-- The hosted remediation-first criterion remains blocked until a separately reviewed, authorized
-  fixture path can start from valid actor-scoped evidence/achievement without real learners, direct
-  SQL, a write-capable database credential, or a fixture-only endpoint. Report the exact bootstrap
-  gap and seek a separately reviewed proposal before broadening any fixture surface. Do not claim
-  overall K2-08 hosted acceptance or promote K2-08 based on due/familiar evidence or CI alone.
+- The hosted remediation-first criterion remains blocked until a root-owned read-only inventory
+  confirms an eligible existing immutable override plus content material, and a deterministic
+  normal-API sequence proves actor-scoped prior achievement followed by non-due weak/forgotten
+  status. Otherwise report the exact bootstrap gap and seek a separately reviewed proposal before
+  broadening any fixture surface. Do not claim overall K2-08 hosted acceptance or promote K2-08
+  based on due/familiar evidence or CI alone.
 - When fixtures are available and that criterion is unblocked, the hosted plugin must verify
   remediation ahead of new curriculum, exact replay identity/order, and actor/profile isolation.
   Capture learner-state snapshots after all setup and before generation: only accepted Today
