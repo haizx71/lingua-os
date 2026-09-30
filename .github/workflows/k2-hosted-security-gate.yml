@@ -54,6 +54,7 @@ jobs:
           tests/acceptance/support/k2_hosted_wave_k2_07.test.ts
           tests/acceptance/support/k2_playwright_network.test.ts
           tests/acceptance/support/k2_hosted_workflow_security.test.ts
+          tests/frontend/k2-vercel-attestation.test.ts
           --maxWorkers=1
       - name: Typecheck workspace contracts and packages
         run: pnpm typecheck

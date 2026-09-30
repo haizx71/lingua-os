@@ -223,9 +223,13 @@ export async function runK2HostedWave(
       throw new Error('K2 hosted acceptance refused a non-staging Supabase project.');
     }
     await verifyK2HostedCurrentMasterSha(config);
-    const vercelOrigin = await verifyK2HostedDeploymentAttestations(config);
+    const immutableVercelOrigin = await verifyK2HostedDeploymentAttestations(config);
     const oidc = await createGithubTrustedSourceToken(config);
-    await verifyProtectedVercelOrigin(vercelOrigin, oidc);
+    const vercelOrigin = await verifyProtectedVercelOrigin(
+      immutableVercelOrigin,
+      oidc,
+      config.githubSha,
+    );
     await verifyK2StagingApiHealth(config.apiOrigin, config.githubSha);
     const migration = await runK2HostedProbe('migrations', config.readonlyDatabaseUrl);
     if (!('appMigrationHead' in migration) || migration.appMigrationHead !== '0019') {
@@ -259,7 +263,14 @@ export async function runK2HostedWave(
     observerSession = await authenticateK2HostedActor(observer, config, learner);
 
     const browserOidc = await createGithubTrustedSourceToken(config);
-    await verifyProtectedVercelOrigin(vercelOrigin, browserOidc);
+    const reverifiedBrowserOrigin = await verifyProtectedVercelOrigin(
+      immutableVercelOrigin,
+      browserOidc,
+      config.githubSha,
+    );
+    if (reverifiedBrowserOrigin !== vercelOrigin) {
+      throw new Error('K2 hosted acceptance canonical browser origin changed; browser flow was stopped.');
+    }
     await installK2BrowserRequestGuard(browserContext, {
       vercelOrigin,
       supabaseUrl: config.supabaseUrl,

@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
   type User,
 } from '@supabase/supabase-js';
+import { DEFAULT_CANONICAL_WEB_ORIGIN } from '../../../apps/web/src/lib/routing/canonical-host';
 
 export const K2_HOSTED_ENVIRONMENT = 'k2-staging';
 export const K2_HOSTED_WORKFLOW = 'K2 Hosted Acceptance';
@@ -15,6 +16,7 @@ export const K2_HOSTED_WORKFLOW_REF =
 export const K2_HOSTED_STAGING_SUPABASE_REF = 'bdmtdvvnbicgkfririjo';
 export const K2_HOSTED_READONLY_DATABASE_ROLE = 'k2_hosted_acceptance_reader';
 export const K2_HOSTED_MARKER_KEY = 'lingua_k2_hosted_acceptance';
+export const K2_VERCEL_ATTESTATION_PATH = '/api/k2-vercel-attestation';
 export const K2_HOSTED_ACTOR_TTL_MS = 2 * 60 * 60 * 1000;
 export const K2_HOSTED_UNMARKED_RECOVERY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const USER_EMAIL_PREFIX = 'k2ha-';
@@ -946,56 +948,303 @@ export function createGithubTrustedSourceToken(
 }
 
 export async function verifyProtectedVercelOrigin(
-  origin: string,
+  immutableOrigin: string,
   trustedSourceToken: string,
+  expectedSourceSha: string,
   request: typeof fetch = fetch,
-): Promise<void> {
-  let anonymousResponse: Response;
-  try {
-    anonymousResponse = await request(new URL('/auth', origin), {
-      redirect: 'manual',
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch {
-    throw new Error('K2 hosted acceptance protected Vercel preflight failed; no actor was created.');
-  }
-  const location = anonymousResponse.headers.get('location');
-  let redirectsToVercelAuth = false;
+): Promise<string> {
   if (
-    location &&
-    anonymousResponse.status >= 300 &&
-    anonymousResponse.status < 400 &&
-    anonymousResponse.headers.has('x-vercel-id')
+    !/^[a-f0-9]{40}$/.test(expectedSourceSha) ||
+    immutableVercelDeploymentOrigin(immutableOrigin) !== immutableOrigin ||
+    !trustedSourceToken.trim()
   ) {
-    try {
-      const challenge = new URL(location, origin);
-      redirectsToVercelAuth = challenge.protocol === 'https:' &&
-        challenge.hostname === 'vercel.com' &&
-        ['/sso-api', '/login', '/auth'].includes(challenge.pathname);
-    } catch { /* Invalid redirect is not proof of deployment protection. */ }
+    throw new Error('K2 hosted acceptance protected Vercel attestation inputs were invalid; no actor was created.');
   }
-  if (!redirectsToVercelAuth) {
-    throw new Error('K2 hosted acceptance target is not protected; no actor was created.');
+
+  await requireVercelAuthenticationChallenge(
+    immutableOrigin,
+    '/auth',
+    'immutable-anonymous-auth',
+    request,
+  );
+  const immutableAttestation = await requestProtectedVercelAttestation(
+    immutableOrigin,
+    trustedSourceToken,
+    'immutable-attestation',
+    request,
+  );
+  requireMatchingVercelAttestation(
+    immutableAttestation,
+    immutableOrigin,
+    expectedSourceSha,
+    null,
+  );
+
+  const immutableAuthResponse = await requestTrustedVercelPath(
+    immutableOrigin,
+    '/auth',
+    trustedSourceToken,
+    'manual',
+    'immutable-auth-redirect',
+    request,
+  );
+  if (
+    immutableAuthResponse.status !== 308 ||
+    !immutableAuthResponse.headers.has('x-vercel-id') ||
+    !isCanonicalAuthRedirect(
+      immutableAuthResponse.headers.get('location'),
+      immutableOrigin,
+      immutableAttestation.canonicalOrigin,
+    )
+  ) {
+    throw protectedVercelResponseFailure(
+      'immutable-auth-redirect',
+      immutableAuthResponse,
+      immutableOrigin,
+    );
   }
-  let trustedResponse: Response;
+
+  const canonicalOrigin = immutableAttestation.canonicalOrigin;
+  await requireVercelAuthenticationChallenge(
+    canonicalOrigin,
+    K2_VERCEL_ATTESTATION_PATH,
+    'canonical-anonymous-attestation',
+    request,
+  );
+  await requireVercelAuthenticationChallenge(
+    canonicalOrigin,
+    '/auth',
+    'canonical-anonymous-auth',
+    request,
+  );
+
+  const canonicalAttestation = await requestProtectedVercelAttestation(
+    canonicalOrigin,
+    trustedSourceToken,
+    'canonical-attestation',
+    request,
+  );
+  requireMatchingVercelAttestation(
+    canonicalAttestation,
+    immutableOrigin,
+    expectedSourceSha,
+    immutableAttestation.deploymentId,
+  );
+
+  const canonicalAuthResponse = await requestTrustedVercelPath(
+    canonicalOrigin,
+    '/auth',
+    trustedSourceToken,
+    'manual',
+    'canonical-auth',
+    request,
+  );
+  const contentType = canonicalAuthResponse.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
+  if (
+    canonicalAuthResponse.status !== 200 ||
+    !canonicalAuthResponse.headers.has('x-vercel-id') ||
+    contentType !== 'text/html'
+  ) {
+    throw protectedVercelResponseFailure('canonical-auth', canonicalAuthResponse, canonicalOrigin);
+  }
+
+  return canonicalOrigin;
+}
+
+interface K2VercelOperationalAttestation {
+  readonly schemaVersion?: unknown;
+  readonly sourceSha?: unknown;
+  readonly deploymentOrigin?: unknown;
+  readonly deploymentId?: unknown;
+  readonly environment?: unknown;
+  readonly repositoryOwner?: unknown;
+  readonly repositorySlug?: unknown;
+  readonly canonicalOrigin?: unknown;
+}
+
+interface VerifiedK2VercelOperationalAttestation {
+  readonly sourceSha: string;
+  readonly deploymentOrigin: string;
+  readonly deploymentId: string;
+  readonly canonicalOrigin: string;
+}
+
+type ProtectedVercelStage =
+  | 'immutable-anonymous-auth'
+  | 'immutable-attestation'
+  | 'immutable-auth-redirect'
+  | 'canonical-anonymous-attestation'
+  | 'canonical-anonymous-auth'
+  | 'canonical-attestation'
+  | 'canonical-auth';
+
+async function requireVercelAuthenticationChallenge(
+  origin: string,
+  path: string,
+  stage: ProtectedVercelStage,
+  request: typeof fetch,
+): Promise<void> {
+  let response: Response;
   try {
-    trustedResponse = await request(new URL('/auth', origin), {
-      headers: { 'x-vercel-trusted-oidc-idp-token': trustedSourceToken },
+    response = await request(new URL(path, origin), {
       redirect: 'manual',
+      cache: 'no-store',
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
-    throw new Error('K2 hosted acceptance protected Vercel preflight failed; no actor was created.');
+    throw new Error(`K2 hosted acceptance ${stage} protected Vercel check failed; no actor was created.`);
   }
-  if (trustedResponse.status !== 200 || !trustedResponse.headers.has('x-vercel-id')) {
+  if (!isVercelAuthenticationChallenge(response, origin)) {
     throw new Error(
-      'K2 hosted acceptance protected Vercel access is not authorized ' +
-      `(status=${trustedResponse.status}; ` +
-      `x-vercel-id=${trustedResponse.headers.has('x-vercel-id')}; ` +
-      `redirect=${classifyProtectedVercelRedirect(trustedResponse, origin)}); ` +
+      'K2 hosted acceptance target is not protected ' +
+      `(phase=${stage}; status=${response.status}; ` +
+      `x-vercel-id=${response.headers.has('x-vercel-id')}; ` +
+      `redirect=${classifyProtectedVercelRedirect(response, origin)}); ` +
       'no actor was created.',
     );
   }
+}
+
+function isVercelAuthenticationChallenge(response: Response, origin: string): boolean {
+  const location = response.headers.get('location');
+  if (
+    !location ||
+    response.status < 300 || response.status >= 400 ||
+    !response.headers.has('x-vercel-id')
+  ) return false;
+
+  try {
+    const challenge = new URL(location, origin);
+    return challenge.protocol === 'https:' && challenge.hostname === 'vercel.com' &&
+      !challenge.username && !challenge.password && !challenge.port &&
+      ['/sso-api', '/login', '/auth'].includes(challenge.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function requestProtectedVercelAttestation(
+  origin: string,
+  trustedSourceToken: string,
+  stage: ProtectedVercelStage,
+  request: typeof fetch,
+): Promise<VerifiedK2VercelOperationalAttestation> {
+  let response: Response;
+  try {
+    response = await request(new URL(K2_VERCEL_ATTESTATION_PATH, origin), {
+      headers: {
+        accept: 'application/json',
+        'x-vercel-trusted-oidc-idp-token': trustedSourceToken,
+      },
+      redirect: 'error',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new Error(`K2 hosted acceptance ${stage} request failed; no actor was created.`);
+  }
+  const contentType = response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
+  if (
+    response.status !== 200 ||
+    !response.headers.has('x-vercel-id') ||
+    contentType !== 'application/json'
+  ) throw protectedVercelResponseFailure(stage, response, origin);
+
+  let value: unknown;
+  try { value = await response.json(); }
+  catch { throw new Error(`K2 hosted acceptance ${stage} response was invalid; no actor was created.`); }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`K2 hosted acceptance ${stage} response was invalid; no actor was created.`);
+  }
+
+  const attestation = value as K2VercelOperationalAttestation;
+  if (
+    attestation.schemaVersion !== 1 ||
+    typeof attestation.sourceSha !== 'string' ||
+    !/^[a-f0-9]{40}$/.test(attestation.sourceSha) ||
+    typeof attestation.deploymentOrigin !== 'string' ||
+    typeof attestation.deploymentId !== 'string' ||
+    !/^dpl_[A-Za-z0-9]{8,128}$/.test(attestation.deploymentId) ||
+    attestation.environment !== 'production' ||
+    attestation.repositoryOwner !== 'haizx71' ||
+    attestation.repositorySlug !== 'lingua-os' ||
+    attestation.canonicalOrigin !== DEFAULT_CANONICAL_WEB_ORIGIN
+  ) throw new Error(`K2 hosted acceptance ${stage} response was invalid; no actor was created.`);
+
+  return {
+    sourceSha: attestation.sourceSha,
+    deploymentOrigin: attestation.deploymentOrigin,
+    deploymentId: attestation.deploymentId,
+    canonicalOrigin: attestation.canonicalOrigin,
+  };
+}
+
+function requireMatchingVercelAttestation(
+  attestation: VerifiedK2VercelOperationalAttestation,
+  immutableOrigin: string,
+  expectedSourceSha: string,
+  expectedDeploymentId: string | null,
+): void {
+  if (
+    attestation.sourceSha !== expectedSourceSha ||
+    attestation.deploymentOrigin !== immutableOrigin ||
+    (expectedDeploymentId !== null && attestation.deploymentId !== expectedDeploymentId) ||
+    attestation.canonicalOrigin !== DEFAULT_CANONICAL_WEB_ORIGIN
+  ) {
+    throw new Error('K2 hosted acceptance Vercel deployment attestation did not match; no actor was created.');
+  }
+}
+
+function isCanonicalAuthRedirect(
+  rawLocation: string | null,
+  sourceOrigin: string,
+  expectedCanonicalOrigin: string,
+): boolean {
+  if (!rawLocation || rawLocation !== `${expectedCanonicalOrigin}/auth`) return false;
+  try {
+    const target = new URL(rawLocation, sourceOrigin);
+    return target.protocol === 'https:' &&
+      !target.username && !target.password && !target.port &&
+      target.origin === expectedCanonicalOrigin &&
+      target.pathname === '/auth' &&
+      !target.search && !target.hash;
+  } catch {
+    return false;
+  }
+}
+
+async function requestTrustedVercelPath(
+  origin: string,
+  path: string,
+  trustedSourceToken: string,
+  redirect: 'manual' | 'error',
+  stage: ProtectedVercelStage,
+  request: typeof fetch,
+): Promise<Response> {
+  try {
+    return await request(new URL(path, origin), {
+      headers: { 'x-vercel-trusted-oidc-idp-token': trustedSourceToken },
+      redirect,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new Error(`K2 hosted acceptance ${stage} request failed; no actor was created.`);
+  }
+}
+
+function protectedVercelResponseFailure(
+  stage: ProtectedVercelStage,
+  response: Response,
+  origin: string,
+): Error {
+  return new Error(
+    'K2 hosted acceptance protected Vercel access is not authorized ' +
+    `(phase=${stage}; status=${response.status}; ` +
+    `x-vercel-id=${response.headers.has('x-vercel-id')}; ` +
+    `redirect=${classifyProtectedVercelRedirect(response, origin)}); ` +
+    'no actor was created.',
+  );
 }
 
 type ProtectedVercelRedirectClass =

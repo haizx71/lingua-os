@@ -6,6 +6,7 @@ import {
   K2_HOSTED_READONLY_DATABASE_ROLE,
   K2_HOSTED_STAGING_SUPABASE_REF,
   K2_HOSTED_UNMARKED_RECOVERY_MAX_AGE_MS,
+  K2_VERCEL_ATTESTATION_PATH,
   K2_HOSTED_WORKFLOW_REF,
   authenticateK2HostedActor,
   createK2HostedActor,
@@ -32,6 +33,71 @@ import {
 } from './k2_vercel_header';
 
 const NOW = new Date('2026-09-28T10:00:00.000Z');
+const IMMUTABLE_VERCEL_ORIGIN = 'https://lingua-os-8qh2r4ehj-haizx71-6910.vercel.app';
+const CANONICAL_VERCEL_ORIGIN = 'https://lingua-os-web-mocha.vercel.app';
+
+function vercelChallenge(): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: 'https://vercel.com/sso-api?redirect=%2Fauth',
+      'x-vercel-id': 'region::request-id',
+    },
+  });
+}
+
+function operationalAttestation(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schemaVersion: 1,
+    sourceSha: 'a'.repeat(40),
+    deploymentOrigin: IMMUTABLE_VERCEL_ORIGIN,
+    deploymentId: 'dpl_7Gw5ZMBpQA8h9GF832KGp7nwbuh3',
+    environment: 'production',
+    repositoryOwner: 'haizx71',
+    repositorySlug: 'lingua-os',
+    canonicalOrigin: CANONICAL_VERCEL_ORIGIN,
+    ...overrides,
+  };
+}
+
+function attestationResponse(overrides: Record<string, unknown> = {}): Response {
+  return Response.json(operationalAttestation(overrides), {
+    status: 200,
+    headers: { 'x-vercel-id': 'region::request-id' },
+  });
+}
+
+function acceptedGateResponses(
+  overrides: { readonly immutable?: Response; readonly canonical?: Response; readonly redirect?: Response; readonly auth?: Response } = {},
+): Response[] {
+  return [
+    vercelChallenge(),
+    overrides.immutable ?? attestationResponse(),
+    overrides.redirect ?? new Response(null, {
+      status: 308,
+      headers: { location: `${CANONICAL_VERCEL_ORIGIN}/auth`, 'x-vercel-id': 'region::request-id' },
+    }),
+    vercelChallenge(),
+    vercelChallenge(),
+    overrides.canonical ?? attestationResponse(),
+    overrides.auth ?? new Response('<html><input id="auth-email"><input id="auth-password"></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html; charset=utf-8', 'x-vercel-id': 'region::request-id' },
+    }),
+  ];
+}
+
+function mockFetchSequence(responses: Response[]) {
+  let nextResponse = 0;
+  return vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> =>
+    responses[nextResponse++] ?? new Response(null, { status: 500 }));
+}
+
+async function errorMessage(operation: Promise<unknown>): Promise<string> {
+  try { await operation; }
+  catch (error) { return error instanceof Error ? error.message : ''; }
+  return '';
+}
 
 function config(overrides: Partial<K2HostedConfig> = {}): K2HostedConfig {
   return {
@@ -983,8 +1049,9 @@ describe('K2 hosted actor lifecycle boundaries', () => {
   it('fails closed on a public Vercel deployment before sending the trusted-source token', async () => {
     const request = vi.fn(async () => new Response('public', { status: 200 }));
     await expect(verifyProtectedVercelOrigin(
-      'https://lingua-os-preview.vercel.app',
+      IMMUTABLE_VERCEL_ORIGIN,
       'trusted-source-token-placeholder',
+      'a'.repeat(40),
       request,
     )).rejects.toThrow('target is not protected');
     expect(request).toHaveBeenCalledTimes(1);
@@ -1010,60 +1077,140 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(thirdParty[K2_VERCEL_TRUSTED_SOURCE_HEADER]).toBeUndefined();
   });
 
-  it('accepts only a Vercel Authentication redirect before using the OIDC header', async () => {
-    let calls = 0;
-    const request = vi.fn(async () => {
-      calls += 1;
-      if (calls === 1) {
-        return new Response(null, {
-          status: 302,
-          headers: {
-            location: 'https://vercel.com/sso-api?redirect=https%3A%2F%2Flingua-os-preview.vercel.app',
-            'x-vercel-id': 'region::request-id',
-          },
-        });
-      }
-      return new Response('<html>app</html>', {
-        status: 200,
-        headers: { 'x-vercel-id': 'region::request-id' },
-      });
-    });
+  it('attests the immutable Production deployment before using the canonical browser origin', async () => {
+    const request = mockFetchSequence(acceptedGateResponses());
     await expect(verifyProtectedVercelOrigin(
-      'https://lingua-os-preview.vercel.app',
+      IMMUTABLE_VERCEL_ORIGIN,
       'trusted-source-token-placeholder',
+      'a'.repeat(40),
       request,
-    )).resolves.toBeUndefined();
-    expect(request).toHaveBeenCalledTimes(2);
+    )).resolves.toBe(CANONICAL_VERCEL_ORIGIN);
+    expect(request).toHaveBeenCalledTimes(7);
+
+    const callUrls = request.mock.calls.map(([input]) => new URL(String(input)).href);
+    expect(callUrls).toEqual([
+      `${IMMUTABLE_VERCEL_ORIGIN}/auth`,
+      `${IMMUTABLE_VERCEL_ORIGIN}${K2_VERCEL_ATTESTATION_PATH}`,
+      `${IMMUTABLE_VERCEL_ORIGIN}/auth`,
+      `${CANONICAL_VERCEL_ORIGIN}${K2_VERCEL_ATTESTATION_PATH}`,
+      `${CANONICAL_VERCEL_ORIGIN}/auth`,
+      `${CANONICAL_VERCEL_ORIGIN}${K2_VERCEL_ATTESTATION_PATH}`,
+      `${CANONICAL_VERCEL_ORIGIN}/auth`,
+    ]);
+
+    const tokenCalls = new Set([1, 2, 5, 6]);
+    request.mock.calls.forEach(([input, init], index) => {
+      const url = new URL(String(input));
+      const headers = new Headers(init?.headers);
+      expect(headers.has(K2_VERCEL_TRUSTED_SOURCE_HEADER)).toBe(tokenCalls.has(index));
+      if (headers.has(K2_VERCEL_TRUSTED_SOURCE_HEADER)) {
+        expect([
+          IMMUTABLE_VERCEL_ORIGIN,
+          CANONICAL_VERCEL_ORIGIN,
+        ]).toContain(url.origin);
+        expect(headers.get(K2_VERCEL_TRUSTED_SOURCE_HEADER)).toBe('trusted-source-token-placeholder');
+        expect(url.search).toBe('');
+        expect(url.hash).toBe('');
+        expect(init?.body).toBeUndefined();
+      }
+      expect(init?.cache).toBe('no-store');
+      expect(init?.redirect).toBe(['manual', 'error', 'manual', 'manual', 'manual', 'error', 'manual'][index]);
+    });
   });
 
-  it('reports only bounded response facts when the protected request is rejected', async () => {
-    let calls = 0;
-    const request = vi.fn(async () => {
-      calls += 1;
-      if (calls === 1) {
-        return new Response(null, {
-          status: 302,
-          headers: {
-            location: 'https://vercel.com/sso-api',
-            'x-vercel-id': 'region::request-id',
-          },
-        });
-      }
-      return new Response('private-response-body-marker', {
+  it.each([
+    ['a SHA mismatch', { sourceSha: 'b'.repeat(40) }],
+    ['a different immutable deployment', { deploymentOrigin: 'https://other.vercel.app' }],
+    ['a deployment ID mismatch', { deploymentId: 'dpl_other12345678' }],
+    ['a repository owner mismatch', { repositoryOwner: 'attacker' }],
+    ['a repository mismatch', { repositorySlug: 'other-repo' }],
+    ['a non-production environment', { environment: 'preview' }],
+    ['a canonical-origin mismatch', { canonicalOrigin: 'https://attacker.example' }],
+  ])('rejects canonical metadata containing %s before the login page request', async (_name, mismatch) => {
+    const request = mockFetchSequence(acceptedGateResponses({ canonical: attestationResponse(mismatch) }));
+
+    const failureMessage = await errorMessage(verifyProtectedVercelOrigin(
+      IMMUTABLE_VERCEL_ORIGIN,
+      'trusted-source-token-placeholder',
+      'a'.repeat(40),
+      request,
+    ));
+    expect(failureMessage).toMatch(/Vercel deployment attestation did not match|canonical-attestation response was invalid/);
+    expect(request).toHaveBeenCalledTimes(6);
+    expect(new URL(String(request.mock.calls[5][0])).origin).toBe(CANONICAL_VERCEL_ORIGIN);
+    expect(new URL(String(request.mock.calls[5][0])).pathname).toBe(K2_VERCEL_ATTESTATION_PATH);
+    expect(failureMessage).not.toContain('https://');
+    expect(failureMessage).not.toContain('trusted-source-token-placeholder');
+  });
+
+  it.each([
+    ['userinfo', 'https://user@lingua-os-web-mocha.vercel.app/auth'],
+    ['query parameters', 'https://lingua-os-web-mocha.vercel.app/auth?token=private-query-marker'],
+    ['an empty query delimiter', 'https://lingua-os-web-mocha.vercel.app/auth?'],
+    ['a fragment', 'https://lingua-os-web-mocha.vercel.app/auth#private-fragment-marker'],
+    ['an empty fragment delimiter', 'https://lingua-os-web-mocha.vercel.app/auth#'],
+    ['an unknown origin', 'https://other-app.vercel.app/auth'],
+    ['an insecure origin', 'http://lingua-os-web-mocha.vercel.app/auth'],
+    ['a different path', 'https://lingua-os-web-mocha.vercel.app/today'],
+  ])('does not send OIDC to the canonical host when the immutable redirect contains %s', async (_name, location) => {
+    const request = mockFetchSequence(acceptedGateResponses({
+      redirect: new Response(null, { status: 308, headers: { location, 'x-vercel-id': 'region::request-id' } }),
+    }));
+
+    const failureMessage = await errorMessage(verifyProtectedVercelOrigin(
+      IMMUTABLE_VERCEL_ORIGIN,
+      'trusted-source-token-placeholder',
+      'a'.repeat(40),
+      request,
+    ));
+    expect(failureMessage).toContain('protected Vercel access is not authorized');
+    expect(request).toHaveBeenCalledTimes(3);
+    expect(request.mock.calls.some(([input, init]) =>
+      new URL(String(input)).origin === CANONICAL_VERCEL_ORIGIN &&
+      new Headers(init?.headers).has(K2_VERCEL_TRUSTED_SOURCE_HEADER),
+    )).toBe(false);
+    expect(failureMessage).not.toContain('lingua-os-web-mocha.vercel.app');
+    expect(failureMessage).not.toContain('private-query-marker');
+    expect(failureMessage).not.toContain('private-fragment-marker');
+  });
+
+  it.each([4, 5])('stops before canonical OIDC when anonymous canonical request %i is not challenged', async requestNumber => {
+    const responses = acceptedGateResponses();
+    responses[requestNumber - 1] = new Response('public', { status: 200 });
+    const request = mockFetchSequence(responses);
+
+    await expect(verifyProtectedVercelOrigin(
+      IMMUTABLE_VERCEL_ORIGIN,
+      'trusted-source-token-placeholder',
+      'a'.repeat(40),
+      request,
+    )).rejects.toThrow('target is not protected');
+    expect(request).toHaveBeenCalledTimes(requestNumber);
+    expect(request.mock.calls.some(([input, init]) =>
+      new URL(String(input)).origin === CANONICAL_VERCEL_ORIGIN &&
+      new Headers(init?.headers).has(K2_VERCEL_TRUSTED_SOURCE_HEADER),
+    )).toBe(false);
+  });
+
+  it('requires an authorized canonical sign-in HTML response before returning the browser origin', async () => {
+    const request = mockFetchSequence(acceptedGateResponses({
+      auth: new Response('private-response-body-marker', {
         status: 308,
         headers: {
-          location: 'https://lingua-os-web-mocha.vercel.app/auth?email=learner%40example.test&token=private-query-marker',
+          location: 'https://lingua-os-web-mocha.vercel.app/auth?token=private-query-marker',
           'x-vercel-id': 'region::request-id',
           'set-cookie': 'session=private-cookie-marker',
+          'content-type': 'application/json',
         },
-      });
-    });
+      }),
+    }));
 
     let failureMessage = '';
     try {
       await verifyProtectedVercelOrigin(
-        'https://lingua-os-preview.vercel.app',
+        IMMUTABLE_VERCEL_ORIGIN,
         'trusted-source-token-placeholder',
+        'a'.repeat(40),
         request,
       );
     } catch (error) {
@@ -1072,37 +1219,30 @@ describe('K2 hosted actor lifecycle boundaries', () => {
 
     expect(failureMessage).toContain('status=308');
     expect(failureMessage).toContain('x-vercel-id=true');
-    expect(failureMessage).toContain('redirect=vercel-app');
+    expect(failureMessage).toContain('redirect=same-origin');
     expect(failureMessage).toContain('no actor was created');
     expect(failureMessage).not.toContain('lingua-os-web-mocha.vercel.app');
-    expect(failureMessage).not.toContain('learner%40example.test');
     expect(failureMessage).not.toContain('private-query-marker');
     expect(failureMessage).not.toContain('private-cookie-marker');
     expect(failureMessage).not.toContain('private-response-body-marker');
     expect(failureMessage).not.toContain('trusted-source-token-placeholder');
   });
 
-  it('distinguishes a bare Vercel rejection without exposing response contents', async () => {
-    let calls = 0;
-    const request = vi.fn(async () => {
-      calls += 1;
-      if (calls === 1) {
-        return new Response(null, {
-          status: 302,
-          headers: {
-            location: 'https://vercel.com/sso-api',
-            'x-vercel-id': 'region::request-id',
-          },
-        });
-      }
-      return new Response('private-response-body-marker', { status: 403 });
-    });
+  it('reports only bounded response facts for a rejected trusted metadata request', async () => {
+    const request = mockFetchSequence([
+      vercelChallenge(),
+      new Response('private-response-body-marker', {
+        status: 403,
+        headers: { 'set-cookie': 'session=private-cookie-marker' },
+      }),
+    ]);
 
     let failureMessage = '';
     try {
       await verifyProtectedVercelOrigin(
-        'https://lingua-os-preview.vercel.app',
+        IMMUTABLE_VERCEL_ORIGIN,
         'trusted-source-token-placeholder',
+        'a'.repeat(40),
         request,
       );
     } catch (error) {
@@ -1113,6 +1253,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(failureMessage).toContain('x-vercel-id=false');
     expect(failureMessage).toContain('redirect=none');
     expect(failureMessage).not.toContain('private-response-body-marker');
+    expect(failureMessage).not.toContain('private-cookie-marker');
     expect(failureMessage).not.toContain('trusted-source-token-placeholder');
   });
 
