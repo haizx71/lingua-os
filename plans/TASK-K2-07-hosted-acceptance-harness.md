@@ -1,8 +1,33 @@
 # TASK-K2-07 — Hosted Acceptance Harness
 
-Status: SOURCE READY; HOSTED RUN BLOCKED BY SECURE INFRASTRUCTURE
+Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT PROTECTED VERCEL CHECK
 Scope: Reusable, staging-only hosted acceptance runner; K2-07 first, later waves
 Owner: BACKEND / acceptance tooling
+
+## Current hosted gate evidence — 2026-09-30
+
+All six required GitHub repository secret names are configured, including
+`K2_STAGING_READONLY_DATABASE_URL`; the dedicated staging role
+`k2_hosted_acceptance_reader` and its repository secret are configured. No secret values were
+inspected. DB-only preflight run `36593505143` passed at harness commit
+`3af469084b8106557dcca877572338040a8dc804`. This does not establish the disposable-actor
+preflight, which has not run.
+
+The owner-confirmed Vercel Trusted Source rule is scoped to issuer
+`https://token.actions.githubusercontent.com`, repository `haizx71/lingua-os`, workflow display
+name `K2 Hosted Acceptance`, branch `master`, audience `https://vercel.com`, and target
+`Production` only. The guided Vercel UI does not offer `event_name` or `workflow_ref` conditions.
+Exact event/ref/workflow/repository/owner checks remain enforced by GitHub Actions; the Vercel
+rule is not represented as enforcing the event.
+
+Workflow run `36734233167` was dispatched on `master` at
+`477663743d438364f34fb34f9712cfcf82d47949` and failed the protected Vercel check before actor
+creation. Its separate current-run-cleanup job `109952362357` passed. No retained baseline or
+learner comparison gate was reached, so this is not hosted learner-state acceptance. K2-07 remains
+BLOCKED and K2-08 remains locked while narrower protected-access diagnosis continues. PR #24 TLS
+certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname fixes are merged in current master.
+No Share link, protection bypass, or global protection change was made or is authorized by this
+plan.
 
 ## Contract
 
@@ -30,11 +55,12 @@ master advances after a failure. The runner derives the exact immutable Vercel P
 successful GitHub deployment/status records for the current SHA; it requires matching
 `environment_url`, `target_url`, and `log_url`, the `vercel[bot]` creator, and a protected OIDC
 challenge/access check. Protected Vercel access uses GitHub Actions OIDC Trusted Sources in memory.
-The required trust rule binds audience `https://vercel.com`, repository `haizx71/lingua-os`,
-`ref=refs/heads/master`, exact
-`workflow_ref=haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`, and
-`event_name=workflow_dispatch`. It must not depend on a GitHub environment claim or assumed `sub`
-shape; this manual rule is not yet configured or verified. Missing staging settings, protected
+The Vercel rule is owner-confirmed to bind issuer `https://token.actions.githubusercontent.com`,
+repository `haizx71/lingua-os`, workflow display name `K2 Hosted Acceptance`, branch `master`,
+audience `https://vercel.com`, and target `Production` only. The guided UI does not expose
+`event_name` or `workflow_ref`; exact event/ref/workflow/repository/owner checks are enforced by
+the GitHub Actions workflow and preflight, not claimed as Vercel conditions. It must not depend
+on a GitHub environment claim or assumed `sub` shape. Missing staging settings, protected
 access, or OIDC configuration fails closed before actor creation. The runner creates no share links,
 does not alter deployment protection, and never writes credentials, JWTs, actor IDs, or email
 addresses to files, artifacts, logs, or reports.
@@ -43,9 +69,9 @@ The six staging values are repository-level secrets because GitHub environment s
 available under the current plan. No plan upgrade is needed for this path, but any workflow in the
 repository can read the values if it references them. This leaves a cross-workflow secret risk and
 assumes `haizx71` is the only trusted writer/merger of workflow code. Do not grant untrusted
-collaborators write access; review every workflow change. The current repository secret list is
-empty, so hosted acceptance remains blocked until the secret names are securely populated. No secret
-values have been read into this plan or the source tree.
+collaborators write access; review every workflow change. The six required secret names and the
+dedicated read-only staging role are configured. No secret values have been read into this plan or
+the source tree.
 
 Before baseline or actor creation, the run reaps expired exact-marker actors and cleans marked
 actors from earlier attempts of the same workflow run. A separate crash-recovery path may clean an
@@ -89,18 +115,20 @@ cleanup gates.
    document its optional response-header contract, and update `STATUS.md` and `TASKS.md`. No
    database migration or hosted state change is in scope.
 
-The harness requests GPT-6 Luna Max; this runtime does not expose the actual model or reasoning
-effort for independent verification. The prior source snapshot passed independent security review;
-the current workflow/cleanup delta is awaiting review. Current local verification passed 61/61
+Historical hosted-harness implementation runtime and effort remain unverified. Current diagnostic
+implementation: GPT-6 Luna / Max; independent security reviewer: GPT-6 Luna / Max; documentation
+update: GPT-6 Luna / Medium. Earlier hosted-harness source passed independent security review; the
+current diagnostic diff awaits separate review. Current local verification passed 61/61
 focused hosted-harness Vitest tests (including workflow security), 6/6 Python probe tests, the 1/1
 real Chromium redirect test, and workspace typecheck. `pnpm backend:check` passed on the prior
 source snapshot (600 backend tests); this revision changes no backend or Python runtime code. It
-creates no actors and does not establish hosted acceptance. Read-only staging checks confirmed migration `0019` and the
-built-in `supabase_read_only_user` has broad `BYPASSRLS` read capability without `pg_write_all_data`
-membership; the repository-level staging secret names and protected CI connection URL/password are
-not provisioned. The already-authorized hosted run will proceed only after independent code review,
-secret provisioning, and Vercel Trusted Source configuration; it does not need another approval
-round. No GitHub plan upgrade is needed for this path, but repository-wide secret availability
+creates no actors and does not establish hosted acceptance. Read-only staging checks confirmed
+migration `0019` and the dedicated `k2_hosted_acceptance_reader` has broad read capability without
+`pg_write_all_data` membership. DB-only preflight run `36593505143` passed; no disposable-actor
+preflight has run. Workflow run `36734233167` failed at the protected Vercel check before actor
+creation; cleanup job `109952362357` passed. No baseline or learner comparison was reached. Hosted
+acceptance can proceed only after the protected-access failure is diagnosed and that check passes.
+No GitHub plan upgrade is needed for this path, but repository-wide secret availability
 requires the documented owner-only trusted-writer assumption. CI must fail closed until secure setup
 is complete. Cleanup and the TTL janitor do not require migration head `0019` before attempting
 owner-marker-guarded Auth deletion; their post-delete residue proof remains strict and fails if the

@@ -2,12 +2,12 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
-## Current Knowledge V2 delivery gate — 2026-09-28
+## Current Knowledge V2 delivery gate — 2026-09-30
 
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
   are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- **TASK-K2-07: SOURCE DONE; HOSTED ACCEPTANCE PENDING.** PR #19 merged at
+- **TASK-K2-07: SOURCE DONE; HOSTED ACCEPTANCE BLOCKED.** PR #19 merged at
   `ac02c349f8500975a843633556daf9d1bebc49e8` after the HIGH correctness
   trust-boundary fix, four passing CI jobs, successful Vercel Preview, and
   independent verify-fix review. The fix rejects caller `correct` for explicit
@@ -18,7 +18,7 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   competence dimension and available canonical material. Keep one primary FSRS
   lineage through the existing atomic Memory and competence transaction.
   No schema migration; K2-08 through K2-10 remain downstream of hosted PASS.
-- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED RUN BLOCKED.** Independent security review
+- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE BLOCKED.** Independent security review
   passed for the isolated `codex/k2-hosted-acceptance-harness` branch, which implements the shared two-actor wave lifecycle, K2-07
   weakest-dimension/available-material plugin, per-response Render source-SHA verification,
   cross-actor isolation, exact replay, one competence plus FSRS lineage, complete retained-state
@@ -26,18 +26,28 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   unmarked partial creation. The workflow has a separate credential-free PR gate; the secret-bearing
   workflow has manual/scheduled triggers, step-scoped repo-secret mappings, a global staging
   mutation lock, and guarded cleanup. Acceptance is owner-only for both actor identities and
-  checks the live master SHA before secret mapping and again before actor creation. As checked on
-  2026-09-28, the six repository secret names were absent; no GitHub plan upgrade is needed to use repo
-  secrets. Their residual risk is cross-workflow access by any workflow that references them, so
+  checks the live master SHA before secret mapping and again before actor creation. All six
+  repository-level secret names are configured, including the read-only database secret; a dedicated
+  `k2_hosted_acceptance_reader` staging role is configured. DB-only preflight run `36593505143`
+  passed at `3af469084b8106557dcca877572338040a8dc804`. No secret values were inspected and no
+  disposable-actor preflight has run. Their residual risk is cross-workflow access by any workflow that references them, so
   the security assumption is that only owner `haizx71` has trusted write/merge access to workflow
-  code. As checked on 2026-09-28, the Vercel Trusted Source rule was not configured/verified and must bind audience
-  `https://vercel.com`, repo `haizx71/lingua-os`, master ref, exact `workflow_ref`, and
-  `event_name=workflow_dispatch` without an environment claim or assumed `sub` shape. The
-  already-authorized staging run requires no additional approval.
+  code. Owner-confirmed on 2026-09-30, the Vercel Trusted Source rule binds issuer
+  `https://token.actions.githubusercontent.com`, repository `haizx71/lingua-os`, workflow display
+  name `K2 Hosted Acceptance`, branch `master`, audience `https://vercel.com`, and target
+  `Production` only. Vercel's guided UI does not expose `event_name` or `workflow_ref`; exact
+  event/ref/workflow/repository/owner gates remain enforced by GitHub Actions. Do not claim Vercel
+  enforces the event. Run `36734233167` (`workflow_dispatch` on `master` at
+  `477663743d438364f34fb34f9712cfcf82d47949`) failed at the protected Vercel check before any
+  actor; its current-run-cleanup job `109952362357` passed. No retained baseline/learner comparison
+  gate was reached. K2-07 remains BLOCKED and K2-08 remains locked while narrower protected-access
+  diagnosis continues. PR #24 TLS certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname
+  fixes are merged in current `master`. Do not create a Share link, bypass protection, or change
+  global protection settings.
   Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
   missing published aligned content/HTTPS audio. Read-only checks confirmed staging at migration
-  `0019` and the built-in `supabase_read_only_user` has broad `BYPASSRLS` read access without
-  `pg_write_all_data` membership, but its CI connection credential was unavailable at this check.
+  `0019` and the dedicated `k2_hosted_acceptance_reader` role has broad read access without
+  `pg_write_all_data` membership. DB-only preflight passed; no disposable-actor preflight has run.
   Current source checks passed: 61/61 focused harness Vitest (including workflow security),
   6/6 probe pytest, 1/1 real Chromium redirect, and workspace typecheck. `pnpm backend:check`
   passed on the prior source snapshot (600 backend tests); this revision changes no backend or
