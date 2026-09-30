@@ -1,10 +1,16 @@
 # TASK-K2-07 — Hosted Acceptance Harness
 
-Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT PROTECTED VERCEL CHECK
+Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT PROTECTED VERCEL ORIGIN VERIFICATION
 Scope: Reusable, staging-only hosted acceptance runner; K2-07 first, later waves
 Owner: BACKEND / acceptance tooling
 
 ## Current hosted gate evidence — 2026-09-30
+
+PR #28 added a fail-closed protected-origin diagnostic and merged to `master` at
+`10a00b6c009e83301ba0d4cea4f32cf5714e89a5`. Independent combined-HEAD review at
+`459bb45813a8dfae9c1c04c7333ce1325877af65` passed with no HIGH/BLOCKER findings; its security
+gate passed. GitHub Production deployment `6763405633` for the exact merge SHA, created by
+`vercel[bot]`, has status `success`.
 
 All six required GitHub repository secret names are configured, including
 `K2_STAGING_READONLY_DATABASE_URL`; the dedicated staging role
@@ -20,14 +26,21 @@ name `K2 Hosted Acceptance`, branch `master`, audience `https://vercel.com`, and
 Exact event/ref/workflow/repository/owner checks remain enforced by GitHub Actions; the Vercel
 rule is not represented as enforcing the event.
 
-Workflow run `36734233167` was dispatched on `master` at
+Earlier workflow run `36734233167` was dispatched on `master` at
 `477663743d438364f34fb34f9712cfcf82d47949` and failed the protected Vercel check before actor
 creation. Its separate current-run-cleanup job `109952362357` passed. No retained baseline or
 learner comparison gate was reached, so this is not hosted learner-state acceptance. K2-07 remains
-BLOCKED and K2-08 remains locked while narrower protected-access diagnosis continues. PR #24 TLS
+BLOCKED and K2-08 remains locked. PR #24 TLS
 certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname fixes are merged in current master.
 No Share link, protection bypass, or global protection change was made or is authorized by this
 plan.
+
+The subsequent hosted run `36737740694` on current master SHA
+`10a00b6c009e83301ba0d4cea4f32cf5714e89a5` FAILED at `verifyProtectedVercelOrigin`: the check
+received HTTP 308 with `x-vercel-id` present and classified the redirect as `vercel-app`. It failed
+closed before creating any actor. Separate current-run-cleanup job `109964874290` passed in 41
+seconds. No retained baseline or learner comparison gate was reached. K2-07 remains BLOCKED and
+K2-08 remains locked; no hosted acceptance pass is established.
 
 ## Contract
 
@@ -115,10 +128,10 @@ cleanup gates.
    document its optional response-header contract, and update `STATUS.md` and `TASKS.md`. No
    database migration or hosted state change is in scope.
 
-Historical hosted-harness implementation runtime and effort remain unverified. Current diagnostic
-implementation: GPT-6 Luna / Max; independent security reviewer: GPT-6 Luna / Max; documentation
-update: GPT-6 Luna / Medium. Earlier hosted-harness source passed independent security review; the
-current diagnostic diff awaits separate review. Current local verification passed 61/61
+Historical hosted-harness implementation runtime and effort remain unverified. PR #28 diagnostic
+implementation: GPT-6 Luna / Max; independent combined-HEAD review: GPT-6 Luna / Max, PASS with no
+HIGH/BLOCKER findings; CI security gate: PASS; documentation update: GPT-6 Luna / Medium. Current
+local verification passed 61/61
 focused hosted-harness Vitest tests (including workflow security), 6/6 Python probe tests, the 1/1
 real Chromium redirect test, and workspace typecheck. `pnpm backend:check` passed on the prior
 source snapshot (600 backend tests); this revision changes no backend or Python runtime code. It
@@ -126,8 +139,10 @@ creates no actors and does not establish hosted acceptance. Read-only staging ch
 migration `0019` and the dedicated `k2_hosted_acceptance_reader` has broad read capability without
 `pg_write_all_data` membership. DB-only preflight run `36593505143` passed; no disposable-actor
 preflight has run. Workflow run `36734233167` failed at the protected Vercel check before actor
-creation; cleanup job `109952362357` passed. No baseline or learner comparison was reached. Hosted
-acceptance can proceed only after the protected-access failure is diagnosed and that check passes.
+creation; cleanup job `109952362357` passed. The newer workflow run `36737740694` also failed
+closed at protected-origin verification before actor creation; cleanup job `109964874290` passed.
+No baseline or learner comparison was reached. Hosted acceptance remains blocked until the current
+protected-origin issue is resolved and that gate passes.
 No GitHub plan upgrade is needed for this path, but repository-wide secret availability
 requires the documented owner-only trusted-writer assumption. CI must fail closed until secure setup
 is complete. Cleanup and the TTL janitor do not require migration head `0019` before attempting

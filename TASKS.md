@@ -18,7 +18,12 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   competence dimension and available canonical material. Keep one primary FSRS
   lineage through the existing atomic Memory and competence transaction.
   No schema migration; K2-08 through K2-10 remain downstream of hosted PASS.
-- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE BLOCKED.** Independent security review
+- **TASK-K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE BLOCKED.** PR #28 adds the
+  fail-closed protected-origin diagnostic. Independent combined-HEAD review at
+  `459bb45813a8dfae9c1c04c7333ce1325877af65` passed with no HIGH/BLOCKER findings; CI security
+  gate and exact-SHA Production deployment passed. PR #28 merged to `master` at
+  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5` (Production deployment `6763405633`, `vercel[bot]`,
+  success). Independent security review
   passed for the isolated `codex/k2-hosted-acceptance-harness` branch, which implements the shared two-actor wave lifecycle, K2-07
   weakest-dimension/available-material plugin, per-response Render source-SHA verification,
   cross-actor isolation, exact replay, one competence plus FSRS lineage, complete retained-state
@@ -40,10 +45,15 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   enforces the event. Run `36734233167` (`workflow_dispatch` on `master` at
   `477663743d438364f34fb34f9712cfcf82d47949`) failed at the protected Vercel check before any
   actor; its current-run-cleanup job `109952362357` passed. No retained baseline/learner comparison
-  gate was reached. K2-07 remains BLOCKED and K2-08 remains locked while narrower protected-access
-  diagnosis continues. PR #24 TLS certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname
+  gate was reached. K2-07 remains BLOCKED and K2-08 remains locked. PR #24 TLS certificate/role
+  proof and PRs #25/#26/#27 narrow OIDC hostname
   fixes are merged in current `master`. Do not create a Share link, bypass protection, or change
   global protection settings.
+  Subsequent run `36737740694` on `master` at `10a00b6c009e83301ba0d4cea4f32cf5714e89a5`
+  FAILED at `verifyProtectedVercelOrigin`: HTTP 308, `x-vercel-id` present, redirect classified
+  as `vercel-app`; the guard stopped before actor creation. Current-run-cleanup job
+  `109964874290` passed (41 seconds). No retained baseline/learner comparison gate was reached.
+  K2-07 remains BLOCKED and K2-08 remains locked; hosted acceptance is not established.
   Current staging modality coverage is self-recall and typing; cloze/listening are untested due to
   missing published aligned content/HTTPS audio. Read-only checks confirmed staging at migration
   `0019` and the dedicated `k2_hosted_acceptance_reader` role has broad read access without
