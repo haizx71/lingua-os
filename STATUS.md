@@ -1,12 +1,12 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked during disposable learner bootstrap; K2-08 locked
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked at post-save snapshot verification; K2-08 locked
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The authoritative current `master` baseline is
-  `e01cc21624bda37f59c982498686a6a709ca2264`. Earlier K2-04/K2-05/K2-06
+  `df0947c2ed0dddbedebdcc2652bf83f01b53eff3`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
@@ -114,14 +114,26 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   comparison error replacing the 409; the logs did not expose explicit row counts. The separate
   current-run-cleanup job passed in 44 seconds. Do not mark K2-07 hosted acceptance PASS; K2-07
   remains BLOCKED and K2-08 remains locked.
-- Local source verification passed before the latest hosted run: 61/61 focused
+- Hosted run `36755374459` on master SHA `df0947c2ed0dddbedebdcc2652bf83f01b53eff3` passed
+  the profile-timezone setup and canonical concept fetch/save, then failed at the post-save
+  primary snapshot row-count assertion (`wave`, line 191), before later K2-07 assertions,
+  replay, or isolation. The primary snapshot expectations listed zero `user_concept_states` and
+  lineage-state rows. Max review traced the conflict to the zero-row `user_concept_states`
+  expectation: ADR-022 requires explicit Save/Learn to create one zero-evidence projection row
+  marked `has_learning_intent`. The observer-row, Review/FSRS-row, and zero-evidence/mass
+  expectations remain correct. Runtime row counts were not logged and are not reported here.
+  The main finalizer completed without overriding the original error and reached Auth deletion,
+  actor-row absence, and retained-comparison equality by control flow; the separate
+  current-run-cleanup job passed in 42 seconds. This is not K2-07 acceptance: K2-07 remains BLOCKED
+  and K2-08 remains locked. K2-06's accepted Save/Learn behavior remains unchanged.
+- Local source verification passed before hosted run `36755374459`: 61/61 focused
   hosted-harness Vitest tests (including workflow security checks), 6/6 Python probe
   tests, 1/1 real Chromium redirect test, and workspace typecheck. `pnpm backend:check`
   had passed on the prior source snapshot (600 backend tests); this source verification
   did not create hosted actors or change hosted state.
-- Documentation update for the latest hosted-gate evidence: GPT-6 Luna / Medium. The source/log
-  review supports the failure-finalizer control flow; a passing K2-07 hosted learner-state run is
-  still required before task closure.
+- Documentation update for hosted run `36755374459`: GPT-6 Luna / Medium. Max review confirmed
+  the snapshot-expectation cause; K2-07 remains blocked pending the harness correction and a full
+  hosted learner-state acceptance run.
 - PR #28 diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review:
   GPT-6 Luna / Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation
   update: GPT-6 Luna / Medium.
