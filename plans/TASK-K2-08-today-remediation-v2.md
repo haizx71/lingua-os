@@ -1,6 +1,6 @@
 # TASK-K2-08 — Today Remediation-First Policy v2
 
-Status: PROPOSED FOR INDEPENDENT SPEC REVIEW
+Status: SPEC REVIEW PASS FOR BOUNDED POLICY/CI IMPLEMENTATION; HOSTED FIXTURES BLOCKED
 Source baseline: `2c3284a2deb4fac18683b660a751039e36b007f7`
 Implementation worker: GPT-6 Luna / Max
 
@@ -123,18 +123,21 @@ learner-state authorities.
   plus that eight-minute familiar activity, with no new curriculum. Otherwise this subcase remains
   blocked pending a separately reviewed and published controlled catalog fixture; the 15-minute /
   20-due pure-policy regression still proves allocation behavior locally.
-- Before any hosted remediation claim, trace the accepted Review-answer transitions, available
-  material, and K2-05/status thresholds against the live accepted catalog. A fresh Save/Learn
-  actor starts with learning intent and zero evidence. Familiar/active/weak/forgotten competence
-  requires the accepted required-dimension evidence and prior achievement; an answer sequence
-  cannot invent unavailable recognition/listening material or bypass these gates. K2-05 also uses
-  elapsed whole days from PostgreSQL `transaction_timestamp()`, so passive decay does not create
-  aged hosted fixtures during one run. If existing authorized APIs plus accepted live material
-  cannot deterministically create an eligible non-due weak/forgotten candidate, the hosted
-  remediation-first criterion remains blocked. Report the exact material/evidence gap and propose a
-  separately reviewed, published first-party fixture through the existing catalog release path.
-  Do not add a fixture-only write endpoint, use SQL or a write-capable database credential, or claim
-  overall K2-08 hosted acceptance/promote K2-08 based on due/familiar evidence or CI alone.
+- Source review establishes a bootstrap limit for a fresh hosted actor:
+  `services/api/src/lingua_api/review/modality.py` ranks only dimensions with existing evidence and
+  otherwise selects `self_recall`; Save/Learn creates learning intent with zero competence evidence.
+  The ordinary fresh-actor Save/Learn + Review flow therefore starts with production evidence only.
+  `services/api/src/lingua_api/competence/projector.py` requires evidence mass in each required
+  dimension for mastery, and weak/forgotten requires prior familiar/active/mastered achievement.
+  More catalog material alone cannot initialize an unobserved recognition/listening dimension
+  through this selector. Do not fabricate mode responses or bypass the server-selected prompt.
+  K2-05 uses elapsed whole days from PostgreSQL `transaction_timestamp()`. Passive decay therefore
+  does not create aged hosted fixtures during one run.
+- The hosted remediation-first criterion remains blocked until a separately reviewed, authorized
+  fixture path can start from valid actor-scoped evidence/achievement without real learners, direct
+  SQL, a write-capable database credential, or a fixture-only endpoint. Report the exact bootstrap
+  gap and seek a separately reviewed proposal before broadening any fixture surface. Do not claim
+  overall K2-08 hosted acceptance or promote K2-08 based on due/familiar evidence or CI alone.
 - When fixtures are available and that criterion is unblocked, the hosted plugin must verify
   remediation ahead of new curriculum, exact replay identity/order, and actor/profile isolation.
   Capture learner-state snapshots after all setup and before generation: only accepted Today
