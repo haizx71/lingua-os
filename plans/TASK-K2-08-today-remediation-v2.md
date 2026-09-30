@@ -111,22 +111,36 @@ learner-state authorities.
   use SQL, a write-capable database credential, a fixture-only write endpoint, forged timestamps,
   changed janitor TTL, real learner data, or manual actor/credential creation.
 - Before the Today generation request, capture the actor-scoped baseline after all fixture seeding.
-  For the due/familiar subcase, use a 15-minute profile, 20 due targets, and an eligible saved or
-  unfinished content candidate whose supported estimate packs to eight minutes. The expected plan
-  is the seven-item ordered Review prefix plus that eight-minute familiar activity, with no new
-  curriculum. Verify exact replay identity/order and actor/profile isolation. Compare learner-state
-  snapshots around generation: only accepted Today plan/activity/target/diagnostic rows may change;
-  evidence, FSRS, and competence state must remain unchanged. The shared runner's `finally` cleanup
-  and retained comparison remain mandatory and must pass.
-- K2-05 uses elapsed whole days from PostgreSQL `transaction_timestamp()`, so passive decay alone
-  does not create aged hosted fixtures during one run. Before implementation, trace all accepted
-  Review-answer transitions and K2-05 thresholds to determine whether a deterministic normal-API
-  sequence can produce an eligible, non-due weak or forgotten candidate within one hosted run,
-  with the real database clock and without changing learner-state authorities. If viable, the
-  hosted K2-08 plugin must prove remediation-first
-  allocation against new curriculum using that fixture. If not viable, retain an explicit blocked
-  hosted remediation criterion and report the exact transition/time constraint with a safe proposal;
-  do not claim K2-08 hosted acceptance or promote K2-08 based on the due/familiar subcase or CI alone.
+- Root must first obtain a read-only inventory of the live staging catalog through the existing
+  hosted orchestration. The committed FRLL seed contains exactly one published English word
+  concept and no aligned published sentence/audio fixture; the wider first-party manifests remain
+  candidate/proposal data, and `task008_reader_mvp.sql` is a test-only seed. Do not infer live
+  staging inventory from those files. If the live accepted catalog lacks the fixture set, report
+  that exact gap rather than seed catalog/learner rows through SQL or broaden fixture privileges.
+- If live staging has at least 20 accessible published concepts and an eligible saved/unfinished
+  content candidate whose supported estimate packs to eight minutes, the due/familiar subcase uses
+  a 15-minute profile and 20 due targets. Its expected plan is the seven-item ordered Review prefix
+  plus that eight-minute familiar activity, with no new curriculum. Otherwise this subcase remains
+  blocked pending a separately reviewed and published controlled catalog fixture; the 15-minute /
+  20-due pure-policy regression still proves allocation behavior locally.
+- Before any hosted remediation claim, trace the accepted Review-answer transitions, available
+  material, and K2-05/status thresholds against the live accepted catalog. A fresh Save/Learn
+  actor starts with learning intent and zero evidence. Familiar/active/weak/forgotten competence
+  requires the accepted required-dimension evidence and prior achievement; an answer sequence
+  cannot invent unavailable recognition/listening material or bypass these gates. K2-05 also uses
+  elapsed whole days from PostgreSQL `transaction_timestamp()`, so passive decay does not create
+  aged hosted fixtures during one run. If existing authorized APIs plus accepted live material
+  cannot deterministically create an eligible non-due weak/forgotten candidate, the hosted
+  remediation-first criterion remains blocked. Report the exact material/evidence gap and propose a
+  separately reviewed, published first-party fixture through the existing catalog release path.
+  Do not add a fixture-only write endpoint, use SQL or a write-capable database credential, or claim
+  overall K2-08 hosted acceptance/promote K2-08 based on due/familiar evidence or CI alone.
+- When fixtures are available and that criterion is unblocked, the hosted plugin must verify
+  remediation ahead of new curriculum, exact replay identity/order, and actor/profile isolation.
+  Capture learner-state snapshots after all setup and before generation: only accepted Today
+  plan/activity/target/diagnostic rows may change during generation; evidence, FSRS, and competence
+  state must remain unchanged. The shared runner's `finally` cleanup and retained comparison remain
+  mandatory and must pass.
 - Disposable PostgreSQL tests must separately prove effective weak/forgotten status and remediation
   ordering using actor-scoped synthetic aged state, while snapshotting learner-state tables around
   generation to prove no Today-generation deltas. That database proof does not substitute for the
