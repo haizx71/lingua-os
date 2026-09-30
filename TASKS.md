@@ -15,10 +15,7 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   `finalizer_complete`. This does not cover listening or cloze: eligible staging
   material is not published. See `reviews/K2-07-hosted-acceptance-review.md` and
   `plans/TASK-K2-07-hosted-acceptance-harness.md`.
-- **TASK-K2-08: READY.** K2-07 hosted and retained-comparison gates are complete.
-  Begin only the bounded Today Engine Heuristic V2 work in the remaining execution
-  map; preserve accepted Today v1, learner-state, repeatability, and ownership
-  invariants. K2-08 is not complete.
+- **TASK-K2-08: DOING (bounded policy/contract/credential-free PostgreSQL CI); HOSTED FULL GATE: BLOCKED.** K2-07 remains PASS and unchanged. Read-only staging inventory found 94 provenance-eligible English word/phrase concepts (enough candidates for 20 distinct Save/Learn-activated due-review items, but not evidence that 20 items are currently due), while eligible published English content, content-linked eligible concepts, selected published cloze targets, selected HTTPS audio, exact-eight-minute content, and default-matched per-concept competence policy overrides each remain at zero. The current standard word/phrase policy weights recognition/listening/production `0.4/0.3/0.3`; accepted self-recall/typing evidence only updates production, and the selector does not bootstrap unobserved dimensions. No privileged synthetic learner-state or policy override path is accepted under the current plan. A compliant eight-minute content item and valid end-to-end review fixture are still required for hosted K2-08; K2-09 and K2-10 remain LOCKED. See `reviews/K2-08-hosted-fixture-readiness.md`.
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
   are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.

@@ -1,12 +1,12 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 READY for bounded implementation
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 DOING on bounded implementation, hosted full gate BLOCKED; K2-09/K2-10 LOCKED
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The authoritative current `master` baseline is
-  `c696ac935852c4ebcd9e1183521996e5b12ad273`. Earlier K2-04/K2-05/K2-06
+  `2c3284a2deb4fac18683b660a751039e36b007f7`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
 - **K2-07 HOSTED ACCEPTANCE: PASS.** Workflow run [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)
@@ -21,8 +21,13 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   This staging catalog exercised self-recall and typing only. Listening and
   cloze remain untested because eligible published material is unavailable; this
   run does not establish those modalities. K2-07 is closed for its bounded hosted
-  acceptance scope; K2-08 is READY, not complete. See
+  acceptance scope; K2-08 is DOING, not complete. See
   `reviews/K2-07-hosted-acceptance-review.md` and the detailed run history below.
+- **K2-08 TODAY V2: DOING for bounded policy/contract/credential-free PostgreSQL CI work; HOSTED FULL GATE: BLOCKED.** K2-07 remains PASS with the exact acceptance run above; this checkpoint does not reopen it. Read-only staging catalog inventory found 94 distinct English word/phrase concepts meeting the Dictionary source-provenance predicate, enough candidate identities for a 20-item actor-owned due-review setup through accepted Save/Learn operations. This is catalog eligibility, not a claim that 20 due rows currently exist. The same aggregate found zero eligible published English content items, zero content-linked eligible word/phrase concepts, zero selected published cloze concepts, zero selected HTTPS audio concepts, zero exact-eight-minute items, and zero `concept_competence_policies` rows (including production-only overrides matching the default parameter-set ID/version). The 8-minute Today content reserve therefore has no published staging candidate. Standard word/phrase weights remain recognition 0.4, listening 0.3, production 0.3; accepted self-recall/typing evidence is production-only, and the Review selector does not bootstrap unobserved dimensions. Max's bounded review found no accepted privileged synthetic policy/learner-state fixture path under the current plan. K2-08's full hosted gate stays blocked until a compliant published content fixture and a valid end-to-end review fixture are available; K2-09 and K2-10 remain locked.
+- A concrete original A2 article candidate is available at immutable commit
+  [3623642ca3bc108d236ca20345bae769408ea195](https://github.com/haizx71/lingua-os/commit/3623642ca3bc108d236ca20345bae769408ea195),
+  file `knowledge/k208-a2-market-article-candidate-2026-10-01.md` on its isolated branch. It measures 1,263 whitespace tokens, 72 segments, and 8 estimated minutes; candidate body SHA-256 is `6c39d16de0f6ecb27be2420c2f011a704663e036e77a86afb2c09b72930ba28c`. It remains NOT APPROVED: human editorial/level and rights confirmation are pending, and exact database concept IDs/normalized-form selection, persisted offsets, and aggregate links were not verified. No quality score, review state, source-record hash, or publish status was assigned.
+- Review head `b4341582` was reported PASS for the bounded K2-08 specification review only. This does not establish implementation, CI, or hosted acceptance. A source-only migration `0020` proposing a Today reason-code CHECK is NOT APPLIED. Root's checkpoint reports the application migration registry at `0017`, distinct from the Supabase platform ledger at `0019` plus the dedicated read-only reader role; these are separate registries. No hosted actor cycle was run for this checkpoint, no hosted mutation lock was held, and no hosted content or learner state was changed. Documentation worker: GPT-6 Luna / Medium; independent bounded-spec reviewer: Max.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
   browser session before acceptance. One Review answer updated production only;
   exact replay made no second state/event change. Brain and Review projected a
