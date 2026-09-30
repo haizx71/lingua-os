@@ -1079,6 +1079,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(failureMessage).not.toContain('private-query-marker');
     expect(failureMessage).not.toContain('private-cookie-marker');
     expect(failureMessage).not.toContain('private-response-body-marker');
+    expect(failureMessage).not.toContain('trusted-source-token-placeholder');
   });
 
   it('distinguishes a bare Vercel rejection without exposing response contents', async () => {
@@ -1112,6 +1113,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(failureMessage).toContain('x-vercel-id=false');
     expect(failureMessage).toContain('redirect=none');
     expect(failureMessage).not.toContain('private-response-body-marker');
+    expect(failureMessage).not.toContain('trusted-source-token-placeholder');
   });
 
   it('normal actor sign-in suppresses provider details and checks identity parity', async () => {
