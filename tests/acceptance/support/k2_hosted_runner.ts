@@ -50,6 +50,89 @@ export type K2HostedApiRequest = (
   expectedStatuses?: readonly number[],
 ) => Promise<K2HostedApiResult>;
 
+const K2_HOSTED_PHASES = [
+  'preflight_master_sha',
+  'preflight_deployment_attestation',
+  'preflight_oidc_token',
+  'preflight_protected_origin',
+  'preflight_api_health',
+  'preflight_migration_probe',
+  'prior_expired_actor_cleanup',
+  'prior_interrupted_actor_cleanup',
+  'prior_actor_absence_check',
+  'retained_baseline_snapshot',
+  'primary_actor_create',
+  'observer_actor_create',
+  'primary_actor_authentication',
+  'observer_actor_authentication',
+  'browser_oidc_token',
+  'browser_protected_origin',
+  'browser_request_guard',
+  'browser_sign_in',
+  'primary_profile_bootstrap',
+  'observer_profile_bootstrap',
+  'wave_k2_07',
+  'fixture_anchor_material',
+  'fixture_canonical_concept_fetch',
+  'fixture_primary_save',
+  'fixture_post_save_primary_snapshot',
+  'fixture_post_save_observer_snapshot',
+  'fixture_post_save_lineage',
+  'fixture_observer_review_queue',
+  'fixture_primary_review_queue',
+  'fixture_cross_actor_isolation',
+  'fixture_self_recall_answer',
+  'fixture_typing_answer',
+  'fixture_answer_persistence_snapshot',
+  'fixture_self_recall_replay',
+  'fixture_typing_replay',
+  'fixture_replay_snapshot',
+  'fixture_self_recall_verification',
+  'fixture_due_item_wait',
+  'fixture_typing_verification',
+  'fixture_final_observer_verification',
+  'finalizer_begin',
+  'finalizer_actor_cleanup',
+  'finalizer_fresh_identity_cleanup',
+  'finalizer_retained_comparison',
+  'finalizer_complete',
+] as const;
+const K2_HOSTED_CHECKPOINT_EVENTS = ['start', 'pass'] as const;
+const k2HostedPhaseSet = new Set<string>(K2_HOSTED_PHASES);
+const k2HostedCheckpointEventSet = new Set<string>(K2_HOSTED_CHECKPOINT_EVENTS);
+
+export type K2HostedPhase = typeof K2_HOSTED_PHASES[number];
+export type K2HostedCheckpointEvent = typeof K2_HOSTED_CHECKPOINT_EVENTS[number];
+
+export function markK2HostedCheckpoint(
+  testInfo: Pick<TestInfo, 'annotations'>,
+  phase: string,
+  event: string,
+): void {
+  if (!k2HostedPhaseSet.has(phase) || !k2HostedCheckpointEventSet.has(event)) {
+    throw new Error('K2 hosted acceptance diagnostic checkpoint was invalid.');
+  }
+  testInfo.annotations.push({ type: 'k2-hosted-phase', description: `${phase}:${event}` });
+  console.log(JSON.stringify({ type: 'k2_hosted_phase', phase, event }));
+}
+
+export function markK2HostedFinalizerComplete(
+  testInfo: Pick<TestInfo, 'annotations'>,
+  proof: Readonly<{
+    cleanupError: boolean;
+    actorCleanupPassed: boolean;
+    freshIdentityCleanupPassed: boolean;
+    retainedComparisonPassed: boolean;
+  }>,
+): boolean {
+  if (proof.cleanupError || !proof.actorCleanupPassed ||
+      !proof.freshIdentityCleanupPassed || !proof.retainedComparisonPassed) {
+    return false;
+  }
+  markK2HostedCheckpoint(testInfo, 'finalizer_complete', 'pass');
+  return true;
+}
+
 export interface K2HostedWaveContext {
   readonly config: K2HostedConfig;
   readonly primaryActor: K2HostedActor;
@@ -65,6 +148,7 @@ export interface K2HostedWaveContext {
   readonly actorLineage: (actorId: string) => Promise<K2HostedActorLineageProof>;
   readonly anchorMaterial: () => Promise<K2HostedAnchorMaterial>;
   readonly requireSnapshotRows: (snapshot: K2RetainedSnapshot, expected: Readonly<Record<string, number>>) => void;
+  readonly checkpoint: (phase: K2HostedPhase, event: K2HostedCheckpointEvent) => void;
 }
 
 export interface K2HostedWavePlugin {
@@ -298,68 +382,116 @@ export async function runK2HostedWave(
   let observerSession: K2AuthenticatedActor | null = null;
   let retainedBaseline: K2RetainedSnapshot | null = null;
   let cleanupError = false;
+  let actorCleanupPassed = false;
+  let freshIdentityCleanupPassed = true;
+  let retainedComparisonPassed = false;
+  const checkpoint = (phase: K2HostedPhase, event: K2HostedCheckpointEvent) =>
+    markK2HostedCheckpoint(testInfo, phase, event);
 
   try {
     if (config.supabaseProjectRef !== K2_HOSTED_STAGING_SUPABASE_REF) {
       throw new Error('K2 hosted acceptance refused a non-staging Supabase project.');
     }
+    checkpoint('preflight_master_sha', 'start');
     await verifyK2HostedCurrentMasterSha(config);
+    checkpoint('preflight_master_sha', 'pass');
+    checkpoint('preflight_deployment_attestation', 'start');
     const immutableVercelOrigin = await verifyK2HostedDeploymentAttestations(config);
+    checkpoint('preflight_deployment_attestation', 'pass');
+    checkpoint('preflight_oidc_token', 'start');
     const oidc = await createGithubTrustedSourceToken(config);
+    checkpoint('preflight_oidc_token', 'pass');
+    checkpoint('preflight_protected_origin', 'start');
     const vercelOrigin = await verifyProtectedVercelOrigin(
       immutableVercelOrigin,
       oidc,
       config.githubSha,
     );
+    checkpoint('preflight_protected_origin', 'pass');
+    checkpoint('preflight_api_health', 'start');
     await verifyK2StagingApiHealth(config.apiOrigin, config.githubSha);
+    checkpoint('preflight_api_health', 'pass');
+    checkpoint('preflight_migration_probe', 'start');
     const migration = await runK2HostedProbe('migrations', config.readonlyDatabaseUrl);
     if (!('appMigrationHead' in migration) || migration.appMigrationHead !== K2_APPROVED_APP_MIGRATION_HEAD) {
       throw new Error('K2 hosted acceptance staging migration head is not approved.');
     }
+    checkpoint('preflight_migration_probe', 'pass');
 
+    checkpoint('prior_expired_actor_cleanup', 'start');
     const expired = await reapExpiredK2Actors(config, admin as unknown as K2AdminClient, Date.now(),
       actorId => verifyActorGone(config, actorId),
       { allowSameRunUnmarked: config });
+    checkpoint('prior_expired_actor_cleanup', 'pass');
     testInfo.annotations.push({ type: 'expired-actors-reaped', description: String(expired) });
+    checkpoint('prior_interrupted_actor_cleanup', 'start');
     const priorAttemptActors = await cleanupK2RunActors(config, admin as unknown as K2AdminClient,
       actorId => verifyActorGone(config, actorId));
+    checkpoint('prior_interrupted_actor_cleanup', 'pass');
     testInfo.annotations.push({ type: 'interrupted-run-actors-cleaned', description: String(priorAttemptActors) });
+    checkpoint('prior_actor_absence_check', 'start');
     await assertNoK2ActorsRemain(config, admin as unknown as K2AdminClient);
+    checkpoint('prior_actor_absence_check', 'pass');
+    checkpoint('retained_baseline_snapshot', 'start');
     retainedBaseline = await runK2HostedProbe('retained_snapshot', config.readonlyDatabaseUrl) as K2RetainedSnapshot;
+    checkpoint('retained_baseline_snapshot', 'pass');
 
+    checkpoint('preflight_master_sha', 'start');
     await verifyK2HostedCurrentMasterSha(config);
+    checkpoint('preflight_master_sha', 'pass');
+    checkpoint('primary_actor_create', 'start');
     const primary = await createK2HostedActor(
       config,
       admin as unknown as K2AdminClient,
       identity => freshActorIdentities.push(identity),
     );
+    checkpoint('primary_actor_create', 'pass');
     actors.push(primary);
+    checkpoint('observer_actor_create', 'start');
     const observer = await createK2HostedActor(
       config,
       admin as unknown as K2AdminClient,
       identity => freshActorIdentities.push(identity),
     );
+    checkpoint('observer_actor_create', 'pass');
     actors.push(observer);
+    checkpoint('primary_actor_authentication', 'start');
     primarySession = await authenticateK2HostedActor(primary, config, learner);
+    checkpoint('primary_actor_authentication', 'pass');
+    checkpoint('observer_actor_authentication', 'start');
     observerSession = await authenticateK2HostedActor(observer, config, learner);
+    checkpoint('observer_actor_authentication', 'pass');
 
+    checkpoint('browser_oidc_token', 'start');
     const browserOidc = await createGithubTrustedSourceToken(config);
+    checkpoint('browser_oidc_token', 'pass');
+    checkpoint('browser_protected_origin', 'start');
     const reverifiedBrowserOrigin = await verifyProtectedVercelOrigin(
       immutableVercelOrigin,
       browserOidc,
       config.githubSha,
     );
+    checkpoint('browser_protected_origin', 'pass');
     if (reverifiedBrowserOrigin !== vercelOrigin) {
       throw new Error('K2 hosted acceptance canonical browser origin changed; browser flow was stopped.');
     }
+    checkpoint('browser_request_guard', 'start');
     await installK2BrowserRequestGuard(browserContext, {
       vercelOrigin,
       supabaseUrl: config.supabaseUrl,
     }, browserOidc);
+    checkpoint('browser_request_guard', 'pass');
+    checkpoint('browser_sign_in', 'start');
     await verifyAuthUiSignIn(page, primary, vercelOrigin, config);
+    checkpoint('browser_sign_in', 'pass');
 
+    checkpoint('primary_profile_bootstrap', 'start');
     const primaryProfileId = await createLearnerProfile(config, primarySession);
+    checkpoint('primary_profile_bootstrap', 'pass');
+    checkpoint('observer_profile_bootstrap', 'start');
     const observerProfileId = await createLearnerProfile(config, observerSession);
+    checkpoint('observer_profile_bootstrap', 'pass');
+    checkpoint('wave_k2_07', 'start');
     await plugin.run({
       config,
       primaryActor: primary,
@@ -376,8 +508,11 @@ export async function runK2HostedWave(
       actorLineage: actorId => actorLineage(config, actorId),
       anchorMaterial: () => anchorMaterial(config),
       requireSnapshotRows: requireK2ActorSnapshotRows,
+      checkpoint,
     });
+    checkpoint('wave_k2_07', 'pass');
   } finally {
+    checkpoint('finalizer_begin', 'start');
     try { await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); }
     catch { /* The page may not have reached the protected origin. */ }
     try { await browserContext.clearCookies(); } catch { /* Context may already be closing. */ }
@@ -386,6 +521,7 @@ export async function runK2HostedWave(
     observerSession = null;
 
     let cleanedActorCount = 0;
+    checkpoint('finalizer_actor_cleanup', 'start');
     try {
       cleanedActorCount = await cleanupK2RunActors(
         config,
@@ -394,7 +530,12 @@ export async function runK2HostedWave(
       );
     } catch { cleanupError = true; }
     if (cleanedActorCount < actors.length) cleanupError = true;
+    if (!cleanupError) {
+      actorCleanupPassed = true;
+      checkpoint('finalizer_actor_cleanup', 'pass');
+    }
     actors.splice(0, actors.length);
+    checkpoint('finalizer_fresh_identity_cleanup', 'start');
     for (const identity of freshActorIdentities) {
       try {
         await cleanupFreshK2HostedActorIdentity(
@@ -403,20 +544,30 @@ export async function runK2HostedWave(
           admin as unknown as K2AdminClient,
           actorId => verifyActorGone(config, actorId),
         );
-      } catch { cleanupError = true; }
+      } catch { cleanupError = true; freshIdentityCleanupPassed = false; }
     }
+    if (freshIdentityCleanupPassed) checkpoint('finalizer_fresh_identity_cleanup', 'pass');
     freshActorIdentities.splice(0, freshActorIdentities.length);
 
     if (retainedBaseline) {
+      checkpoint('finalizer_retained_comparison', 'start');
       try {
         const retainedAfter = await runK2HostedProbe('retained_snapshot', config.readonlyDatabaseUrl) as K2RetainedSnapshot;
         assertK2RetainedStateUnchanged(retainedBaseline, retainedAfter);
+        retainedComparisonPassed = true;
+        checkpoint('finalizer_retained_comparison', 'pass');
       } catch { cleanupError = true; }
       retainedBaseline = null;
     }
     if (cleanupError) {
       throw new Error('K2 hosted acceptance cleanup, zero-residue, or retained-state proof failed.');
     }
+    markK2HostedFinalizerComplete(testInfo, {
+      cleanupError,
+      actorCleanupPassed,
+      freshIdentityCleanupPassed,
+      retainedComparisonPassed,
+    });
   }
 }
 
