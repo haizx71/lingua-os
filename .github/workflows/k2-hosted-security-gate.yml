@@ -50,10 +50,12 @@ jobs:
           pnpm exec vitest run
           tests/acceptance/support/k2_hosted_acceptance_helpers.test.ts
           tests/acceptance/support/k2_hosted_actors.test.ts
+          tests/acceptance/support/k2_hosted_runner.test.ts
           tests/acceptance/support/k2_hosted_probe_client.test.ts
           tests/acceptance/support/k2_hosted_wave_k2_07.test.ts
           tests/acceptance/support/k2_playwright_network.test.ts
           tests/acceptance/support/k2_hosted_workflow_security.test.ts
+          tests/frontend/k2-vercel-attestation.test.ts
           --maxWorkers=1
       - name: Typecheck workspace contracts and packages
         run: pnpm typecheck

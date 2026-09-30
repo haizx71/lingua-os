@@ -1,10 +1,16 @@
 # TASK-K2-07 — Hosted Acceptance Harness
 
-Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT PROTECTED VERCEL CHECK
+Status: SOURCE READY; HOSTED ACCEPTANCE BLOCKED AT PROTECTED VERCEL ORIGIN VERIFICATION
 Scope: Reusable, staging-only hosted acceptance runner; K2-07 first, later waves
 Owner: BACKEND / acceptance tooling
 
 ## Current hosted gate evidence — 2026-09-30
+
+PR #28 added a fail-closed protected-origin diagnostic and merged to `master` at
+`10a00b6c009e83301ba0d4cea4f32cf5714e89a5`. Independent combined-HEAD review at
+`459bb45813a8dfae9c1c04c7333ce1325877af65` passed with no HIGH/BLOCKER findings; its security
+gate passed. GitHub Production deployment `6763405633` for the exact merge SHA, created by
+`vercel[bot]`, has status `success`.
 
 All six required GitHub repository secret names are configured, including
 `K2_STAGING_READONLY_DATABASE_URL`; the dedicated staging role
@@ -20,14 +26,35 @@ name `K2 Hosted Acceptance`, branch `master`, audience `https://vercel.com`, and
 Exact event/ref/workflow/repository/owner checks remain enforced by GitHub Actions; the Vercel
 rule is not represented as enforcing the event.
 
-Workflow run `36734233167` was dispatched on `master` at
+Earlier workflow run `36734233167` was dispatched on `master` at
 `477663743d438364f34fb34f9712cfcf82d47949` and failed the protected Vercel check before actor
 creation. Its separate current-run-cleanup job `109952362357` passed. No retained baseline or
 learner comparison gate was reached, so this is not hosted learner-state acceptance. K2-07 remains
-BLOCKED and K2-08 remains locked while narrower protected-access diagnosis continues. PR #24 TLS
+BLOCKED and K2-08 remains locked. PR #24 TLS
 certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname fixes are merged in current master.
 No Share link, protection bypass, or global protection change was made or is authorized by this
 plan.
+
+The subsequent hosted run `36737740694` on current master SHA
+`10a00b6c009e83301ba0d4cea4f32cf5714e89a5` FAILED at `verifyProtectedVercelOrigin`: the check
+received HTTP 308 with `x-vercel-id` present and classified the redirect as `vercel-app`. It failed
+closed before creating any actor. Separate current-run-cleanup job `109964874290` passed in 41
+seconds. No retained baseline or learner comparison gate was reached. K2-07 remains BLOCKED and
+K2-08 remains locked; no hosted acceptance pass is established.
+
+The canonical-origin correction is implemented in isolated source commits and remains under
+independent review. Its local focused security gate passed 114/114 tests, workspace typecheck and
+changed-file lint passed, the real cross-origin browser redirect test passed, and the Next.js
+production build registered `/api/k2-vercel-attestation` as a dynamic route. This source has not
+been merged or deployed; no hosted acceptance result or actor lifecycle is claimed from it.
+
+Independent review of PR #29 then found a HIGH reporting issue in the browser sign-in helper:
+Playwright 1.63 can include `.fill(value)` arguments in action errors, which the list reporter may
+print if the error escapes the helper. The follow-up wraps credential fills, submit, response
+handling, and destination waits in a fixed error with no original cause, and consumes the response
+wait rejection even when an earlier fill fails. Fake in-memory email/password markers cover those
+failure stages; no live credentials or actors are used. PR #29 remains unmerged pending delta review
+and its credential-free CI rerun.
 
 ## Contract
 
@@ -64,6 +91,35 @@ on a GitHub environment claim or assumed `sub` shape. Missing staging settings, 
 access, or OIDC configuration fails closed before actor creation. The runner creates no share links,
 does not alter deployment protection, and never writes credentials, JWTs, actor IDs, or email
 addresses to files, artifacts, logs, or reports.
+
+The protected-origin gate also requires independent evidence for the browser-facing canonical host.
+The operational `GET /api/k2-vercel-attestation` route is dynamic and returns a private, no-store
+JSON object with this versioned shape: `schemaVersion`, `sourceSha`, `deploymentOrigin`,
+`deploymentId`, `environment`, `repositoryOwner`, `repositorySlug`, and `canonicalOrigin`. Its
+values come from Vercel-managed runtime variables (`VERCEL_GIT_COMMIT_SHA`, `VERCEL_URL`,
+`VERCEL_DEPLOYMENT_ID`, `VERCEL_ENV`, `VERCEL_GIT_REPO_OWNER`, and `VERCEL_GIT_REPO_SLUG`) plus
+the effective canonical origin constrained to the repository-owned
+`DEFAULT_CANONICAL_WEB_ORIGIN`. Missing or malformed runtime values and any non-production,
+repository, SHA, deployment, or canonical mismatch fail closed. The route does not read `Host` or
+forwarded-host headers and does not return request data or secrets. It is operational deployment
+metadata, not a learner/product API; it is intentionally excluded from `contracts/openapi.yaml`.
+
+For the immutable deployment origin already attested by successful GitHub Production statuses, the
+runner first requires anonymous Vercel challenges on `/auth` and the operational route, then
+OIDC-fetches that route with redirects disabled and checks the metadata against `GITHUB_SHA`, the
+exact immutable origin, repository, and Production environment. It next requires the authenticated
+immutable `/auth` response to be the exact 308 to the metadata-bound canonical `/auth` path over
+HTTPS, with no userinfo, port, query, or fragment. Only after that does it challenge anonymous
+access at canonical `/api/k2-vercel-attestation` and `/auth`, then OIDC-fetch the canonical
+operational route. The canonical response must report
+the same exact SHA, immutable Vercel URL, deployment ID, repository, Production environment, and
+code-owned canonical origin; the canonical authenticated `/auth` response must be HTTP 200 with
+`x-vercel-id` and `text/html`. Redirects are never followed with the OIDC token. The runner returns
+only the independently verified canonical origin to Playwright, whose request guard scopes the
+OIDC header to that exact origin. Vercel system-variable behavior is documented at
+[Vercel System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables);
+Trusted Sources uses the `x-vercel-trusted-oidc-idp-token` request header as documented at
+[Vercel Trusted Sources](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/trusted-sources).
 
 The six staging values are repository-level secrets because GitHub environment secrets are not
 available under the current plan. No plan upgrade is needed for this path, but any workflow in the
@@ -115,10 +171,10 @@ cleanup gates.
    document its optional response-header contract, and update `STATUS.md` and `TASKS.md`. No
    database migration or hosted state change is in scope.
 
-Historical hosted-harness implementation runtime and effort remain unverified. Current diagnostic
-implementation: GPT-6 Luna / Max; independent security reviewer: GPT-6 Luna / Max; documentation
-update: GPT-6 Luna / Medium. Earlier hosted-harness source passed independent security review; the
-current diagnostic diff awaits separate review. Current local verification passed 61/61
+Historical hosted-harness implementation runtime and effort remain unverified. PR #28 diagnostic
+implementation: GPT-6 Luna / Max; independent combined-HEAD review: GPT-6 Luna / Max, PASS with no
+HIGH/BLOCKER findings; CI security gate: PASS; documentation update: GPT-6 Luna / Medium. Current
+local verification passed 61/61
 focused hosted-harness Vitest tests (including workflow security), 6/6 Python probe tests, the 1/1
 real Chromium redirect test, and workspace typecheck. `pnpm backend:check` passed on the prior
 source snapshot (600 backend tests); this revision changes no backend or Python runtime code. It
@@ -126,8 +182,10 @@ creates no actors and does not establish hosted acceptance. Read-only staging ch
 migration `0019` and the dedicated `k2_hosted_acceptance_reader` has broad read capability without
 `pg_write_all_data` membership. DB-only preflight run `36593505143` passed; no disposable-actor
 preflight has run. Workflow run `36734233167` failed at the protected Vercel check before actor
-creation; cleanup job `109952362357` passed. No baseline or learner comparison was reached. Hosted
-acceptance can proceed only after the protected-access failure is diagnosed and that check passes.
+creation; cleanup job `109952362357` passed. The newer workflow run `36737740694` also failed
+closed at protected-origin verification before actor creation; cleanup job `109964874290` passed.
+No baseline or learner comparison was reached. Hosted acceptance remains blocked until the current
+protected-origin issue is resolved and that gate passes.
 No GitHub plan upgrade is needed for this path, but repository-wide secret availability
 requires the documented owner-only trusted-writer assumption. CI must fail closed until secure setup
 is complete. Cleanup and the TTL janitor do not require migration head `0019` before attempting

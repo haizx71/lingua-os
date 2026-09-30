@@ -1,12 +1,12 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance blocked after protected Vercel check; K2-08 locked
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance remains blocked after protected Vercel origin verification; K2-08 locked
 
 ## Current Knowledge V2 checkpoint — 2026-09-30
 
-- The isolated hosted-harness branch is based on `master`
-  `477663743d438364f34fb34f9712cfcf82d47949`. Earlier K2-04/K2-05/K2-06
+- The authoritative current `master` baseline is
+  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5`. Earlier K2-04/K2-05/K2-06
   source and migrations through `0019` are represented in that baseline; no
   historical branch recovery is required for this gate.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
@@ -18,7 +18,7 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   the pre-run baseline. Independent read-only review found no K2-06 blocker.
   The synthetic fixture does not establish natural API progression to `active`.
   See `plans/TASK-K2-06-tripartite-dynamic-state.md`.
-- **K2-07 SOURCE PROMOTED: PASS; HOSTED ACCEPTANCE: PENDING.** PR #19 merged
+- **K2-07 SOURCE PROMOTED: PASS; HOSTED ACCEPTANCE: BLOCKED.** PR #19 merged
   into `master` at `ac02c349f8500975a843633556daf9d1bebc49e8` after the
   caller-supplied `correct` HIGH finding was fixed and independently verified.
   All four GitHub Actions jobs and Vercel Preview passed at PR head `c97f3e0`.
@@ -76,9 +76,19 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   failed at the protected Vercel check before any disposable actor was created. Its separate
   current-run-cleanup job `109952362357` passed. The retained baseline/learner comparison gate
   was not reached; this is not a learner-state acceptance result. No disposable-actor preflight
-  has run. K2-07 hosted acceptance remains BLOCKED and K2-08 remains locked. The narrower
-  protected-access diagnosis is ongoing. PR #24 TLS certificate/role proof and PRs #25/#26/#27
-  narrow OIDC hostname fixes are merged in current `master`. Do not create a Share link, bypass
+  has run. The subsequent protected-access diagnostic change is PR #28, independently reviewed
+  at combined HEAD `459bb45813a8dfae9c1c04c7333ce1325877af65` with PASS and no HIGH/BLOCKER
+  findings; its security gate passed. PR #28 merged to current `master` at
+  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5`. Exact-SHA GitHub Production deployment
+  `6763405633` by `vercel[bot]` has status `success`.
+- Hosted run `36737740694` on current master SHA
+  `10a00b6c009e83301ba0d4cea4f32cf5714e89a5` FAILED the protected-origin check
+  `verifyProtectedVercelOrigin`: HTTP 308 with `x-vercel-id` present, classified as a
+  `vercel-app` redirect. The guard failed closed before creating any actor. Separate
+  current-run-cleanup job `109964874290` passed (41 seconds). No retained baseline or learner
+  comparison gate was reached; this is not hosted acceptance. K2-07 remains BLOCKED and K2-08
+  remains locked. PR #24 TLS certificate/role proof and PRs #25/#26/#27 narrow OIDC hostname
+  fixes are merged in current `master`. Do not create a Share link, bypass
   protection, or change global protection settings.
 - Staging read-only checks confirmed migration head `0019` and the dedicated
   `k2_hosted_acceptance_reader` role; the DB-only preflight above passed. The role has broad
@@ -91,9 +101,10 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   redirect test, and workspace typecheck. `pnpm backend:check` had passed on the
   prior source snapshot (600 backend tests); this revision changes no backend or
   Python runtime code. No hosted actor was created and no hosted state was changed.
-- Historical hosted-harness implementation runtime and effort remain unverified. Current
-  diagnostic implementation: GPT-6 Luna / Max; independent security reviewer: GPT-6 Luna / Max;
-  documentation update: GPT-6 Luna / Medium.
+- Historical hosted-harness implementation runtime and effort remain unverified. PR #28
+  diagnostic implementation: GPT-6 Luna / Max; independent combined-HEAD review: GPT-6 Luna /
+  Max, PASS with no HIGH/BLOCKER findings; CI security gate: PASS; documentation update:
+  GPT-6 Luna / Medium.
 
 The dated sections below preserve earlier checkpoints; their pending statements
 do not override this current result.

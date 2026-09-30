@@ -3,9 +3,9 @@ import type { K2HostedConfig } from './k2_hosted_actors';
 import { headersForK2ProtectedOrigin } from './k2_vercel_header';
 
 /**
- * Browser traffic is restricted to the attested Vercel deployment and this
- * staging project's Auth API. The bearer used by the acceptance flow is sent
- * directly to the exact Render origin from Node, never through browser routes.
+ * Browser traffic is restricted to the SHA-attested canonical Vercel origin
+ * and this staging project's Auth API. The bearer used by the acceptance flow
+ * is sent directly to the exact Render origin from Node, never through browser routes.
  */
 export async function handleK2BrowserRoute(
   route: Route,
