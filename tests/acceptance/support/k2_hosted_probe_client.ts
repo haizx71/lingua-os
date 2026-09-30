@@ -69,11 +69,16 @@ export type K2HostedActorLineageProof = Readonly<{
     resultProductionEvidenceCount: number | null;
   }>[];
 }>;
+export const K2_APPROVED_APP_MIGRATION_HEAD = '0017' as const;
+const K2_APPROVED_APP_MIGRATION_COUNT = 17 as const;
 export type K2HostedProbeResult =
   | K2RetainedSnapshot
   | K2HostedAnchorMaterial
   | K2HostedActorLineageProof
-  | { readonly appMigrationHead: '0019'; readonly appliedMigrations: 19 };
+  | {
+      readonly appMigrationHead: typeof K2_APPROVED_APP_MIGRATION_HEAD;
+      readonly appliedMigrations: typeof K2_APPROVED_APP_MIGRATION_COUNT;
+    };
 
 function isSafeCount(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
@@ -126,6 +131,26 @@ export function parseK2HostedAnchorMaterial(value: unknown): K2HostedAnchorMater
     throw new Error('K2 hosted acceptance canonical material proof was invalid.');
   }
   return record as K2HostedAnchorMaterial;
+}
+
+export function parseK2HostedMigrationProof(value: unknown): {
+  readonly appMigrationHead: typeof K2_APPROVED_APP_MIGRATION_HEAD;
+  readonly appliedMigrations: typeof K2_APPROVED_APP_MIGRATION_COUNT;
+} {
+  if (!value || typeof value !== 'object') {
+    throw new Error('K2 hosted acceptance migration probe returned invalid output.');
+  }
+  const migration = value as { appMigrationHead?: unknown; appliedMigrations?: unknown };
+  if (
+    migration.appMigrationHead !== K2_APPROVED_APP_MIGRATION_HEAD ||
+    migration.appliedMigrations !== K2_APPROVED_APP_MIGRATION_COUNT
+  ) {
+    throw new Error('K2 hosted acceptance staging migration head does not match the accepted K2-07 source.');
+  }
+  return {
+    appMigrationHead: K2_APPROVED_APP_MIGRATION_HEAD,
+    appliedMigrations: K2_APPROVED_APP_MIGRATION_COUNT,
+  };
 }
 
 export function parseK2HostedActorLineage(value: unknown): K2HostedActorLineageProof {
@@ -229,14 +254,7 @@ export async function runK2HostedProbe(
   if (action === 'actor_snapshot' || action === 'actor_absent') return parseK2ActorSnapshot(value);
   if (action === 'actor_lineage') return parseK2HostedActorLineage(value);
   if (action === 'anchor_material') return parseK2HostedAnchorMaterial(value);
-  if (!value || typeof value !== 'object') {
-    throw new Error('K2 hosted acceptance migration probe returned invalid output.');
-  }
-  const migration = value as { appMigrationHead?: unknown; appliedMigrations?: unknown };
-  if (migration.appMigrationHead !== '0019' || migration.appliedMigrations !== 19) {
-    throw new Error('K2 hosted acceptance staging migration head does not match the accepted K2-07 source.');
-  }
-  return { appMigrationHead: '0019', appliedMigrations: 19 };
+  return parseK2HostedMigrationProof(value);
 }
 
 export function assertK2RetainedStateUnchanged(

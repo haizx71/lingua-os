@@ -4,6 +4,7 @@ import {
   buildK2ProbeChildEnvironment,
   k2RetainedTableNames,
   parseK2ActorSnapshot,
+  parseK2HostedMigrationProof,
   parseK2RetainedSnapshot,
 } from './k2_hosted_probe_client';
 
@@ -40,6 +41,17 @@ describe('K2 read-only probe client', () => {
     after.tables.users.rows = 1;
     after.totalRows = 1;
     expect(() => assertK2RetainedStateUnchanged(before, after)).toThrow('retained learner-state snapshot changed');
+  });
+
+  it('requires the approved application migration head and exact count', () => {
+    expect(parseK2HostedMigrationProof({ appMigrationHead: '0017', appliedMigrations: 17 }))
+      .toEqual({ appMigrationHead: '0017', appliedMigrations: 17 });
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 19 }))
+      .toThrow('staging migration head does not match');
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0017', appliedMigrations: 19 }))
+      .toThrow('staging migration head does not match');
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 17 }))
+      .toThrow('staging migration head does not match');
   });
 
   it('passes only the read-only URL, action, actor identity, and available runner basics to the probe child', () => {
