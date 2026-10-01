@@ -249,10 +249,7 @@ def test_v2_treats_forgotten_and_weak_as_remediation_before_new_content() -> Non
         policy=TODAY_HEURISTIC_V2,
     )
 
-    assert [item.content_id for item in decision.activities] == [
-        _uuid(2003),
-        _uuid(2002),
-    ]
+    assert [item.content_id for item in decision.activities] == [_uuid(2003)]
     assert decision.activities[0].reason_codes[:2] == (
         "FORGOTTEN_REMEDIATION",
         "CONTENT_FIT",
@@ -267,14 +264,56 @@ def test_v2_treats_forgotten_and_weak_as_remediation_before_new_content() -> Non
         ),
         policy=TODAY_HEURISTIC_V2,
     )
-    assert [item.content_id for item in weak_before_new.activities] == [
-        _uuid(2001),
-        _uuid(2002),
-    ]
+    assert [item.content_id for item in weak_before_new.activities] == [_uuid(2001)]
     assert weak_before_new.activities[0].reason_codes[:2] == (
         "WEAK_REMEDIATION",
         "CONTENT_FIT",
     )
+
+
+def test_v2_remediation_does_not_bypass_new_content_unseen_cap() -> None:
+    decision = build_today_decision(
+        _context(),
+        (),
+        (_content(1, unseen=5, remediation_status="weak"),),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert decision.activities == ()
+    assert decision.status == "completed"
+
+
+def test_v2_remediation_articles_still_share_one_new_content_slot() -> None:
+    decision = build_today_decision(
+        _context(),
+        (),
+        (
+            _content(1, unseen=4, remediation_status="weak", rank=0),
+            _content(2, unseen=4, remediation_status="forgotten", rank=1),
+        ),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert [item.content_id for item in decision.activities] == [_uuid(2002)]
+    assert decision.activities[0].reason_codes[:2] == (
+        "FORGOTTEN_REMEDIATION",
+        "CONTENT_FIT",
+    )
+
+
+def test_v2_saved_and_unfinished_remediation_keep_their_newness_exceptions() -> None:
+    decision = build_today_decision(
+        _context(),
+        (),
+        (
+            _content(1, unseen=5, remediation_status="weak", saved=True),
+            _content(2, unseen=5, remediation_status="forgotten", unfinished=True),
+        ),
+        policy=TODAY_HEURISTIC_V2,
+    )
+
+    assert [item.content_id for item in decision.activities] == [_uuid(2002), _uuid(2001)]
+    assert all("NEW_CONCEPT_BUDGET" not in item.reason_codes for item in decision.activities)
 
 
 def test_v2_15_minutes_and_twenty_due_items_do_not_spend_reserve_on_new_content() -> None:
@@ -318,11 +357,14 @@ def test_v2_familiar_content_uses_only_its_eight_minute_reserve_and_replays_poli
     assert decision.unused_minutes == 0
 
 
-def test_v2_non_due_remediation_can_use_reserve_without_being_counted_as_new() -> None:
+def test_v2_non_due_remediation_within_new_content_cap_can_use_reserve() -> None:
     decision = build_today_decision(
         _context(15),
         tuple(_review(value) for value in range(1, 21)),
-        (_content(1, minutes=5, unseen=5, remediation_status="weak"),),
+        (
+            _content(1, minutes=5, unseen=4, remediation_status="weak"),
+            _content(2, minutes=5, unseen=4, remediation_status="forgotten"),
+        ),
         policy=TODAY_HEURISTIC_V2,
     )
 
@@ -331,7 +373,8 @@ def test_v2_non_due_remediation_can_use_reserve_without_being_counted_as_new() -
         ("read", 5),
     ]
     assert decision.activities[1].reason_codes[:2] == (
-        "WEAK_REMEDIATION",
+        "FORGOTTEN_REMEDIATION",
         "CONTENT_FIT",
     )
+    assert decision.activities[1].content_id == _uuid(2002)
     assert decision.unused_minutes == 0

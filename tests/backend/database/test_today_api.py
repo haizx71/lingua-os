@@ -459,7 +459,7 @@ def test_today_remediation_uses_effective_status_and_excludes_due_concepts_beyon
         connection.execute(
             """
             UPDATE fsrs_states
-            SET due_at = %s, last_review_at = %s, stability = 1, state = 'review'
+            SET due_at = %s, last_review_at = %s, stability = 1, step = NULL, state = 'review'
             WHERE user_id = %s AND review_item_id <> %s
             """,
             (
@@ -680,7 +680,19 @@ def test_timezone_change_expires_old_local_day_without_server_timezone(
 ) -> None:
     first = _get_plan(today_api)
     first_as_of = _stored_plan_as_of(migrated_postgres_url, first["id"])
-    changed_time_zone = "Etc/GMT+12" if first_as_of.hour < 12 else "Etc/GMT-14"
+    changed_zone_candidates = ("Etc/GMT+12", "Etc/GMT-14")
+    safe_alternatives: list[tuple[float, str]] = []
+    for zone_name in changed_zone_candidates:
+        local_as_of = first_as_of.astimezone(ZoneInfo(zone_name))
+        if local_as_of.date().isoformat() == first["planDate"]:
+            continue
+        next_local_midnight = (local_as_of + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        seconds_until_local_day_changes = (next_local_midnight - local_as_of).total_seconds()
+        safe_alternatives.append((seconds_until_local_day_changes, zone_name))
+    assert safe_alternatives
+    changed_time_zone = max(safe_alternatives)[1]
     with psycopg.connect(migrated_postgres_url) as connection:
         connection.execute(
             "UPDATE learner_profiles SET time_zone = %s WHERE user_id = %s",

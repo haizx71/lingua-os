@@ -122,7 +122,7 @@ def build_today_decision(
             break
         if candidate.content_id in selected_content:
             continue
-        is_new = _is_new(candidate, policy)
+        is_new = _is_new(candidate)
         if is_new and new_count >= policy.max_new_content:
             continue
         weakness = _weakness(candidate, due_concepts)
@@ -195,16 +195,8 @@ def build_today_decision(
 def _eligible_content(candidate: ContentCandidate, policy: TodayPolicy) -> bool:
     if candidate.is_completed:
         return False
-    is_recommended_new = (
-        not candidate.is_unfinished
-        and not candidate.is_saved
-        and not (
-            policy.version == TODAY_HEURISTIC_V2.version
-            and candidate.remediation_status is not None
-        )
-    )
     return not (
-        is_recommended_new and candidate.unseen_concept_count > policy.max_new_unseen_concepts
+        _is_new(candidate) and candidate.unseen_concept_count > policy.max_new_unseen_concepts
     )
 
 
@@ -244,9 +236,7 @@ def _has_packable_content(
     return bool(candidates) and remaining >= policy.content_block_min_minutes
 
 
-def _is_new(candidate: ContentCandidate, policy: TodayPolicy) -> bool:
-    if policy.version == TODAY_HEURISTIC_V2.version and candidate.remediation_status is not None:
-        return False
+def _is_new(candidate: ContentCandidate) -> bool:
     return not candidate.is_unfinished and not candidate.is_saved
 
 
@@ -280,8 +270,10 @@ def _v2_content_reserve(
     reserved = 0
     read_count = 0
     listen_count = 0
+    new_count = 0
     for candidate in candidates:
-        if _is_new(candidate, policy):
+        is_new = _is_new(candidate)
+        if is_new and (candidate.remediation_status is None or new_count >= policy.max_new_content):
             continue
         weakness = _weakness(candidate, set())
         use_listen = candidate.has_audio and weakness == "WEAK_LISTENING"
@@ -293,6 +285,8 @@ def _v2_content_reserve(
         if minutes is None:
             continue
         reserved += minutes
+        if is_new:
+            new_count += 1
         if use_listen:
             listen_count += 1
         else:

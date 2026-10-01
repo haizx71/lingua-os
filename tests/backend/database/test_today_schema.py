@@ -147,6 +147,14 @@ def test_0020_reason_code_migration_rolls_back_and_reapplies_safely(
         activity_id = _insert_review_activity(
             connection, plan_id, actor_id, review_item_id, concept_id
         )
+        connection.execute(
+            """
+            INSERT INTO today_activity_review_items
+                (activity_id, user_id, language_code, review_item_id, position)
+            VALUES (%s, %s, 'en', %s, 0)
+            """,
+            (activity_id, actor_id, review_item_id),
+        )
         with pytest.raises(psycopg.errors.CheckViolation), connection.transaction():
             connection.execute(
                 "UPDATE today_plan_activities SET reason_codes = %s WHERE id = %s",
@@ -164,6 +172,14 @@ def test_0020_rollback_refuses_persisted_remediation_reasons_before_changing_con
         plan_id = _insert_plan(connection, actor_id, profile_id)
         activity_id = _insert_review_activity(
             connection, plan_id, actor_id, review_item_id, concept_id
+        )
+        connection.execute(
+            """
+            INSERT INTO today_activity_review_items
+                (activity_id, user_id, language_code, review_item_id, position)
+            VALUES (%s, %s, 'en', %s, 0)
+            """,
+            (activity_id, actor_id, review_item_id),
         )
         connection.execute(
             "UPDATE today_plan_activities SET reason_codes = %s WHERE id = %s",
