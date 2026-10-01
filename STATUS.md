@@ -43,7 +43,7 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   [36795488330](https://github.com/haizx71/lingua-os/actions/runs/36795488330)
   passed; independent GPT-6 Luna / Max source review passed with no HIGH/BLOCKER
   findings. This is draft-branch source and credential-free CI evidence; it does
-  not mean `master` contains the implementation. Documentation/preparation was
+  not by itself establish a merge; the later merge to `master` is recorded above. Documentation/preparation was
   recorded by GPT-6 Luna / Medium in `reviews/K2-08-source-ci-review.md`.
 - **K2-08 FULL HOSTED/LIVE PHASE C: BLOCKED.** Pending reviewed and published
   eligible content and the full automated actor cycle. A fresh catalog aggregate
