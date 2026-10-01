@@ -4,8 +4,9 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## Current Knowledge V2 delivery gate — 2026-10-01
 
-- **TASK-K2-07: DONE; HOSTED ACCEPTANCE: PASS** at master SHA
-  `c696ac935852c4ebcd9e1183521996e5b12ad273`. Hosted workflow run
+- **TASK-K2-07: DONE; HOSTED ACCEPTANCE: PASS** on the accepted runtime
+  snapshot `c696ac935852c4ebcd9e1183521996e5b12ad273` (historical acceptance
+  evidence; not identified as the latest `master` baseline). Hosted workflow run
   [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)
   passed; acceptance job `110108944244` succeeded (one test, 12 minutes), and
   separate current-run-cleanup job `110113728287` succeeded (43 seconds).
@@ -15,10 +16,20 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   `finalizer_complete`. This does not cover listening or cloze: eligible staging
   material is not published. See `reviews/K2-07-hosted-acceptance-review.md` and
   `plans/TASK-K2-07-hosted-acceptance-harness.md`.
-- **TASK-K2-08: READY.** K2-07 hosted and retained-comparison gates are complete.
-  Begin only the bounded Today Engine Heuristic V2 work in the remaining execution
-  map; preserve accepted Today v1, learner-state, repeatability, and ownership
-  invariants. K2-08 is not complete.
+- **TASK-K2-08: BLOCKED FOR FULL HOSTED/LIVE PHASE C; SOURCE/CI PASS ON DRAFT, UNMERGED PR #35.**
+  Reviewed source snapshot `ecb830418e81cc60e573fe91acf7382563ac0568` is based
+  on the verified `master` snapshot `2c3284a2deb4fac18683b660a751039e36b007f7`;
+  it is not in `master`. Exact-head Knowledge Audit CI
+  [36795488328](https://github.com/haizx71/lingua-os/actions/runs/36795488328)
+  and Security Gate
+  [36795488330](https://github.com/haizx71/lingua-os/actions/runs/36795488330)
+  passed, and independent GPT-6 Luna / Max review found no HIGH/BLOCKER issues.
+  Full hosted/live Phase C remains blocked pending reviewed published content and
+  separate authorization for a narrowly scoped fixture capability. The due-only
+  source subcase is not overall hosted proof. Migration `0020` is NOT APPLIED.
+  Preserve accepted Today v1, learner-state, repeatability, and ownership
+  invariants. See `reviews/K2-08-source-ci-review.md`; this source/CI result does
+  not establish overall K2-08 PASS or authorize promotion. K2-09/10 remain locked.
 - **TASK-K2-06: DONE; STAGING: PASS.** Disposable-actor hosted acceptance and
   independent review passed. The synthetic temporal fixture and cleanup limits
   are recorded in `plans/TASK-K2-06-tripartite-dynamic-state.md`.

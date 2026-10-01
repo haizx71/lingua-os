@@ -1,14 +1,33 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 READY for bounded implementation
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 source/CI PASS on draft PR #35 (unmerged), full hosted/live Phase C BLOCKED; K2-09/10 LOCKED
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
-- The authoritative current `master` baseline is
-  `c696ac935852c4ebcd9e1183521996e5b12ad273`. Earlier K2-04/K2-05/K2-06
-  source and migrations through `0019` are represented in that baseline; no
-  historical branch recovery is required for this gate.
+- The verified source-of-truth `master` snapshot for this checkpoint is
+  `2c3284a2deb4fac18683b660a751039e36b007f7`. The accepted K2-07 hosted runtime
+  evidence was recorded against `c696ac935852c4ebcd9e1183521996e5b12ad273`;
+  that remains valid acceptance evidence and is not identified here as the latest
+  `master` baseline. Earlier K2-04/K2-05/K2-06 source and migrations through `0019`
+  are represented in the verified base.
+- **K2-08 SOURCE/CI: PASS AT DRAFT PR #35; NOT MERGED.** The reviewed source
+  snapshot is `ecb830418e81cc60e573fe91acf7382563ac0568`, based on
+  `2c3284a2deb4fac18683b660a751039e36b007f7`. Exact-head Knowledge Audit CI
+  [36795488328](https://github.com/haizx71/lingua-os/actions/runs/36795488328)
+  and Security Gate
+  [36795488330](https://github.com/haizx71/lingua-os/actions/runs/36795488330)
+  passed; independent GPT-6 Luna / Max source review passed with no HIGH/BLOCKER
+  findings. This is draft-branch source and credential-free CI evidence; it does
+  not mean `master` contains the implementation. Documentation/preparation was
+  recorded by GPT-6 Luna / Medium in `reviews/K2-08-source-ci-review.md`.
+- **K2-08 FULL HOSTED/LIVE PHASE C: BLOCKED.** Pending reviewed and published
+  eligible content and separate authorization for any narrowly scoped fixture
+  capability. The due-only source subcase is not full hosted proof and cannot
+  establish overall K2-08 acceptance. Migration `0020` is NOT APPLIED. K2-09/10
+  remain locked. See `reviews/K2-08-source-ci-review.md` for exact-head checks,
+  counts, limitations, the candidate article [commit](https://github.com/haizx71/lingua-os/commit/5bfb9362e2b534b526260d089a42c4edd44c36a4),
+  and the NOT AUTHORIZED fixture capability [proposal](https://github.com/haizx71/lingua-os/commit/60b01e2a637b50117a5df2cd5b316654b310661b).
 - **K2-07 HOSTED ACCEPTANCE: PASS.** Workflow run [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)
   (`workflow_dispatch`, `master`, attempt 1) completed successfully on that exact master SHA. Hosted job `110108944244`
   passed (one acceptance test, 12 minutes); separate current-run cleanup job
@@ -21,8 +40,9 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   This staging catalog exercised self-recall and typing only. Listening and
   cloze remain untested because eligible published material is unavailable; this
   run does not establish those modalities. K2-07 is closed for its bounded hosted
-  acceptance scope; K2-08 is READY, not complete. See
-  `reviews/K2-07-hosted-acceptance-review.md` and the detailed run history below.
+  acceptance scope. K2-08 source/CI evidence is on draft PR #35, while its full
+  hosted gate remains BLOCKED. See `reviews/K2-07-hosted-acceptance-review.md`,
+  `reviews/K2-08-source-ci-review.md`, and the detailed run history below.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
   browser session before acceptance. One Review answer updated production only;
   exact replay made no second state/event change. Brain and Review projected a
@@ -43,8 +63,8 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   `dep-dasj8v49v7es73f2q7bg` is live from `ac02c34` and `/health` returned
   200. GitHub's Vercel Production deployment record for `ac02c34` reports
   success; direct Vercel connector lookup was unavailable. No Share link or
-  protection setting changed. K2-08 through K2-10 remain downstream of K2-07
-  hosted acceptance.
+  protection setting changed. K2-07 hosted acceptance remains complete; the
+  current K2-08 source and hosted gates are recorded above. K2-09/10 remain locked.
 - **K2-07 HOSTED HARNESS: SOURCE READY; HOSTED ACCEPTANCE PASS.** Independent security review passed.
   The isolated
   `codex/k2-hosted-acceptance-harness` work adds a shared wave lifecycle, a K2-07 fixture plugin,
