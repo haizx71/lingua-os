@@ -18,6 +18,7 @@ import {
 } from './k2_hosted_runner';
 
 const DUE_SEED_SIZE = 20;
+const K208_ANCHOR_CONCEPT_HANDLE = 'k2-anchor';
 const TODAY_TABLES = new Set([
   'today_plans', 'today_plan_activities', 'today_activity_review_items',
 ]);
@@ -226,7 +227,28 @@ async function seedDueBacklog(
   let concepts: readonly string[] = [];
   for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
     const query = new URLSearchParams({ query: letter, languageCode: 'en', limit: '100' });
-    pages.push((await api.request(`/v1/dictionary/search?${query}`)).payload);
+    const envelope = record(
+      (await api.request(`/v1/dictionary/search?${query}`)).payload,
+      'K2 hosted acceptance due-only dictionary response was invalid.',
+    );
+    if (!Array.isArray(envelope.data) || envelope.data.length > 100) {
+      throw new Error('K2 hosted acceptance due-only dictionary response was invalid.');
+    }
+    let anchorCount = 0;
+    for (const rawItem of envelope.data) {
+      if (record(rawItem, 'K2 hosted acceptance due-only dictionary response was invalid.').id ===
+          K208_ANCHOR_CONCEPT_HANDLE) {
+        anchorCount += 1;
+      }
+    }
+    if (anchorCount > 1) {
+      throw new Error('K2 hosted acceptance due-only dictionary response was invalid.');
+    }
+    pages.push({
+      data: envelope.data.filter(rawItem =>
+        record(rawItem, 'K2 hosted acceptance due-only dictionary response was invalid.').id !==
+        K208_ANCHOR_CONCEPT_HANDLE),
+    });
     concepts = collectK2HostedDictionaryConceptIds(pages, DUE_SEED_SIZE, excludedConceptHandles);
     if (concepts.length === DUE_SEED_SIZE) break;
   }
@@ -293,11 +315,14 @@ export const k2HostedWaveK208: K2HostedWavePlugin = {
       throw new Error('K2 hosted acceptance full-wave runner capabilities were incomplete.');
     }
 
-    const remediationConceptHandles = [...new Set([
-      ...forgotten.matrix.novel.linkedConceptHandles,
-      ...forgotten.matrix.weak.linkedConceptHandles,
-      ...forgotten.matrix.forgotten.linkedConceptHandles,
-    ])];
+    const remediationConceptHandles = [...new Set(scenarios.flatMap(scenario => [
+      ...scenario.matrix.novel.linkedConceptHandles,
+      ...scenario.matrix.weak.linkedConceptHandles,
+      ...scenario.matrix.forgotten.linkedConceptHandles,
+    ]))];
+    if (remediationConceptHandles.includes(K208_ANCHOR_CONCEPT_HANDLE)) {
+      throw new Error('K2 hosted acceptance K2-08 remediation graph included the fixed anchor concept.');
+    }
     context.checkpoint('fixture_k208_due_seed', 'start');
     const duePrimary = await seedDueBacklog(dueOnly.api, remediationConceptHandles);
     const dueForgotten = await seedDueBacklog(forgotten.api, remediationConceptHandles);
@@ -350,8 +375,8 @@ export const k2HostedWaveK208: K2HostedWavePlugin = {
         today_plan_activities: 0,
         today_activity_review_items: 0,
       });
-      if (lineage.userConceptStateRows !== expectedStateRows ||
-          lineage.reviewItemRows !== expectedReviewRows || lineage.fsrsStateRows !== expectedReviewRows ||
+      // `_actor_lineage` is anchor-scoped; actor-wide row totals are checked in the snapshot above.
+      if (lineage.userConceptStateRows !== 0 || lineage.reviewItemRows !== 0 || lineage.fsrsStateRows !== 0 ||
           lineage.recognitionEvidenceCount !== 0 || lineage.listeningEvidenceCount !== 0 ||
           lineage.productionEvidenceCount !== 0 || Number(lineage.productionPositiveMass) !== 0 ||
           Number(lineage.productionNegativeMass) !== 0 || lineage.events.length !== 0) {
