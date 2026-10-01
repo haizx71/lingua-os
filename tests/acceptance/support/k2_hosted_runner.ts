@@ -384,12 +384,18 @@ export function normalizeK2WaveRequest(
   }
   let normalizedPath = url.pathname;
   if (url.pathname === '/v1/dictionary/search') {
+    const query = url.searchParams.get('query');
     if (method !== 'GET' || JSON.stringify(queryKeys) !== JSON.stringify(['languageCode', 'limit', 'query']) ||
         url.searchParams.get('languageCode') !== 'en' || url.searchParams.get('limit') !== '100' ||
-        !/^[a-z]$/.test(url.searchParams.get('query') ?? '') || options.body !== undefined ||
+        query === null || !/^[a-z]$/.test(query) || options.body !== undefined ||
         options.idempotencyKey !== undefined) {
       throw new Error('K2 hosted acceptance refused an unapproved Dictionary operation.');
     }
+    normalizedPath = `${url.pathname}?${new URLSearchParams({
+      query,
+      languageCode: 'en',
+      limit: '100',
+    })}`;
   } else if (url.pathname.startsWith('/v1/concepts/')) {
     if (method !== 'GET' || queryKeys.length !== 0 || options.body !== undefined ||
         options.idempotencyKey !== undefined) {

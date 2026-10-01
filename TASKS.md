@@ -2,7 +2,14 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
-## Current Knowledge V2 delivery gate — 2026-10-01
+## Current Knowledge V2 delivery gate — 2026-10-02
+
+- **TASK-K2-08: DOING — publication/catalog PASS; full hosted FAIL pending reviewed fixture transport fix.** PR #38 merged at `25e7e1a`; the exact owner-approved three-item pack passed review/CI and normal staging Admin create/validate/publish. Exact actorless catalog and 27-table publication comparison passed. Full run [36894644581](https://github.com/haizx71/lingua-os/actions/runs/36894644581) passed infrastructure, four actors and candidate matrix, then failed at Dictionary due-fixture seed HTTP 422. Finalizer and separate cleanup succeeded; retained comparison passed. The narrow normalizer fix preserves the validated Dictionary query that was previously dropped; 54 focused tests/typecheck/lint and separate configured Luna Max review passed. Next: exact-head CI, normal merge, deployment SHA attestation, then full automated K2-08 rerun and independent review. No manual disposable actor flow. See `reviews/K2-08-dictionary-fixture-query-review.md` and `reviews/K2-08-owner-publication-runtime-evidence.md`.
+- **TASK-K2-09 / TASK-K2-10: LOCKED.** Read-only K2-09 preparation is allowed. Implementation remains gated by full K2-08 hosted assertions, cleanup, zero residue, retained comparison and independent review PASS. Migration `0020` and accepted K2-06/07 are preserved.
+
+## Historical Knowledge V2 delivery gate — 2026-10-01
+
+Earlier gate entries below are retained as history; current catalog readiness and the active blocker are recorded above.
 
 - **TASK-K2-07: DONE; HOSTED ACCEPTANCE: PASS** on the accepted runtime
   snapshot `c696ac935852c4ebcd9e1183521996e5b12ad273` (historical acceptance

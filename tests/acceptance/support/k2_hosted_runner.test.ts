@@ -172,6 +172,40 @@ describe('K2 hosted wave request boundary', () => {
       '/v1/today?languageProfileId=actor:primary&languageProfileId=actor:observer', {})).toThrow();
   });
 
+  it('preserves only the validated Dictionary query through the outbound transport URL', async () => {
+    const sourceSha = 'accepted-source-sha-marker';
+    const fetch = vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify({ data: [] }), {
+      status: 200,
+      headers: { 'x-lingua-source-sha': sourceSha },
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const config = {
+      apiOrigin: 'https://staging.example.test',
+      githubSha: sourceSha,
+    } as K2HostedConfig;
+    const normalized = normalizeK2WaveRequest(
+      'primary', profiles, ids,
+      '/v1/dictionary/search?query=a&languageCode=en&limit=100',
+      {},
+    );
+
+    await requestK2HostedApi(config, 'test-token', normalized.route, normalized.options);
+
+    expect(fetch).toHaveBeenCalledOnce();
+    const outboundUrl = new URL(String(fetch.mock.calls[0]?.[0]));
+    expect(outboundUrl.pathname).toBe('/v1/dictionary/search');
+    expect([...outboundUrl.searchParams.entries()]).toEqual([
+      ['query', 'a'],
+      ['languageCode', 'en'],
+      ['limit', '100'],
+    ]);
+    expect(() => normalizeK2WaveRequest(
+      'primary', profiles, ids,
+      '/v1/dictionary/search?query=a&languageCode=en&limit=100&cursor=unexpected',
+      {},
+    )).toThrow('Dictionary operation');
+  });
+
   it('rejects body or idempotency data on read routes and Library writes', () => {
     const cases = [
       ['/v1/dictionary/search?languageCode=en&limit=100&query=a', { idempotencyKey: 'x' }],
