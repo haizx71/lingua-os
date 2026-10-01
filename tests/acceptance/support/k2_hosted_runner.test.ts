@@ -1,18 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
   createLearnerProfile,
+  allK208CompetitorsEligibleForStates,
   k2HostedWaveCheckpoint,
   markK2HostedCheckpoint,
   markK2HostedFinalizerComplete,
   createK2OpaqueIdProjector,
+  exactK208FixtureStateReadback,
   normalizeK2WaveRequest,
+  projectK2WaveApiPayload,
   runK2ProtectedAuthUiSignIn,
   verifyK2FixtureZeroRowHead,
   type K2ProtectedAuthUiInteractions,
   type K2ProtectedAuthUiResponse,
 } from './k2_hosted_runner';
-import type { K2AuthenticatedActor, K2HostedConfig } from './k2_hosted_actors';
+import {
+  K2_HOSTED_MARKER_KEY,
+  K2_HOSTED_STAGING_SUPABASE_REF,
+  K2_HOSTED_WORKFLOW,
+  K2_HOSTED_WORKFLOW_REF,
+  cleanupFreshK2HostedActorIdentity,
+  getK2ActorOwnership,
+  type K2AuthenticatedActor,
+  type K2FreshActorIdentity,
+  type K2HostedConfig,
+} from './k2_hosted_actors';
 import type { TestInfo } from '@playwright/test';
+import { assertK2HostedDueOnlyPlanReplay } from './k2_hosted_wave_k2_08_due_only';
 
 const actor = {
   id: 'fake-actor-id-marker',
@@ -182,6 +197,215 @@ describe('K2 hosted wave request boundary', () => {
       body: { actorId: reviewId, correct: false, exerciseMode: 'self_recall', rating: 'again', responseTimeMs: 900 },
     })).toThrow('Review answer payload');
   });
+
+  it('allows only a fixed normal-session cross-actor completion denial probe on bound handles', () => {
+    ids.bind('known-plan', '00000000-0000-4000-8000-000000000003');
+    ids.bind('known-activity', '00000000-0000-4000-8000-000000000004');
+    expect(normalizeK2WaveRequest('primary', profiles, ids,
+      '/v1/today/known-plan/activities/known-activity/complete', {
+        method: 'POST',
+        idempotencyKey: 'k208-cross-actor-denial',
+        body: {},
+      })).toMatchObject({
+      route: '/v1/today/00000000-0000-4000-8000-000000000003/activities/00000000-0000-4000-8000-000000000004/complete',
+      options: { method: 'POST', body: {} },
+    });
+    for (const options of [
+      { method: 'POST', body: {} },
+      { method: 'POST', idempotencyKey: 'key', body: { actorId: 'private-marker' } },
+      { method: 'GET', idempotencyKey: 'key', body: {} },
+      { method: 'POST', idempotencyKey: 'key', body: { durationSeconds: 86401 } },
+    ]) {
+      expect(() => normalizeK2WaveRequest('primary', profiles, ids,
+        '/v1/today/known-plan/activities/known-activity/complete', options as never)).toThrow();
+    }
+    expect(() => normalizeK2WaveRequest('primary', profiles, ids,
+      '/v1/today/00000000-0000-4000-8000-000000000003/activities/known-activity/complete', {
+        method: 'POST', idempotencyKey: 'k208-cross-actor-denial', body: {},
+      })).toThrow('raw identity');
+  });
+});
+
+describe('K2 hosted wave response projection', () => {
+  const ids = createK2OpaqueIdProjector();
+  const conceptId = '00000000-0000-4000-8000-000000000011';
+  const reviewId = '00000000-0000-4000-8000-000000000012';
+  const activityId = '00000000-0000-4000-8000-000000000013';
+  const planId = '00000000-0000-4000-8000-000000000014';
+  const contentId = '00000000-0000-4000-8000-000000000015';
+  const privateMarker = 'private-response-marker@example.invalid';
+
+  it('projects only fixed route fields and opaque IDs from learner API responses', () => {
+    ids.bind('k2-concept', conceptId);
+    ids.bind('k2-review-item', reviewId);
+    ids.bind('k2-activity', activityId);
+    ids.bind('k2-plan', planId);
+    ids.bind('k2-content', contentId);
+    const dictionary = projectK2WaveApiPayload('/v1/dictionary/search?query=x', {
+      data: [{ id: conceptId, canonicalForm: privateMarker, learner: { email: privateMarker } }],
+      meta: { requestId: privateMarker },
+    }, ids);
+    expect(dictionary).toEqual({ data: [{ id: 'k2-concept' }] });
+
+    const score = { score: 0, evidenceCount: 0, rawActorId: privateMarker };
+    const queue = projectK2WaveApiPayload('/v1/review/queue', {
+      data: [{
+        reviewItemId: reviewId,
+        concept: { id: conceptId, canonicalForm: privateMarker },
+        exerciseMode: 'self_recall',
+        competence: { recognition: score, listening: score, production: score },
+        prompt: { text: privateMarker },
+        memory: { userId: privateMarker },
+      }],
+      meta: { requestId: privateMarker },
+    }, ids);
+    expect(queue).toEqual({ data: [{
+      reviewItemId: 'k2-review-item',
+      concept: { id: 'k2-concept' },
+      exerciseMode: 'self_recall',
+      competence: {
+        recognition: { score: 0, evidenceCount: 0 },
+        listening: { score: 0, evidenceCount: 0 },
+        production: { score: 0, evidenceCount: 0 },
+      },
+    }] });
+
+    const today = projectK2WaveApiPayload('/v1/today', {
+      data: {
+        id: planId,
+        languageProfileId: privateMarker,
+        timeZone: privateMarker,
+        planDate: '2026-10-01',
+        targetMinutes: 15,
+        completedMinutes: 0,
+        status: 'active',
+        engineVersion: 'today-heuristic-v2',
+        createdAt: '2026-10-01T00:00:00Z',
+        updatedAt: '2026-10-01T00:00:00Z',
+        activities: [{
+          id: activityId,
+          position: 0,
+          activityType: 'read',
+          title: privateMarker,
+          description: privateMarker,
+          estimatedMinutes: 5,
+          reasonCodes: ['CONTENT_FIT'],
+          reasonText: privateMarker,
+          status: 'pending',
+          targetCount: null,
+          completedCount: 0,
+          contentId,
+          createdAt: '2026-10-01T00:00:00Z',
+          arbitraryProfile: privateMarker,
+        }],
+      },
+      meta: { requestId: privateMarker },
+    }, ids);
+    expect(today).toEqual({ data: {
+      id: 'k2-plan',
+      planDate: '2026-10-01',
+      targetMinutes: 15,
+      completedMinutes: 0,
+      status: 'active',
+      engineVersion: 'today-heuristic-v2',
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-01T00:00:00Z',
+      activities: [{
+        id: 'k2-activity',
+        activityType: 'read',
+        position: 0,
+        targetCount: null,
+        completedCount: 0,
+        estimatedMinutes: 5,
+        status: 'pending',
+        reasonCodes: ['CONTENT_FIT'],
+        contentId: 'k2-content',
+        conceptId: null,
+        reviewItemId: null,
+        completedAt: null,
+        createdAt: '2026-10-01T00:00:00Z',
+      }],
+    } });
+
+    const answer = projectK2WaveApiPayload(`/v1/review/${reviewId}/answer`, {
+      data: {
+        reviewItemId: reviewId,
+        memory: { userId: privateMarker },
+        competence: { production: { score: 1, evidenceCount: 1, raw: privateMarker } },
+        remainingDueCount: 0,
+        feedback: privateMarker,
+      },
+      meta: { requestId: privateMarker },
+    }, ids);
+    expect(answer).toEqual({ data: {
+      reviewItemId: 'k2-review-item',
+      competence: { production: { evidenceCount: 1 } },
+    } });
+    expect(JSON.stringify([dictionary, queue, today, answer])).not.toContain(privateMarker);
+  });
+
+  it('fails closed when fixed DTO shapes or bounded values are invalid', () => {
+    expect(() => projectK2WaveApiPayload('/v1/dictionary/search', { data: { rows: [] } }, ids))
+      .toThrow('response projection was invalid');
+    expect(() => projectK2WaveApiPayload('/v1/today', { data: {
+      id: planId,
+      activities: [{ id: activityId, reasonCodes: ['PRIVATE_REASON'], activityType: 'read' }],
+    } }, ids)).toThrow('response projection was invalid');
+  });
+
+  it('keeps entity replay stable across request metadata while detecting entity changes', () => {
+    const entity = {
+      id: planId,
+      planDate: '2026-10-01',
+      targetMinutes: 15,
+      completedMinutes: 0,
+      status: 'active',
+      engineVersion: 'today-heuristic-v2',
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-01T00:00:00Z',
+      activities: [{
+        id: activityId,
+        position: 0,
+        activityType: 'review',
+        title: privateMarker,
+        description: privateMarker,
+        estimatedMinutes: 15,
+        reasonCodes: ['FSRS_DUE'],
+        reasonText: privateMarker,
+        status: 'pending',
+        targetCount: 15,
+        completedCount: 0,
+        createdAt: '2026-10-01T00:00:00Z',
+      }],
+    };
+    const first = projectK2WaveApiPayload('/v1/today', {
+      data: entity,
+      meta: { requestId: '00000000-0000-4000-8000-000000000031', generatedAt: 'first-request' },
+    }, ids);
+    const replay = projectK2WaveApiPayload('/v1/today', {
+      data: entity,
+      meta: { requestId: '00000000-0000-4000-8000-000000000032', generatedAt: 'replay-request' },
+    }, ids);
+    expect(first).toEqual(replay);
+    expect(JSON.stringify(first)).not.toContain('00000000-0000-4000-8000-000000000031');
+    expect(() => assertK2HostedDueOnlyPlanReplay(first, replay)).not.toThrow();
+
+    const changedEntity = {
+      ...entity,
+      activities: [{ ...entity.activities[0], estimatedMinutes: 14 }],
+    };
+    const changed = projectK2WaveApiPayload('/v1/today', {
+      data: changedEntity,
+      meta: { requestId: '00000000-0000-4000-8000-000000000033', generatedAt: 'third-request' },
+    }, ids);
+    expect(changed).not.toEqual(first);
+    expect(() => assertK2HostedDueOnlyPlanReplay(first, changed))
+      .toThrow('replay changed the persisted plan');
+    expect((first as { data: { id: string; activities: readonly { id: string }[] } }).data.id)
+      .toBe('k2-plan');
+    expect((first as { data: { activities: readonly { id: string }[] } }).data.activities[0].id)
+      .toBe('k2-activity');
+  });
 });
 
 describe('K2 hosted zero-row fixture probe', () => {
@@ -205,6 +429,88 @@ describe('K2 hosted zero-row fixture probe', () => {
       };
       await expect(verifyK2FixtureZeroRowHead(client as never)).rejects.toThrow('HEAD limit=0');
     }
+  });
+});
+
+describe('K2-08 ambiguous fixture insert readback', () => {
+  const weakId = '40000000-0000-4000-8000-000000000001';
+  const forgottenId = '40000000-0000-4000-8000-000000000002';
+  const expected = [
+    { conceptId: weakId, status: 'weak' as const },
+    { conceptId: forgottenId, status: 'forgotten' as const },
+  ];
+
+  function proof(stateStatuses: readonly Readonly<{
+    conceptId: string;
+    status: 'weak' | 'forgotten';
+    stateVersion: number;
+  }>[]) {
+    return {
+      candidates: [],
+      stateConceptIds: stateStatuses.map(row => row.conceptId),
+      stateStatuses,
+    } as const;
+  }
+
+  it('accepts only the exact fixed actor-bound reader projection status pair', () => {
+    expect(exactK208FixtureStateReadback(proof([
+      { conceptId: forgottenId, status: 'forgotten', stateVersion: 1 },
+      { conceptId: weakId, status: 'weak', stateVersion: 1 },
+    ]), expected)).toBe(true);
+  });
+
+  it('rejects partial, foreign, duplicate, or changed state without a privileged base-table read', () => {
+    expect(exactK208FixtureStateReadback(proof([
+      { conceptId: weakId, status: 'weak', stateVersion: 1 },
+    ]), expected)).toBe(false);
+    expect(exactK208FixtureStateReadback(proof([
+      { conceptId: weakId, status: 'weak', stateVersion: 1 },
+      { conceptId: forgottenId, status: 'forgotten', stateVersion: 1 },
+      { conceptId: '40000000-0000-4000-8000-000000000003', status: 'weak', stateVersion: 1 },
+    ]), expected)).toBe(false);
+    expect(exactK208FixtureStateReadback(proof([
+      { conceptId: weakId, status: 'weak', stateVersion: 1 },
+      { conceptId: weakId, status: 'weak', stateVersion: 1 },
+    ]), expected)).toBe(false);
+    expect(exactK208FixtureStateReadback(proof([
+      { conceptId: weakId, status: 'weak', stateVersion: 2 },
+      { conceptId: forgottenId, status: 'forgotten', stateVersion: 1 },
+    ]), expected)).toBe(false);
+  });
+});
+
+describe('K2-08 bounded competitor eligibility', () => {
+  const candidate = (
+    contentId: string,
+    linkedConceptIds: readonly string[],
+    unseenCount = linkedConceptIds.length,
+  ) => ({
+    contentId,
+    estimatedMinutes: 5,
+    linkedConceptIds,
+    unseenCount,
+    isSaved: false,
+    isUnfinished: false,
+    isCompleted: false,
+  });
+
+  it('rejects a nonselected six-concept competitor when fixture statuses would reduce unseen count to four', () => {
+    const knownConcepts = new Set(['shared-a', 'shared-b']);
+    const selectedCandidates = [
+      candidate('novel', ['novel-concept']),
+      candidate('weak', ['weak-concept']),
+      candidate('forgotten', ['forgotten-concept']),
+    ];
+    const nonselectedCandidate = candidate(
+      'nonselected-six-linked',
+      ['shared-a', 'shared-b', 'other-a', 'other-b', 'other-c', 'other-d'],
+      4,
+    );
+
+    expect(allK208CompetitorsEligibleForStates(selectedCandidates)).toBe(true);
+    expect(allK208CompetitorsEligibleForStates(
+      [...selectedCandidates, nonselectedCandidate], knownConcepts,
+    )).toBe(false);
   });
 });
 
@@ -413,6 +719,74 @@ describe('createLearnerProfile', () => {
       ['GET', '/v1/me/languages'],
       ['POST', '/v1/me/languages'],
     ]);
+  });
+
+  it('deletes the marked actor after profile creation committed but its response was lost', async () => {
+    const runConfig = {
+      githubRepository: 'haizx71/lingua-os',
+      githubWorkflow: K2_HOSTED_WORKFLOW,
+      githubWorkflowRef: K2_HOSTED_WORKFLOW_REF,
+      githubRunId: '123456789',
+      githubRunAttempt: '2',
+      supabaseProjectRef: K2_HOSTED_STAGING_SUPABASE_REF,
+    } as K2HostedConfig;
+    const identity: K2FreshActorIdentity = {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      email: 'k2ha-123456789-2-aaaaaaaaaaaaaaaa@example.invalid',
+      ownership: getK2ActorOwnership(runConfig),
+    };
+    const actorUser = {
+      id: identity.id,
+      email: identity.email,
+      app_metadata: { [K2_HOSTED_MARKER_KEY]: identity.ownership },
+      user_metadata: {},
+      created_at: identity.ownership.createdAt,
+      email_confirmed_at: identity.ownership.createdAt,
+      last_sign_in_at: null,
+    } as unknown as User;
+    let lookup = 0;
+    const deleteUser = vi.fn(async (_id: string) => ({ error: null }));
+    const admin = {
+      auth: { admin: {
+        getUserById: vi.fn(async () => {
+          lookup += 1;
+          return lookup === 1
+            ? { data: { user: actorUser }, error: null }
+            : { data: { user: null }, error: new AuthApiError('not found', 404, 'user_not_found') };
+        }),
+        deleteUser,
+      } },
+    } as never;
+    let profileCommitted = false;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const route = new URL(input.toString()).pathname;
+      const method = init?.method ?? 'GET';
+      if (route === '/v1/me' && method === 'GET') {
+        return apiResponse(200, { data: { id: identity.id, timeZone: 'Asia/Ho_Chi_Minh' } }, {
+          etag: '"profile-version"',
+        });
+      }
+      if (route === '/v1/me/languages' && method === 'GET') return apiResponse(200, { data: [] });
+      if (route === '/v1/me/languages' && method === 'POST') {
+        profileCommitted = true;
+        throw new Error('simulated lost response with private provider detail');
+      }
+      return apiResponse(500, {});
+    }));
+
+    await expect(createLearnerProfile(config, {
+      userId: identity.id,
+      accessToken: 'normal-actor-bearer-marker',
+    })).rejects.toThrow('staging API request failed; provider details were suppressed');
+    expect(profileCommitted).toBe(true);
+
+    const verifyDeletedActor = vi.fn(async (_actorId: string) => {});
+    await expect(cleanupFreshK2HostedActorIdentity(
+      runConfig, identity, admin, verifyDeletedActor,
+    )).resolves.toBe(true);
+    expect(deleteUser).toHaveBeenCalledOnce();
+    expect(deleteUser).toHaveBeenCalledWith(identity.id);
+    expect(verifyDeletedActor).toHaveBeenCalledExactlyOnceWith(identity.id);
   });
 });
 

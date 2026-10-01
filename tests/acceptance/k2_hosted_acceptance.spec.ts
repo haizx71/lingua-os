@@ -14,6 +14,7 @@ import { runK2HostedProbe } from './support/k2_hosted_probe_client';
 import { runK2HostedWave } from './support/k2_hosted_runner';
 import { k2HostedWaveK207 } from './support/k2_hosted_wave_k2_07';
 import { k2HostedWaveK208DueOnly } from './support/k2_hosted_wave_k2_08_due_only';
+import { k2HostedWaveK208 } from './support/k2_hosted_wave_k2_08';
 
 const RUN_MODE = resolveK2HostedRunMode(process.env.K2_ACCEPTANCE_MODE);
 const WAVE_SELECTOR = resolveK2HostedWaveSelector(process.env.K2_ACCEPTANCE_WAVE);
@@ -39,6 +40,13 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
       'The selected hosted subcase is not K2-08 due-only.');
     const config = validateK2HostedEnvironment(process.env, 'acceptance');
     await runK2HostedWave(config, page, context, test.info(), k2HostedWaveK208DueOnly);
+  });
+
+  test('hosted lifecycle runs the complete four-actor K2-08 gate', async ({ page, context }) => {
+    test.skip(RUN_MODE !== 'acceptance' || WAVE_SELECTOR !== 'K2-08',
+      'The selected hosted subcase is not full K2-08.');
+    const config = validateK2HostedEnvironment(process.env, 'acceptance');
+    await runK2HostedWave(config, page, context, test.info(), k2HostedWaveK208);
   });
 
   test('strict TTL janitor only reaps marked expired actors', async () => {

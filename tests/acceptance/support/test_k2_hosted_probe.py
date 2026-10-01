@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from uuid import UUID
 
@@ -517,3 +518,95 @@ def test_k208_privilege_preflight_attests_the_fixed_metadata_baseline_only() -> 
 def test_k208_privilege_preflight_fails_closed_on_boundary_drift(drift: str) -> None:
     with pytest.raises(probe.ProbeError):
         probe._k208_fixture_privilege_preflight(K208PrivilegeConnection(drift))
+
+
+def test_k208_due_membership_checks_only_the_fixed_due_set_against_eligible_catalog(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    profile_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    due_ids = [UUID(f"550e8400-e29b-41d4-a716-44665544{index:04x}") for index in range(16, 36)]
+
+    def resolve_profile(_store, _connection, *, actor, requested_id):
+        assert actor.id == actor_id
+        assert requested_id == profile_id
+        return profile_id
+
+    monkeypatch.setattr(probe.PostgresContentStore, "resolve_profile", resolve_profile)
+
+    class CatalogMembershipConnection:
+        statement = ""
+        parameters = None
+
+        def execute(self, query: Any, params: Any = None) -> Result:
+            self.statement = str(query)
+            self.parameters = params
+            return Result(row=(0,))
+
+    connection = CatalogMembershipConnection()
+    assert probe._k208_due_candidate_overlap(connection, actor_id, profile_id, due_ids) == {
+        "overlapCount": 0,
+    }
+    assert connection.parameters == (due_ids,)
+    assert "unnest(%s::uuid[])" in connection.statement
+    assert "reader_content_passes_publication_gate(item.id)" in connection.statement
+    assert "item.publication_status = 'published'" in connection.statement
+    assert "item.language_code = 'en'" in connection.statement
+    assert "FROM public.user_concept_states" not in connection.statement
+    assert "FROM auth.users" not in connection.statement
+    assert "FROM public.users" not in connection.statement
+    assert "SELECT *" not in connection.statement
+
+
+def test_k208_due_membership_fails_on_overlap_or_an_unbounded_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    profile_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    due_ids = [UUID(f"550e8400-e29b-41d4-a716-44665544{index:04x}") for index in range(16, 36)]
+    monkeypatch.setattr(
+        probe.PostgresContentStore,
+        "resolve_profile",
+        lambda _store, _connection, *, actor, requested_id: requested_id,
+    )
+
+    class OverlapConnection:
+        def execute(self, _query: Any, _params: Any = None) -> Result:
+            return Result(row=(1,))
+
+    assert probe._k208_due_candidate_overlap(
+        OverlapConnection(), actor_id, profile_id, due_ids
+    ) == {"overlapCount": 1}
+    with pytest.raises(probe.ProbeError):
+        probe._k208_due_candidate_overlap(OverlapConnection(), actor_id, profile_id, due_ids[:-1])
+    with pytest.raises(probe.ProbeError):
+        probe._k208_due_candidate_overlap(
+            OverlapConnection(), actor_id, profile_id, [*due_ids[:-1], due_ids[0]]
+        )
+
+
+def test_k208_candidate_base_rejects_a_truncated_competitor_universe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    profile_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    requested_limits: list[int] = []
+    monkeypatch.setattr(
+        probe.PostgresContentStore,
+        "resolve_profile",
+        lambda _store, _connection, *, actor, requested_id: requested_id,
+    )
+
+    def summaries(_store: Any, *, limit: int, **_kwargs: Any) -> list[Any]:
+        requested_limits.append(limit)
+        return [SimpleNamespace(id=UUID(int=index + 1)) for index in range(21)]
+
+    monkeypatch.setattr(probe.PostgresContentStore, "list_summaries", summaries)
+
+    class UnexpectedRead:
+        def execute(self, *_args: Any, **_kwargs: Any) -> Result:
+            raise AssertionError("candidate row reads must stop after detecting overflow")
+
+    with pytest.raises(probe.ProbeError):
+        probe._k208_candidate_base(UnexpectedRead(), actor_id, profile_id)
+    assert requested_limits == [21]

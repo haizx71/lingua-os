@@ -80,9 +80,8 @@ export type K2HostedCandidateMatrixProof = Readonly<{
   weak: K2HostedCandidateRoleProof;
   novel: K2HostedCandidateRoleProof;
 }>;
-export type K2HostedCandidateActualProof = Readonly<{
+export type K2HostedCandidateInputProof = Readonly<{
   baselineRoleOrder: readonly K2HostedCandidateRole[];
-  todayRoleOrder: readonly K2HostedCandidateRole[];
   effectiveStatus: Readonly<Record<K2HostedCandidateRole, 'none' | 'weak' | 'forgotten'>>;
   allCompetitorsEligible: boolean;
 }>;
@@ -221,7 +220,7 @@ export interface K2HostedWaveContext {
   readonly actorLineage: (actor: K2WaveActorHandle) => Promise<K2HostedActorLineageProof>;
   readonly actorTodayReviewTargets: (actor: K2WaveActorHandle) => Promise<K2HostedTodayReviewTargets>;
   readonly candidateMatrix?: Readonly<Partial<Record<K2WaveActorHandle, K2HostedCandidateMatrixProof>>>;
-  readonly candidateProof?: (actor: K2WaveActorHandle) => Promise<K2HostedCandidateActualProof>;
+  readonly candidateProof?: (actor: K2WaveActorHandle) => Promise<K2HostedCandidateInputProof>;
   readonly verifyDueCandidateIsolation?: () => Promise<void>;
   readonly fixtureSetup?: Readonly<{
     seedForgottenWeakPair(): Promise<void>;
@@ -427,25 +426,43 @@ export function normalizeK2WaveRequest(
       ...(url.searchParams.has('limit') ? { limit: '100' } : {}),
     })}`;
   } else {
-    const answer = /^\/v1\/review\/([^/]+)\/answer$/.exec(url.pathname);
-    if (!answer || method !== 'POST' || queryKeys.length !== 0 || !options.body ||
-        typeof options.body !== 'object' || Array.isArray(options.body) || !options.idempotencyKey ||
-        UUID_PATTERN.test(options.idempotencyKey) || !/^[a-z0-9][a-z0-9-]{0,63}$/i.test(options.idempotencyKey)) {
-      throw new Error('K2 hosted acceptance refused an unapproved Review operation.');
+    const completion = /^\/v1\/today\/([^/]+)\/activities\/([^/]+)\/complete$/.exec(url.pathname);
+    if (completion) {
+      if (method !== 'POST' || queryKeys.length !== 0 || !options.body ||
+          typeof options.body !== 'object' || Array.isArray(options.body) || !options.idempotencyKey ||
+          UUID_PATTERN.test(options.idempotencyKey) || !/^[a-z0-9][a-z0-9-]{0,63}$/i.test(options.idempotencyKey)) {
+        throw new Error('K2 hosted acceptance refused an unapproved Today completion probe.');
+      }
+      const body = options.body as Record<string, unknown>;
+      const keys = Object.keys(body);
+      if (keys.some(key => key !== 'durationSeconds') ||
+          (keys.includes('durationSeconds') && (!Number.isSafeInteger(body.durationSeconds) ||
+            (body.durationSeconds as number) < 0 || (body.durationSeconds as number) > 86400))) {
+        throw new Error('K2 hosted acceptance refused an unapproved Today completion probe.');
+      }
+      normalizedPath = `/v1/today/${encodeURIComponent(opaqueIds.resolve(decodeURIComponent(completion[1])))}` +
+        `/activities/${encodeURIComponent(opaqueIds.resolve(decodeURIComponent(completion[2])))}/complete`;
+    } else {
+      const answer = /^\/v1\/review\/([^/]+)\/answer$/.exec(url.pathname);
+      if (!answer || method !== 'POST' || queryKeys.length !== 0 || !options.body ||
+          typeof options.body !== 'object' || Array.isArray(options.body) || !options.idempotencyKey ||
+          UUID_PATTERN.test(options.idempotencyKey) || !/^[a-z0-9][a-z0-9-]{0,63}$/i.test(options.idempotencyKey)) {
+        throw new Error('K2 hosted acceptance refused an unapproved Review operation.');
+      }
+      const body = options.body as Record<string, unknown>;
+      const keys = Object.keys(body).sort();
+      const mode = body.exerciseMode;
+      if (!['self_recall', 'typing'].includes(String(mode)) ||
+          !['again', 'hard', 'good', 'easy'].includes(String(body.rating)) ||
+          !Number.isSafeInteger(body.responseTimeMs) ||
+          (mode === 'typing' && (keys.join(',') !== 'exerciseMode,rating,responseText,responseTimeMs' ||
+            typeof body.responseText !== 'string' || body.responseText.length > 80)) ||
+          (mode === 'self_recall' && keys.join(',') !== 'correct,exerciseMode,rating,responseTimeMs') ||
+          (mode === 'self_recall' && typeof body.correct !== 'boolean')) {
+        throw new Error('K2 hosted acceptance refused an unapproved Review answer payload.');
+      }
+      normalizedPath = `/v1/review/${encodeURIComponent(opaqueIds.resolve(decodeURIComponent(answer[1])))}/answer`;
     }
-    const body = options.body as Record<string, unknown>;
-    const keys = Object.keys(body).sort();
-    const mode = body.exerciseMode;
-    if (!['self_recall', 'typing'].includes(String(mode)) ||
-        !['again', 'hard', 'good', 'easy'].includes(String(body.rating)) ||
-        !Number.isSafeInteger(body.responseTimeMs) ||
-        (mode === 'typing' && (keys.join(',') !== 'exerciseMode,rating,responseText,responseTimeMs' ||
-          typeof body.responseText !== 'string' || body.responseText.length > 80)) ||
-        (mode === 'self_recall' && keys.join(',') !== 'correct,exerciseMode,rating,responseTimeMs') ||
-        (mode === 'self_recall' && typeof body.correct !== 'boolean')) {
-      throw new Error('K2 hosted acceptance refused an unapproved Review answer payload.');
-    }
-    normalizedPath = `/v1/review/${encodeURIComponent(opaqueIds.resolve(decodeURIComponent(answer[1])))}/answer`;
   }
   return {
     route: normalizedPath,
@@ -482,12 +499,163 @@ function createBoundWaveApi(
         ...request.options,
         ...(idempotencyKey ? { idempotencyKey } : {}),
       }, expectedStatuses);
-      if (request.options.method === 'PUT' && request.route.startsWith('/v1/library/concepts/')) {
+      if (result.response.status !== 200) {
+        return { status: result.response.status, payload: null };
+      }
+      if (request.options?.method === 'PUT' && request.route.startsWith('/v1/library/concepts/')) {
         onConceptSaved(actorHandle, decodeURIComponent(request.route.slice('/v1/library/concepts/'.length)));
       }
-      return { status: result.response.status, payload: opaqueIds.project(result.payload) };
+      return {
+        status: result.response.status,
+        payload: projectK2WaveApiPayload(request.route, result.payload, opaqueIds),
+      };
     },
   };
+}
+
+const TODAY_REASON_CODES = new Set([
+  'FSRS_DUE', 'FORGOTTEN_REMEDIATION', 'WEAK_REMEDIATION', 'CONTENT_FIT',
+  'WEAK_RECOGNITION', 'WEAK_LISTENING', 'LOW_PRODUCTION_EVIDENCE',
+  'RECENT_EXPOSURE', 'NEW_CONCEPT_BUDGET',
+]);
+
+function projectedId(
+  value: unknown,
+  opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
+): string {
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value)) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  const projected = opaqueIds.project(value);
+  if (typeof projected !== 'string' || UUID_PATTERN.test(projected)) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return projected;
+}
+
+function projectedCount(value: unknown, maximum: number): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > maximum) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return value as number;
+}
+
+/** Returns fixed route-specific fields only; arbitrary API and error payloads stay runner-private. */
+export function projectK2WaveApiPayload(
+  route: string,
+  payload: unknown,
+  opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
+): unknown {
+  const envelope = object(payload, 'K2 hosted acceptance learner response projection was invalid.');
+  const rawData = envelope.data;
+  const pathname = new URL(route, 'https://k2-wave.invalid').pathname;
+  if (pathname === '/v1/dictionary/search') {
+    if (!Array.isArray(rawData) || rawData.length > 100) {
+      throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    }
+    return { data: rawData.map(raw => ({
+      id: projectedId(object(raw, 'K2 hosted acceptance learner response projection was invalid.').id, opaqueIds),
+    })) };
+  }
+  if (pathname.startsWith('/v1/concepts/')) {
+    const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    return { data: { id: projectedId(data.id, opaqueIds) } };
+  }
+  if (pathname.startsWith('/v1/library/concepts/')) {
+    const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    if (typeof data.isSaved !== 'boolean') {
+      throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    }
+    return { data: { isSaved: data.isSaved } };
+  }
+  if (pathname === '/v1/review/queue') {
+    if (!Array.isArray(rawData) || rawData.length > 100) {
+      throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    }
+    return { data: rawData.map(raw => {
+      const item = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+      const concept = object(item.concept, 'K2 hosted acceptance learner response projection was invalid.');
+      const competence = object(item.competence, 'K2 hosted acceptance learner response projection was invalid.');
+      const score = (dimension: string) => {
+        const value = object(competence[dimension], 'K2 hosted acceptance learner response projection was invalid.');
+        if (typeof value.score !== 'number' || !Number.isFinite(value.score) ||
+            value.score < 0 || value.score > 1) {
+          throw new Error('K2 hosted acceptance learner response projection was invalid.');
+        }
+        return { score: value.score, evidenceCount: projectedCount(value.evidenceCount, 1_000_000) };
+      };
+      if (!['self_recall', 'multiple_choice', 'typing', 'cloze', 'listening'].includes(String(item.exerciseMode))) {
+        throw new Error('K2 hosted acceptance learner response projection was invalid.');
+      }
+      return {
+        reviewItemId: projectedId(item.reviewItemId, opaqueIds),
+        concept: { id: projectedId(concept.id, opaqueIds) },
+        exerciseMode: item.exerciseMode,
+        competence: {
+          recognition: score('recognition'),
+          listening: score('listening'),
+          production: score('production'),
+        },
+      };
+    }) };
+  }
+  if (pathname === '/v1/today') {
+    const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    if (!Array.isArray(data.activities) || data.activities.length > 20 ||
+        typeof data.engineVersion !== 'string' || typeof data.planDate !== 'string' ||
+        !['draft', 'active', 'completed', 'expired'].includes(String(data.status)) ||
+        typeof data.createdAt !== 'string' || typeof data.updatedAt !== 'string' ||
+        data.planDate.length !== 10) {
+      throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    }
+    return { data: {
+      id: projectedId(data.id, opaqueIds),
+      planDate: data.planDate,
+      targetMinutes: projectedCount(data.targetMinutes, 180),
+      completedMinutes: projectedCount(data.completedMinutes, 1440),
+      status: data.status,
+      engineVersion: data.engineVersion,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      activities: data.activities.map(raw => {
+        const activity = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+        const reasonCodes = activity.reasonCodes;
+        if (!Array.isArray(reasonCodes) || reasonCodes.length > TODAY_REASON_CODES.size ||
+            reasonCodes.some(code => typeof code !== 'string' || !TODAY_REASON_CODES.has(code)) ||
+            !['review', 'read', 'listen', 'learn'].includes(String(activity.activityType)) ||
+            !['pending', 'completed', 'skipped'].includes(String(activity.status)) ||
+            typeof activity.createdAt !== 'string') {
+          throw new Error('K2 hosted acceptance learner response projection was invalid.');
+        }
+        const projectOptionalId = (value: unknown) => value == null ? null : projectedId(value, opaqueIds);
+        return {
+          id: projectedId(activity.id, opaqueIds),
+          activityType: activity.activityType,
+          position: projectedCount(activity.position, 20),
+          targetCount: activity.targetCount == null ? null : projectedCount(activity.targetCount, 181),
+          completedCount: projectedCount(activity.completedCount, 1_000_000),
+          estimatedMinutes: projectedCount(activity.estimatedMinutes, 240),
+          status: activity.status,
+          reasonCodes: [...reasonCodes],
+          contentId: projectOptionalId(activity.contentId),
+          conceptId: projectOptionalId(activity.conceptId),
+          reviewItemId: projectOptionalId(activity.reviewItemId),
+          completedAt: typeof activity.completedAt === 'string' ? activity.completedAt : null,
+          createdAt: activity.createdAt,
+        };
+      }),
+    } };
+  }
+  if (/^\/v1\/review\/[^/]+\/answer$/.test(pathname)) {
+    const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    const competence = object(data.competence, 'K2 hosted acceptance learner response projection was invalid.');
+    const production = object(competence.production, 'K2 hosted acceptance learner response projection was invalid.');
+    return { data: {
+      reviewItemId: projectedId(data.reviewItemId, opaqueIds),
+      competence: { production: { evidenceCount: projectedCount(production.evidenceCount, 1_000_000) } },
+    } };
+  }
+  throw new Error('K2 hosted acceptance learner response route was not projectable.');
 }
 
 function reportWaveAnnotation(testInfo: TestInfo, kind: K2WaveReport): void {
@@ -497,15 +665,19 @@ function reportWaveAnnotation(testInfo: TestInfo, kind: K2WaveReport): void {
     'k2-08-due-only-scope': 'K2-08 due-only subcase; this does not satisfy full K2-08 hosted acceptance.',
     'k2-08-full-scope': 'K2-08 full four-scenario hosted gate; not closed until every required gate passes.',
   };
+  if (!Object.hasOwn(descriptions, kind)) {
+    throw new Error('K2 hosted acceptance report annotation was invalid.');
+  }
   testInfo.annotations.push({ type: kind, description: descriptions[kind] });
 }
 
 export async function verifyK2FixtureZeroRowHead(client: SupabaseClient): Promise<void> {
   try {
     const result = await client.from('user_concept_states').select('id', { head: true }).limit(0);
+    const returnedCount = (result as unknown as { count?: unknown }).count;
     if (result.error || result.status < 200 || result.status >= 300 ||
         result.data !== null ||
-        (result.count !== null && result.count !== undefined)) {
+        (returnedCount !== null && returnedCount !== undefined)) {
       throw new Error('invalid head proof');
     }
   } catch {
@@ -575,10 +747,22 @@ async function readK208CandidateBase(
   return result;
 }
 
+export function allK208CompetitorsEligibleForStates(
+  rows: readonly K2HostedCandidateBaseProof['candidates'][number][],
+  knownConceptIds: ReadonlySet<string> = new Set(),
+): boolean {
+  return rows.length > 0 && rows.every(row => {
+    const uniqueConcepts = new Set(row.linkedConceptIds);
+    const expectedUnseenCount = row.linkedConceptIds.filter(id => !knownConceptIds.has(id)).length;
+    return row.linkedConceptIds.length >= 1 && row.linkedConceptIds.length <= 4 &&
+      uniqueConcepts.size === row.linkedConceptIds.length &&
+      row.unseenCount === expectedUnseenCount && row.unseenCount <= 4 &&
+      row.estimatedMinutes >= 5 && !row.isSaved && !row.isUnfinished && !row.isCompleted;
+  });
+}
+
 function candidateFixtureEligible(row: K2K208CandidateRow): boolean {
-  return row.linkedConceptIds.length >= 1 && row.linkedConceptIds.length <= 4 &&
-    row.unseenCount === row.linkedConceptIds.length &&
-    row.estimatedMinutes >= 5 && !row.isSaved && !row.isUnfinished && !row.isCompleted;
+  return allK208CompetitorsEligibleForStates([row]);
 }
 
 function uniqueCandidateConcept(
@@ -680,6 +864,9 @@ async function buildK208CandidateMatrix(
     if (base.stateConceptIds.length !== 0) {
       throw new Error('K2 hosted acceptance fresh actor has unexpected candidate-linked learner state.');
     }
+    if (!allK208CompetitorsEligibleForStates(base.candidates)) {
+      throw new Error('K2 hosted acceptance fresh candidate competitors were not all eligible.');
+    }
     const selection = selectK208CandidateRoles(base.candidates);
     const identity = candidateSelectionIdentity(selection);
     if (expectedSelection !== undefined && identity !== expectedSelection) {
@@ -693,35 +880,20 @@ async function buildK208CandidateMatrix(
   return { selections, baselines, publicProofs };
 }
 
-async function exactK208FixtureStateReadback(
-  admin: K2AdminClient,
-  binding: K2K208ActorBinding,
+export function exactK208FixtureStateReadback(
+  proof: K2HostedCandidateBaseProof,
   expected: readonly Readonly<{ conceptId: string; status: 'weak' | 'forgotten' }>[],
-): Promise<boolean> {
-  try {
-    const result = await (admin as unknown as SupabaseClient)
-      .from('user_concept_states')
-      .select('user_id,user_language_id,concept_id,status,state_version')
-      .eq('user_id', binding.actor.id)
-      .eq('user_language_id', binding.profileId)
-      .in('concept_id', expected.map(row => row.conceptId))
-      .limit(expected.length);
-    if (result.error || !Array.isArray(result.data) || result.data.length !== expected.length) return false;
-    const rows = result.data as readonly Record<string, unknown>[];
-    const actual = rows.map(row => ({
-      userId: row.user_id,
-      profileId: row.user_language_id,
-      conceptId: row.concept_id,
-      status: row.status,
-      stateVersion: row.state_version,
-    }));
-    return expected.every(item => actual.filter(row =>
-      row.userId === binding.actor.id && row.profileId === binding.profileId &&
-      row.conceptId === item.conceptId && row.status === item.status && row.stateVersion === 1,
-    ).length === 1);
-  } catch {
-    return false;
-  }
+): boolean {
+  if (proof.stateStatuses.length !== expected.length ||
+      proof.stateConceptIds.length !== expected.length ||
+      new Set(proof.stateConceptIds).size !== proof.stateConceptIds.length) return false;
+  const actual = new Map(proof.stateStatuses.map(row => [row.conceptId, row]));
+  if (actual.size !== expected.length ||
+      [...actual.keys()].some(conceptId => !proof.stateConceptIds.includes(conceptId))) return false;
+  return expected.every(item => {
+    const row = actual.get(item.conceptId);
+    return row?.status === item.status && row.stateVersion === 1;
+  });
 }
 
 async function seedK208Fixture(
@@ -778,19 +950,19 @@ async function seedK208Fixture(
     assertSameK208CandidateBaseline(baseline, after);
     if (after.stateConceptIds.length !== expected.length ||
         expected.some(row => !after.stateConceptIds.includes(row.conceptId)) ||
-        !await exactK208FixtureStateReadback(admin, binding, expected)) {
+        !exactK208FixtureStateReadback(after, expected)) {
       throw new Error('K2 hosted acceptance fixture insert could not be proven after an ambiguous response.');
     }
   }
 }
 
-async function deriveK208CandidateActualProof(
+async function deriveK208CandidateInputProof(
   config: K2HostedConfig,
   admin: K2AdminClient,
   binding: K2K208ActorBinding,
   selection: K2K208CandidateSelection,
   baseline: K2HostedCandidateBaseProof,
-): Promise<K2HostedCandidateActualProof> {
+): Promise<K2HostedCandidateInputProof> {
   const current = await readK208CandidateBase(config, binding, admin);
   assertSameK208CandidateBaseline(baseline, current);
   const expectedState = binding.handle === 'observer'
@@ -845,20 +1017,8 @@ async function deriveK208CandidateActualProof(
     [selection.weak.contentId, 'weak' as const],
     [selection.forgotten.contentId, 'forgotten' as const],
   ]);
-  const todayRows = current.candidates
-    .map((row, index) => ({ row, index, status: candidateStatus(row) }))
-    .sort((left, right) => {
-      const rank = (item: typeof left) => {
-        if (item.row.isUnfinished) return 0;
-        if (item.row.isSaved) return 1;
-        if (item.status === 'forgotten') return 2;
-        if (item.status === 'weak') return 3;
-        return 4;
-      };
-      return rank(left) - rank(right) || left.index - right.index;
-    });
-  const roleOrder = (rows: readonly typeof todayRows[number][]) => rows
-    .map(item => selectedById.get(item.row.contentId))
+  const baselineRoleOrder = current.candidates
+    .map(row => selectedById.get(row.contentId))
     .filter((role): role is K2HostedCandidateRole => role !== undefined);
   const statusesByRole: Record<K2HostedCandidateRole, 'none' | 'weak' | 'forgotten'> = {
     novel: candidateStatus(selection.novel),
@@ -872,21 +1032,17 @@ async function deriveK208CandidateActualProof(
     'scenario-d': { novel: 'none', weak: 'none', forgotten: 'none' },
   };
   const selectedRows = [selection.novel, selection.weak, selection.forgotten];
-  const allCompetitorsEligible = selectedRows.every(row => {
-    const currentRow = current.candidates.find(item => item.contentId === row.contentId);
-    return currentRow !== undefined && currentRow.linkedConceptIds.length >= 1 &&
-      currentRow.linkedConceptIds.length <= 4 && currentRow.unseenCount <= 4 &&
-      currentRow.estimatedMinutes >= 5 && !currentRow.isSaved &&
-      !currentRow.isUnfinished && !currentRow.isCompleted;
-  });
+  const knownFixtureConcepts = new Set(current.stateConceptIds);
+  const allCompetitorsEligible = allK208CompetitorsEligibleForStates(current.candidates, knownFixtureConcepts) &&
+    selectedRows.every(row => current.candidates.some(item => item.contentId === row.contentId));
   if (current.candidates.some(row => row.isSaved || row.isUnfinished || row.isCompleted) ||
+      JSON.stringify(baselineRoleOrder) !== JSON.stringify(['novel', 'weak', 'forgotten']) ||
       Object.entries(expectedStatuses[binding.handle]).some(([role, status]) =>
         statusesByRole[role as K2HostedCandidateRole] !== status) || !allCompetitorsEligible) {
     throw new Error('K2 hosted acceptance actual candidate eligibility proof failed.');
   }
   return {
-    baselineRoleOrder: ['novel', 'weak', 'forgotten'],
-    todayRoleOrder: roleOrder(todayRows),
+    baselineRoleOrder,
     effectiveStatus: statusesByRole,
     allCompetitorsEligible,
   };
@@ -897,11 +1053,13 @@ async function verifyK208DueCandidateIsolation(
   admin: K2AdminClient,
   bindings: readonly K2K208ActorBinding[],
   baselines: ReadonlyMap<K2WaveActorHandle, K2HostedCandidateBaseProof>,
+  selections: ReadonlyMap<K2WaveActorHandle, K2K208CandidateSelection>,
   savedConceptIds: ReadonlyMap<K2WaveActorHandle, ReadonlySet<string>>,
 ): Promise<void> {
   for (const binding of bindings) {
     const base = baselines.get(binding.handle);
-    if (!base) throw new Error('K2 hosted acceptance candidate binding was incomplete.');
+    const selection = selections.get(binding.handle);
+    if (!base || !selection) throw new Error('K2 hosted acceptance candidate binding was incomplete.');
     const current = await readK208CandidateBase(config, binding, admin);
     assertSameK208CandidateBaseline(base, current);
     if (current.stateConceptIds.length !== 0) {
@@ -912,7 +1070,20 @@ async function verifyK208DueCandidateIsolation(
     if (due.size !== expectedCount) {
       throw new Error('K2 hosted acceptance due setup did not prove the exact actor-bound backlog.');
     }
-    const candidateConcepts = new Set(base.candidates.flatMap(row => row.linkedConceptIds));
+    if (expectedCount === 20) {
+      const membership = await runK2HostedProbe(
+        'k208_due_candidate_overlap', config.readonlyDatabaseUrl, binding.actor.id,
+        binding.profileId, [...due],
+      );
+      if (!('overlapCount' in membership) || membership.overlapCount !== 0) {
+        throw new Error('K2 hosted acceptance due concepts overlapped the eligible Reader mapping graph.');
+      }
+    }
+    const candidateConcepts = new Set([
+      ...selection.novel.linkedConceptIds,
+      ...selection.weak.linkedConceptIds,
+      ...selection.forgotten.linkedConceptIds,
+    ]);
     if ([...due].some(id => candidateConcepts.has(id))) {
       throw new Error('K2 hosted acceptance due concepts overlap published candidate mappings.');
     }
@@ -1296,12 +1467,12 @@ export async function runK2HostedWave(
           if (!binding || !selection || !baseline) {
             throw new Error('K2 hosted acceptance candidate proof handle was invalid.');
           }
-          return deriveK208CandidateActualProof(config, admin, binding, selection, baseline);
+          return deriveK208CandidateInputProof(config, admin, binding, selection, baseline);
         },
         verifyDueCandidateIsolation: async () => {
           await verifyK208DueCandidateIsolation(
             config, admin, k208Bindings ?? [], k208State?.baselines ?? new Map(),
-            savedConceptIds,
+            k208State?.selections ?? new Map(), savedConceptIds,
           );
         },
         fixtureSetup: {

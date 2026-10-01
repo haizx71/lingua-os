@@ -689,7 +689,9 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
         actor=actor,
         language_profile_id=profile_id,
         boundary=None,
-        limit=20,
+        # Read one past the reviewed finite candidate cap so truncation is
+        # detected instead of silently hiding a possible competitor.
+        limit=21,
         today_as_of=None,
         connection=connection,
     )
@@ -732,7 +734,7 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
             "isCompleted": progress is not None and progress.is_completed,
         })
     state_rows = connection.execute(
-        """SELECT DISTINCT state.concept_id
+        """SELECT DISTINCT state.concept_id, state.status, state.state_version
            FROM public.user_concept_states AS state
            JOIN public.content_concepts AS link ON link.concept_id = state.concept_id
            WHERE state.user_id = %s AND state.user_language_id = %s
@@ -743,7 +745,54 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
     return {
         "candidates": result,
         "stateConceptIds": [str(row[0]) for row in state_rows],
+        "stateStatuses": [
+            {
+                "conceptId": str(row[0]),
+                "status": str(row[1]),
+                "stateVersion": int(row[2]),
+            }
+            for row in state_rows
+        ],
     }
+
+
+def _k208_due_candidate_overlap(
+    connection,
+    actor_id: UUID,
+    profile_id: UUID,
+    due_concept_ids: list[UUID],
+) -> dict[str, Any]:
+    if len(due_concept_ids) != 20 or len(set(due_concept_ids)) != 20:
+        raise ProbeError
+    profile = PostgresContentStore("").resolve_profile(
+        connection,
+        actor=AuthenticatedActor(actor_id),
+        requested_id=profile_id,
+    )
+    if profile != profile_id:
+        raise ProbeError
+    row = connection.execute(
+        """SELECT count(*)::integer
+           FROM unnest(%s::uuid[]) AS due(concept_id)
+           WHERE EXISTS (
+               SELECT 1
+               FROM public.content_concepts AS linked
+               JOIN public.content_items AS item ON item.id = linked.content_id
+               JOIN public.proficiency_levels AS level ON level.id = item.curated_level_id
+               JOIN public.content_metrics AS metrics ON metrics.content_id = item.id
+               JOIN public.source_records AS record ON record.id = item.source_record_id
+               JOIN public.data_sources AS source ON source.id = record.source_id
+               JOIN public.licenses AS license ON license.id = source.license_id
+               WHERE linked.concept_id = due.concept_id
+                 AND item.language_code = 'en'
+                 AND item.publication_status = 'published'
+                 AND public.reader_content_passes_publication_gate(item.id)
+           )""",
+        (due_concept_ids,),
+    ).fetchone()
+    if row is None or type(row[0]) is not int or not 0 <= row[0] <= 20:
+        raise ProbeError
+    return {"overlapCount": row[0]}
 
 
 def _actor_lineage(connection, actor_id: UUID) -> dict[str, Any]:
@@ -891,9 +940,21 @@ def main() -> int:
     action = os.environ.get("K2_ACCEPTANCE_PROBE_ACTION", "")
     actor_value = os.environ.get("K2_ACCEPTANCE_ACTOR_ID", "")
     profile_value = os.environ.get("K2_ACCEPTANCE_PROFILE_ID", "")
+    concept_values = os.environ.get("K2_ACCEPTANCE_CONCEPT_IDS", "")
     try:
         actor_id = UUID(actor_value) if actor_value else None
         profile_id = UUID(profile_value) if profile_value else None
+        raw_concepts = json.loads(concept_values) if concept_values else None
+        due_concept_ids = None
+        if raw_concepts is not None:
+            if (not isinstance(raw_concepts, list) or len(raw_concepts) != 20 or
+                    any(not isinstance(value, str) for value in raw_concepts)):
+                raise ProbeError
+            due_concept_ids = [UUID(value) for value in raw_concepts]
+            if len(set(due_concept_ids)) != 20 or any(str(value) != raw for value, raw in zip(
+                due_concept_ids, raw_concepts, strict=True
+            )):
+                raise ProbeError
         if action not in {
             "retained_snapshot",
             "actor_snapshot",
@@ -905,6 +966,7 @@ def main() -> int:
             "k208_fixture_privilege_preflight",
             "k208_catalog_preflight",
             "k208_candidate_base",
+            "k208_due_candidate_overlap",
         }:
             raise ProbeError
         if (
@@ -912,10 +974,15 @@ def main() -> int:
             and actor_id is None
         ):
             raise ProbeError
-        if action == "k208_candidate_base":
+        if action in {"k208_candidate_base", "k208_due_candidate_overlap"}:
             if actor_id is None or profile_id is None:
                 raise ProbeError
         elif profile_id is not None:
+            raise ProbeError
+        if action == "k208_due_candidate_overlap":
+            if due_concept_ids is None:
+                raise ProbeError
+        elif due_concept_ids is not None:
             raise ProbeError
         if action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight"} and actor_id is not None:
             raise ProbeError
@@ -934,6 +1001,10 @@ def main() -> int:
                 output = _k208_catalog_preflight(connection)
             elif action == "k208_candidate_base":
                 output = _k208_candidate_base(connection, actor_id, profile_id)
+            elif action == "k208_due_candidate_overlap":
+                output = _k208_due_candidate_overlap(
+                    connection, actor_id, profile_id, due_concept_ids
+                )
             elif action == "actor_lineage":
                 output = _actor_lineage(connection, actor_id)
             elif action == "today_review_targets":

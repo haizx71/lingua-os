@@ -12,13 +12,14 @@ on:
           - acceptance
           - janitor
       wave:
-        description: Select K2-07 or the explicitly bounded K2-08 due-only subcase
+        description: Select K2-07, the bounded due-only subcase, or the full K2-08 gate
         type: choice
         required: true
         default: K2-07
         options:
           - K2-07
           - K2-08-DUE-ONLY
+          - K2-08
   schedule:
     - cron: '41 3 * * *'
 
@@ -34,7 +35,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.mode == 'acceptance' &&
-      (inputs.wave == 'K2-07' || inputs.wave == 'K2-08-DUE-ONLY') &&
+      (inputs.wave == 'K2-07' || inputs.wave == 'K2-08-DUE-ONLY' || inputs.wave == 'K2-08') &&
       github.repository == 'haizx71/lingua-os' &&
       github.ref == 'refs/heads/master' &&
       github.workflow_ref == 'haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master' &&
@@ -79,7 +80,7 @@ jobs:
               process.env.GITHUB_WORKFLOW_REF !== process.env.K2_EXPECTED_WORKFLOW_REF) {
             throw new Error('K2 hosted acceptance workflow identity is invalid.');
           }
-          if (!['K2-07', 'K2-08-DUE-ONLY'].includes(process.env.K2_REQUESTED_WAVE ?? '')) {
+          if (!['K2-07', 'K2-08-DUE-ONLY', 'K2-08'].includes(process.env.K2_REQUESTED_WAVE ?? '')) {
             throw new Error('K2 hosted acceptance wave selector is invalid.');
           }
           let response;

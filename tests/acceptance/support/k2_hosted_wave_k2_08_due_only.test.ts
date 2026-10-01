@@ -44,6 +44,16 @@ describe('K2-08 due-only Dictionary fixture', () => {
     );
   });
 
+  it('excludes the selected remediation concepts from the ordinary due backlog', () => {
+    const ids = Array.from({ length: 24 }, (_, index) => id(index + 1));
+    expect(collectK2HostedDictionaryConceptIds(
+      [{ data: ids.map(value => ({ id: value })) }], 20, ids.slice(0, 4),
+    )).toEqual(ids.slice(4));
+    expect(() => collectK2HostedDictionaryConceptIds(
+      [{ data: [] }], 20, ['learner-uuid-not-opaque'],
+    )).toThrow('selection was invalid');
+  });
+
   it('requires the exact 15-minute v2 Review-only plan with the first due target exposed', () => {
     const reviewIds = Array.from({ length: 20 }, (_, index) => id(index + 1));
     const plan = {

@@ -27,10 +27,13 @@ function record(value: unknown, message: string): JsonRecord {
 export function collectK2HostedDictionaryConceptIds(
   pages: readonly unknown[],
   requiredCount = DUE_SEED_SIZE,
+  excludedConceptIds: readonly string[] = [],
 ): readonly string[] {
-  if (!Number.isSafeInteger(requiredCount) || requiredCount < 1 || requiredCount > DUE_SEED_SIZE) {
+  if (!Number.isSafeInteger(requiredCount) || requiredCount < 1 || requiredCount > DUE_SEED_SIZE ||
+      excludedConceptIds.length > 80 || excludedConceptIds.some(id => !OPAQUE_HANDLE_PATTERN.test(id))) {
     throw new Error('K2 hosted acceptance due-only dictionary selection was invalid.');
   }
+  const excluded = new Set(excludedConceptIds);
   const selected: string[] = [];
   const selectedSet = new Set<string>();
   for (const rawPage of pages) {
@@ -45,7 +48,7 @@ export function collectK2HostedDictionaryConceptIds(
         throw new Error('K2 hosted acceptance due-only dictionary response was invalid.');
       }
       pageIds.add(item.id);
-      if (!selectedSet.has(item.id)) {
+      if (!excluded.has(item.id) && !selectedSet.has(item.id)) {
         selected.push(item.id);
         selectedSet.add(item.id);
       }
@@ -97,8 +100,9 @@ export function assertK2HostedDueOnlyTodayDelta(
   after: K2RetainedSnapshot,
 ): void {
   for (const table of k2RetainedTableNames()) {
-    const previous = before.tables[table];
-    const current = after.tables[table];
+    const tableName = table as keyof K2RetainedSnapshot['tables'];
+    const previous = before.tables[tableName];
+    const current = after.tables[tableName];
     if (TODAY_TABLES.has(table)) {
       const expectedRows = TODAY_TABLE_DELTAS[table as keyof typeof TODAY_TABLE_DELTAS];
       if (previous.rows !== 0 || current.rows !== expectedRows || previous.sha256 === current.sha256) {

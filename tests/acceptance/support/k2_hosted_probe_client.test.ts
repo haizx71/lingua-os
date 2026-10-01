@@ -7,6 +7,7 @@ import {
   parseK2HostedMigrationProof,
   parseK2HostedTodayReviewTargets,
   parseK2HostedCandidateBaseProof,
+  parseK2HostedDueCandidateOverlap,
   parseK2HostedFixtureCapability,
   parseK2HostedCatalogPreflight,
   parseK2RetainedSnapshot,
@@ -135,6 +136,38 @@ describe('K2 read-only probe client', () => {
     ].sort());
   });
 
+  it('passes only the fixed twenty actor-bound due IDs into the read-only catalog membership child', () => {
+    const actorId = '550e8400-e29b-41d4-a716-446655440000';
+    const profileId = '550e8400-e29b-41d4-a716-446655440001';
+    const conceptIds = Array.from({ length: 20 }, (_, index) =>
+      `550e8400-e29b-41d4-a716-44665544${(index + 16).toString(16).padStart(4, '0')}`);
+    const environment = buildK2ProbeChildEnvironment(
+      'k208_due_candidate_overlap',
+      'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require',
+      actorId,
+      { PATH: 'runner-path', SERVICE_ROLE_KEY: 'must-not-inherit', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'secret' },
+      profileId,
+      conceptIds,
+    );
+    expect(environment.K2_ACCEPTANCE_CONCEPT_IDS).toBe(JSON.stringify(conceptIds));
+    expect(environment).not.toHaveProperty('SERVICE_ROLE_KEY');
+    expect(environment).not.toHaveProperty('ACTIONS_ID_TOKEN_REQUEST_TOKEN');
+    expect(Object.keys(environment).sort()).toEqual([
+      'K2_ACCEPTANCE_ACTOR_ID', 'K2_ACCEPTANCE_CONCEPT_IDS', 'K2_ACCEPTANCE_PROFILE_ID',
+      'K2_ACCEPTANCE_PROBE_ACTION', 'K2_STAGING_READONLY_DATABASE_URL', 'PATH',
+    ].sort());
+    expect(() => buildK2ProbeChildEnvironment(
+      'k208_due_candidate_overlap',
+      'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require',
+      actorId, { PATH: 'runner-path' }, profileId, conceptIds.slice(1),
+    )).toThrow('exactly twenty unique concepts');
+    expect(parseK2HostedDueCandidateOverlap({ overlapCount: 0 })).toEqual({ overlapCount: 0 });
+    expect(() => parseK2HostedDueCandidateOverlap({ overlapCount: 21 }))
+      .toThrow('due-content membership proof was invalid');
+    expect(() => parseK2HostedDueCandidateOverlap({ overlapCount: 0, conceptIds }))
+      .toThrow('due-content membership proof was invalid');
+  });
+
   it('accepts only bounded candidate proof fields and current capability metadata booleans', () => {
     const candidate = {
       contentId: '550e8400-e29b-41d4-a716-446655440010',
@@ -145,11 +178,27 @@ describe('K2 read-only probe client', () => {
       isUnfinished: false,
       isCompleted: false,
     };
-    expect(parseK2HostedCandidateBaseProof({ candidates: [candidate], stateConceptIds: [] }))
+    expect(parseK2HostedCandidateBaseProof({ candidates: [candidate], stateConceptIds: [], stateStatuses: [] }))
       .toMatchObject({ candidates: [candidate] });
     expect(() => parseK2HostedCandidateBaseProof({
       candidates: [{ ...candidate, email: 'learner@example.invalid' }],
       stateConceptIds: [],
+      stateStatuses: [],
+    })).toThrow('candidate base proof was invalid');
+    expect(parseK2HostedCandidateBaseProof({
+      candidates: [candidate],
+      stateConceptIds: ['550e8400-e29b-41d4-a716-446655440020'],
+      stateStatuses: [{
+        conceptId: '550e8400-e29b-41d4-a716-446655440020', status: 'weak', stateVersion: 1,
+      }],
+    }).stateStatuses[0].status).toBe('weak');
+    expect(() => parseK2HostedCandidateBaseProof({
+      candidates: [candidate],
+      stateConceptIds: ['550e8400-e29b-41d4-a716-446655440020'],
+      stateStatuses: [{
+        conceptId: '550e8400-e29b-41d4-a716-446655440020', status: 'weak', stateVersion: 1,
+        userId: 'private-actor-marker',
+      }],
     })).toThrow('candidate base proof was invalid');
     expect(parseK2HostedFixtureCapability({
       authBoundaryUnchanged: true,

@@ -43,7 +43,8 @@ export type K2ProbeAction =
   | 'anchor_material'
   | 'k208_fixture_privilege_preflight'
   | 'k208_catalog_preflight'
-  | 'k208_candidate_base';
+  | 'k208_candidate_base'
+  | 'k208_due_candidate_overlap';
 export type K2RetainedSnapshot = {
   readonly tables: Readonly<Record<(typeof EXPECTED_TABLES)[number], {
     readonly rows: number;
@@ -82,6 +83,11 @@ export type K2HostedTodayReviewTargets = Readonly<{
 }>;
 export type K2HostedCandidateBaseProof = Readonly<{
   stateConceptIds: readonly string[];
+  stateStatuses: readonly Readonly<{
+    conceptId: string;
+    status: 'unseen' | 'discovered' | 'learning' | 'familiar' | 'active' | 'mastered' | 'weak' | 'forgotten';
+    stateVersion: number;
+  }>[];
   candidates: readonly Readonly<{
     contentId: string;
     estimatedMinutes: number;
@@ -100,6 +106,7 @@ export type K2HostedProbeResult =
   | K2HostedActorLineageProof
   | K2HostedTodayReviewTargets
   | K2HostedCandidateBaseProof
+  | Readonly<{ overlapCount: number }>
   | Readonly<{
       authBoundaryUnchanged: boolean;
       fixtureCapabilityReady: boolean;
@@ -126,14 +133,38 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 export function parseK2HostedCandidateBaseProof(value: unknown): K2HostedCandidateBaseProof {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(['candidates', 'stateConceptIds'])) {
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(['candidates', 'stateConceptIds', 'stateStatuses'])) {
     throw new Error('K2 hosted acceptance candidate base proof was invalid.');
   }
   const candidates = (value as { candidates?: unknown }).candidates;
   const stateConceptIds = (value as { stateConceptIds?: unknown }).stateConceptIds;
+  const stateStatuses = (value as { stateStatuses?: unknown }).stateStatuses;
   if (!Array.isArray(candidates) || candidates.length > 20 || !Array.isArray(stateConceptIds) ||
       stateConceptIds.length > 80 || stateConceptIds.some(id => typeof id !== 'string' || !UUID_RE.test(id)) ||
-      new Set(stateConceptIds).size !== stateConceptIds.length) {
+      new Set(stateConceptIds).size !== stateConceptIds.length || !Array.isArray(stateStatuses) ||
+      stateStatuses.length !== stateConceptIds.length) {
+    throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+  }
+  const allowedStateStatuses = new Set([
+    'unseen', 'discovered', 'learning', 'familiar', 'active', 'mastered', 'weak', 'forgotten',
+  ]);
+  const seenStateConcepts = new Set<string>();
+  for (const candidateState of stateStatuses) {
+    if (!candidateState || typeof candidateState !== 'object' || Array.isArray(candidateState) ||
+        JSON.stringify(Object.keys(candidateState).sort()) !== JSON.stringify(['conceptId', 'stateVersion', 'status'])) {
+      throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+    }
+    const state = candidateState as Record<string, unknown>;
+    if (typeof state.conceptId !== 'string' || !UUID_RE.test(state.conceptId) ||
+        seenStateConcepts.has(state.conceptId) || !stateConceptIds.includes(state.conceptId) ||
+        typeof state.status !== 'string' || !allowedStateStatuses.has(state.status) ||
+        !isSafeCount(state.stateVersion) || state.stateVersion < 1) {
+      throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+    }
+    seenStateConcepts.add(state.conceptId);
+  }
+  if (seenStateConcepts.size !== stateConceptIds.length ||
+      stateConceptIds.some(id => !seenStateConcepts.has(id))) {
     throw new Error('K2 hosted acceptance candidate base proof was invalid.');
   }
   const seenContent = new Set<string>();
@@ -159,6 +190,18 @@ export function parseK2HostedCandidateBaseProof(value: unknown): K2HostedCandida
     seenContent.add(row.contentId);
   }
   return value as K2HostedCandidateBaseProof;
+}
+
+export function parseK2HostedDueCandidateOverlap(value: unknown): Readonly<{ overlapCount: number }> {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(['overlapCount'])) {
+    throw new Error('K2 hosted acceptance due-content membership proof was invalid.');
+  }
+  const overlapCount = (value as { overlapCount?: unknown }).overlapCount;
+  if (!isSafeCount(overlapCount) || overlapCount > 20) {
+    throw new Error('K2 hosted acceptance due-content membership proof was invalid.');
+  }
+  return { overlapCount };
 }
 
 export function parseK2HostedFixtureCapability(value: unknown) {
@@ -342,7 +385,21 @@ export function buildK2ProbeChildEnvironment(
   actorId?: string,
   systemEnv: NodeJS.ProcessEnv = process.env,
   profileId?: string,
+  conceptIds?: readonly string[],
 ): NodeJS.ProcessEnv {
+  const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap';
+  if ((exactActorProfileAction && (!UUID_RE.test(actorId ?? '') || !UUID_RE.test(profileId ?? ''))) ||
+      (!exactActorProfileAction && (profileId !== undefined || conceptIds !== undefined))) {
+    throw new Error('K2 hosted acceptance candidate probe requires the exact fresh actor and profile binding.');
+  }
+  if (action === 'k208_due_candidate_overlap') {
+    if (!conceptIds || conceptIds.length !== 20 || conceptIds.some(id => !UUID_RE.test(id)) ||
+        new Set(conceptIds).size !== 20) {
+      throw new Error('K2 hosted acceptance due membership probe requires exactly twenty unique concepts.');
+    }
+  } else if (conceptIds !== undefined) {
+    throw new Error('K2 hosted acceptance probe refused an unexpected concept set.');
+  }
   return {
     PATH: systemEnv.PATH,
     ...(systemEnv.PGSSLROOTCERT ? { PGSSLROOTCERT: systemEnv.PGSSLROOTCERT } : {}),
@@ -350,6 +407,7 @@ export function buildK2ProbeChildEnvironment(
     K2_ACCEPTANCE_PROBE_ACTION: action,
     ...(actorId ? { K2_ACCEPTANCE_ACTOR_ID: actorId } : {}),
     ...(profileId ? { K2_ACCEPTANCE_PROFILE_ID: profileId } : {}),
+    ...(conceptIds ? { K2_ACCEPTANCE_CONCEPT_IDS: JSON.stringify(conceptIds) } : {}),
     ...(process.platform === 'win32' && systemEnv.SystemRoot
       ? { SystemRoot: systemEnv.SystemRoot }
       : {}),
@@ -361,6 +419,7 @@ export async function runK2HostedProbe(
   databaseUrl: string,
   actorId?: string,
   profileId?: string,
+  conceptIds?: readonly string[],
 ): Promise<K2HostedProbeResult> {
   if (!databaseUrl.trim()) {
     throw new Error('K2 hosted acceptance read-only probe configuration is missing.');
@@ -370,20 +429,31 @@ export async function runK2HostedProbe(
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '')) {
     throw new Error('K2 hosted acceptance actor probe requires a canonical actor identity.');
   }
-  if ((action === 'k208_candidate_base' &&
+  const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap';
+  if ((exactActorProfileAction &&
        (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '') ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(profileId ?? ''))) ||
-      (action !== 'k208_candidate_base' && profileId !== undefined)) {
+      (!exactActorProfileAction && profileId !== undefined)) {
     throw new Error('K2 hosted acceptance candidate probe requires the exact fresh actor and profile binding.');
   }
+  if (action === 'k208_due_candidate_overlap') {
+    if (!conceptIds || conceptIds.length !== 20 ||
+        conceptIds.some(id => !UUID_RE.test(id)) || new Set(conceptIds).size !== 20) {
+      throw new Error('K2 hosted acceptance due membership probe requires exactly twenty unique concepts.');
+    }
+  } else if (conceptIds !== undefined) {
+    throw new Error('K2 hosted acceptance probe refused an unexpected concept set.');
+  }
   if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' &&
-      action !== 'today_review_targets' && action !== 'k208_candidate_base' && actorId !== undefined) {
+       action !== 'today_review_targets' && !exactActorProfileAction && actorId !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected actor identity.');
   }
 
   const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
   const probeScript = path.resolve(__dirname, 'k2_hosted_probe.py');
-  const childEnv = buildK2ProbeChildEnvironment(action, databaseUrl, actorId, process.env, profileId);
+  const childEnv = buildK2ProbeChildEnvironment(
+    action, databaseUrl, actorId, process.env, profileId, conceptIds,
+  );
 
   let stdout: string;
   try {
@@ -407,6 +477,7 @@ export async function runK2HostedProbe(
   if (action === 'today_review_targets') return parseK2HostedTodayReviewTargets(value);
   if (action === 'anchor_material') return parseK2HostedAnchorMaterial(value);
   if (action === 'k208_candidate_base') return parseK2HostedCandidateBaseProof(value);
+  if (action === 'k208_due_candidate_overlap') return parseK2HostedDueCandidateOverlap(value);
   if (action === 'k208_fixture_privilege_preflight') return parseK2HostedFixtureCapability(value);
   if (action === 'k208_catalog_preflight') return parseK2HostedCatalogPreflight(value);
   return parseK2HostedMigrationProof(value);

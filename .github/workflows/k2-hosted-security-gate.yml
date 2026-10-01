@@ -54,10 +54,13 @@ jobs:
           tests/acceptance/support/k2_hosted_probe_client.test.ts
           tests/acceptance/support/k2_hosted_wave_k2_07.test.ts
           tests/acceptance/support/k2_hosted_wave_k2_08_due_only.test.ts
+          tests/acceptance/support/k2_hosted_wave_k2_08.test.ts
           tests/acceptance/support/k2_playwright_network.test.ts
           tests/acceptance/support/k2_hosted_workflow_security.test.ts
           tests/frontend/k2-vercel-attestation.test.ts
           --maxWorkers=1
+      - name: Typecheck hosted acceptance harness
+        run: pnpm exec tsc --noEmit -p tsconfig.k2-harness.json
       - name: Typecheck workspace contracts and packages
         run: pnpm typecheck
       - name: Run read-only hosted probe tests
