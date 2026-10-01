@@ -909,10 +909,14 @@ describe('createLearnerProfile', () => {
     let lookup = 0;
     const deleteUser = vi.fn(async (_id: string) => ({ error: null }));
     const admin = {
+      from: vi.fn(() => ({
+        delete: () => ({ eq: vi.fn(async () => ({ error: null })) }),
+        select: () => ({ eq: vi.fn(() => ({ limit: vi.fn(async () => ({ data: [], error: null })) })) }),
+      })),
       auth: { admin: {
         getUserById: vi.fn(async () => {
           lookup += 1;
-          return lookup === 1
+          return lookup <= 2
             ? { data: { user: actorUser }, error: null }
             : { data: { user: null }, error: new AuthApiError('not found', 404, 'user_not_found') };
         }),
