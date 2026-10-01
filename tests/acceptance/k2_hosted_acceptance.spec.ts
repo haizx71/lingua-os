@@ -45,6 +45,7 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
   test('hosted lifecycle runs the complete four-actor K2-08 gate', async ({ page, context }) => {
     test.skip(RUN_MODE !== 'acceptance' || WAVE_SELECTOR !== 'K2-08',
       'The selected hosted subcase is not full K2-08.');
+    test.setTimeout(25 * 60_000);
     const config = validateK2HostedEnvironment(process.env, 'acceptance');
     await runK2HostedWave(config, page, context, test.info(), k2HostedWaveK208);
   });

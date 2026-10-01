@@ -185,8 +185,54 @@ function makeActor(cfg: K2HostedConfig = config()): K2HostedActor {
   };
 }
 
-function adminWithUsers(users: readonly User[]): K2AdminClient {
+type K2AdminTestClient = K2AdminClient & {
+  readonly todayPlanDeleteFilter: ReturnType<typeof vi.fn>;
+  readonly todayPlanSelectFilter: ReturnType<typeof vi.fn>;
+  readonly todayPlanSelectLimit: ReturnType<typeof vi.fn>;
+  readonly cleanupEvents: string[];
+  readonly todayPlanOwners: Set<string>;
+};
+
+function todayPlansCleanupMock(initialPlanOwnerIds: readonly string[] = []): Pick<
+  K2AdminTestClient,
+  'from' | 'todayPlanDeleteFilter' | 'todayPlanSelectFilter' | 'todayPlanSelectLimit' | 'cleanupEvents' |
+  'todayPlanOwners'
+> {
+  const cleanupEvents: string[] = [];
+  const todayPlanOwners = new Set(initialPlanOwnerIds);
+  let selectedOwnerId = '';
+  const todayPlanDeleteFilter = vi.fn(async (column: string, userId: string) => {
+    cleanupEvents.push(`delete:${column}:${userId}`);
+    if (column === 'user_id') todayPlanOwners.delete(userId);
+    return { error: null };
+  });
+  const todayPlanSelectLimit = vi.fn(async (limit: number) => {
+    cleanupEvents.push(`limit:${limit}`);
+    const data = [...todayPlanOwners]
+      .filter(userId => userId === selectedOwnerId)
+      .slice(0, limit)
+      .map(userId => ({ id: `plan:${userId}` }));
+    return { data, error: null };
+  });
+  const todayPlanSelectFilter = vi.fn((column: string, userId: string) => {
+    cleanupEvents.push(`verify:${column}:${userId}`);
+    if (column === 'user_id') selectedOwnerId = userId;
+    return { limit: todayPlanSelectLimit };
+  });
+  const from = vi.fn((table: string) => {
+    cleanupEvents.push(`from:${table}`);
+    return {
+      delete: () => ({ eq: todayPlanDeleteFilter }),
+      select: () => ({ eq: todayPlanSelectFilter }),
+    };
+  });
+  return { from, todayPlanDeleteFilter, todayPlanSelectFilter, todayPlanSelectLimit, cleanupEvents, todayPlanOwners };
+}
+
+function adminWithUsers(users: readonly User[], todayPlanOwnerIds: readonly string[] = []): K2AdminTestClient {
+  const todayPlans = todayPlansCleanupMock(todayPlanOwnerIds);
   return {
+    ...todayPlans,
     auth: {
       admin: {
         createUser: vi.fn(),
@@ -203,10 +249,13 @@ function adminWithUsers(users: readonly User[]): K2AdminClient {
           data: { user: users.find(user => user.id === userId) ?? null },
           error: null,
         })),
-        deleteUser: vi.fn(async () => ({ error: null })),
+        deleteUser: vi.fn(async (userId: string) => {
+          todayPlans.cleanupEvents.push(`auth-delete:${userId}`);
+          return { error: null };
+        }),
       },
     },
-  } as unknown as K2AdminClient;
+  } as unknown as K2AdminTestClient;
 }
 
 describe('K2 hosted actor lifecycle boundaries', () => {
@@ -279,11 +328,12 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     const user = authUser(actor.id, actor.email, reverseOwnershipKeys(actor.ownership));
     let lookup = 0;
     const admin = {
+      ...todayPlansCleanupMock(),
       auth: {
         admin: {
           getUserById: vi.fn(async () => {
             lookup += 1;
-            if (lookup <= 2) return { data: { user }, error: null };
+            if (lookup <= 3) return { data: { user }, error: null };
             return {
               data: { user: null },
               error: new AuthApiError('suppressed', 404, 'user_not_found'),
@@ -297,8 +347,104 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     } as unknown as K2AdminClient;
 
     await expect(cleanupK2Actor(cfg, actor, admin)).resolves.toBeUndefined();
-    expect(lookup).toBe(3);
+    expect(lookup).toBe(4);
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(actor.id);
+  });
+
+  it('clears only the exact actor Today parents before Auth deletion and verifies the parent set is empty', async () => {
+    const cfg = config();
+    const actor = makeActor(cfg);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const foreignOwnerId = '550e8400-e29b-41d4-a716-446655440099';
+    const admin = adminWithUsers([user], [actor.id, foreignOwnerId]);
+    let lookup = 0;
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      lookup += 1;
+      return lookup <= 3
+        ? { data: { user }, error: null }
+        : { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
+    });
+
+    await expect(cleanupK2Actor(cfg, actor, admin)).resolves.toBeUndefined();
+
+    expect(admin.from).toHaveBeenCalledTimes(2);
+    expect(admin.from).toHaveBeenNthCalledWith(1, 'today_plans');
+    expect(admin.from).toHaveBeenNthCalledWith(2, 'today_plans');
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.todayPlanSelectFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.todayPlanSelectLimit).toHaveBeenCalledExactlyOnceWith(1);
+    expect(admin.todayPlanOwners.has(actor.id)).toBe(false);
+    expect(admin.todayPlanOwners.has(foreignOwnerId)).toBe(true);
+    expect(admin.cleanupEvents.indexOf(`delete:user_id:${actor.id}`))
+      .toBeLessThan(admin.cleanupEvents.indexOf(`auth-delete:${actor.id}`));
+  });
+
+  it('stops before Auth deletion when the scoped Today parent cleanup fails', async () => {
+    const cfg = config();
+    const actor = makeActor(cfg);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const admin = adminWithUsers([user]);
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null });
+    admin.todayPlanDeleteFilter.mockResolvedValue({ error: new Error('sensitive provider detail') });
+
+    await expect(cleanupK2Actor(cfg, actor, admin))
+      .rejects.toThrow('Today plan cleanup failed; Auth deletion stopped');
+
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.todayPlanSelectFilter).not.toHaveBeenCalled();
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+    expect(admin.cleanupEvents).not.toContain(`auth-delete:${actor.id}`);
+  });
+
+  it('stops before Auth deletion when a Today parent remains after the bounded delete', async () => {
+    const cfg = config();
+    const actor = makeActor(cfg);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const admin = adminWithUsers([user]);
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null });
+    admin.todayPlanSelectLimit.mockResolvedValue({ data: [{ id: 'remaining-plan' }], error: null });
+
+    await expect(cleanupK2Actor(cfg, actor, admin))
+      .rejects.toThrow('Today plan cleanup failed; Auth deletion stopped');
+
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.todayPlanSelectLimit).toHaveBeenCalledExactlyOnceWith(1);
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('retries safely when Auth deletion fails after Today parents were cleared', async () => {
+    const cfg = config();
+    const actor = makeActor(cfg);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const admin = adminWithUsers([user], [actor.id]);
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user }, error: null })
+      .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
+    (admin.auth.admin.deleteUser as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ error: new Error('provider detail suppressed') });
+
+    await expect(cleanupK2Actor(cfg, actor, admin))
+      .rejects.toThrow('Auth deletion failed; the guarded janitor may retry after TTL');
+    expect(admin.todayPlanOwners.has(actor.id)).toBe(false);
+
+    await expect(cleanupK2Actor(cfg, actor, admin)).resolves.toBeUndefined();
+
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledTimes(2);
+    expect(admin.todayPlanDeleteFilter).toHaveBeenNthCalledWith(1, 'user_id', actor.id);
+    expect(admin.todayPlanDeleteFilter).toHaveBeenNthCalledWith(2, 'user_id', actor.id);
+    expect(admin.todayPlanSelectLimit).toHaveBeenCalledTimes(2);
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledTimes(2);
+    expect(admin.todayPlanOwners.has(actor.id)).toBe(false);
   });
 
   it('returns an actor only after Auth re-fetch confirms the exact server-owned mark', async () => {
@@ -334,7 +480,9 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     let email = '';
     const user = () => authUser(id, email, null);
     let lookup = 0;
+    const todayPlans = todayPlansCleanupMock();
     const admin = {
+      ...todayPlans,
       auth: {
         admin: {
           createUser: vi.fn(async (attributes: Record<string, unknown>) => {
@@ -343,10 +491,13 @@ describe('K2 hosted actor lifecycle boundaries', () => {
           }),
           getUserById: vi.fn(async () => {
             lookup += 1;
-            if (lookup <= 2) return { data: { user: user() }, error: null };
+            if (lookup <= 3) return { data: { user: user() }, error: null };
             return { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
           }),
-          deleteUser: vi.fn(async () => ({ error: null })),
+          deleteUser: vi.fn(async (userId: string) => {
+            todayPlans.cleanupEvents.push(`auth-delete:${userId}`);
+            return { error: null };
+          }),
           listUsers: vi.fn(),
         },
       },
@@ -356,7 +507,10 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       .rejects.toThrow('server-owned actor mark was not persisted');
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledOnce();
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(id);
-    expect(lookup).toBe(3);
+    expect(lookup).toBe(4);
+    expect(todayPlans.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', id);
+    expect(todayPlans.cleanupEvents.indexOf(`delete:user_id:${id}`))
+      .toBeLessThan(todayPlans.cleanupEvents.indexOf(`auth-delete:${id}`));
   });
 
   it('rolls back an exact partial identity when createUser reports an error with a user result', async () => {
@@ -365,6 +519,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     let lookup = 0;
     const fresh: K2FreshActorIdentity[] = [];
     const admin = {
+      ...todayPlansCleanupMock(),
       auth: {
         admin: {
           createUser: vi.fn(async (attributes: Record<string, unknown>) => {
@@ -376,7 +531,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
           }),
           getUserById: vi.fn(async () => {
             lookup += 1;
-            if (lookup === 1) return { data: { user: authUser(id, email, null) }, error: null };
+            if (lookup <= 2) return { data: { user: authUser(id, email, null) }, error: null };
             return { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
           }),
           deleteUser: vi.fn(async () => ({ error: null })),
@@ -389,7 +544,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       .rejects.toThrow('actor creation returned an error; its exact fresh identity was rolled back');
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledOnce();
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(id);
-    expect(lookup).toBe(2);
+    expect(lookup).toBe(3);
     expect(fresh).toHaveLength(1);
     expect(fresh[0]).toMatchObject({ id, email });
   });
@@ -401,6 +556,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     let lookup = 0;
     const fresh: K2FreshActorIdentity[] = [];
     const admin = {
+      ...todayPlansCleanupMock(),
       auth: {
         admin: {
           createUser: vi.fn(async (attributes: Record<string, unknown>) => {
@@ -409,7 +565,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
           }),
           getUserById: vi.fn(async () => {
             lookup += 1;
-            if (lookup <= 2) return { data: { user: authUser(id, email, alteredMark) }, error: null };
+            if (lookup <= 3) return { data: { user: authUser(id, email, alteredMark) }, error: null };
             return { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
           }),
           deleteUser: vi.fn(async () => ({ error: null })),
@@ -422,7 +578,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       .rejects.toThrow('server-owned actor mark was not persisted exactly; the fresh actor was rolled back');
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledOnce();
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(id);
-    expect(lookup).toBe(3);
+    expect(lookup).toBe(4);
     expect(fresh).toHaveLength(1);
   });
 
@@ -433,7 +589,9 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     let lookup = 0;
     let deletion = 0;
     const fresh: K2FreshActorIdentity[] = [];
+    const todayPlans = todayPlansCleanupMock([id]);
     const admin = {
+      ...todayPlans,
       auth: {
         admin: {
           createUser: vi.fn(async (attributes: Record<string, unknown>) => {
@@ -446,10 +604,11 @@ describe('K2 hosted actor lifecycle boundaries', () => {
           }),
           getUserById: vi.fn(async () => {
             lookup += 1;
-            if (lookup <= 2) return { data: { user: authUser(id, email, serverMark) }, error: null };
+            if (lookup <= 4) return { data: { user: authUser(id, email, serverMark) }, error: null };
             return { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
           }),
-          deleteUser: vi.fn(async () => {
+          deleteUser: vi.fn(async (userId: string) => {
+            todayPlans.cleanupEvents.push(`auth-delete:${userId}`);
             deletion += 1;
             return { error: deletion === 1 ? new Error('provider details suppressed') : null };
           }),
@@ -467,7 +626,21 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       .resolves.toBe(true);
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledTimes(2);
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(id);
-    expect(lookup).toBe(3);
+    expect(lookup).toBe(5);
+    expect(todayPlans.todayPlanDeleteFilter).toHaveBeenCalledTimes(2);
+    expect(todayPlans.todayPlanDeleteFilter).toHaveBeenNthCalledWith(1, 'user_id', id);
+    expect(todayPlans.todayPlanDeleteFilter).toHaveBeenNthCalledWith(2, 'user_id', id);
+    const planDeleteEvents = todayPlans.cleanupEvents
+      .map((event, index) => event.startsWith(`delete:user_id:${id}`) ? index : -1)
+      .filter(index => index >= 0);
+    const authDeleteEvents = todayPlans.cleanupEvents
+      .map((event, index) => event === `auth-delete:${id}` ? index : -1)
+      .filter(index => index >= 0);
+    expect(planDeleteEvents).toHaveLength(2);
+    expect(authDeleteEvents).toHaveLength(2);
+    expect(planDeleteEvents[0]).toBeLessThan(authDeleteEvents[0]);
+    expect(planDeleteEvents[1]).toBeLessThan(authDeleteEvents[1]);
+    expect(todayPlans.todayPlanOwners.has(id)).toBe(false);
     expect(verifyDeletedActor).toHaveBeenCalledOnce();
     expect(verifyDeletedActor).toHaveBeenCalledWith(id);
   });
@@ -545,6 +718,26 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
+  it('clears only an expired marked actor Today parent before the janitor Auth deletion', async () => {
+    const cfg = config();
+    const actor = authUser(
+      '550e8400-e29b-41d4-a716-446655440054',
+      'k2ha-123456789-2-eeeeeeeeeeeeeeee@example.invalid',
+      ownership(cfg, new Date(NOW.getTime() - 3 * 60 * 60 * 1000)),
+    );
+    const admin = adminWithUsers([actor]);
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user: actor }, error: null })
+      .mockResolvedValueOnce({ data: { user: actor }, error: null })
+      .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
+
+    await expect(reapExpiredK2Actors(cfg, admin, NOW.getTime())).resolves.toBe(1);
+
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.cleanupEvents.indexOf(`delete:user_id:${actor.id}`))
+      .toBeLessThan(admin.cleanupEvents.indexOf(`auth-delete:${actor.id}`));
+  });
+
   it('follows explicit pagination metadata when GoTrue caps a page below the requested size', async () => {
     const first = authUser('first', 'ordinary-one@example.invalid', null);
     const second = authUser('second', 'ordinary-two@example.invalid', null);
@@ -604,6 +797,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     const admin = adminWithUsers([oldActor, otherRun]);
     const lookup = vi.fn()
       .mockResolvedValueOnce({ data: { user: oldActor }, error: null })
+      .mockResolvedValueOnce({ data: { user: oldActor }, error: null })
       .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
     (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>).mockImplementation(lookup);
     const verifyDeleted = vi.fn(async () => undefined);
@@ -624,6 +818,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     );
     const admin = adminWithUsers([actor]);
     (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ data: { user: actor }, error: null })
       .mockResolvedValueOnce({ data: { user: actor }, error: null })
       .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
     const residueProof = vi.fn(async () => { throw new Error('schema fingerprint changed'); });
@@ -656,9 +851,12 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     const admin = adminWithUsers([markedActor, unmarkedActor, secondUnmarkedActor]);
     (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce({ data: { user: markedActor }, error: null })
+      .mockResolvedValueOnce({ data: { user: markedActor }, error: null })
       .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') })
       .mockResolvedValueOnce({ data: { user: unmarkedActor }, error: null })
+      .mockResolvedValueOnce({ data: { user: unmarkedActor }, error: null })
       .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') })
+      .mockResolvedValueOnce({ data: { user: secondUnmarkedActor }, error: null })
       .mockResolvedValueOnce({ data: { user: secondUnmarkedActor }, error: null })
       .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
     const residueProof = vi.fn()
@@ -688,6 +886,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     const admin = adminWithUsers([actor]);
     (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce({ data: { user: actor }, error: null })
+      .mockResolvedValueOnce({ data: { user: actor }, error: null })
       .mockResolvedValueOnce({ data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') });
     const verifyDeleted = vi.fn(async () => undefined);
 
@@ -707,6 +906,9 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(actor.id);
     expect(verifyDeleted).toHaveBeenCalledOnce();
     expect(verifyDeleted).toHaveBeenCalledWith(actor.id);
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.cleanupEvents.indexOf(`delete:user_id:${actor.id}`))
+      .toBeLessThan(admin.cleanupEvents.indexOf(`auth-delete:${actor.id}`));
   });
 
   it.each([
