@@ -1,0 +1,4171 @@
+{
+  "schema_version": 1,
+  "pack_id": "k208-minimal-content-pack-v1",
+  "candidate_status": "first_party_ai_assisted_owner_approved_for_staging_hosted_acceptance_only_pending_exact_hash_review_and_admin_execution",
+  "preview_only": true,
+  "publication_authorized": false,
+  "owner_approval_scope": "staging_hosted_acceptance_only",
+  "publication_status": "blocked_pending_exact_hash_independent_review_and_authorized_admin_execution",
+  "dry_run_scope": "production_Admin_DTO_and_Reader_matcher_only; no_database_catalog_or_actor_probe",
+  "matcher_policy": "reader-analyze-leftmost-longest-exact-v1",
+  "approved_catalog_snapshot": {
+    "project": "bdmtdvvnbicgkfririjo",
+    "source_sha": "5e44412d4afd3bc1a8939182f780b175ae71e9f8",
+    "scope": "Read-only public approved English concept/lexeme/form matching projection; no learner or Auth data.",
+    "form_count": 99,
+    "concept_count": 94
+  },
+  "catalog_fit_order_hypothesis": [
+    "N",
+    "W",
+    "F"
+  ],
+  "fresh_actor_baseline": {
+    "proven": false,
+    "status": "requires_live_catalog_preflight_then_normal_fresh_actor_probe"
+  },
+  "items": [
+    {
+      "item_id": "N",
+      "role": "novel_control",
+      "private_target_key": "word:tea:noun",
+      "private_target_concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+      "private_target_occurrences": 46,
+      "title": "A Quiet Cup of Tea",
+      "curated_level": "A1",
+      "sentence_count": 72,
+      "admin_token_count": 790,
+      "estimated_minutes": 5,
+      "distinct_concept_count": 4,
+      "distinct_concepts": [
+        {
+          "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+          "canonical_key": "word:in:preposition",
+          "lemma": "in",
+          "occurrence_count": 9
+        },
+        {
+          "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+          "canonical_key": "word:room:noun",
+          "lemma": "room",
+          "occurrence_count": 6
+        },
+        {
+          "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+          "canonical_key": "word:on:preposition",
+          "lemma": "on",
+          "occurrence_count": 21
+        },
+        {
+          "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+          "canonical_key": "word:tea:noun",
+          "lemma": "tea",
+          "occurrence_count": 46
+        }
+      ],
+      "sentences": [
+        {
+          "order": 0,
+          "text": "Mina visits her grandmother every Sunday for tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 45,
+              "end_offset_utf16": 48,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 1,
+          "text": "Grandmother lives in a small house beside the park.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 18,
+              "end_offset_utf16": 20,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "text": "The kitchen opens onto a bright room with a blue table.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:room:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:room:noun",
+              "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+              "start_offset_utf16": 32,
+              "end_offset_utf16": 36,
+              "surface_text": "room"
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "text": "This Sunday, Grandmother plans to share tea with her old neighbor Lan.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 40,
+              "end_offset_utf16": 43,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "text": "Lan lives across town now, but she still loves their tea talks.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 53,
+              "end_offset_utf16": 56,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "text": "Mina hangs her coat on a hook and joins Grandmother in the kitchen.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:in:preposition",
+            "word:on:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 22,
+              "surface_text": "on"
+            },
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 52,
+              "end_offset_utf16": 54,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "text": "Grandmother takes a blue tin from the shelf and sets it on the table.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 56,
+              "end_offset_utf16": 58,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 7,
+          "text": "\"Lan likes plain tea,\" she says.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 17,
+              "end_offset_utf16": 20,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 8,
+          "text": "\"She takes no milk or sugar with her tea.\"",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 37,
+              "end_offset_utf16": 40,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 9,
+          "text": "Mina reads the label on the tin, though she knows the tea by its smell.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 21,
+              "end_offset_utf16": 23,
+              "surface_text": "on"
+            },
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 54,
+              "end_offset_utf16": 57,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 10,
+          "text": "They wash two cups and place them on a tray.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 36,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 11,
+          "text": "Grandmother fills a kettle and puts it on the stove.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 41,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 12,
+          "text": "Mina asks how many leaves fit in each tea cup.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:in:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 32,
+              "surface_text": "in"
+            },
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 41,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 13,
+          "text": "\"A small spoon works well for one tea cup,\" Grandmother says.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 37,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 14,
+          "text": "Mina takes the spoon and counts two small heaps of tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 51,
+              "end_offset_utf16": 54,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 15,
+          "text": "A few leaves fall on the table.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 18,
+              "end_offset_utf16": 20,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 16,
+          "text": "She laughs as tea leaves fall around the cup.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 14,
+              "end_offset_utf16": 17,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 17,
+          "text": "Mina sweeps the dry leaves into a bin on the floor.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 40,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 18,
+          "text": "As the kettle warms, they talk about Lan and the old tea stall.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 53,
+              "end_offset_utf16": 56,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 19,
+          "text": "Grandmother met Lan at that stall by the school gate over tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 58,
+              "end_offset_utf16": 61,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 20,
+          "text": "They sat at the stall after class and shared one cup of tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 56,
+              "end_offset_utf16": 59,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 21,
+          "text": "After many years apart, Lan visits again for tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 45,
+              "end_offset_utf16": 48,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 22,
+          "text": "Mina wonders if Lan remembers their long talks over tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 52,
+              "end_offset_utf16": 55,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 23,
+          "text": "A clock on the wall says eleven.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 8,
+              "end_offset_utf16": 10,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 24,
+          "text": "The tea is hot, but Grandmother lifts the kettle from the stove.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 7,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 25,
+          "text": "She waits a short time before pouring, because a rolling boil can make green tea bitter.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 77,
+              "end_offset_utf16": 80,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 26,
+          "text": "Mina watches tea fill each cup, one at a time.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 13,
+              "end_offset_utf16": 16,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 27,
+          "text": "The pale tea smells fresh and light.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 9,
+              "end_offset_utf16": 12,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 28,
+          "text": "Grandmother asks Mina to carry the tray into the front room.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:room:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:room:noun",
+              "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+              "start_offset_utf16": 55,
+              "end_offset_utf16": 59,
+              "surface_text": "room"
+            }
+          ]
+        },
+        {
+          "order": 29,
+          "text": "Mina holds the tray with both hands and walks slowly across the room.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:room:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:room:noun",
+              "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+              "start_offset_utf16": 64,
+              "end_offset_utf16": 68,
+              "surface_text": "room"
+            }
+          ]
+        },
+        {
+          "order": 30,
+          "text": "A soft knock sounds on the door.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 22,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 31,
+          "text": "Lan stands at the door with an umbrella and a bag of tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 53,
+              "end_offset_utf16": 56,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 32,
+          "text": "Her hair is wet, but the tea stays warm on the tray.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 28,
+              "surface_text": "tea"
+            },
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 40,
+              "end_offset_utf16": 42,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 33,
+          "text": "Lan smiles when she sees Grandmother in the front room.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:in:preposition",
+            "word:room:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 37,
+              "end_offset_utf16": 39,
+              "surface_text": "in"
+            },
+            {
+              "canonical_key": "word:room:noun",
+              "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+              "start_offset_utf16": 50,
+              "end_offset_utf16": 54,
+              "surface_text": "room"
+            }
+          ]
+        },
+        {
+          "order": 34,
+          "text": "They hug by the door, then sit at the table and pour tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 53,
+              "end_offset_utf16": 56,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 35,
+          "text": "Lan puts her bag on the chair and opens it.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 17,
+              "end_offset_utf16": 19,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 36,
+          "text": "Inside, Lan keeps a small photo of the old stall on the table.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 49,
+              "end_offset_utf16": 51,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 37,
+          "text": "\"I found it in my desk last week,\" Lan says.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 12,
+              "end_offset_utf16": 14,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 38,
+          "text": "Mina looks at the first photo on top.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 32,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 39,
+          "text": "Two young women sit at a tea stall and laugh.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 28,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 40,
+          "text": "Grandmother and Lan look just as happy in the picture.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 41,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 41,
+          "text": "Mina pours tea for Lan, then takes a seat by the window.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 11,
+              "end_offset_utf16": 14,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 42,
+          "text": "Lan lifts the cup and smells the tea before she drinks.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 33,
+              "end_offset_utf16": 36,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 43,
+          "text": "\"The tea has the same soft taste,\" she says.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 5,
+              "end_offset_utf16": 8,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 44,
+          "text": "Grandmother asks what tea Lan makes in her new flat.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:in:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 22,
+              "end_offset_utf16": 25,
+              "surface_text": "tea"
+            },
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 38,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 45,
+          "text": "Lan tells them about her garden and tea with a neighbor.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 39,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 46,
+          "text": "Mina listens while she drinks her tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 37,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 47,
+          "text": "The story makes the room feel bright, even as rain taps on the window.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:room:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:room:noun",
+              "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 24,
+              "surface_text": "room"
+            },
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 56,
+              "end_offset_utf16": 58,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 48,
+          "text": "Lan asks Mina which books she reads, and Mina answers over tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 59,
+              "end_offset_utf16": 62,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 49,
+          "text": "Mina tells her about a book while the tea cools on the table.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 41,
+              "surface_text": "tea"
+            },
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 48,
+              "end_offset_utf16": 50,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 50,
+          "text": "Lan knows that story, too, and names the next book while rain taps on the window.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 67,
+              "end_offset_utf16": 69,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 51,
+          "text": "Mina writes the title on a paper strip beside her tea cup.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 22,
+              "end_offset_utf16": 24,
+              "surface_text": "on"
+            },
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 50,
+              "end_offset_utf16": 53,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 52,
+          "text": "The women share tea and talk about small things for a long time.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 16,
+              "end_offset_utf16": 19,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 53,
+          "text": "No one checks the clock on the wall.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 26,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 54,
+          "text": "When the tea is gone, Grandmother offers another cup.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 9,
+              "end_offset_utf16": 12,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 55,
+          "text": "Lan says yes to another cup of tea, and Mina prepares it.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 31,
+              "end_offset_utf16": 34,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 56,
+          "text": "She measures the tea leaves, waits for the kettle, and pours slowly.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 17,
+              "end_offset_utf16": 20,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 57,
+          "text": "The tea is not too strong this time.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 7,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 58,
+          "text": "Lan says Mina makes a fine cup of tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 37,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 59,
+          "text": "Mina feels proud of the tea, but she knows she can learn more.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 27,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 60,
+          "text": "Before Lan leaves, they set a day for the next tea visit.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 47,
+              "end_offset_utf16": 50,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 61,
+          "text": "She takes the old photos but leaves one on the table for Mina.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 40,
+              "end_offset_utf16": 42,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 62,
+          "text": "Mina puts the photo in her school bag beside the paper strip with the book title.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 22,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 63,
+          "text": "The rain ends, and sun comes into the room.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:room:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:room:noun",
+              "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 42,
+              "surface_text": "room"
+            }
+          ]
+        },
+        {
+          "order": 64,
+          "text": "Lan waves from the gate as Mina stands in the doorway.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 41,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 65,
+          "text": "Mina clears the cups and washes the tea pot.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 39,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 66,
+          "text": "Grandmother says the visit and shared tea make the day special.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 41,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 67,
+          "text": "Mina asks if she can make tea again next Sunday.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 26,
+              "end_offset_utf16": 29,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 68,
+          "text": "Grandmother nods and saves the blue tin on the shelf.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 40,
+              "end_offset_utf16": 42,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 69,
+          "text": "On Mina's walk across town, she thinks about Lan's stories and tea.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:tea:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "On"
+            },
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 63,
+              "end_offset_utf16": 66,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 70,
+          "text": "She knows how to make the tea now, but she likes the talk best.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 26,
+              "end_offset_utf16": 29,
+              "surface_text": "tea"
+            }
+          ]
+        },
+        {
+          "order": 71,
+          "text": "After the visit, she tells her mother about Lan over one more cup of tea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:tea:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:tea:noun",
+              "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+              "start_offset_utf16": 69,
+              "end_offset_utf16": 72,
+              "surface_text": "tea"
+            }
+          ]
+        }
+      ],
+      "violations": []
+    },
+    {
+      "item_id": "W",
+      "role": "weak_remediation",
+      "private_target_key": "word:coffee:noun",
+      "private_target_concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+      "private_target_occurrences": 35,
+      "title": "Coffee, Carefully Noticed",
+      "curated_level": "A2",
+      "sentence_count": 69,
+      "admin_token_count": 876,
+      "estimated_minutes": 5,
+      "distinct_concept_count": 3,
+      "distinct_concepts": [
+        {
+          "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+          "canonical_key": "word:in:preposition",
+          "lemma": "in",
+          "occurrence_count": 24
+        },
+        {
+          "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+          "canonical_key": "word:coffee:noun",
+          "lemma": "coffee",
+          "occurrence_count": 35
+        },
+        {
+          "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+          "canonical_key": "word:on:preposition",
+          "lemma": "on",
+          "occurrence_count": 17
+        }
+      ],
+      "sentences": [
+        {
+          "order": 0,
+          "text": "Jo takes a small coffee to the cafe window and opens her folder.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 17,
+              "end_offset_utf16": 23,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 1,
+          "text": "She has one hour to finish a poster in the cafe before lunch.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 38,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "text": "The garden group needs the poster on Saturday.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 36,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "text": "Jo sketches rows of vegetables, a path, and a bright sun while her coffee waits beside the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 67,
+              "end_offset_utf16": 73,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "text": "The words in the picture look plain, though the drawing feels good.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 10,
+              "end_offset_utf16": 12,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "text": "Jo takes a sip, then checks the date on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 37,
+              "end_offset_utf16": 39,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "text": "The coffee cup rests far from the paper, so Jo can draw without worry.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 10,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 7,
+          "text": "She writes the date in large letters and checks each line.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 22,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 8,
+          "text": "A woman at the next table asks what Jo is drawing beside her coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 61,
+              "end_offset_utf16": 67,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 9,
+          "text": "Jo explains the garden idea as she takes a sip of coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 50,
+              "end_offset_utf16": 56,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 10,
+          "text": "The woman offers to bring small pots for the garden, and Jo writes that in the margin.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 72,
+              "end_offset_utf16": 74,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 11,
+          "text": "Jo adds a note about the pots in the open space.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 32,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 12,
+          "text": "The coffee scent reminds Jo to pause and look at her own cup.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 10,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 13,
+          "text": "Her coffee is still warm, so she drinks before returning to the poster.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 10,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 14,
+          "text": "Jo notices a small wobble in the table when she moves her arm.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 26,
+              "end_offset_utf16": 28,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 15,
+          "text": "She places her folder in the center and steadies the paper.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 22,
+              "end_offset_utf16": 24,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 16,
+          "text": "A child runs past, and coffee shivers inside Jo's cup.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 23,
+              "end_offset_utf16": 29,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 17,
+          "text": "Jo catches her coffee, but a few drops land on the poster.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:coffee:noun",
+            "word:on:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 15,
+              "end_offset_utf16": 21,
+              "surface_text": "coffee"
+            },
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 44,
+              "end_offset_utf16": 46,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 18,
+          "text": "The coffee marks spread across the corner and cross part of the sun.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 10,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 19,
+          "text": "Jo feels upset because coffee stains the sun and the garden path.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 23,
+              "end_offset_utf16": 29,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 20,
+          "text": "She asks the cafe worker for a clean cloth and a new sheet to save the coffee poster.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 71,
+              "end_offset_utf16": 77,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 21,
+          "text": "The worker brings both, then sets another coffee on a side shelf.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:coffee:noun",
+            "word:on:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 42,
+              "end_offset_utf16": 48,
+              "surface_text": "coffee"
+            },
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 49,
+              "end_offset_utf16": 51,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 22,
+          "text": "She dabs the paper, but the coffee stain blurs the ink.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 28,
+              "end_offset_utf16": 34,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 23,
+          "text": "Jo takes a slow breath and studies the brown circle on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 52,
+              "end_offset_utf16": 54,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 24,
+          "text": "The ring could pass for a sun above the garden rows on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 52,
+              "end_offset_utf16": 54,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 25,
+          "text": "She turns the coffee-marked page and sees a new idea.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 14,
+              "end_offset_utf16": 20,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 26,
+          "text": "Jo draws a larger sun around the ring, then adds rays on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 54,
+              "end_offset_utf16": 56,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 27,
+          "text": "The stain now fits in the design.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 19,
+              "end_offset_utf16": 21,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 28,
+          "text": "The worker says the coffee sun will brighten the poster.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 26,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 29,
+          "text": "Jo writes a new heading in the space above the picture.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 26,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 30,
+          "text": "The heading invites people to bring a cup and meet in the garden.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 51,
+              "end_offset_utf16": 53,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 31,
+          "text": "The woman in the next chair reads the poster and points to one detail.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 10,
+              "end_offset_utf16": 12,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 32,
+          "text": "She says the date should stand out in the coffee-colored picture.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:coffee:noun",
+            "word:in:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 35,
+              "end_offset_utf16": 37,
+              "surface_text": "in"
+            },
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 42,
+              "end_offset_utf16": 48,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 33,
+          "text": "Jo makes the hour larger and moves the date down on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 49,
+              "end_offset_utf16": 51,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 34,
+          "text": "A man at the door suggests a small map in the bottom corner.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 41,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 35,
+          "text": "Jo adds the cafe and garden gate to the map in the bottom corner.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 44,
+              "end_offset_utf16": 46,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 36,
+          "text": "The coffee grows cool while she draws, but she does not mind.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 10,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 37,
+          "text": "Jo takes another sip of coffee and checks the whole poster.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 30,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 38,
+          "text": "The path on the map leads from the street to the garden.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 9,
+              "end_offset_utf16": 11,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 39,
+          "text": "Jo adds a place for bags on the map beside the garden path.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 27,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 40,
+          "text": "The woman sets down her coffee and offers Jo a green pencil.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 30,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 41,
+          "text": "Jo colors the garden rows beside the coffee sun.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 37,
+              "end_offset_utf16": 43,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 42,
+          "text": "The green makes the poster feel calm, and the coffee ring gives it warmth.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 46,
+              "end_offset_utf16": 52,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 43,
+          "text": "Jo copies the final design of the coffee sun onto a clean sheet.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 40,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 44,
+          "text": "She keeps the first page in her folder as a reminder of the mistake.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 27,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 45,
+          "text": "The cafe worker clears the table where Jo first spilled coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 56,
+              "end_offset_utf16": 62,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 46,
+          "text": "Jo writes the last line in the cafe and checks every letter.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 26,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 47,
+          "text": "The poster says neighbors can plant, share lunch, and learn together over coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 74,
+              "end_offset_utf16": 80,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 48,
+          "text": "Jo takes a photo of the poster in the cafe window and sends it to the garden leader.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 31,
+              "end_offset_utf16": 33,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 49,
+          "text": "The garden leader reads the message in Jo's photo and asks her to bring it over.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 38,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 50,
+          "text": "Jo folds the folder around the poster and finishes her coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 55,
+              "end_offset_utf16": 61,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 51,
+          "text": "On the way to the garden, Jo passes the cafe window and sees her coffee poster in the glass.",
+          "distinct_concept_count": 3,
+          "concept_keys": [
+            "word:coffee:noun",
+            "word:in:preposition",
+            "word:on:preposition"
+          ],
+          "annotation_count": 3,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "On"
+            },
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 65,
+              "end_offset_utf16": 71,
+              "surface_text": "coffee"
+            },
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 79,
+              "end_offset_utf16": 81,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 52,
+          "text": "Jo walks two blocks with the poster held flat under her arm, smiling at the coffee ring.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 76,
+              "end_offset_utf16": 82,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 53,
+          "text": "The garden crew has coffee in paper cups beside the tools and small pots.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:coffee:noun",
+            "word:in:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 26,
+              "surface_text": "coffee"
+            },
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 27,
+              "end_offset_utf16": 29,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 54,
+          "text": "She pins the poster on the garden gate beside the cups.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 22,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 55,
+          "text": "The garden leader sees the coffee sun and laughs with delight.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 27,
+              "end_offset_utf16": 33,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 56,
+          "text": "The garden leader says the ring gives the picture warmth on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 57,
+              "end_offset_utf16": 59,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 57,
+          "text": "Jo tells her how the spill became part of the design on the page.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 53,
+              "end_offset_utf16": 55,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 58,
+          "text": "They place the extra copy in the cafe window for people to see.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 26,
+              "end_offset_utf16": 28,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 59,
+          "text": "Later, Jo returns to the cafe and orders one small coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 51,
+              "end_offset_utf16": 57,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 60,
+          "text": "She sits in the cafe, opens her folder, and writes down the day's story.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 9,
+              "end_offset_utf16": 11,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 61,
+          "text": "Coffee tastes richer after Jo finishes the poster.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 6,
+              "surface_text": "Coffee"
+            }
+          ]
+        },
+        {
+          "order": 62,
+          "text": "Jo watches the garden gate from the cafe window, coffee cup in hand.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:coffee:noun",
+            "word:in:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 49,
+              "end_offset_utf16": 55,
+              "surface_text": "coffee"
+            },
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 60,
+              "end_offset_utf16": 62,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 63,
+          "text": "The sun on the page seems to shine over the real garden.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 8,
+              "end_offset_utf16": 10,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 64,
+          "text": "On Saturday, she brings a watering can to the first planting day.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "On"
+            }
+          ]
+        },
+        {
+          "order": 65,
+          "text": "The garden group meets on the path by the poster as Jo helps a child plant beans.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 23,
+              "end_offset_utf16": 25,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 66,
+          "text": "They share lunch after planting, and the leader saves Jo a cup of coffee.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 66,
+              "end_offset_utf16": 72,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 67,
+          "text": "Jo thinks the best part is not the coffee or the poster alone.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:coffee:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:coffee:noun",
+              "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+              "start_offset_utf16": 35,
+              "end_offset_utf16": 41,
+              "surface_text": "coffee"
+            }
+          ]
+        },
+        {
+          "order": 68,
+          "text": "In the garden, she sees neighbors make a place together.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "In"
+            }
+          ]
+        }
+      ],
+      "violations": []
+    },
+    {
+      "item_id": "F",
+      "role": "forgotten_remediation",
+      "private_target_key": "word:water:noun",
+      "private_target_concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+      "private_target_occurrences": 49,
+      "title": "Water Along the Hill Path",
+      "curated_level": "B1",
+      "sentence_count": 74,
+      "admin_token_count": 859,
+      "estimated_minutes": 5,
+      "distinct_concept_count": 3,
+      "distinct_concepts": [
+        {
+          "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+          "canonical_key": "word:in:preposition",
+          "lemma": "in",
+          "occurrence_count": 11
+        },
+        {
+          "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+          "canonical_key": "word:on:preposition",
+          "lemma": "on",
+          "occurrence_count": 16
+        },
+        {
+          "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+          "canonical_key": "word:water:noun",
+          "lemma": "water",
+          "occurrence_count": 49
+        }
+      ],
+      "sentences": [
+        {
+          "order": 0,
+          "text": "Linh volunteers at a hill garden where water comes from a spring above town.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 44,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 1,
+          "text": "The garden sends herbs and vegetables to the food center in town.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 57,
+              "end_offset_utf16": 59,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "text": "During a dry summer, the water flow becomes weak at the garden tap.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 30,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "text": "On hot days, the leaves curl although the beds still look green.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "On"
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "text": "Linh checks the schedule on the wall and sees that the spring should supply the garden.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 27,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "text": "She asks Bao, the caretaker, to walk the route with her on the hillside.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 56,
+              "end_offset_utf16": 58,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 6,
+          "text": "Bao brings a map, a wrench, and a small notebook for notes on their walk.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 59,
+              "end_offset_utf16": 61,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 7,
+          "text": "On their map, they trace a pipe from the tap to a covered tank.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "On"
+            }
+          ]
+        },
+        {
+          "order": 8,
+          "text": "Water reaches the tap through a pipe from a covered tank.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 5,
+              "surface_text": "Water"
+            }
+          ]
+        },
+        {
+          "order": 9,
+          "text": "The tank sits on a slope; gravity carries its flow downhill.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 14,
+              "end_offset_utf16": 16,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 10,
+          "text": "Linh marks each junction on the map as they climb.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 27,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 11,
+          "text": "A narrow channel carries water along the stone path toward the garden.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 30,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 12,
+          "text": "After a turn, they hear water running beneath a wooden cover.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 24,
+              "end_offset_utf16": 29,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 13,
+          "text": "The sound of water grows stronger below the bridge.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 13,
+              "end_offset_utf16": 18,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 14,
+          "text": "Bao lifts the cover over the water pipe with a tool while Linh holds it steady.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 29,
+              "end_offset_utf16": 34,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 15,
+          "text": "A loose joint lets water escape into the soil.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 19,
+              "end_offset_utf16": 24,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 16,
+          "text": "The water leak is small, but it runs all day.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 9,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 17,
+          "text": "Bao closes the water valve before touching the pipe.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 15,
+              "end_offset_utf16": 20,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 18,
+          "text": "Linh calls the town crew to report the water leak.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 44,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 19,
+          "text": "A repair worker arrives with a new seal and checks the water pipe.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 55,
+              "end_offset_utf16": 60,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 20,
+          "text": "He asks Linh to read the water meter while Bao turns the valve.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 30,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 21,
+          "text": "The numbers stay still when the water is off.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 32,
+              "end_offset_utf16": 37,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 22,
+          "text": "The worker fits the seal, then lets water into the pipe a little at a time.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 41,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 23,
+          "text": "Water moves through the pipe without a leak.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 5,
+              "surface_text": "Water"
+            }
+          ]
+        },
+        {
+          "order": 24,
+          "text": "The meter turns as water reaches the lower channel.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 19,
+              "end_offset_utf16": 24,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 25,
+          "text": "Linh watches the water pass under the bridge and into the garden tank.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 17,
+              "end_offset_utf16": 22,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 26,
+          "text": "They wait to see whether water pressure stays steady.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 30,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 27,
+          "text": "At first, the water tap gives only a thin stream.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 14,
+              "end_offset_utf16": 19,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 28,
+          "text": "The worker checks the water valve and finds leaves caught around its handle.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 22,
+              "end_offset_utf16": 27,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 29,
+          "text": "Bao clears the leaves, and water runs again.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 27,
+              "end_offset_utf16": 32,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 30,
+          "text": "Water flows from the garden tap with a stronger sound.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 5,
+              "surface_text": "Water"
+            }
+          ]
+        },
+        {
+          "order": 31,
+          "text": "Linh fills a bottle and uses the extra water to test the pressure.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 39,
+              "end_offset_utf16": 44,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 32,
+          "text": "The worker asks Linh to check the water meter the next day.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 39,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 33,
+          "text": "He also asks them to report any new water leak quickly.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 36,
+              "end_offset_utf16": 41,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 34,
+          "text": "Linh adds both notes in the map's margin.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 21,
+              "end_offset_utf16": 23,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 35,
+          "text": "She marks the repaired joint with a red circle on the map.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 47,
+              "end_offset_utf16": 49,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 36,
+          "text": "They return to the square and explain how the repair restores water flow.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 62,
+              "end_offset_utf16": 67,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 37,
+          "text": "A sign on the gate asks people to use water with care.",
+          "distinct_concept_count": 2,
+          "concept_keys": [
+            "word:on:preposition",
+            "word:water:noun"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 7,
+              "end_offset_utf16": 9,
+              "surface_text": "on"
+            },
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 43,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 38,
+          "text": "Linh suggests adding a simple water map beside the sign.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 35,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 39,
+          "text": "The group agrees that visitors should know where the water comes from.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 53,
+              "end_offset_utf16": 58,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 40,
+          "text": "Bao draws the spring, tank, pipe, and garden on a large sheet.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 45,
+              "end_offset_utf16": 47,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 41,
+          "text": "Linh adds arrows to show the water flow direction.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 29,
+              "end_offset_utf16": 34,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 42,
+          "text": "The map helps people see that water connects the hill and the town.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 35,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 43,
+          "text": "One gardener asks if the spring will supply water through the summer.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 44,
+              "end_offset_utf16": 49,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 44,
+          "text": "Bao says the water level is steady, but everyone should avoid waste.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 13,
+              "end_offset_utf16": 18,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 45,
+          "text": "Linh explains that a slow pour gives plants time to take water.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 57,
+              "end_offset_utf16": 62,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 46,
+          "text": "The group places small cans beside the beds for careful water use.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 56,
+              "end_offset_utf16": 61,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 47,
+          "text": "They also check the water tap after each gardening session.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 25,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 48,
+          "text": "On a later day, rain falls on the hill for an hour.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 2,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "On"
+            },
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 27,
+              "end_offset_utf16": 29,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 49,
+          "text": "The channel carries water under the bridge without rising above its sides.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 20,
+              "end_offset_utf16": 25,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 50,
+          "text": "Linh visits the garden the next day to read the meter on the tank.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 54,
+              "end_offset_utf16": 56,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 51,
+          "text": "The water meter is normal, and the ground beside the pipe stays dry.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 4,
+              "end_offset_utf16": 9,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 52,
+          "text": "She writes the reading in her notebook and tells Bao.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 23,
+              "end_offset_utf16": 25,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 53,
+          "text": "He smiles as water reaches the garden beds again.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 13,
+              "end_offset_utf16": 18,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 54,
+          "text": "The garden tap now fills several cans in a short time.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 38,
+              "end_offset_utf16": 40,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 55,
+          "text": "A child asks where the water line begins.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 23,
+              "end_offset_utf16": 28,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 56,
+          "text": "Linh follows the blue water line with a finger and explains the route.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 22,
+              "end_offset_utf16": 27,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 57,
+          "text": "Water starts above the houses, passes through the tank, and reaches the square.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 5,
+              "surface_text": "Water"
+            }
+          ]
+        },
+        {
+          "order": 58,
+          "text": "From the square, another pipe brings water to the garden.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 37,
+              "end_offset_utf16": 42,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 59,
+          "text": "The child says the water route is longer than it looks.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 19,
+              "end_offset_utf16": 24,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 60,
+          "text": "Linh agrees and points to the marked joint on the map.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 43,
+              "end_offset_utf16": 45,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 61,
+          "text": "The garden group puts the map in a clear case by the gate.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 32,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 62,
+          "text": "In the garden, visitors pause to read the map before filling their bottles at the tap.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 0,
+              "end_offset_utf16": 2,
+              "surface_text": "In"
+            }
+          ]
+        },
+        {
+          "order": 63,
+          "text": "They discuss how even a small leak matters in a dry summer.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 43,
+              "end_offset_utf16": 45,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 64,
+          "text": "Linh returns with Bao to the spring where water starts its route.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 42,
+              "end_offset_utf16": 47,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 65,
+          "text": "They hear the stream run quietly in the clear channel.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 33,
+              "end_offset_utf16": 35,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 66,
+          "text": "They check the cover, both valves, and the tank on the hillside one last time.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 48,
+              "end_offset_utf16": 50,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 67,
+          "text": "Nothing needs repair along the water line after the check.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 31,
+              "end_offset_utf16": 36,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 68,
+          "text": "Linh walks back with the map in her hand.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 29,
+              "end_offset_utf16": 31,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 69,
+          "text": "She understands the system in greater detail, and she knows whom to call.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 27,
+              "end_offset_utf16": 29,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 70,
+          "text": "The plants stand upright in the garden after the rain.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:in:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:in:preposition",
+              "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+              "start_offset_utf16": 25,
+              "end_offset_utf16": 27,
+              "surface_text": "in"
+            }
+          ]
+        },
+        {
+          "order": 71,
+          "text": "The group shares a meal and fresh water, then talks about next season.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 34,
+              "end_offset_utf16": 39,
+              "surface_text": "water"
+            }
+          ]
+        },
+        {
+          "order": 72,
+          "text": "Linh fills a glass at the tap and sets it on the table.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:on:preposition"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:on:preposition",
+              "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+              "start_offset_utf16": 42,
+              "end_offset_utf16": 44,
+              "surface_text": "on"
+            }
+          ]
+        },
+        {
+          "order": 73,
+          "text": "She thinks about the path the water takes before it reaches her.",
+          "distinct_concept_count": 1,
+          "concept_keys": [
+            "word:water:noun"
+          ],
+          "annotation_count": 1,
+          "annotations": [
+            {
+              "canonical_key": "word:water:noun",
+              "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+              "start_offset_utf16": 30,
+              "end_offset_utf16": 35,
+              "surface_text": "water"
+            }
+          ]
+        }
+      ],
+      "violations": []
+    }
+  ],
+  "dry_run_pass": true,
+  "violations": [],
+  "input_hashes": {
+    "content_pack_sha256": "5eb2d97d94f6288f6195c22cf9ae87d7e912ce09dc9b97e4eab626620fa4a679",
+    "approved_catalog_snapshot_sha256": "ae28bd4b1e2fa0617f11ddc8a0bfd01a38e3bb2ed35d83a5a051abf7dc3e0d07",
+    "editorial_preview_sha256": "039503232d8a310a97d7de819fe544b785c070cd5dda767fc2595dc4690c41ed"
+  }
+}

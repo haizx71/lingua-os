@@ -1,0 +1,601 @@
+{
+  "project": "bdmtdvvnbicgkfririjo",
+  "sourceSha": "5e44412d4afd3bc1a8939182f780b175ae71e9f8",
+  "scope": "Read-only public approved English concept/lexeme/form matching projection; no learner or Auth data.",
+  "rows": [
+    {
+      "concept_id": "e1009c46-5bc2-5e6b-a9eb-e363f00c2090",
+      "canonical_key": "word:advantage:noun",
+      "lemma": "advantage",
+      "normalized_form": "advantage"
+    },
+    {
+      "concept_id": "3d14ef21-7636-5890-b263-3fcef9b54bfb",
+      "canonical_key": "word:advice:noun",
+      "lemma": "advice",
+      "normalized_form": "advice"
+    },
+    {
+      "concept_id": "a8315059-9aea-561e-8734-63601c2ad2fa",
+      "canonical_key": "word:be:verb",
+      "lemma": "be",
+      "normalized_form": "am"
+    },
+    {
+      "concept_id": "88e2c30d-33f3-5cdc-98ef-3cb541135dd9",
+      "canonical_key": "word:appointment:noun",
+      "lemma": "appointment",
+      "normalized_form": "appointment"
+    },
+    {
+      "concept_id": "a8315059-9aea-561e-8734-63601c2ad2fa",
+      "canonical_key": "word:be:verb",
+      "lemma": "be",
+      "normalized_form": "be"
+    },
+    {
+      "concept_id": "3001404b-1e4b-5e06-b06c-75add94dd12e",
+      "canonical_key": "word:breakfast:noun",
+      "lemma": "breakfast",
+      "normalized_form": "breakfast"
+    },
+    {
+      "concept_id": "69f39e37-8b6f-5560-86c2-e98c4a7de421",
+      "canonical_key": "word:bus:noun",
+      "lemma": "bus",
+      "normalized_form": "bus"
+    },
+    {
+      "concept_id": "f71f138a-843e-5ea6-9fd7-6e315c8da032",
+      "canonical_key": "word:buy:verb",
+      "lemma": "buy",
+      "normalized_form": "buy"
+    },
+    {
+      "concept_id": "155fcf91-afaa-5133-8aca-ffdaf390ae60",
+      "canonical_key": "word:card:noun",
+      "lemma": "card",
+      "normalized_form": "card"
+    },
+    {
+      "concept_id": "bed88e1b-57db-5703-9d55-abb0b2f6add3",
+      "canonical_key": "word:challenge:noun",
+      "lemma": "challenge",
+      "normalized_form": "challenge"
+    },
+    {
+      "concept_id": "00edf2cd-ace4-589b-a58d-752b9ccde647",
+      "canonical_key": "word:choose:verb",
+      "lemma": "choose",
+      "normalized_form": "choose"
+    },
+    {
+      "concept_id": "00edf2cd-ace4-589b-a58d-752b9ccde647",
+      "canonical_key": "word:choose:verb",
+      "lemma": "choose",
+      "normalized_form": "chose"
+    },
+    {
+      "concept_id": "7222cb12-c443-5081-8bb5-d40317cf0f23",
+      "canonical_key": "word:classmate:noun",
+      "lemma": "classmate",
+      "normalized_form": "classmate"
+    },
+    {
+      "concept_id": "84fec101-2abb-5d66-bf43-90d2c20b17e7",
+      "canonical_key": "word:coffee:noun",
+      "lemma": "coffee",
+      "normalized_form": "coffee"
+    },
+    {
+      "concept_id": "32f81465-c30c-51ef-9944-ed6b0870fea8",
+      "canonical_key": "word:come:verb",
+      "lemma": "come",
+      "normalized_form": "come"
+    },
+    {
+      "concept_id": "da0a2138-261e-5921-9c5b-e412edf13402",
+      "canonical_key": "word:comfortable:adjective",
+      "lemma": "comfortable",
+      "normalized_form": "comfortable"
+    },
+    {
+      "concept_id": "6403b925-c65f-5013-87be-2b157aef1f8d",
+      "canonical_key": "word:community:noun",
+      "lemma": "community",
+      "normalized_form": "community"
+    },
+    {
+      "concept_id": "8516b318-f134-58a6-a4bc-55c3c2ec1e1c",
+      "canonical_key": "word:compare:verb",
+      "lemma": "compare",
+      "normalized_form": "compare"
+    },
+    {
+      "concept_id": "8a3269ec-47e7-57c6-a51c-7386568c86f9",
+      "canonical_key": "phrase:deal-with",
+      "lemma": "deal with",
+      "normalized_form": "deal with"
+    },
+    {
+      "concept_id": "94488f5c-6b32-5740-92e4-24998f3a28bb",
+      "canonical_key": "word:decision:noun",
+      "lemma": "decision",
+      "normalized_form": "decision"
+    },
+    {
+      "concept_id": "928dc394-dbdc-5492-a491-33951cf243e4",
+      "canonical_key": "word:disadvantage:noun",
+      "lemma": "disadvantage",
+      "normalized_form": "disadvantage"
+    },
+    {
+      "concept_id": "11b1d309-89b6-5d73-9ed1-fede1cb650a6",
+      "canonical_key": "word:doctor:noun",
+      "lemma": "doctor",
+      "normalized_form": "doctor"
+    },
+    {
+      "concept_id": "61e94a5e-9c84-507e-adb1-6a27222c8d54",
+      "canonical_key": "word:early:adverb",
+      "lemma": "early",
+      "normalized_form": "early"
+    },
+    {
+      "concept_id": "0213f183-904a-5cd7-a737-1133dea7cf3e",
+      "canonical_key": "word:enough:determiner",
+      "lemma": "enough",
+      "normalized_form": "enough"
+    },
+    {
+      "concept_id": "662b79ba-9a45-5eb5-adc8-7a598839c4b8",
+      "canonical_key": "phrase:excuse-me",
+      "lemma": "excuse me",
+      "normalized_form": "excuse me"
+    },
+    {
+      "concept_id": "74e38a88-b28d-5afc-9fe9-726b4f261f59",
+      "canonical_key": "word:expensive:adjective",
+      "lemma": "expensive",
+      "normalized_form": "expensive"
+    },
+    {
+      "concept_id": "33eb5627-fcc3-52ad-ba50-4f0e746e101b",
+      "canonical_key": "word:experience:noun",
+      "lemma": "experience",
+      "normalized_form": "experience"
+    },
+    {
+      "concept_id": "2683e052-af47-500f-a9f9-8b0b5e17f626",
+      "canonical_key": "phrase:find-out",
+      "lemma": "find out",
+      "normalized_form": "find out"
+    },
+    {
+      "concept_id": "d5f3d28e-8f75-51b7-802b-8e4b8dd49b27",
+      "canonical_key": "word:free:adjective",
+      "lemma": "free",
+      "normalized_form": "free"
+    },
+    {
+      "concept_id": "d5350805-bfe3-5fac-8182-fb8b7b69f16a",
+      "canonical_key": "word:friend:noun",
+      "lemma": "friend",
+      "normalized_form": "friend"
+    },
+    {
+      "concept_id": "7f110000-0000-4000-8000-000000000004",
+      "canonical_key": "frll-anchor",
+      "lemma": "frll-anchor",
+      "normalized_form": "frll-anchor"
+    },
+    {
+      "concept_id": "d50efb02-085f-5cd9-822d-f9e93f55b738",
+      "canonical_key": "phrase:get-ready",
+      "lemma": "get ready",
+      "normalized_form": "get ready"
+    },
+    {
+      "concept_id": "6535ad43-87d3-5c75-95c3-071adabce7df",
+      "canonical_key": "word:go:verb",
+      "lemma": "go",
+      "normalized_form": "go"
+    },
+    {
+      "concept_id": "8714bb1c-8348-5e20-92ef-52d6d8a859fc",
+      "canonical_key": "word:goal:noun",
+      "lemma": "goal",
+      "normalized_form": "goal"
+    },
+    {
+      "concept_id": "70b24047-dc4a-515a-9cd5-bf8541900066",
+      "canonical_key": "word:habit:noun",
+      "lemma": "habit",
+      "normalized_form": "habit"
+    },
+    {
+      "concept_id": "d937e0c0-3359-5f70-b698-44b176ac177a",
+      "canonical_key": "word:have:verb",
+      "lemma": "have",
+      "normalized_form": "have"
+    },
+    {
+      "concept_id": "927b192f-67a3-535a-9c10-4bc88e8e5eec",
+      "canonical_key": "word:help:verb",
+      "lemma": "help",
+      "normalized_form": "help"
+    },
+    {
+      "concept_id": "c132043e-906b-5c74-8087-38b132ac6738",
+      "canonical_key": "word:here:adverb",
+      "lemma": "here",
+      "normalized_form": "here"
+    },
+    {
+      "concept_id": "468e4e87-6e9d-553d-9c03-18e1cc161851",
+      "canonical_key": "word:home:noun",
+      "lemma": "home",
+      "normalized_form": "home"
+    },
+    {
+      "concept_id": "70c02c0d-4ecc-555a-be3d-e98779f6906a",
+      "canonical_key": "phrase:how-much",
+      "lemma": "how much",
+      "normalized_form": "how much"
+    },
+    {
+      "concept_id": "7ed2dff0-65d2-5211-901a-60e80141b0f6",
+      "canonical_key": "word:hungry:adjective",
+      "lemma": "hungry",
+      "normalized_form": "hungry"
+    },
+    {
+      "concept_id": "0c836144-db0c-50e4-8712-cc99c8d044eb",
+      "canonical_key": "phrase:i-dont-understand",
+      "lemma": "I don't understand",
+      "normalized_form": "i don't understand"
+    },
+    {
+      "concept_id": "037a43b0-10e9-5fca-ac55-6c42e880045c",
+      "canonical_key": "word:in:preposition",
+      "lemma": "in",
+      "normalized_form": "in"
+    },
+    {
+      "concept_id": "a6f60f43-49d4-5816-b80d-9a00c63e6e9c",
+      "canonical_key": "phrase:in-my-opinion",
+      "lemma": "in my opinion",
+      "normalized_form": "in my opinion"
+    },
+    {
+      "concept_id": "db58ed25-e9f7-5005-a6d2-09a3d754a4b3",
+      "canonical_key": "word:journey:noun",
+      "lemma": "journey",
+      "normalized_form": "journey"
+    },
+    {
+      "concept_id": "bf3955bd-3f3b-57f7-b9db-2eaf0ca5713a",
+      "canonical_key": "word:late:adjective",
+      "lemma": "late",
+      "normalized_form": "late"
+    },
+    {
+      "concept_id": "68068ce0-a4f8-50a7-b6ce-7a7c3adfd010",
+      "canonical_key": "word:leave:verb",
+      "lemma": "leave",
+      "normalized_form": "leave"
+    },
+    {
+      "concept_id": "e364fa84-b3a9-5e30-8c5c-e942379dfa7d",
+      "canonical_key": "word:left:noun",
+      "lemma": "left",
+      "normalized_form": "left"
+    },
+    {
+      "concept_id": "dfb93f79-8e77-542b-a09c-0363c53ce4f5",
+      "canonical_key": "word:lesson:noun",
+      "lemma": "lesson",
+      "normalized_form": "lesson"
+    },
+    {
+      "concept_id": "a05ead68-6f8c-5fef-b050-3acd58b356c3",
+      "canonical_key": "word:like:verb",
+      "lemma": "like",
+      "normalized_form": "like"
+    },
+    {
+      "concept_id": "3c95b577-0158-5ee7-b291-a19117929676",
+      "canonical_key": "phrase:look-for",
+      "lemma": "look for",
+      "normalized_form": "look for"
+    },
+    {
+      "concept_id": "3c95b577-0158-5ee7-b291-a19117929676",
+      "canonical_key": "phrase:look-for",
+      "lemma": "look for",
+      "normalized_form": "looking for"
+    },
+    {
+      "concept_id": "7cc05d0f-fe06-53d2-a929-74c52a4fc2e9",
+      "canonical_key": "word:manage:verb",
+      "lemma": "manage",
+      "normalized_form": "manage"
+    },
+    {
+      "concept_id": "7cc05d0f-fe06-53d2-a929-74c52a4fc2e9",
+      "canonical_key": "word:manage:verb",
+      "lemma": "manage",
+      "normalized_form": "managed"
+    },
+    {
+      "concept_id": "9ee1e1fe-c4a3-5ab5-ab20-744bc5f24f8d",
+      "canonical_key": "word:medicine:noun",
+      "lemma": "medicine",
+      "normalized_form": "medicine"
+    },
+    {
+      "concept_id": "360b89ae-464e-5b81-9407-e108f0144aaf",
+      "canonical_key": "word:menu:noun",
+      "lemma": "menu",
+      "normalized_form": "menu"
+    },
+    {
+      "concept_id": "57dcf6fe-e79e-553f-884e-22b448f92aad",
+      "canonical_key": "word:morning:noun",
+      "lemma": "morning",
+      "normalized_form": "morning"
+    },
+    {
+      "concept_id": "611e5729-aba5-54e8-9000-a97d5a545ad7",
+      "canonical_key": "word:name:noun",
+      "lemma": "name",
+      "normalized_form": "name"
+    },
+    {
+      "concept_id": "25d24c94-b00e-57fa-8a4d-6c1443700a8e",
+      "canonical_key": "word:near:preposition",
+      "lemma": "near",
+      "normalized_form": "near"
+    },
+    {
+      "concept_id": "fd09c8c2-d445-5186-a01b-a9e22d4a0197",
+      "canonical_key": "word:office:noun",
+      "lemma": "office",
+      "normalized_form": "office"
+    },
+    {
+      "concept_id": "a6338d6e-e995-533b-a5b2-895c0fd62fe2",
+      "canonical_key": "word:on:preposition",
+      "lemma": "on",
+      "normalized_form": "on"
+    },
+    {
+      "concept_id": "29778f7f-5cb9-5644-a2b4-95e53c543a59",
+      "canonical_key": "phrase:on-the-other-hand",
+      "lemma": "on the other hand",
+      "normalized_form": "on the other hand"
+    },
+    {
+      "concept_id": "c43162f3-309d-5271-bedf-bac4a9a1feb8",
+      "canonical_key": "phrase:on-time",
+      "lemma": "on time",
+      "normalized_form": "on time"
+    },
+    {
+      "concept_id": "d7eaf150-37b8-538e-bab3-7f21f38dc008",
+      "canonical_key": "word:online:adjective",
+      "lemma": "online",
+      "normalized_form": "online"
+    },
+    {
+      "concept_id": "96d8b00d-e5d6-5ff4-a907-585a3adaad53",
+      "canonical_key": "word:opinion:noun",
+      "lemma": "opinion",
+      "normalized_form": "opinion"
+    },
+    {
+      "concept_id": "226e4b40-e2d3-551c-b92b-bd22f4d6a717",
+      "canonical_key": "word:plan:noun",
+      "lemma": "plan",
+      "normalized_form": "plan"
+    },
+    {
+      "concept_id": "908d01f0-61ca-521f-876a-6e0947683ca5",
+      "canonical_key": "phrase:please",
+      "lemma": "please",
+      "normalized_form": "please"
+    },
+    {
+      "concept_id": "3846a39e-b5dc-5441-bc30-25bf3a8db203",
+      "canonical_key": "phrase:please-repeat",
+      "lemma": "please repeat",
+      "normalized_form": "please repeat"
+    },
+    {
+      "concept_id": "6902261f-563f-50aa-b4a9-30b12ccc9e08",
+      "canonical_key": "word:possible:adjective",
+      "lemma": "possible",
+      "normalized_form": "possible"
+    },
+    {
+      "concept_id": "a8826239-4295-59b0-a748-24ea3bb948aa",
+      "canonical_key": "word:price:noun",
+      "lemma": "price",
+      "normalized_form": "price"
+    },
+    {
+      "concept_id": "4bae381d-061d-521a-af9a-d6c42a8527b9",
+      "canonical_key": "word:problem:noun",
+      "lemma": "problem",
+      "normalized_form": "problem"
+    },
+    {
+      "concept_id": "f7b6d12c-e396-5d28-816c-5c7e3ac353a9",
+      "canonical_key": "word:realize:verb",
+      "lemma": "realize",
+      "normalized_form": "realize"
+    },
+    {
+      "concept_id": "f7b6d12c-e396-5d28-816c-5c7e3ac353a9",
+      "canonical_key": "word:realize:verb",
+      "lemma": "realize",
+      "normalized_form": "realized"
+    },
+    {
+      "concept_id": "b9edc884-bf25-5cd7-9f04-5820eba4be5f",
+      "canonical_key": "word:reason:noun",
+      "lemma": "reason",
+      "normalized_form": "reason"
+    },
+    {
+      "concept_id": "c49ca318-4e53-5922-a278-f8b54cb302b1",
+      "canonical_key": "word:recommend:verb",
+      "lemma": "recommend",
+      "normalized_form": "recommend"
+    },
+    {
+      "concept_id": "7f847885-7082-503a-9eba-2e78cb05b650",
+      "canonical_key": "word:reduce:verb",
+      "lemma": "reduce",
+      "normalized_form": "reduce"
+    },
+    {
+      "concept_id": "97e4452b-b00f-5efc-b477-b525b75b5d11",
+      "canonical_key": "word:result:noun",
+      "lemma": "result",
+      "normalized_form": "result"
+    },
+    {
+      "concept_id": "a4b60c7a-dccd-59bc-b5d2-556be8ab56f7",
+      "canonical_key": "word:right:noun",
+      "lemma": "right",
+      "normalized_form": "right"
+    },
+    {
+      "concept_id": "339dfb19-989a-56c9-861a-0b60ec353a8c",
+      "canonical_key": "word:room:noun",
+      "lemma": "room",
+      "normalized_form": "room"
+    },
+    {
+      "concept_id": "6d1e64fd-4fdb-53fc-a92f-b3dd42d44440",
+      "canonical_key": "word:screen:noun",
+      "lemma": "screen",
+      "normalized_form": "screen"
+    },
+    {
+      "concept_id": "4562eca6-9e7b-5949-9e85-633f475bc49d",
+      "canonical_key": "word:solution:noun",
+      "lemma": "solution",
+      "normalized_form": "solution"
+    },
+    {
+      "concept_id": "42735baf-36da-57b0-b7c9-a6c53bce95f4",
+      "canonical_key": "word:station:noun",
+      "lemma": "station",
+      "normalized_form": "station"
+    },
+    {
+      "concept_id": "8c7040b1-1d13-5340-ad02-c8dca02ee29c",
+      "canonical_key": "word:stop:noun",
+      "lemma": "stop",
+      "normalized_form": "stop"
+    },
+    {
+      "concept_id": "fe097a08-e13c-536b-a723-796c8913f549",
+      "canonical_key": "word:study:verb",
+      "lemma": "study",
+      "normalized_form": "study"
+    },
+    {
+      "concept_id": "b67775f7-2d1b-5a76-ac9b-922338b3b0c0",
+      "canonical_key": "word:tea:noun",
+      "lemma": "tea",
+      "normalized_form": "tea"
+    },
+    {
+      "concept_id": "216c7065-35ca-57ba-911d-8c6a3b19509a",
+      "canonical_key": "phrase:thank-you",
+      "lemma": "thank you",
+      "normalized_form": "thank you"
+    },
+    {
+      "concept_id": "41f859bd-5e6f-5393-a148-18c49e0dfa98",
+      "canonical_key": "word:there:adverb",
+      "lemma": "there",
+      "normalized_form": "there"
+    },
+    {
+      "concept_id": "60424313-cc28-54fa-bbc2-1cc538fe346a",
+      "canonical_key": "word:ticket:noun",
+      "lemma": "ticket",
+      "normalized_form": "ticket"
+    },
+    {
+      "concept_id": "af6cd426-8746-5367-922c-a309f910740c",
+      "canonical_key": "word:tired:adjective",
+      "lemma": "tired",
+      "normalized_form": "tired"
+    },
+    {
+      "concept_id": "dbcd3c39-661e-5515-b82d-7e0d939465bf",
+      "canonical_key": "word:today:adverb",
+      "lemma": "today",
+      "normalized_form": "today"
+    },
+    {
+      "concept_id": "da935d76-8471-50e8-80af-c02546d3d232",
+      "canonical_key": "word:tomorrow:adverb",
+      "lemma": "tomorrow",
+      "normalized_form": "tomorrow"
+    },
+    {
+      "concept_id": "63674e07-e90d-5742-b379-5b63d2623e96",
+      "canonical_key": "word:usually:adverb",
+      "lemma": "usually",
+      "normalized_form": "usually"
+    },
+    {
+      "concept_id": "c8c0a214-c282-5bf0-8907-111436dab91e",
+      "canonical_key": "word:want:verb",
+      "lemma": "want",
+      "normalized_form": "want"
+    },
+    {
+      "concept_id": "eaa3c636-b0d2-577f-90c4-addaa969d489",
+      "canonical_key": "word:water:noun",
+      "lemma": "water",
+      "normalized_form": "water"
+    },
+    {
+      "concept_id": "1e8cad76-18e9-517a-9d18-e24520fb3731",
+      "canonical_key": "word:weekend:noun",
+      "lemma": "weekend",
+      "normalized_form": "weekend"
+    },
+    {
+      "concept_id": "e883ed9c-0796-56b3-b395-56167d79b4a7",
+      "canonical_key": "phrase:what-time",
+      "lemma": "what time",
+      "normalized_form": "what time"
+    },
+    {
+      "concept_id": "30c8e5b0-4c43-5fab-8296-b89b82adcc21",
+      "canonical_key": "phrase:where-is",
+      "lemma": "where is",
+      "normalized_form": "where is"
+    },
+    {
+      "concept_id": "02affd37-ca1c-5ee9-aac9-1f4c0f531fb9",
+      "canonical_key": "word:work:noun",
+      "lemma": "work",
+      "normalized_form": "work"
+    },
+    {
+      "concept_id": "89ab2049-94ce-5a44-8bff-3e8f76ebb12c",
+      "canonical_key": "phrase:would-like",
+      "lemma": "would like",
+      "normalized_form": "would like"
+    }
+  ]
+}
