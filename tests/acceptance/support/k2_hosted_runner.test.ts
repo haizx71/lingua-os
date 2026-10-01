@@ -10,6 +10,7 @@ import {
   exactK208FixtureStateReadback,
   normalizeK2WaveRequest,
   projectK2WaveApiPayload,
+  requestK2HostedApi,
   runK2ProtectedAuthUiSignIn,
   verifyK2FixtureZeroRowHead,
   type K2ProtectedAuthUiInteractions,
@@ -232,6 +233,7 @@ describe('K2 hosted wave response projection', () => {
   const reviewId = '00000000-0000-4000-8000-000000000012';
   const activityId = '00000000-0000-4000-8000-000000000013';
   const planId = '00000000-0000-4000-8000-000000000014';
+  const profileId = '00000000-0000-4000-8000-000000000016';
   const contentId = '00000000-0000-4000-8000-000000000015';
   const privateMarker = 'private-response-marker@example.invalid';
 
@@ -273,7 +275,7 @@ describe('K2 hosted wave response projection', () => {
     const today = projectK2WaveApiPayload('/v1/today', {
       data: {
         id: planId,
-        languageProfileId: privateMarker,
+        languageProfileId: profileId,
         timeZone: privateMarker,
         planDate: '2026-10-01',
         targetMinutes: 15,
@@ -300,7 +302,7 @@ describe('K2 hosted wave response projection', () => {
         }],
       },
       meta: { requestId: privateMarker },
-    }, ids);
+    }, ids, profileId);
     expect(today).toEqual({ data: {
       id: 'k2-plan',
       planDate: '2026-10-01',
@@ -326,6 +328,7 @@ describe('K2 hosted wave response projection', () => {
         createdAt: '2026-10-01T00:00:00Z',
       }],
     } });
+    expect(JSON.stringify(today)).not.toContain(profileId);
 
     const answer = projectK2WaveApiPayload(`/v1/review/${reviewId}/answer`, {
       data: {
@@ -350,12 +353,104 @@ describe('K2 hosted wave response projection', () => {
     expect(() => projectK2WaveApiPayload('/v1/today', { data: {
       id: planId,
       activities: [{ id: activityId, reasonCodes: ['PRIVATE_REASON'], activityType: 'read' }],
-    } }, ids)).toThrow('response projection was invalid');
+    } }, ids, profileId)).toThrow('Today profile binding was invalid');
+  });
+
+  it('rejects foreign, missing, malformed, or unbound Today profiles before projecting IDs', () => {
+    const foreignProfileId = '00000000-0000-4000-8000-000000000017';
+    const base = {
+      id: planId,
+      planDate: '2026-10-01',
+      targetMinutes: 15,
+      completedMinutes: 0,
+      status: 'active',
+      engineVersion: 'today-heuristic-v2',
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-01T00:00:00Z',
+      activities: [],
+    };
+    const cases = [
+      { data: { ...base, languageProfileId: foreignProfileId }, binding: profileId },
+      { data: base, binding: profileId },
+      { data: { ...base, languageProfileId: privateMarker }, binding: profileId },
+      { data: { ...base, languageProfileId: profileId }, binding: undefined },
+    ];
+    for (const { data, binding } of cases) {
+      const project = vi.fn((value: unknown) => value);
+      const opaqueIds = {
+        project,
+        bind: vi.fn(),
+        resolve: vi.fn(),
+      } as unknown as ReturnType<typeof createK2OpaqueIdProjector>;
+      let error: Error | undefined;
+      try {
+        projectK2WaveApiPayload('/v1/today', { data }, opaqueIds, binding);
+      } catch (caught) {
+        if (caught instanceof Error) error = caught;
+      }
+      expect(error?.message).toBe('K2 hosted acceptance Today profile binding was invalid.');
+      expect(error?.message).not.toContain(foreignProfileId);
+      expect(error?.message).not.toContain(privateMarker);
+      expect(project).not.toHaveBeenCalled();
+    }
+  });
+
+  it('validates a nested completion plan profile before projecting plan or activity IDs', () => {
+    const foreignProfileId = '00000000-0000-4000-8000-000000000017';
+    const route = `/v1/today/${planId}/activities/${activityId}/complete`;
+    const plan = {
+      id: planId,
+      languageProfileId: foreignProfileId,
+      planDate: '2026-10-01',
+      targetMinutes: 15,
+      completedMinutes: 5,
+      status: 'active',
+      engineVersion: 'today-heuristic-v2',
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-01T00:01:00Z',
+      activities: [],
+    };
+    const activity = {
+      id: activityId,
+      position: 0,
+      activityType: 'read',
+      estimatedMinutes: 5,
+      reasonCodes: ['CONTENT_FIT'],
+      status: 'completed',
+      targetCount: null,
+      completedCount: 1,
+      contentId: null,
+      conceptId: null,
+      reviewItemId: null,
+      completedAt: '2026-10-01T00:01:00Z',
+      createdAt: '2026-10-01T00:00:00Z',
+    };
+    const project = vi.fn((value: unknown) => value);
+    const opaqueIds = {
+      project,
+      bind: vi.fn(),
+      resolve: vi.fn(),
+    } as unknown as ReturnType<typeof createK2OpaqueIdProjector>;
+
+    expect(() => projectK2WaveApiPayload(route, { data: { plan, activity } }, opaqueIds, profileId))
+      .toThrow('Today profile binding was invalid');
+    expect(project).not.toHaveBeenCalled();
+
+    const valid = projectK2WaveApiPayload(route, {
+      data: { plan: { ...plan, languageProfileId: profileId }, activity },
+    }, createK2OpaqueIdProjector(), profileId) as {
+      data: { plan: { id: string; activities: readonly unknown[] }; activity: { id: string } };
+    };
+    expect(valid.data.plan.id).not.toBe(planId);
+    expect(valid.data.activity.id).not.toBe(activityId);
+    expect(valid.data.plan.activities).toEqual([]);
+    expect(JSON.stringify(valid)).not.toContain(profileId);
   });
 
   it('keeps entity replay stable across request metadata while detecting entity changes', () => {
     const entity = {
       id: planId,
+      languageProfileId: profileId,
       planDate: '2026-10-01',
       targetMinutes: 15,
       completedMinutes: 0,
@@ -381,11 +476,11 @@ describe('K2 hosted wave response projection', () => {
     const first = projectK2WaveApiPayload('/v1/today', {
       data: entity,
       meta: { requestId: '00000000-0000-4000-8000-000000000031', generatedAt: 'first-request' },
-    }, ids);
+    }, ids, profileId);
     const replay = projectK2WaveApiPayload('/v1/today', {
       data: entity,
       meta: { requestId: '00000000-0000-4000-8000-000000000032', generatedAt: 'replay-request' },
-    }, ids);
+    }, ids, profileId);
     expect(first).toEqual(replay);
     expect(JSON.stringify(first)).not.toContain('00000000-0000-4000-8000-000000000031');
     expect(() => assertK2HostedDueOnlyPlanReplay(first, replay)).not.toThrow();
@@ -397,7 +492,7 @@ describe('K2 hosted wave response projection', () => {
     const changed = projectK2WaveApiPayload('/v1/today', {
       data: changedEntity,
       meta: { requestId: '00000000-0000-4000-8000-000000000033', generatedAt: 'third-request' },
-    }, ids);
+    }, ids, profileId);
     expect(changed).not.toEqual(first);
     expect(() => assertK2HostedDueOnlyPlanReplay(first, changed))
       .toThrow('replay changed the persisted plan');
@@ -405,6 +500,39 @@ describe('K2 hosted wave response projection', () => {
       .toBe('k2-plan');
     expect((first as { data: { activities: readonly { id: string }[] } }).data.activities[0].id)
       .toBe('k2-activity');
+  });
+});
+
+describe('K2 hosted cross-profile denial status', () => {
+  it('rejects an unexpected 200 before a cross-profile Today response can be projected', async () => {
+    const foreignProfileId = '00000000-0000-4000-8000-000000000017';
+    const fetch = vi.fn(async () => new Response(JSON.stringify({
+      data: { languageProfileId: foreignProfileId },
+    }), {
+      status: 200,
+      headers: { 'x-lingua-source-sha': 'accepted-source-sha-marker' },
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const config = {
+      apiOrigin: 'https://staging.example.test',
+      githubSha: 'accepted-source-sha-marker',
+    } as K2HostedConfig;
+
+    let error: Error | undefined;
+    try {
+      await requestK2HostedApi(
+        config,
+        'private-actor-token-marker',
+        `/v1/today?languageProfileId=${foreignProfileId}`,
+        {},
+        [404],
+      );
+    } catch (caught) {
+      if (caught instanceof Error) error = caught;
+    }
+    expect(error?.message).toBe('K2 hosted acceptance staging API returned HTTP 200.');
+    expect(error?.message).not.toContain(foreignProfileId);
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });
 

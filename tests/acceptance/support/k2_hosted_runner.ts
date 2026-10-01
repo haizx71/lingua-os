@@ -482,6 +482,10 @@ function createBoundWaveApi(
   opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
   onConceptSaved: (actor: K2WaveActorHandle, conceptId: string) => void,
 ): K2BoundWaveApi {
+  const expectedOwnProfileId = profiles[actorHandle];
+  if (!expectedOwnProfileId || !UUID_PATTERN.test(expectedOwnProfileId)) {
+    throw new Error('K2 hosted acceptance actor profile binding was incomplete.');
+  }
   const idempotencyKeys = new Map<string, string>();
   return {
     async request(route, options = {}, expectedStatuses = [200]) {
@@ -507,7 +511,7 @@ function createBoundWaveApi(
       }
       return {
         status: result.response.status,
-        payload: projectK2WaveApiPayload(request.route, result.payload, opaqueIds),
+        payload: projectK2WaveApiPayload(request.route, result.payload, opaqueIds, expectedOwnProfileId),
       };
     },
   };
@@ -518,6 +522,16 @@ const TODAY_REASON_CODES = new Set([
   'WEAK_RECOGNITION', 'WEAK_LISTENING', 'LOW_PRODUCTION_EVIDENCE',
   'RECENT_EXPOSURE', 'NEW_CONCEPT_BUDGET',
 ]);
+const TODAY_PROFILE_BINDING_ERROR = 'K2 hosted acceptance Today profile binding was invalid.';
+
+function assertOwnTodayProfile(data: JsonObject, expectedOwnProfileId: string | undefined): void {
+  const responseProfileId = data.languageProfileId;
+  if (!expectedOwnProfileId || !UUID_PATTERN.test(expectedOwnProfileId) ||
+      typeof responseProfileId !== 'string' || !UUID_PATTERN.test(responseProfileId) ||
+      responseProfileId !== expectedOwnProfileId) {
+    throw new Error(TODAY_PROFILE_BINDING_ERROR);
+  }
+}
 
 function projectedId(
   value: unknown,
@@ -540,11 +554,43 @@ function projectedCount(value: unknown, maximum: number): number {
   return value as number;
 }
 
+function projectTodayActivity(
+  raw: unknown,
+  opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
+): JsonObject {
+  const activity = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+  const reasonCodes = activity.reasonCodes;
+  if (!Array.isArray(reasonCodes) || reasonCodes.length > TODAY_REASON_CODES.size ||
+      reasonCodes.some(code => typeof code !== 'string' || !TODAY_REASON_CODES.has(code)) ||
+      !['review', 'read', 'listen', 'learn'].includes(String(activity.activityType)) ||
+      !['pending', 'completed', 'skipped'].includes(String(activity.status)) ||
+      typeof activity.createdAt !== 'string') {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  const projectOptionalId = (value: unknown) => value == null ? null : projectedId(value, opaqueIds);
+  return {
+    id: projectedId(activity.id, opaqueIds),
+    activityType: activity.activityType,
+    position: projectedCount(activity.position, 20),
+    targetCount: activity.targetCount == null ? null : projectedCount(activity.targetCount, 181),
+    completedCount: projectedCount(activity.completedCount, 1_000_000),
+    estimatedMinutes: projectedCount(activity.estimatedMinutes, 240),
+    status: activity.status,
+    reasonCodes: [...reasonCodes],
+    contentId: projectOptionalId(activity.contentId),
+    conceptId: projectOptionalId(activity.conceptId),
+    reviewItemId: projectOptionalId(activity.reviewItemId),
+    completedAt: typeof activity.completedAt === 'string' ? activity.completedAt : null,
+    createdAt: activity.createdAt,
+  };
+}
+
 /** Returns fixed route-specific fields only; arbitrary API and error payloads stay runner-private. */
 export function projectK2WaveApiPayload(
   route: string,
   payload: unknown,
   opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
+  expectedOwnProfileId?: string,
 ): unknown {
   const envelope = object(payload, 'K2 hosted acceptance learner response projection was invalid.');
   const rawData = envelope.data;
@@ -601,6 +647,7 @@ export function projectK2WaveApiPayload(
   }
   if (pathname === '/v1/today') {
     const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    assertOwnTodayProfile(data, expectedOwnProfileId);
     if (!Array.isArray(data.activities) || data.activities.length > 20 ||
         typeof data.engineVersion !== 'string' || typeof data.planDate !== 'string' ||
         !['draft', 'active', 'completed', 'expired'].includes(String(data.status)) ||
@@ -617,33 +664,24 @@ export function projectK2WaveApiPayload(
       engineVersion: data.engineVersion,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      activities: data.activities.map(raw => {
-        const activity = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
-        const reasonCodes = activity.reasonCodes;
-        if (!Array.isArray(reasonCodes) || reasonCodes.length > TODAY_REASON_CODES.size ||
-            reasonCodes.some(code => typeof code !== 'string' || !TODAY_REASON_CODES.has(code)) ||
-            !['review', 'read', 'listen', 'learn'].includes(String(activity.activityType)) ||
-            !['pending', 'completed', 'skipped'].includes(String(activity.status)) ||
-            typeof activity.createdAt !== 'string') {
-          throw new Error('K2 hosted acceptance learner response projection was invalid.');
-        }
-        const projectOptionalId = (value: unknown) => value == null ? null : projectedId(value, opaqueIds);
-        return {
-          id: projectedId(activity.id, opaqueIds),
-          activityType: activity.activityType,
-          position: projectedCount(activity.position, 20),
-          targetCount: activity.targetCount == null ? null : projectedCount(activity.targetCount, 181),
-          completedCount: projectedCount(activity.completedCount, 1_000_000),
-          estimatedMinutes: projectedCount(activity.estimatedMinutes, 240),
-          status: activity.status,
-          reasonCodes: [...reasonCodes],
-          contentId: projectOptionalId(activity.contentId),
-          conceptId: projectOptionalId(activity.conceptId),
-          reviewItemId: projectOptionalId(activity.reviewItemId),
-          completedAt: typeof activity.completedAt === 'string' ? activity.completedAt : null,
-          createdAt: activity.createdAt,
-        };
-      }),
+      activities: data.activities.map(raw => projectTodayActivity(raw, opaqueIds)),
+    } };
+  }
+  const completion = /^\/v1\/today\/([^/]+)\/activities\/([^/]+)\/complete$/.exec(pathname);
+  if (completion) {
+    const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    const plan = object(data.plan, 'K2 hosted acceptance learner response projection was invalid.');
+    const activity = object(data.activity, 'K2 hosted acceptance learner response projection was invalid.');
+    assertOwnTodayProfile(plan, expectedOwnProfileId);
+    if (plan.id !== decodeURIComponent(completion[1]) ||
+        activity.id !== decodeURIComponent(completion[2])) {
+      throw new Error('K2 hosted acceptance Today completion projection was invalid.');
+    }
+    const projectedPlan = projectK2WaveApiPayload('/v1/today', { data: plan }, opaqueIds, expectedOwnProfileId);
+    const projectedActivity = projectTodayActivity(activity, opaqueIds);
+    return { data: {
+      plan: (projectedPlan as { data: unknown }).data,
+      activity: projectedActivity,
     } };
   }
   if (/^\/v1\/review\/[^/]+\/answer$/.test(pathname)) {
