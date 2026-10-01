@@ -1,5 +1,7 @@
 # K2-08 Source and CI Review — ecb8304
 
+**Historical exact-head record:** this evidence describes the original ECB source checkpoint. PR #35 subsequently merged the independently reviewed fixture redesign and passing revised CI at `1ac2060`. See `reviews/K2-08-fixture-boundary-design-review.md` for current integration, migration and hosted gates; the original evidence below is preserved.
+
 **Evidence status:** Source review PASS and exact-head CI PASS for the bounded source change only. This is not K2-08 hosted acceptance or promotion authorization.
 
 **Reviewed source:** `ecb830418e81cc60e573fe91acf7382563ac0568`

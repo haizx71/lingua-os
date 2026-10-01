@@ -1,25 +1,40 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 fixture source review PASS, revised PR #35 CI pending and unmerged, full hosted/live Phase C BLOCKED; K2-09/10 LOCKED
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 source/CI PASS and PR #35 merged, migration 0020 applied; full hosted/live Phase C BLOCKED by published content; K2-09/10 LOCKED
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The verified source-of-truth `master` snapshot for this checkpoint is
-  `eed55ad02dd2776c1a42187017057cbedb54e7a0`. The accepted K2-07 hosted runtime
+  `1ac2060e37479b9387db75f8101bb59a492aebca` (PR #35 normal merge). The accepted K2-07 hosted runtime
   evidence was recorded against `c696ac935852c4ebcd9e1183521996e5b12ad273`;
   that remains valid acceptance evidence and is not identified here as the latest
   `master` baseline. Earlier K2-04/K2-05/K2-06 source and migrations through `0019`
   are represented in the verified base.
-- **K2-08 REVISED FIXTURE SOURCE REVIEW: PASS; CI PENDING; NOT MERGED.**
+- **K2-08 REVISED FIXTURE SOURCE/CI: PASS; PR #35 MERGED.**
   Independent configured GPT-6 Luna / Max review passed on
   `64bbd4df71ce9483290b5d86562ef5722d3ceddd`, with no remaining HIGH/BLOCKER.
   The four-actor harness separates normal authenticated learner requests from
   fixed runner-private setup, bounded inspection and cleanup. No Auth grants,
   roles, policies or RLS changes were introduced. Today GET and completion
   responses must match the privately bound actor profile before ID projection.
-  The revised exact-head credential-free CI, including PostgreSQL differential
-  execution, remains pending. See `reviews/K2-08-fixture-boundary-design-review.md`.
+  Exact PR head `3501c87d61224d551681b0e0603e20490f8a3ea5` passed
+  [Knowledge Audit CI 36853391143](https://github.com/haizx71/lingua-os/actions/runs/36853391143)
+  (Today PostgreSQL 40 passed; broader PostgreSQL 379 passed, 1 deselected;
+  grammar, knowledge and frontend jobs passed) and
+  [Security Gate 36853391160](https://github.com/haizx71/lingua-os/actions/runs/36853391160)
+  (173 harness tests, 25 probe tests, real-browser redirect and type checks).
+  Separate configured GPT-6 Luna / Max review verified the source and CI gate.
+  See `reviews/K2-08-fixture-boundary-design-review.md`.
+- **K2-08 STAGING MIGRATION: PASS THROUGH 0020.** The reviewed guarded registry
+  reconciliation corrected only historical 0013 checksum metadata and adopted
+  already-applied 0018/0019 without rerunning their SQL. All 20 application
+  migration names/checksums match source. The platform tail is 0019, the existing
+  reader role, then `today_remediation_reason_codes_0020`. Migration 0020 adds
+  only the product reason-code CHECK values. No Auth grants, policies, roles,
+  secrets or learner-row DML changed; Today counts remained 12 plans/11 activities.
+  Render `/health` is OK at `1ac2060`; GitHub records Vercel Production deployment
+  `6782936894` as successful at the same SHA. Protected runtime acceptance remains separate.
 - **K2-08 PRIOR PRODUCT SOURCE/CI: PASS AT OLD DRAFT HEAD.** The reviewed source
   snapshot is `ecb830418e81cc60e573fe91acf7382563ac0568`, based on
   `2c3284a2deb4fac18683b660a751039e36b007f7`. Exact-head Knowledge Audit CI
@@ -28,14 +43,20 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   [36795488330](https://github.com/haizx71/lingua-os/actions/runs/36795488330)
   passed; independent GPT-6 Luna / Max source review passed with no HIGH/BLOCKER
   findings. This is draft-branch source and credential-free CI evidence; it does
-  not mean `master` contains the implementation. Documentation/preparation was
+  not by itself establish a merge; the later merge to `master` is recorded above. Documentation/preparation was
   recorded by GPT-6 Luna / Medium in `reviews/K2-08-source-ci-review.md`.
 - **K2-08 FULL HOSTED/LIVE PHASE C: BLOCKED.** Pending reviewed and published
-  eligible content, revised CI, normal source merge, migration reconciliation
-  and the full automated actor cycle. The accepted privilege-split architecture
+  eligible content and the full automated actor cycle. A fresh catalog aggregate
+  still reports zero eligible published English Reader items. The accepted privilege-split architecture
   replaces the old unapproved Auth/RLS proposal. The due-only source subcase is not full hosted proof and cannot
-  establish overall K2-08 acceptance. Migration `0020` is NOT APPLIED. K2-09/10
-  remain locked. The historical fixture Auth/RLS proposal remains **NO-GO**:
+  establish overall K2-08 acceptance. Migration `0020` is applied as recorded above. K2-09/10
+  remain locked. Full workflow [36856076010](https://github.com/haizx71/lingua-os/actions/runs/36856076010)
+  on master `1ac2060` passed SHA/deployment/OIDC/protected-origin/API/migration,
+  fixture privilege and empty-HEAD preflights, then failed closed at
+  `preflight_k208_catalog` before retained baseline or actor creation.
+  Current-run cleanup job `110349561035` passed. No actor cycle, wave assertions
+  or retained comparison occurred; the full hosted gate is not PASS.
+  The historical fixture Auth/RLS proposal remains **NO-GO**:
   the bounded review found the proposed non-owner function role cannot read
   server-owned Auth metadata under the current default-deny policy. No managed
   Auth policy change or alternate signing capability is authorized. See
@@ -55,7 +76,7 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   This staging catalog exercised self-recall and typing only. Listening and
   cloze remain untested because eligible published material is unavailable; this
   run does not establish those modalities. K2-07 is closed for its bounded hosted
-  acceptance scope. K2-08 source/CI evidence is on draft PR #35, while its full
+  acceptance scope. K2-08 source/CI is merged through PR #35, while its full
   hosted gate remains BLOCKED. See `reviews/K2-07-hosted-acceptance-review.md`,
   `reviews/K2-08-source-ci-review.md`, and the detailed run history below.
 - **K2-06 STAGING: PASS.** A new disposable actor was bound to the authenticated
