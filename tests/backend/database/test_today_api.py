@@ -408,7 +408,7 @@ def test_today_remediation_uses_effective_status_and_excludes_due_concepts_beyon
         connection.execute(
             """
             UPDATE fsrs_states
-            SET difficulty = 5, stability = 1, state = 'review',
+            SET difficulty = 5, stability = 1, step = NULL, state = 'review',
                 last_review_at = '2025-01-01T00:00:00Z', due_at = %s
             WHERE review_item_id = %s AND user_id = %s
             """,
@@ -459,7 +459,8 @@ def test_today_remediation_uses_effective_status_and_excludes_due_concepts_beyon
         connection.execute(
             """
             UPDATE fsrs_states
-            SET due_at = %s, last_review_at = %s, stability = 1, step = NULL, state = 'review'
+            SET due_at = %s, last_review_at = %s, difficulty = 5, stability = 1,
+                step = NULL, state = 'review'
             WHERE user_id = %s AND review_item_id <> %s
             """,
             (
