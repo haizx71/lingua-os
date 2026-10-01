@@ -5,6 +5,7 @@ import {
   k2RetainedTableNames,
   parseK2ActorSnapshot,
   parseK2HostedMigrationProof,
+  parseK2HostedTodayReviewTargets,
   parseK2RetainedSnapshot,
 } from './k2_hosted_probe_client';
 
@@ -44,14 +45,36 @@ describe('K2 read-only probe client', () => {
   });
 
   it('requires the approved application migration head and exact count', () => {
-    expect(parseK2HostedMigrationProof({ appMigrationHead: '0017', appliedMigrations: 17 }))
-      .toEqual({ appMigrationHead: '0017', appliedMigrations: 17 });
+    expect(parseK2HostedMigrationProof({ appMigrationHead: '0020', appliedMigrations: 20 }))
+      .toEqual({ appMigrationHead: '0020', appliedMigrations: 20 });
     expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 19 }))
       .toThrow('staging migration head does not match');
-    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0017', appliedMigrations: 19 }))
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0020', appliedMigrations: 19 }))
       .toThrow('staging migration head does not match');
-    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 17 }))
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 20 }))
       .toThrow('staging migration head does not match');
+  });
+
+  it('parses only a bounded actor-scoped Today mapping and rejects malformed targets', () => {
+    const proof = {
+      engineVersion: 'today-heuristic-v2',
+      activityCount: 1,
+      reviewActivityCount: 1,
+      targetCount: 2,
+      reviewItemIds: [
+        '00000000-0000-4000-8000-000000000001',
+        '00000000-0000-4000-8000-000000000002',
+      ],
+    };
+    expect(parseK2HostedTodayReviewTargets(proof)).toEqual(proof);
+    expect(() => parseK2HostedTodayReviewTargets({ ...proof, targetCount: 181, reviewItemIds: [] }))
+      .toThrow('Today target probe returned invalid output');
+    expect(() => parseK2HostedTodayReviewTargets({
+      ...proof,
+      reviewItemIds: [proof.reviewItemIds[0], proof.reviewItemIds[0]],
+    })).toThrow('Today target probe returned invalid output');
+    expect(() => parseK2HostedTodayReviewTargets({ ...proof, reviewItemIds: ['private-target-marker'] }))
+      .toThrow('Today target probe returned invalid output');
   });
 
   it('passes only the read-only URL, action, actor identity, and available runner basics to the probe child', () => {

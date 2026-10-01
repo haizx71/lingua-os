@@ -7,8 +7,11 @@ import psycopg
 import pytest
 from psycopg import Connection
 
+from database.migrate import migrate_down, migrate_up
+
 ROOT = Path(__file__).resolve().parents[3]
 READER_SEED = ROOT / "database" / "seeds" / "task008_reader_mvp.sql"
+MIGRATIONS = ROOT / "database" / "migrations"
 
 
 def test_today_migration_adds_stable_plan_and_completion_authorities(
@@ -105,6 +108,101 @@ def test_today_activity_rejects_invalid_target_shape_and_fake_completion_snapsho
             """,
             (plan_id, actor_id, str(uuid.uuid4())),
         )
+
+
+def test_today_reason_code_check_accepts_remediation_and_rejects_unknown_values(
+    db_connection: Connection[tuple[object, ...]],
+) -> None:
+    actor_id, profile_id, review_item_id, concept_id = _seed_owner_and_review(db_connection)
+    plan_id = _insert_plan(db_connection, actor_id, profile_id)
+    activity_id = _insert_review_activity(
+        db_connection, plan_id, actor_id, review_item_id, concept_id
+    )
+    allowed = ["FORGOTTEN_REMEDIATION", "CONTENT_FIT"]
+    db_connection.execute(
+        "UPDATE today_plan_activities SET reason_codes = %s WHERE id = %s",
+        (allowed, activity_id),
+    )
+    assert db_connection.execute(
+        "SELECT reason_codes FROM today_plan_activities WHERE id = %s", (activity_id,)
+    ).fetchone() == (allowed,)
+
+    with pytest.raises(psycopg.errors.CheckViolation), db_connection.transaction():
+        db_connection.execute(
+            "UPDATE today_plan_activities SET reason_codes = ARRAY['FUTURE_REASON'] WHERE id = %s",
+            (activity_id,),
+        )
+    assert db_connection.execute(
+        "SELECT reason_codes FROM today_plan_activities WHERE id = %s", (activity_id,)
+    ).fetchone() == (allowed,)
+
+
+def test_0020_reason_code_migration_rolls_back_and_reapplies_safely(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1) == ["0020"]
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        actor_id, profile_id, review_item_id, concept_id = _seed_owner_and_review(connection)
+        plan_id = _insert_plan(connection, actor_id, profile_id)
+        activity_id = _insert_review_activity(
+            connection, plan_id, actor_id, review_item_id, concept_id
+        )
+        connection.execute(
+            """
+            INSERT INTO today_activity_review_items
+                (activity_id, user_id, language_code, review_item_id, position)
+            VALUES (%s, %s, 'en', %s, 0)
+            """,
+            (activity_id, actor_id, review_item_id),
+        )
+        with pytest.raises(psycopg.errors.CheckViolation), connection.transaction():
+            connection.execute(
+                "UPDATE today_plan_activities SET reason_codes = %s WHERE id = %s",
+                (["WEAK_REMEDIATION", "CONTENT_FIT"], activity_id),
+            )
+
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == ["0020"]
+
+
+def test_0020_rollback_refuses_persisted_remediation_reasons_before_changing_constraint(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        actor_id, profile_id, review_item_id, concept_id = _seed_owner_and_review(connection)
+        plan_id = _insert_plan(connection, actor_id, profile_id)
+        activity_id = _insert_review_activity(
+            connection, plan_id, actor_id, review_item_id, concept_id
+        )
+        connection.execute(
+            """
+            INSERT INTO today_activity_review_items
+                (activity_id, user_id, language_code, review_item_id, position)
+            VALUES (%s, %s, 'en', %s, 0)
+            """,
+            (activity_id, actor_id, review_item_id),
+        )
+        connection.execute(
+            "UPDATE today_plan_activities SET reason_codes = %s WHERE id = %s",
+            (["WEAK_REMEDIATION", "CONTENT_FIT"], activity_id),
+        )
+
+    with pytest.raises(psycopg.errors.RaiseException, match="Refusing 0020 rollback"):
+        migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1)
+
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        constraint = connection.execute(
+            """
+            SELECT pg_get_constraintdef(constraint_row.oid)
+            FROM pg_constraint AS constraint_row
+            WHERE constraint_row.conrelid = 'today_plan_activities'::regclass
+              AND constraint_row.conname = 'today_plan_activities_reason_codes_check'
+            """
+        ).fetchone()
+        persisted = connection.execute(
+            "SELECT reason_codes FROM today_plan_activities WHERE id = %s", (activity_id,)
+        ).fetchone()
+    assert constraint is not None and "WEAK_REMEDIATION" in str(constraint[0])
+    assert persisted == (["WEAK_REMEDIATION", "CONTENT_FIT"],)
 
 
 def test_today_review_mapping_rejects_another_owner(

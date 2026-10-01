@@ -30,6 +30,18 @@ on:
       - 'plans/TASK-K2-05-dynamic-retrievability.md'
       - 'plans/FOLLOW-UP-weak-etag-preconditions.md'
       - 'plans/KNOWLEDGE-V2-REMAINING-EXECUTION-MAP.md'
+      - 'services/api/src/lingua_api/content/store.py'
+      - 'services/api/src/lingua_api/today/**'
+      - 'tests/backend/today/**'
+      - 'tests/backend/database/test_today_api.py'
+      - 'tests/backend/database/test_today_schema.py'
+      - 'tests/acceptance/support/k2_hosted_probe.py'
+      - 'tests/acceptance/support/k2_hosted_probe_client.ts'
+      - 'tests/acceptance/support/k2_hosted_probe_client.test.ts'
+      - 'tests/acceptance/support/test_k2_hosted_probe.py'
+      - 'contracts/enums.json'
+      - 'packages/types/src/enums.ts'
+      - 'plans/TASK-K2-08-today-remediation-v2.md'
       - '.github/workflows/knowledge-audit-ci.yml'
   workflow_dispatch:
 
@@ -179,6 +191,40 @@ jobs:
           tests/backend/database/test_knowledge_v2_grammar_import.py
           tests/backend/database/test_brain_api.py
           tests/backend/database/test_review_api.py
+
+  today-postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24
+        env:
+          POSTGRES_PASSWORD: lingua_test_password
+          POSTGRES_DB: lingua_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lingua_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:lingua_test_password@127.0.0.1:5432/lingua_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked backend test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements/backend-dev.lock
+      - name: Verify Today policy and persistence against PostgreSQL
+        run: >-
+          python -m pytest -q
+          tests/backend/today/test_policy.py
+          tests/backend/database/test_today_schema.py
+          tests/backend/database/test_today_api.py
 
   retrievability-postgres-integration:
     runs-on: ubuntu-latest

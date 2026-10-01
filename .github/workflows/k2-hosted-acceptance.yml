@@ -4,13 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Run K2-07 acceptance or the guarded TTL-only janitor
+        description: Run hosted acceptance or the guarded TTL-only janitor
         type: choice
         required: true
         default: acceptance
         options:
           - acceptance
           - janitor
+      wave:
+        description: Select K2-07 or the explicitly bounded K2-08 due-only subcase
+        type: choice
+        required: true
+        default: K2-07
+        options:
+          - K2-07
+          - K2-08-DUE-ONLY
   schedule:
     - cron: '41 3 * * *'
 
@@ -26,6 +34,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.mode == 'acceptance' &&
+      (inputs.wave == 'K2-07' || inputs.wave == 'K2-08-DUE-ONLY') &&
       github.repository == 'haizx71/lingua-os' &&
       github.ref == 'refs/heads/master' &&
       github.workflow_ref == 'haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master' &&
@@ -57,10 +66,11 @@ jobs:
         run: |
           pnpm install --frozen-lockfile --ignore-scripts
           python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements/backend-dev.lock
-      - name: Verify run SHA is still the master tip before staging secrets
+      - name: Verify run SHA and selected wave before staging secrets
         env:
           GH_TOKEN: ${{ github.token }}
           K2_EXPECTED_WORKFLOW_REF: haizx71/lingua-os/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master
+          K2_REQUESTED_WAVE: ${{ inputs.wave }}
         run: |
           node --input-type=module <<'NODE'
           const expectedRepository = 'haizx71/lingua-os';
@@ -68,6 +78,9 @@ jobs:
               process.env.GITHUB_REF !== 'refs/heads/master' ||
               process.env.GITHUB_WORKFLOW_REF !== process.env.K2_EXPECTED_WORKFLOW_REF) {
             throw new Error('K2 hosted acceptance workflow identity is invalid.');
+          }
+          if (!['K2-07', 'K2-08-DUE-ONLY'].includes(process.env.K2_REQUESTED_WAVE ?? '')) {
+            throw new Error('K2 hosted acceptance wave selector is invalid.');
           }
           let response;
           try {
@@ -95,9 +108,10 @@ jobs:
           NODE
       - name: Install Chromium for the hosted browser flow
         run: pnpm exec playwright install --with-deps chromium
-      - name: Run protected K2-07 acceptance
+      - name: Run protected selected K2 hosted subcase
         env:
           K2_ACCEPTANCE_MODE: acceptance
+          K2_ACCEPTANCE_WAVE: ${{ inputs.wave }}
           PGSSLROOTCERT: ${{ github.workspace }}/database/certs/supabase-prod-ca-2021.crt
           K2_STAGING_API_ORIGIN: ${{ secrets.K2_STAGING_API_ORIGIN }}
           K2_STAGING_SUPABASE_URL: ${{ secrets.K2_STAGING_SUPABASE_URL }}
@@ -112,7 +126,7 @@ jobs:
           pnpm exec playwright test
           --config=playwright.k2-hosted.config.ts
           --workers=1
-          --grep "hosted lifecycle delegates K2-07 fixture assertions"
+          --grep "hosted lifecycle"
           tests/acceptance/k2_hosted_acceptance.spec.ts
 
   janitor:

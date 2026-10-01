@@ -341,7 +341,8 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
     isolated_migrated_postgres_url: str,
 ) -> None:
     database_url = isolated_migrated_postgres_url
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=5) == [
+    assert migrate_down(database_url, MIGRATIONS_DIR, steps=6) == [
+        "0020",
         "0019",
         "0018",
         "0017",
@@ -357,7 +358,14 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
         )
         conn.commit()
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0015", "0016", "0017", "0018", "0019"]
+    assert migrate_up(database_url, MIGRATIONS_DIR) == [
+        "0015",
+        "0016",
+        "0017",
+        "0018",
+        "0019",
+        "0020",
+    ]
     assert migrate_up(database_url, MIGRATIONS_DIR) == []
 
     with _connect(database_url) as conn:

@@ -49,6 +49,7 @@ class ContentCandidate:
     weak_listening: bool = False
     low_production_evidence: bool = False
     forgotten: bool = False
+    remediation_status: Literal["weak", "forgotten"] | None = None
     recently_exposed: bool = False
     last_opened_at: datetime | None = None
     saved_at: datetime | None = None
