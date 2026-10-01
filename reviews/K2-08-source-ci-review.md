@@ -2,10 +2,14 @@
 
 **Evidence status:** Source review PASS and exact-head CI PASS for the bounded source change only. This is not K2-08 hosted acceptance or promotion authorization.
 
-**Reviewed source:** `ecb830418e81cc60e573fe91acf7382563ac0568`  
-**Base:** `2c3284a2deb4fac18683b660a751039e36b007f7`  
-**Pull request:** [#35](https://github.com/haizx71/lingua-os/pull/35), draft and held open; not merged.  
-**Independent review:** GPT-6 Luna / Max — PASS, no HIGH or BLOCKER findings.  
+**Reviewed source:** `ecb830418e81cc60e573fe91acf7382563ac0568`
+
+**Base:** `2c3284a2deb4fac18683b660a751039e36b007f7`
+
+**Pull request:** [#35](https://github.com/haizx71/lingua-os/pull/35), draft and held open; not merged.
+
+**Independent review:** GPT-6 Luna / Max — PASS, no HIGH or BLOCKER findings.
+
 **Implementation:** GPT-6 Luna / Max. **Documentation/preparation:** GPT-6 Luna / Medium.
 
 ## Exact-head verification

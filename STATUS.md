@@ -25,7 +25,12 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   eligible content and separate authorization for any narrowly scoped fixture
   capability. The due-only source subcase is not full hosted proof and cannot
   establish overall K2-08 acceptance. Migration `0020` is NOT APPLIED. K2-09/10
-  remain locked. See `reviews/K2-08-source-ci-review.md` for exact-head checks,
+  remain locked. The proposed fixture Auth/RLS path is **NO-GO AS WRITTEN**:
+  the bounded review found the proposed non-owner function role cannot read
+  server-owned Auth metadata under the current default-deny policy. No managed
+  Auth policy change or alternate signing capability is authorized. See
+  `reviews/K2-08-fixture-auth-rls-review.md` and
+  `reviews/K2-08-source-ci-review.md` for the security blocker, exact-head checks,
   counts, limitations, the candidate article [commit](https://github.com/haizx71/lingua-os/commit/5bfb9362e2b534b526260d089a42c4edd44c36a4),
   and the NOT AUTHORIZED fixture capability [proposal](https://github.com/haizx71/lingua-os/commit/60b01e2a637b50117a5df2cd5b316654b310661b).
 - **K2-07 HOSTED ACCEPTANCE: PASS.** Workflow run [36780407824](https://github.com/haizx71/lingua-os/actions/runs/36780407824)

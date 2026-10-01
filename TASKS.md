@@ -27,6 +27,11 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   Full hosted/live Phase C remains blocked pending reviewed published content and
   separate authorization for a narrowly scoped fixture capability. The due-only
   source subcase is not overall hosted proof. Migration `0020` is NOT APPLIED.
+  The proposed fixture Auth/RLS path is NO-GO AS WRITTEN because its proposed
+  non-owner function role cannot read server-owned Auth metadata under current
+  default-deny RLS; no managed Auth policy or alternate signing change is
+  authorized. See `reviews/K2-08-fixture-auth-rls-review.md` and the linked
+  [capability proposal](https://github.com/haizx71/lingua-os/commit/60b01e2a637b50117a5df2cd5b316654b310661b).
   Preserve accepted Today v1, learner-state, repeatability, and ownership
   invariants. See `reviews/K2-08-source-ci-review.md`; this source/CI result does
   not establish overall K2-08 PASS or authorize promotion. K2-09/10 remain locked.
