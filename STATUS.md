@@ -1,9 +1,20 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 source/CI PASS and PR #35 merged, migration 0020 applied; full hosted/live Phase C BLOCKED by published content; K2-09/10 LOCKED
+Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 product source/CI and staging catalog PASS, migration 0020 applied; full hosted BLOCKED pending the Dictionary fixture transport fix and full rerun; K2-09/10 LOCKED
 
-## Current Knowledge V2 checkpoint — 2026-10-01
+## Current Knowledge V2 checkpoint — 2026-10-02
+
+- Verified remote/local `master` baseline: `25e7e1a3b85b302f7f1c6a9613e55b82e6f0ef55`, normal PR #38 merge. The owner-approved staging-only N/W/F pack passed separate configured GPT-6 Luna / Max exact-hash review and CI at `9f4bc2b2127304948d639d595716af243819b5ad` (runs [36892053818](https://github.com/haizx71/lingua-os/actions/runs/36892053818) and [36892053880](https://github.com/haizx71/lingua-os/actions/runs/36892053880)).
+- **OWNER ADMIN / STAGING PUBLICATION: PASS.** The owner explicitly authorized the current authenticated account as staging Owner. Only Render staging `LINGUA_ADMIN_USER_IDS` was merged with `replace:false`; the original four keys were retained. Redeploy health and the same-account Admin HTTP 200 passed. Three exact DTOs were created normally (HTTP 201), all three validated with zero issues before publication, and all three published normally (HTTP 200). No Auth, RLS, grant or other environment/secret change was made during bootstrap/publication.
+- **ACTORLESS CATALOG / PUBLICATION RETAINED COMPARISON: PASS.** Exactly the three reviewed A1/A2/B1 items are globally eligible, each five minutes with 4/3/3 concepts; publication gates, body/DTO hashes, 215 sentences and 234 annotations match. Targets remain disjoint. The 27 retained table counts/hashes matched before/after publication (61 rows). This aggregate inspection used the existing privileged MCP caller in a read-only repeatable-read transaction; it is separate from least-privilege harness proof. See `reviews/K2-08-owner-publication-runtime-evidence.md`.
+- **FULL K2-08 HOSTED: FAIL, CLEANUP / RETAINED COMPARISON: PASS.** Run [36894644581](https://github.com/haizx71/lingua-os/actions/runs/36894644581), exact master `25e7e1a`, passed SHA/deployment/OIDC/protected access/API/migration/fixture/catalog preflights, four disposable actor creation/authentication/profile gates and the shared candidate matrix. It stopped at `fixture_k208_due_seed` with Dictionary HTTP 422. Finalizer actor/fresh-identity cleanup, retained comparison and completion passed; separate cleanup job `110481331920` succeeded. An additional post-cleanup 27-table aggregate comparison matched the publication baseline.
+- **BOUNDED HARNESS FIX: INDEPENDENT REVIEW PASS; CI / MERGE / RERUN PENDING.** The request normalizer validated Dictionary parameters but dropped them from the outbound route, omitting required `query`. The fix reconstructs only the already-validated three parameters; API rules and authorization stay intact. Configured Luna Max implementation passed 54 focused tests, typecheck and lint; separate Luna Max review found no HIGH/BLOCKER and independently passed the outbound-URL regression. See `reviews/K2-08-dictionary-fixture-query-review.md`. Full hosted PASS, cleanup and retained comparison plus independent review are required before K2-09/10 unlock.
+- Render `lingua-api-staging` was live and healthy at `25e7e1a`; GitHub Vercel Production deployment `6789933001` succeeded at the same SHA. Current-run OIDC verified protected access even though the connected Vercel MCP exposed no team access. Migration remains `0020`; no reapplication occurred. Accepted K2-06/07 evidence remains unchanged.
+
+## Historical Knowledge V2 checkpoint — 2026-10-01
+
+The following checkpoint preserves earlier evidence; the current checkpoint above supersedes its catalog blocker and latest-baseline statements.
 
 - The verified source-of-truth `master` snapshot for this checkpoint is
   `1ac2060e37479b9387db75f8101bb59a492aebca` (PR #35 normal merge). The accepted K2-07 hosted runtime
