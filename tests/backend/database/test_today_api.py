@@ -397,14 +397,18 @@ def test_today_remediation_uses_effective_status_and_excludes_due_concepts_beyon
         target_review_id = uuid.UUID(str(target[1]))
         parameter_set_id = uuid.UUID(str(target[2]))
         params_version = str(target[3])
-        connection.execute(
+        # Memory activation creates review/FSRS lineage only; seed the stored
+        # competence projection row this retrievability test exercises.
+        projection_state = connection.execute(
             """
-            UPDATE user_concept_states
-            SET status = 'active'
-            WHERE user_id = %s AND user_language_id = %s AND concept_id = %s
+            INSERT INTO user_concept_states
+                (user_id, user_language_id, concept_id, status, state_version)
+            VALUES (%s, %s, %s, 'active', 1)
+            RETURNING id
             """,
             (today_api.actor.id, today_api.profile_id, target_concept),
-        )
+        ).fetchone()
+        assert projection_state is not None
         connection.execute(
             """
             UPDATE fsrs_states
