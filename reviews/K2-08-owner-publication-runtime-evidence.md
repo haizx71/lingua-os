@@ -53,4 +53,3 @@ Before the failing due-seed gate, all hash checks, deployment/OIDC/protected API
 - A failed `SET LOCAL ROLE` was not repaired by adding privileges; role configuration remains unchanged.
 - This record does not authorize production publication or staging operations beyond the separately authorized full K2-08 harness, and does not unlock K2-09.
 - K2-09 remains locked until K2-08 full hosted acceptance reaches PASS after final cleanup and independent review.
-

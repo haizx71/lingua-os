@@ -1,7 +1,7 @@
 # Independent Review — K2-08 Dictionary Fixture Query
 
-Date: 2026-10-02  
-Reviewer: GPT-6 Luna / Max  
+Date: 2026-10-02
+Reviewer: GPT-6 Luna / Max
 Disposition: **PASS for this bounded harness fix; no HIGH/BLOCKER findings.** This review does not establish hosted K2-08 acceptance.
 
 ## Reviewed source
