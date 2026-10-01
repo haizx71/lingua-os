@@ -16,7 +16,17 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   `finalizer_complete`. This does not cover listening or cloze: eligible staging
   material is not published. See `reviews/K2-07-hosted-acceptance-review.md` and
   `plans/TASK-K2-07-hosted-acceptance-harness.md`.
-- **TASK-K2-08: BLOCKED FOR FULL HOSTED/LIVE PHASE C; SOURCE/CI PASS ON DRAFT, UNMERGED PR #35.**
+- **TASK-K2-08: FIXTURE SOURCE REVIEW PASS; REVISED CI PENDING; PR #35 UNMERGED; FULL HOSTED BLOCKED.**
+  Independent configured GPT-6 Luna / Max review passed on revised source
+  `64bbd4df71ce9483290b5d86562ef5722d3ceddd`, closing the response-profile
+  ownership HIGH with no remaining HIGH/BLOCKER. Normal actor JWT requests,
+  runner-private fixed fixtures, bounded read-only proofs and deterministic
+  cleanup replace the old Auth/RLS capability proposal without changing grants
+  or policies. Next: exact-head CI (including real PostgreSQL differential),
+  normal reviewed merge, root-owned migration ledger reconciliation and `0020`,
+  then full hosted acceptance once approved published Reader content is ready.
+  See `reviews/K2-08-fixture-boundary-design-review.md`.
+  Prior product-only CI evidence follows; it does not certify the revised harness.
   Reviewed source snapshot `ecb830418e81cc60e573fe91acf7382563ac0568` is based
   on the verified `master` snapshot `2c3284a2deb4fac18683b660a751039e36b007f7`;
   it is not in `master`. Exact-head Knowledge Audit CI
@@ -25,9 +35,9 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   [36795488330](https://github.com/haizx71/lingua-os/actions/runs/36795488330)
   passed, and independent GPT-6 Luna / Max review found no HIGH/BLOCKER issues.
   Full hosted/live Phase C remains blocked pending reviewed published content and
-  separate authorization for a narrowly scoped fixture capability. The due-only
+  the revised source/CI and rollout gates above. The due-only
   source subcase is not overall hosted proof. Migration `0020` is NOT APPLIED.
-  The proposed fixture Auth/RLS path is NO-GO AS WRITTEN because its proposed
+  The historical fixture Auth/RLS proposal remains NO-GO because its proposed
   non-owner function role cannot read server-owned Auth metadata under current
   default-deny RLS; no managed Auth policy or alternate signing change is
   authorized. See `reviews/K2-08-fixture-auth-rls-review.md` and the linked

@@ -1,17 +1,26 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 source/CI PASS on draft PR #35 (unmerged), full hosted/live Phase C BLOCKED; K2-09/10 LOCKED
+Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted acceptance PASS; K2-08 fixture source review PASS, revised PR #35 CI pending and unmerged, full hosted/live Phase C BLOCKED; K2-09/10 LOCKED
 
 ## Current Knowledge V2 checkpoint — 2026-10-01
 
 - The verified source-of-truth `master` snapshot for this checkpoint is
-  `2c3284a2deb4fac18683b660a751039e36b007f7`. The accepted K2-07 hosted runtime
+  `eed55ad02dd2776c1a42187017057cbedb54e7a0`. The accepted K2-07 hosted runtime
   evidence was recorded against `c696ac935852c4ebcd9e1183521996e5b12ad273`;
   that remains valid acceptance evidence and is not identified here as the latest
   `master` baseline. Earlier K2-04/K2-05/K2-06 source and migrations through `0019`
   are represented in the verified base.
-- **K2-08 SOURCE/CI: PASS AT DRAFT PR #35; NOT MERGED.** The reviewed source
+- **K2-08 REVISED FIXTURE SOURCE REVIEW: PASS; CI PENDING; NOT MERGED.**
+  Independent configured GPT-6 Luna / Max review passed on
+  `64bbd4df71ce9483290b5d86562ef5722d3ceddd`, with no remaining HIGH/BLOCKER.
+  The four-actor harness separates normal authenticated learner requests from
+  fixed runner-private setup, bounded inspection and cleanup. No Auth grants,
+  roles, policies or RLS changes were introduced. Today GET and completion
+  responses must match the privately bound actor profile before ID projection.
+  The revised exact-head credential-free CI, including PostgreSQL differential
+  execution, remains pending. See `reviews/K2-08-fixture-boundary-design-review.md`.
+- **K2-08 PRIOR PRODUCT SOURCE/CI: PASS AT OLD DRAFT HEAD.** The reviewed source
   snapshot is `ecb830418e81cc60e573fe91acf7382563ac0568`, based on
   `2c3284a2deb4fac18683b660a751039e36b007f7`. Exact-head Knowledge Audit CI
   [36795488328](https://github.com/haizx71/lingua-os/actions/runs/36795488328)
@@ -22,10 +31,11 @@ Phase: FRLL accepted/frozen; Knowledge V2 K2-06 staging accepted; K2-07 hosted a
   not mean `master` contains the implementation. Documentation/preparation was
   recorded by GPT-6 Luna / Medium in `reviews/K2-08-source-ci-review.md`.
 - **K2-08 FULL HOSTED/LIVE PHASE C: BLOCKED.** Pending reviewed and published
-  eligible content and separate authorization for any narrowly scoped fixture
-  capability. The due-only source subcase is not full hosted proof and cannot
+  eligible content, revised CI, normal source merge, migration reconciliation
+  and the full automated actor cycle. The accepted privilege-split architecture
+  replaces the old unapproved Auth/RLS proposal. The due-only source subcase is not full hosted proof and cannot
   establish overall K2-08 acceptance. Migration `0020` is NOT APPLIED. K2-09/10
-  remain locked. The proposed fixture Auth/RLS path is **NO-GO AS WRITTEN**:
+  remain locked. The historical fixture Auth/RLS proposal remains **NO-GO**:
   the bounded review found the proposed non-owner function role cannot read
   server-owned Auth metadata under the current default-deny policy. No managed
   Auth policy change or alternate signing capability is authorized. See

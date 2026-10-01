@@ -67,5 +67,5 @@ export function installK2BrowserRequestGuard(
   config: Pick<K2HostedConfig, 'supabaseUrl'> & { readonly vercelOrigin: string },
   trustedSourceToken: string,
 ): Promise<void> {
-  return context.route('**/*', route => handleK2BrowserRoute(route, config, trustedSourceToken));
+  return context.route('**/*', route => handleK2BrowserRoute(route, config, trustedSourceToken)).then(() => undefined);
 }

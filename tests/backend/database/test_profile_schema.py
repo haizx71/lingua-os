@@ -436,7 +436,8 @@ def test_0018_0019_auth_erasure_migrations_roll_back_and_reapply_without_data_lo
         assert migration_0018 is not None
         assert migration_0019 is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=2) == [
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=3) == [
+        "0020",
         "0019",
         "0018",
     ]
@@ -457,7 +458,11 @@ def test_0018_0019_auth_erasure_migrations_roll_back_and_reapply_without_data_lo
             (actor_id,),
         ).fetchone() == (1,)
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == ["0018", "0019"]
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == [
+        "0018",
+        "0019",
+        "0020",
+    ]
     assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == []
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         foreign_key = connection.execute(
@@ -496,6 +501,7 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
         "0017",
         "0018",
         "0019",
+        "0020",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
@@ -586,7 +592,8 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
 
-        assert migrate_down(database_url, MIGRATIONS, steps=10) == [
+        assert migrate_down(database_url, MIGRATIONS, steps=11) == [
+            "0020",
             "0019",
             "0018",
             "0017",

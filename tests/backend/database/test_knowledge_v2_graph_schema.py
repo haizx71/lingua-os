@@ -321,7 +321,13 @@ def test_legacy_backfill_reapply_and_learner_isolation(
     isolated_migrated_postgres_url: str,
 ) -> None:
     database_url = isolated_migrated_postgres_url
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=4) == ["0019", "0018", "0017", "0016"]
+    assert migrate_down(database_url, MIGRATIONS_DIR, steps=5) == [
+        "0020",
+        "0019",
+        "0018",
+        "0017",
+        "0016",
+    ]
 
     with _connect(database_url) as conn:
         source_id, source_record_id = _seed_source_and_concept(conn)
@@ -338,7 +344,7 @@ def test_legacy_backfill_reapply_and_learner_isolation(
         )
         conn.commit()
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0016", "0017", "0018", "0019"]
+    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0016", "0017", "0018", "0019", "0020"]
     assert migrate_up(database_url, MIGRATIONS_DIR) == []
 
     with _connect(database_url) as conn:

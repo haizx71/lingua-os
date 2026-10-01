@@ -66,6 +66,9 @@ describe('K2 hosted workflow credential boundary', () => {
   const cleanup = asMap(secretJobs['current-run-cleanup'], 'current-run-cleanup job');
   const securityGate = asMap(securityJobs['security-gate'], 'security-gate job');
   const dbPreflight = asMap(asMap(dbPreflightWorkflow.jobs, 'db preflight jobs')['readonly-preflight'], 'readonly-preflight job');
+  const todayCi = readWorkflow('.github/workflows/knowledge-audit-ci.yml');
+  const todayPostgres = asMap(asMap(todayCi.jobs, 'Today CI jobs')['today-postgres-integration'],
+    'Today PostgreSQL job');
 
   it('runs database preflight without actor credentials or pull-request access', () => {
     expect(Object.keys(asMap(dbPreflightWorkflow.on, 'db preflight triggers'))).toEqual(['workflow_dispatch']);
@@ -127,7 +130,20 @@ describe('K2 hosted workflow credential boundary', () => {
     const harnessTests = stepNamed(securityGate, 'Run hosted-harness unit and workflow security checks').run;
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_workflow_security.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_runner.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
     expect(harnessTests).toContain('tests/frontend/k2-vercel-attestation.test.ts');
+    expect(stepNamed(securityGate, 'Typecheck hosted acceptance harness').run)
+      .toBe('pnpm exec tsc --noEmit -p tsconfig.k2-harness.json');
+    const harnessTypecheck = JSON.parse(readFileSync(resolve(process.cwd(), 'tsconfig.k2-harness.json'), 'utf8')) as {
+      include?: string[];
+    };
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_runner.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
+    expect(stepNamed(todayPostgres, 'Verify Today policy and persistence against PostgreSQL').run)
+      .toContain('tests/backend/database/test_today_api.py');
+    expect(readFileSync(resolve(process.cwd(), 'tests/backend/database/test_today_api.py'), 'utf8'))
+      .toContain('def test_k208_candidate_base_probe_matches_production_store_and_today_order');
     for (const step of securitySteps) {
       if (step.uses) expect(step.uses).toMatch(/^[\w./-]+@[a-f0-9]{40}(?:\s+#.*)?$/);
       expect(JSON.stringify(step)).not.toContain('secrets.');
@@ -136,6 +152,10 @@ describe('K2 hosted workflow credential boundary', () => {
 
   it('restricts acceptance to an owner dispatch from the exact master workflow and current SHA', () => {
     const guard = String(acceptance.if);
+    const dispatchInputs = asMap(asMap(secretWorkflow.on, 'secret workflow triggers').workflow_dispatch,
+      'workflow_dispatch trigger').inputs;
+    const waveInput = asMap(asMap(dispatchInputs, 'workflow_dispatch inputs').wave, 'wave selector input');
+    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY', 'K2-08']);
     expect(guard).toContain("github.event_name == 'workflow_dispatch'");
     expect(guard).toContain("github.repository == 'haizx71/lingua-os'");
     expect(guard).toContain("github.ref == 'refs/heads/master'");
@@ -143,18 +163,29 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(guard).toContain(`github.actor == '${OWNER}'`);
     expect(guard).toContain(`github.triggering_actor == '${OWNER}'`);
     expect(guard).toContain("inputs.mode == 'acceptance'");
-    const preflight = stepNamed(acceptance, 'Verify run SHA is still the master tip before staging secrets');
-    const acceptanceStep = stepNamed(acceptance, 'Run protected K2-07 acceptance');
+    expect(guard).toContain("inputs.wave == 'K2-07'");
+    expect(guard).toContain("inputs.wave == 'K2-08-DUE-ONLY'");
+    expect(guard).toContain("inputs.wave == 'K2-08'");
+    const preflight = stepNamed(acceptance, 'Verify run SHA and selected wave before staging secrets');
+    const acceptanceStep = stepNamed(acceptance, 'Run protected selected K2 hosted subcase');
     expect(stepsFor(acceptance).indexOf(preflight)).toBeLessThan(stepsFor(acceptance).indexOf(acceptanceStep));
     expect(preflight.run).toContain('redirect: \'error\'');
     expect(preflight.run).toContain('process.env.GITHUB_SHA');
     expect(preflight.run).toContain('/git/ref/heads/master');
+    expect(preflight.run).toContain('K2_REQUESTED_WAVE');
+    expect(preflight.run).toContain("'K2-08-DUE-ONLY'");
+    expect(preflight.run).toContain("'K2-08'");
     expect(JSON.stringify(preflight)).not.toContain('secrets.');
+    expect(acceptanceStep.run).toContain('--grep "hosted lifecycle"');
+    expect(asMap(acceptanceStep.env, 'selected hosted subcase environment').K2_ACCEPTANCE_WAVE)
+      .toBe('${{ inputs.wave }}');
     expect(asMap(acceptance.permissions, 'acceptance permissions')).toEqual({
       contents: 'read',
       deployments: 'read',
       'id-token': 'write',
     });
+    expect(String(acceptanceStep.run)).toContain('tests/acceptance/k2_hosted_acceptance.spec.ts');
+    expect(String(acceptanceStep.run)).not.toContain('wave_k2_08');
   });
 
   it('maps repository secrets only to the acceptance, janitor, and recovery steps', () => {
@@ -173,11 +204,15 @@ describe('K2 hosted workflow credential boundary', () => {
     }
     expect(secretSteps.map(({ job, step }) => `${job}:${step}`).sort()).toEqual([
       'current-run-cleanup:Recover only actors marked for this workflow run',
-      'hosted-acceptance:Run protected K2-07 acceptance',
+      'hosted-acceptance:Run protected selected K2 hosted subcase',
       'janitor:Run guarded TTL janitor only',
     ]);
-    const acceptanceEnv = asMap(stepNamed(acceptance, 'Run protected K2-07 acceptance').env, 'acceptance step env');
+    const acceptanceEnv = asMap(
+      stepNamed(acceptance, 'Run protected selected K2 hosted subcase').env,
+      'acceptance step env',
+    );
     expect(acceptanceEnv.PGSSLROOTCERT).toBe(SUPABASE_CA_ENV);
+    expect(acceptanceEnv.K2_ACCEPTANCE_WAVE).toBe('${{ inputs.wave }}');
     expect(STAGING_SECRET_NAMES.every(name => typeof acceptanceEnv[name] === 'string' &&
       String(acceptanceEnv[name]).includes(`secrets.${name}`))).toBe(true);
     for (const job of [janitor, cleanup]) {

@@ -136,7 +136,10 @@ def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
         )
         connection.commit()
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == ["0019"]
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=2) == [
+        "0020",
+        "0019",
+    ]
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         with (
             pytest.raises(psycopg.errors.CheckViolation, match="immutable"),
@@ -151,7 +154,7 @@ def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
             "SELECT count(*) FROM concept_save_intents WHERE user_id = %s", (actor_id,)
         ).fetchone() == (1,)
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == ["0019"]
+    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == ["0019", "0020"]
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         connection.execute("SET ROLE supabase_auth_admin")
         connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
@@ -252,7 +255,8 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_exists is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=10) == [
+    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=11) == [
+        "0020",
         "0019",
         "0018",
         "0017",
@@ -287,6 +291,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         "0017",
         "0018",
         "0019",
+        "0020",
     ]
 
     with psycopg.connect(isolated_migrated_postgres_url) as connection:

@@ -81,6 +81,7 @@ class PostgresContentStore:
         language_profile_id: UUID,
         boundary: ContentCursor | None,
         limit: int,
+        today_as_of: datetime | None = None,
         connection: Connection[tuple[object, ...]] | None = None,
     ) -> list[ContentSummaryProjection]:
         if connection is None:
@@ -90,10 +91,64 @@ class PostgresContentStore:
                     language_profile_id=language_profile_id,
                     boundary=boundary,
                     limit=limit,
+                    today_as_of=today_as_of,
                     connection=owned_connection,
                 )
         boundary_sql = ""
         parameters: list[object] = [actor.id, language_profile_id, actor.id, language_profile_id]
+        today_clock_cte = ""
+        today_clock_join = ""
+        remediation_join = ""
+        remediation_column = ""
+        order_sql = "ORDER BY distance, known_ratio DESC, difficulty_score, id"
+        if today_as_of is not None:
+            today_clock_cte = ", today_clock AS (SELECT %s::timestamptz AS as_of)"
+            parameters.append(today_as_of)
+            today_clock_join = "CROSS JOIN today_clock"
+            remediation_join = """
+                    LEFT JOIN LATERAL (
+                        SELECT retrievability.effective_status
+                        FROM content_concepts AS remediation_link
+                        JOIN public.v_learner_concept_retrievability AS retrievability
+                          ON retrievability.user_id = profile.user_id
+                         AND retrievability.user_language_id = profile.id
+                         AND retrievability.concept_id = remediation_link.concept_id
+                         AND retrievability.calculated_at = today_clock.as_of
+                        WHERE remediation_link.content_id = item.id
+                          AND retrievability.effective_status IN ('forgotten', 'weak')
+                          AND NOT EXISTS (
+                              SELECT 1
+                              FROM review_items AS due_item
+                              JOIN fsrs_states AS due_state
+                                ON due_state.review_item_id = due_item.id
+                               AND due_state.user_id = due_item.user_id
+                              WHERE due_item.user_id = profile.user_id
+                                AND due_item.user_language_id = profile.id
+                                AND due_item.concept_id = remediation_link.concept_id
+                                AND due_item.language_code = 'en'
+                                AND due_item.status = 'active'
+                                AND due_state.due_at <= today_clock.as_of
+                          )
+                        ORDER BY CASE retrievability.effective_status
+                                     WHEN 'forgotten' THEN 0 ELSE 1 END,
+                                 remediation_link.concept_id
+                        LIMIT 1
+                    ) AS remediation ON true
+            """
+            remediation_column = ", remediation.effective_status AS remediation_status"
+            order_sql = """
+                ORDER BY CASE
+                             WHEN started_at IS NOT NULL AND completed_at IS NULL THEN 0
+                             WHEN is_saved THEN 1
+                             WHEN remediation_status = 'forgotten' THEN 2
+                             WHEN remediation_status = 'weak' THEN 3
+                             ELSE 4
+                         END,
+                         CASE WHEN started_at IS NOT NULL AND completed_at IS NULL
+                              THEN last_opened_at END DESC NULLS LAST,
+                         CASE WHEN is_saved THEN saved_at END DESC NULLS LAST,
+                         distance, known_ratio DESC, difficulty_score, id
+            """
         if boundary is not None:
             boundary_sql = """
                 WHERE (distance, -known_ratio, difficulty_score, id)
@@ -104,10 +159,11 @@ class PostgresContentStore:
             )
         parameters.append(limit)
         if connection is not None:
+            prefix_parameter_count = 5 if today_as_of is not None else 4
             rows = connection.execute(
                 f"""
                 WITH owned_profile AS (
-                    SELECT profile.id, level.rank_order AS learner_rank
+                    SELECT profile.id, level.rank_order AS learner_rank, profile.user_id
                     FROM user_languages AS profile
                     LEFT JOIN proficiency_levels AS level ON level.id = profile.current_level_id
                     WHERE profile.user_id = %s AND profile.id = %s
@@ -123,7 +179,7 @@ class PostgresContentStore:
                       ON state.user_id = %s AND state.user_language_id = %s
                      AND state.concept_id = linked.concept_id
                     GROUP BY linked.content_id
-                ), catalog AS (
+                ){today_clock_cte}, catalog AS (
                     SELECT item.id, item.content_type, item.title, item.summary,
                            item.language_code, item.difficulty AS difficulty_score,
                            level.code AS difficulty_label,
@@ -139,8 +195,11 @@ class PostgresContentStore:
                            source.attribution_text, source.source_url,
                            license.attribution_required,
                            COALESCE(abs(level.rank_order - profile.learner_rank), level.rank_order)
-                               AS distance
+                               AS distance,
+                           saved.saved_at
+                           {remediation_column}
                     FROM owned_profile AS profile
+                    {today_clock_join}
                     JOIN content_items AS item ON item.language_code = 'en'
                     JOIN proficiency_levels AS level ON level.id = item.curated_level_id
                     JOIN content_metrics AS metrics ON metrics.content_id = item.id
@@ -156,15 +215,21 @@ class PostgresContentStore:
                      AND progress.content_id = item.id
                     LEFT JOIN content_segments AS furthest
                       ON furthest.id = progress.furthest_segment_id
+                    {remediation_join}
                     WHERE item.publication_status = 'published'
                       AND reader_content_passes_publication_gate(item.id)
                 )
                 SELECT * FROM catalog
                 {boundary_sql}
-                ORDER BY distance, known_ratio DESC, difficulty_score, id
+                {order_sql}
                 LIMIT %s
                 """,
-                [*parameters[:4], actor.id, actor.id, *parameters[4:]],
+                [
+                    *parameters[:prefix_parameter_count],
+                    actor.id,
+                    actor.id,
+                    *parameters[prefix_parameter_count:],
+                ],
             ).fetchall()
         return [_summary(row) for row in rows]
 

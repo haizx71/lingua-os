@@ -96,6 +96,8 @@ export const CONCEPT_STATUS_LABELS_VI: Record<ConceptStatus, string> = {
 
 export const REASON_CODE_LABELS_VI: Record<TodayReasonCode, string> = {
   FSRS_DUE: 'Ôn tập vì sắp đến ngưỡng quên',
+  FORGOTTEN_REMEDIATION: 'Ôn lại khái niệm đã quên',
+  WEAK_REMEDIATION: 'Củng cố khái niệm đang suy giảm',
   WEAK_RECOGNITION: 'Củng cố khả năng nhận diện từ vựng',
   WEAK_LISTENING: 'Luyện nghe phản xạ vì điểm nghe còn yếu',
   LOW_PRODUCTION_EVIDENCE: 'Tập sử dụng từ trong câu thực tế',

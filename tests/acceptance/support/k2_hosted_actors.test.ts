@@ -22,6 +22,7 @@ import {
   verifyK2HostedDeploymentAttestations,
   verifyK2HostedCurrentMasterSha,
   verifyProtectedVercelOrigin,
+  verifyK2FreshActorOwnership,
   type K2AdminClient,
   type K2HostedActor,
   type K2FreshActorIdentity,
@@ -198,7 +199,10 @@ function adminWithUsers(users: readonly User[]): K2AdminClient {
           },
           error: null,
         })),
-        getUserById: vi.fn(),
+        getUserById: vi.fn(async (userId: string) => ({
+          data: { user: users.find(user => user.id === userId) ?? null },
+          error: null,
+        })),
         deleteUser: vi.fn(async () => ({ error: null })),
       },
     },
@@ -206,6 +210,34 @@ function adminWithUsers(users: readonly User[]): K2AdminClient {
 }
 
 describe('K2 hosted actor lifecycle boundaries', () => {
+  it('revalidates only the exact fresh in-memory actor and its current server-owned run marker', async () => {
+    const actor = makeActor();
+    const admin = adminWithUsers([authUser(actor.id, actor.email, actor.ownership)]);
+
+    await expect(verifyK2FreshActorOwnership(config(), actor, admin, NOW.getTime())).resolves.toBeUndefined();
+    expect(admin.auth.admin.getUserById).toHaveBeenCalledExactlyOnceWith(actor.id);
+    expect(admin.auth.admin.listUsers).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['changed server marker', (actor: K2HostedActor) => ({
+      ...actor.ownership,
+      runAttempt: '999',
+    })],
+    ['expired marker', (actor: K2HostedActor) => ({
+      ...actor.ownership,
+      expiresAt: new Date(NOW.getTime() - 1).toISOString(),
+    })],
+  ])('fails closed for a %s without enumerating Auth users', async (_label, marker) => {
+    const actor = makeActor();
+    const admin = adminWithUsers([authUser(actor.id, actor.email, marker(actor))]);
+
+    await expect(verifyK2FreshActorOwnership(config(), actor, admin, NOW.getTime()))
+      .rejects.toThrow('fixture actor ownership could not be revalidated');
+    expect(admin.auth.admin.getUserById).toHaveBeenCalledExactlyOnceWith(actor.id);
+    expect(admin.auth.admin.listUsers).not.toHaveBeenCalled();
+  });
+
   it('pins staging project and the read-only database identity before any hosted client is created', () => {
     const env = validEnvironment();
     expect(validateK2HostedEnvironment(env).supabaseProjectRef).toBe(K2_HOSTED_STAGING_SUPABASE_REF);
@@ -397,6 +429,7 @@ describe('K2 hosted actor lifecycle boundaries', () => {
   it('recovers the exact fresh identity in finally after rollback deletion and Auth listing both fail', async () => {
     const id = '550e8400-e29b-41d4-a716-446655440034';
     let email = '';
+    let serverMark: unknown;
     let lookup = 0;
     let deletion = 0;
     const fresh: K2FreshActorIdentity[] = [];
@@ -405,14 +438,15 @@ describe('K2 hosted actor lifecycle boundaries', () => {
         admin: {
           createUser: vi.fn(async (attributes: Record<string, unknown>) => {
             email = String(attributes.email);
+            serverMark = (attributes.app_metadata as Record<string, unknown>)[K2_HOSTED_MARKER_KEY];
             return {
-              data: { user: authUser(id, email, null) },
+              data: { user: authUser(id, email, serverMark) },
               error: new Error('provider details suppressed'),
             };
           }),
           getUserById: vi.fn(async () => {
             lookup += 1;
-            if (lookup <= 2) return { data: { user: authUser(id, email, null) }, error: null };
+            if (lookup <= 2) return { data: { user: authUser(id, email, serverMark) }, error: null };
             return { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
           }),
           deleteUser: vi.fn(async () => {

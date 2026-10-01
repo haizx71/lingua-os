@@ -19,7 +19,7 @@ from lingua_api.today.domain import (
     TodayPlanProjection,
     TodayPlanUnavailable,
 )
-from lingua_api.today.policy import TODAY_HEURISTIC_V1, build_today_decision
+from lingua_api.today.policy import TODAY_HEURISTIC_V2, build_today_decision
 from lingua_api.today.store import PostgresTodayStore
 
 
@@ -35,12 +35,13 @@ class TodayApplication:
         language_profile_id: UUID | None,
         requested_date: date | None,
     ) -> TodayPlanProjection:
-        as_of = _utc(self._clock.now())
+        as_of: datetime | None = None
         profile_id: UUID | None = None
         effective_date: date | None = None
         try:
             with self._store.connect() as connection, connection.transaction():
                 connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+                as_of = self._store.transaction_timestamp(connection)
                 profile = self._store.resolve_profile(
                     connection, actor=actor, requested_id=language_profile_id
                 )
@@ -100,7 +101,7 @@ class TodayApplication:
                 )
                 review_limit = min(
                     profile.daily_minutes + 1,
-                    TODAY_HEURISTIC_V1.review_candidate_limit_max,
+                    TODAY_HEURISTIC_V2.review_candidate_limit_max,
                 )
                 reviews = self._store.list_review_candidates(
                     connection,
@@ -114,10 +115,14 @@ class TodayApplication:
                     actor=actor,
                     profile_id=profile.user_language_id,
                     as_of=as_of,
-                    limit=TODAY_HEURISTIC_V1.content_candidate_limit,
+                    limit=TODAY_HEURISTIC_V2.content_candidate_limit,
+                    policy=TODAY_HEURISTIC_V2,
                 )
                 decision = build_today_decision(
-                    TodayContext(profile.daily_minutes, as_of), reviews, content
+                    TodayContext(profile.daily_minutes, as_of),
+                    reviews,
+                    content,
+                    policy=TODAY_HEURISTIC_V2,
                 )
                 self._store.persist_decision(
                     connection,
@@ -128,6 +133,7 @@ class TodayApplication:
                     decision=decision,
                     review_candidate_count=len(reviews),
                     content_candidate_count=len(content),
+                    policy=TODAY_HEURISTIC_V2,
                 )
                 generated = self._store.load_plan(
                     connection,
@@ -140,7 +146,7 @@ class TodayApplication:
         except errors.UniqueViolation as error:
             if error.diag.constraint_name != "today_plans_owned_profile_day_unique":
                 raise
-            if profile_id is None or effective_date is None:
+            if profile_id is None or effective_date is None or as_of is None:
                 raise
             with self._store.connect() as winner_connection:
                 winner = self._store.load_plan(

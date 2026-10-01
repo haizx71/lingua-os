@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from datetime import UTC, date, datetime, timedelta
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID, uuid4
 
 import psycopg
@@ -28,7 +28,7 @@ from lingua_api.today.domain import (
     TodayPlanUnavailable,
     TodayProfile,
 )
-from lingua_api.today.policy import TODAY_HEURISTIC_V1
+from lingua_api.today.policy import TODAY_HEURISTIC_V1, TODAY_HEURISTIC_V2, TodayPolicy
 
 
 class PostgresTodayStore:
@@ -38,6 +38,13 @@ class PostgresTodayStore:
 
     def connect(self) -> Connection[tuple[object, ...]]:
         return cast(Connection[tuple[object, ...]], psycopg.connect(self._database_url))
+
+    @staticmethod
+    def transaction_timestamp(connection: Connection[tuple[object, ...]]) -> datetime:
+        row = connection.execute("SELECT transaction_timestamp()").fetchone()
+        if row is None:
+            raise TodayPlanUnavailable("database transaction timestamp is unavailable")
+        return _datetime(row[0])
 
     @staticmethod
     def resolve_profile(
@@ -239,43 +246,60 @@ class PostgresTodayStore:
         profile_id: UUID,
         as_of: datetime,
         limit: int,
+        policy: TodayPolicy = TODAY_HEURISTIC_V1,
     ) -> tuple[ContentCandidate, ...]:
         summaries = self._content.list_summaries(
             actor=actor,
             language_profile_id=profile_id,
             boundary=None,
             limit=limit,
+            today_as_of=as_of if policy.version == TODAY_HEURISTIC_V2.version else None,
             connection=connection,
         )
         if not summaries:
             return ()
         content_ids = [item.id for item in summaries]
+        effective_status = (
+            "COALESCE(retrievability.effective_status, state.status)"
+            if policy.version == TODAY_HEURISTIC_V2.version
+            else "state.status"
+        )
+        due_remediation_filter = (
+            "AND NOT due_check.is_due" if policy.version == TODAY_HEURISTIC_V2.version else ""
+        )
         rows = connection.execute(
-            """
+            f"""
             SELECT item.id,
                    count(DISTINCT linked.concept_id) FILTER (
                        WHERE COALESCE(state.status, 'unseen') = 'unseen'
                    )::integer AS unseen_count,
-                   COALESCE(bool_or(state.status = 'forgotten'), false) AS forgotten,
                    COALESCE(bool_or(
-                       state.status IN ('weak', 'forgotten')
+                       {effective_status} = 'forgotten'
+                       {due_remediation_filter}
+                   ), false) AS forgotten,
+                   COALESCE(bool_or(
+                       {effective_status} IN ('weak', 'forgotten')
+                       {due_remediation_filter}
                        AND state.recognition_evidence_count > 0
                        AND state.recognition <= state.listening
                        AND state.recognition <= state.production
                    ), false) AS weak_recognition,
                    COALESCE(bool_or(
-                       state.status IN ('weak', 'forgotten')
+                       {effective_status} IN ('weak', 'forgotten')
+                       {due_remediation_filter}
                        AND state.listening_evidence_count > 0
                        AND state.listening < state.recognition
                        AND state.listening <= state.production
                    ), false) AS weak_listening,
                    COALESCE(bool_or(
-                       state.status IN ('weak', 'forgotten')
+                       {effective_status} IN ('weak', 'forgotten')
+                       {due_remediation_filter}
                        AND state.production_evidence_count < state.recognition_evidence_count
                        AND state.production_evidence_count < state.listening_evidence_count
                    ), false) AS low_production,
                    COALESCE(array_agg(DISTINCT linked.concept_id) FILTER (
-                       WHERE state.status IN ('weak', 'forgotten')
+                       WHERE {effective_status} IN ('weak', 'forgotten')
+                         {due_remediation_filter}
                    ), ARRAY[]::uuid[]) AS reinforcement_ids,
                    EXISTS (
                        SELECT 1
@@ -302,12 +326,43 @@ class PostgresTodayStore:
                          AND recent_event.occurred_at >= %s
                          AND recent_event.occurred_at <= %s
                    ) AS recently_exposed,
-                   saved.saved_at
+                   saved.saved_at,
+                   CASE
+                       WHEN bool_or(
+                           {effective_status} = 'forgotten'
+                           {due_remediation_filter}
+                       ) THEN 'forgotten'
+                       WHEN bool_or(
+                           {effective_status} = 'weak'
+                           {due_remediation_filter}
+                       ) THEN 'weak'
+                       ELSE NULL
+                   END AS remediation_status
             FROM content_items AS item
             LEFT JOIN content_concepts AS linked ON linked.content_id = item.id
             LEFT JOIN user_concept_states AS state
               ON state.user_id = %s AND state.user_language_id = %s
              AND state.concept_id = linked.concept_id
+            LEFT JOIN public.v_learner_concept_retrievability AS retrievability
+              ON retrievability.user_id = state.user_id
+             AND retrievability.user_language_id = state.user_language_id
+             AND retrievability.concept_id = linked.concept_id
+             AND retrievability.calculated_at = %s
+            LEFT JOIN LATERAL (
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM review_items AS due_item
+                    JOIN fsrs_states AS due_state
+                      ON due_state.review_item_id = due_item.id
+                     AND due_state.user_id = due_item.user_id
+                    WHERE due_item.user_id = %s
+                      AND due_item.user_language_id = %s
+                      AND due_item.concept_id = linked.concept_id
+                      AND due_item.language_code = 'en'
+                      AND due_item.status = 'active'
+                      AND due_state.due_at <= %s
+                ) AS is_due
+            ) AS due_check ON true
             LEFT JOIN user_saved_content AS saved
               ON saved.user_id = %s AND saved.user_language_id = %s
              AND saved.content_id = item.id
@@ -317,10 +372,14 @@ class PostgresTodayStore:
             (
                 actor.id,
                 profile_id,
-                as_of - timedelta(hours=TODAY_HEURISTIC_V1.recent_exposure_window_hours),
+                as_of - timedelta(hours=policy.recent_exposure_window_hours),
                 as_of,
                 actor.id,
                 profile_id,
+                as_of,
+                actor.id,
+                profile_id,
+                as_of,
                 actor.id,
                 profile_id,
                 content_ids,
@@ -352,6 +411,11 @@ class PostgresTodayStore:
                     weak_listening=bool(row[4]),
                     low_production_evidence=bool(row[5]),
                     forgotten=bool(row[2]),
+                    remediation_status=(
+                        None if row[10] is None else cast(Literal["weak", "forgotten"], row[10])
+                    )
+                    if policy.version == TODAY_HEURISTIC_V2.version
+                    else None,
                     recently_exposed=bool(row[8]),
                     last_opened_at=None if progress is None else progress.last_opened_at,
                     saved_at=_optional_datetime(row[9]),
@@ -373,11 +437,12 @@ class PostgresTodayStore:
         decision: TodayDecision,
         review_candidate_count: int,
         content_candidate_count: int,
+        policy: TodayPolicy = TODAY_HEURISTIC_V1,
     ) -> UUID:
         plan_id = uuid4()
         completed_at = as_of if decision.status == "completed" else None
         diagnostics = {
-            "policyVersion": TODAY_HEURISTIC_V1.version,
+            "policyVersion": policy.version,
             "asOf": as_of.isoformat(),
             "reviewCandidateCount": review_candidate_count,
             "contentCandidateCount": content_candidate_count,
@@ -401,8 +466,8 @@ class PostgresTodayStore:
                 plan_date,
                 profile.time_zone,
                 profile.daily_minutes,
-                TODAY_HEURISTIC_V1.max_new_unseen_concepts,
-                TODAY_HEURISTIC_V1.version,
+                policy.max_new_unseen_concepts,
+                policy.version,
                 decision.status,
                 as_of,
                 completed_at,

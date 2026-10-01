@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   assertK2RetainedStateUnchanged,
   type K2HostedActorLineageProof,
@@ -10,7 +9,7 @@ type ExerciseMode = 'self_recall' | 'typing' | 'cloze' | 'listening';
 type DimensionName = 'recognition' | 'listening' | 'production';
 
 const DIMENSION_ORDER: readonly DimensionName[] = ['recognition', 'listening', 'production'];
-const ANCHOR_ID = '7f110000-0000-4000-8000-000000000004';
+const ANCHOR_ID = 'k2-anchor';
 const ANCHOR_LEMMA = 'frll-anchor';
 
 export const K2_07_PRIMARY_AFTER_SAVE_ROWS = {
@@ -157,9 +156,9 @@ async function answerAndReplay(
     ? { rating: 'again', exerciseMode: mode, correct: false, responseTimeMs: 1200 }
     : { rating: 'again', exerciseMode: mode, responseText: ANCHOR_LEMMA, responseTimeMs: 1200 };
   const answerPath = `/v1/review/${item.reviewItemId}/answer`;
-  const idempotencyKey = randomUUID();
+  const idempotencyKey = mode === 'self_recall' ? 'self-recall-answer' : 'typing-answer';
   context.checkpoint(answerPhase, 'start');
-  const first = dataObject((await context.apiRequest(context.primarySession.accessToken, answerPath, {
+  const first = dataObject((await context.api.primary.request(answerPath, {
     method: 'POST', idempotencyKey, body,
   })).payload, 'K2 hosted acceptance review answer response was invalid.');
   const competence = record(first.competence, 'K2 hosted acceptance review answer competence was invalid.');
@@ -169,11 +168,11 @@ async function answerAndReplay(
   }
   context.checkpoint(answerPhase, 'pass');
   context.checkpoint('fixture_answer_persistence_snapshot', 'start');
-  const afterAnswer = await context.actorSnapshot(context.primaryActor.id);
+  const afterAnswer = await context.actorSnapshot(context.actors.primary);
   context.checkpoint('fixture_answer_persistence_snapshot', 'pass');
 
   context.checkpoint(replayPhase, 'start');
-  const replay = dataObject((await context.apiRequest(context.primarySession.accessToken, answerPath, {
+  const replay = dataObject((await context.api.primary.request(answerPath, {
     method: 'POST', idempotencyKey, body,
   })).payload, 'K2 hosted acceptance replay response was invalid.');
   if (JSON.stringify(first) !== JSON.stringify(replay)) {
@@ -181,7 +180,7 @@ async function answerAndReplay(
   }
   context.checkpoint(replayPhase, 'pass');
   context.checkpoint('fixture_replay_snapshot', 'start');
-  const afterReplay = await context.actorSnapshot(context.primaryActor.id);
+  const afterReplay = await context.actorSnapshot(context.actors.primary);
   assertK2RetainedStateUnchanged(afterAnswer, afterReplay);
   context.checkpoint('fixture_replay_snapshot', 'pass');
   return first;
@@ -195,10 +194,7 @@ async function waitForPrimaryDueItem(
 ): Promise<Record<string, unknown>> {
   const deadline = Date.now() + 180_000;
   while (Date.now() < deadline) {
-    const items = queueItems((await context.apiRequest(
-      context.primarySession.accessToken,
-      queuePath,
-    )).payload);
+    const items = queueItems((await context.api.primary.request(queuePath)).payload);
     if (items.length > 0) {
       const item = onlyAnchorItem(items);
       if (item.reviewItemId !== previousItemId) {
@@ -217,6 +213,7 @@ async function waitForPrimaryDueItem(
 
 export const k2HostedWaveK207: K2HostedWavePlugin = {
   waveId: 'K2-07',
+  actorCount: 2,
   async run(context) {
     context.checkpoint('fixture_anchor_material', 'start');
     const material = await context.anchorMaterial();
@@ -224,21 +221,16 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
     if (!material.hasTranslatedDefinition || material.hasHttpsAudio || material.hasPublishedClozeTarget) {
       throw new Error('K2 hosted acceptance canonical material inventory changed; K2-07 fixture needs review.');
     }
-    context.testInfo.annotations.push({
-      type: 'untested-modalities',
-      description: 'cloze and listening are untested: no published aligned target or HTTPS audio in staging',
-    });
+    context.report('k2-07-untested-modalities');
 
     context.checkpoint('fixture_canonical_concept_fetch', 'start');
-    const concept = dataObject((await context.apiRequest(
-      context.primarySession.accessToken,
+    const concept = dataObject((await context.api.primary.request(
       `/v1/concepts/${ANCHOR_ID}`,
     )).payload, 'K2 hosted acceptance canonical anchor was not available.');
     if (concept.id !== ANCHOR_ID) throw new Error('K2 hosted acceptance canonical anchor identity was invalid.');
     context.checkpoint('fixture_canonical_concept_fetch', 'pass');
     context.checkpoint('fixture_primary_save', 'start');
-    const saved = dataObject((await context.apiRequest(
-      context.primarySession.accessToken,
+    const saved = dataObject((await context.api.primary.request(
       `/v1/library/concepts/${ANCHOR_ID}`,
       { method: 'PUT' },
     )).payload, 'K2 hosted acceptance anchor save response was invalid.');
@@ -246,68 +238,64 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
     context.checkpoint('fixture_primary_save', 'pass');
 
     context.checkpoint('fixture_post_save_primary_snapshot', 'start');
-    const savedState = await context.actorSnapshot(context.primaryActor.id);
+    const savedState = await context.actorSnapshot(context.actors.primary);
     context.requireSnapshotRows(savedState, K2_07_PRIMARY_AFTER_SAVE_ROWS);
     context.checkpoint('fixture_post_save_primary_snapshot', 'pass');
     context.checkpoint('fixture_post_save_observer_snapshot', 'start');
-    const observerState = await context.actorSnapshot(context.observerActor.id);
+    const observerState = await context.actorSnapshot(context.actors.observer);
     context.requireSnapshotRows(observerState, K2_07_OBSERVER_AFTER_PRIMARY_SAVE_ROWS);
     context.checkpoint('fixture_post_save_observer_snapshot', 'pass');
     context.checkpoint('fixture_post_save_lineage', 'start');
-    requireK2HostedLineage(await context.actorLineage(context.primaryActor.id), K2_07_PRIMARY_AFTER_SAVE_LINEAGE);
+    requireK2HostedLineage(await context.actorLineage(context.actors.primary), K2_07_PRIMARY_AFTER_SAVE_LINEAGE);
     requireK2HostedLineage(
-      await context.actorLineage(context.observerActor.id),
+      await context.actorLineage(context.actors.observer),
       K2_07_OBSERVER_AFTER_PRIMARY_SAVE_LINEAGE,
     );
     context.checkpoint('fixture_post_save_lineage', 'pass');
 
     context.checkpoint('fixture_observer_review_queue', 'start');
-    const observerItems = queueItems((await context.apiRequest(
-      context.observerSession.accessToken,
-      `/v1/review/queue?languageProfileId=${encodeURIComponent(context.observerProfileId)}`,
+    const observerItems = queueItems((await context.api.observer.request(
+      '/v1/review/queue?languageProfileId=actor:observer',
     )).payload);
     if (observerItems.length !== 0) throw new Error('K2 hosted acceptance observer received a review item.');
     context.checkpoint('fixture_observer_review_queue', 'pass');
 
-    const queuePath = `/v1/review/queue?languageProfileId=${encodeURIComponent(context.primaryProfileId)}`;
+    const queuePath = '/v1/review/queue?languageProfileId=actor:primary';
     context.checkpoint('fixture_primary_review_queue', 'start');
-    const initialItem = onlyAnchorItem(queueItems((await context.apiRequest(
-      context.primarySession.accessToken, queuePath,
-    )).payload));
+    const initialItem = onlyAnchorItem(queueItems((await context.api.primary.request(queuePath)).payload));
     const initialMode = selectK2HostedExerciseMode(initialItem.competence, material);
     if (initialMode !== 'self_recall' || initialItem.exerciseMode !== initialMode) {
       throw new Error('K2 hosted acceptance initial Review mode did not follow zero-evidence selection policy.');
     }
-    context.testInfo.annotations.push({ type: 'selected-modes', description: 'self_recall, typing' });
+    context.report('k2-07-selected-modes');
     context.checkpoint('fixture_primary_review_queue', 'pass');
 
     // Prove a second disposable actor cannot mutate the first actor's review item.
     context.checkpoint('fixture_cross_actor_isolation', 'start');
-    const primaryBeforeIsolation = await context.actorSnapshot(context.primaryActor.id);
-    const observerBeforeIsolation = await context.actorSnapshot(context.observerActor.id);
-    await context.apiRequest(
-      context.observerSession.accessToken,
+    const primaryBeforeIsolation = await context.actorSnapshot(context.actors.primary);
+    const observerBeforeIsolation = await context.actorSnapshot(context.actors.observer);
+    await context.api.observer.request(
       `/v1/review/${initialItem.reviewItemId}/answer`,
       {
         method: 'POST',
-        idempotencyKey: randomUUID(),
+        idempotencyKey: 'cross-actor-answer',
         body: { rating: 'again', exerciseMode: initialMode, responseTimeMs: 50 },
       },
       [403, 404],
     );
     assertK2RetainedStateUnchanged(primaryBeforeIsolation,
-      await context.actorSnapshot(context.primaryActor.id));
+      await context.actorSnapshot(context.actors.primary));
     assertK2RetainedStateUnchanged(observerBeforeIsolation,
-      await context.actorSnapshot(context.observerActor.id));
+      await context.actorSnapshot(context.actors.observer));
     context.checkpoint('fixture_cross_actor_isolation', 'pass');
 
     await answerAndReplay(context, initialItem, 'self_recall');
     context.checkpoint('fixture_self_recall_verification', 'start');
-    const afterSelfRecall = await context.actorSnapshot(context.primaryActor.id);
+    const afterSelfRecall = await context.actorSnapshot(context.actors.primary);
     context.requireSnapshotRows(afterSelfRecall, {
       user_concept_states: 1, review_items: 1, fsrs_states: 1, review_events: 1,
     });
-    const selfRecallLineage = await context.actorLineage(context.primaryActor.id);
+    const selfRecallLineage = await context.actorLineage(context.actors.primary);
     requireK2HostedLineage(selfRecallLineage, {
       stateRows: 1, reviewItems: 1, fsrsStates: 1, productionEvidence: 1, negativeMass: 0.5, events: 1,
     });
@@ -315,20 +303,18 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
     context.checkpoint('fixture_self_recall_verification', 'pass');
 
     context.checkpoint('fixture_due_item_wait', 'start');
-    const typingItem = await waitForPrimaryDueItem(
-      context, queuePath, String(initialItem.reviewItemId), material,
-    );
+    const typingItem = await waitForPrimaryDueItem(context, queuePath, String(initialItem.reviewItemId), material);
     context.checkpoint('fixture_due_item_wait', 'pass');
     if (typingItem.exerciseMode !== 'typing') {
       throw new Error('K2 hosted acceptance weakest production dimension did not select available typing material.');
     }
     await answerAndReplay(context, typingItem, 'typing');
     context.checkpoint('fixture_typing_verification', 'start');
-    const afterTyping = await context.actorSnapshot(context.primaryActor.id);
+    const afterTyping = await context.actorSnapshot(context.actors.primary);
     context.requireSnapshotRows(afterTyping, {
       user_concept_states: 1, review_items: 1, fsrs_states: 1, review_events: 2,
     });
-    const finalLineage = await context.actorLineage(context.primaryActor.id);
+    const finalLineage = await context.actorLineage(context.actors.primary);
     requireK2HostedLineage(finalLineage, {
       stateRows: 1, reviewItems: 1, fsrsStates: 1, productionEvidence: 2, negativeMass: 1, events: 2,
     });
@@ -337,7 +323,7 @@ export const k2HostedWaveK207: K2HostedWavePlugin = {
     context.checkpoint('fixture_typing_verification', 'pass');
 
     context.checkpoint('fixture_final_observer_verification', 'start');
-    const finalObserverState = await context.actorSnapshot(context.observerActor.id);
+    const finalObserverState = await context.actorSnapshot(context.actors.observer);
     assertK2RetainedStateUnchanged(observerState, finalObserverState);
     context.checkpoint('fixture_final_observer_verification', 'pass');
   },
