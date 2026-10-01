@@ -5,11 +5,11 @@ import {
   type K2HostedTodayReviewTargets,
   k2RetainedTableNames,
 } from './k2_hosted_probe_client';
-import { dataObject, type K2HostedWaveContext, type K2HostedWavePlugin } from './k2_hosted_runner';
+import { dataObject, type K2BoundWaveApi, type K2HostedWaveContext, type K2HostedWavePlugin } from './k2_hosted_runner';
 
 const DUE_SEED_SIZE = 20;
 const REVIEW_PREFIX_SIZE = 15;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OPAQUE_HANDLE_PATTERN = /^opaque-[0-9a-f]{32}$/i;
 const TODAY_TABLE_DELTAS = {
   today_plans: 1,
   today_plan_activities: 1,
@@ -41,7 +41,7 @@ export function collectK2HostedDictionaryConceptIds(
     const pageIds = new Set<string>();
     for (const rawItem of envelope.data) {
       const item = record(rawItem, 'K2 hosted acceptance due-only dictionary response was invalid.');
-      if (typeof item.id !== 'string' || !UUID_PATTERN.test(item.id) || pageIds.has(item.id)) {
+      if (typeof item.id !== 'string' || !OPAQUE_HANDLE_PATTERN.test(item.id) || pageIds.has(item.id)) {
         throw new Error('K2 hosted acceptance due-only dictionary response was invalid.');
       }
       pageIds.add(item.id);
@@ -135,7 +135,7 @@ function expectedDueReviewIds(
   const result: string[] = [];
   for (const item of queue) {
     const concept = record(item.concept, 'K2 hosted acceptance due-only Review queue was invalid.');
-    if (typeof item.reviewItemId !== 'string' || !UUID_PATTERN.test(item.reviewItemId) ||
+    if (typeof item.reviewItemId !== 'string' || !OPAQUE_HANDLE_PATTERN.test(item.reviewItemId) ||
         typeof concept.id !== 'string' || !saved.has(concept.id) ||
         itemIds.has(item.reviewItemId) || conceptIds.has(concept.id)) {
       throw new Error('K2 hosted acceptance due-only Review queue did not match the saved actor concepts.');
@@ -188,28 +188,22 @@ export function assertK2HostedDueOnlyTargetProbe(
   }
 }
 
-async function readReviewQueue(context: K2HostedWaveContext, accessToken: string, profileId: string) {
-  const route = `/v1/review/queue?${new URLSearchParams({ languageProfileId: profileId, limit: '100' })}`;
-  return context.apiRequest(accessToken, route);
+async function readReviewQueue(api: K2BoundWaveApi, profile: 'primary' | 'observer') {
+  return api.request(`/v1/review/queue?languageProfileId=actor:${profile}&limit=100`);
 }
 
 export const k2HostedWaveK208DueOnly: K2HostedWavePlugin = {
   waveId: 'K2-08-DUE-ONLY',
+  actorCount: 2,
   async run(context) {
-    context.testInfo.annotations.push({
-      type: 'acceptance-scope',
-      description: 'K2-08 due-only subcase; this does not satisfy full K2-08 hosted acceptance.',
-    });
+    context.report('k2-08-due-only-scope');
 
     context.checkpoint('fixture_k208_due_only_dictionary_search', 'start');
     const pages: unknown[] = [];
     let conceptIds: readonly string[] = [];
     for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
       const query = new URLSearchParams({ query: letter, languageCode: 'en', limit: '100' });
-      const response = await context.apiRequest(
-        context.primarySession.accessToken,
-        `/v1/dictionary/search?${query}`,
-      );
+      const response = await context.api.primary.request(`/v1/dictionary/search?${query}`);
       pages.push(response.payload);
       conceptIds = collectK2HostedDictionaryConceptIds(pages);
       if (conceptIds.length === DUE_SEED_SIZE) break;
@@ -221,8 +215,7 @@ export const k2HostedWaveK208DueOnly: K2HostedWavePlugin = {
 
     context.checkpoint('fixture_k208_due_only_save_backlog', 'start');
     for (const conceptId of conceptIds) {
-      const response = await context.apiRequest(
-        context.primarySession.accessToken,
+      const response = await context.api.primary.request(
         `/v1/library/concepts/${conceptId}`,
         { method: 'PUT' },
       );
@@ -235,27 +228,19 @@ export const k2HostedWaveK208DueOnly: K2HostedWavePlugin = {
     context.checkpoint('fixture_k208_due_only_save_backlog', 'pass');
 
     context.checkpoint('fixture_k208_due_only_review_queue', 'start');
-    const queue = reviewQueueItems((await readReviewQueue(
-      context,
-      context.primarySession.accessToken,
-      context.primaryProfileId,
-    )).payload);
+    const queue = reviewQueueItems((await readReviewQueue(context.api.primary, 'primary')).payload);
     const expectedReviewIds = expectedDueReviewIds(queue, conceptIds);
-    const observerQueue = reviewQueueItems((await readReviewQueue(
-      context,
-      context.observerSession.accessToken,
-      context.observerProfileId,
-    )).payload);
+    const observerQueue = reviewQueueItems((await readReviewQueue(context.api.observer, 'observer')).payload);
     if (observerQueue.length !== 0) {
       throw new Error('K2 hosted acceptance due-only backlog crossed actor profiles.');
     }
     context.checkpoint('fixture_k208_due_only_review_queue', 'pass');
 
     context.checkpoint('fixture_k208_due_only_seed_snapshot', 'start');
-    const primaryBefore = await context.actorSnapshot(context.primaryActor.id);
-    const primaryLineageBefore = await context.actorLineage(context.primaryActor.id);
+    const primaryBefore = await context.actorSnapshot(context.actors.primary);
+    const primaryLineageBefore = await context.actorLineage(context.actors.primary);
     assertK2HostedDueOnlySeed(primaryBefore, primaryLineageBefore);
-    const observerBefore = await context.actorSnapshot(context.observerActor.id);
+    const observerBefore = await context.actorSnapshot(context.actors.observer);
     context.requireSnapshotRows(observerBefore, {
       users: 1,
       learner_profiles: 1,
@@ -273,12 +258,12 @@ export const k2HostedWaveK208DueOnly: K2HostedWavePlugin = {
     context.checkpoint('fixture_k208_due_only_seed_snapshot', 'pass');
 
     context.checkpoint('fixture_k208_due_only_today_generate', 'start');
-    const todayRoute = `/v1/today?${new URLSearchParams({ languageProfileId: context.primaryProfileId })}`;
-    const generated = (await context.apiRequest(context.primarySession.accessToken, todayRoute)).payload;
+    const todayRoute = '/v1/today';
+    const generated = (await context.api.primary.request(todayRoute)).payload;
     assertK2HostedDueOnlyTodayPlan(generated, expectedReviewIds);
-    const generatedSnapshot = await context.actorSnapshot(context.primaryActor.id);
+    const generatedSnapshot = await context.actorSnapshot(context.actors.primary);
     assertK2HostedDueOnlyTodayDelta(primaryBefore, generatedSnapshot);
-    const primaryLineageAfter = await context.actorLineage(context.primaryActor.id);
+    const primaryLineageAfter = await context.actorLineage(context.actors.primary);
     if (JSON.stringify(primaryLineageAfter) !== JSON.stringify(primaryLineageBefore)) {
       throw new Error('K2 hosted acceptance due-only generation changed competence or Review evidence.');
     }
@@ -286,32 +271,31 @@ export const k2HostedWaveK208DueOnly: K2HostedWavePlugin = {
 
     context.checkpoint('fixture_k208_due_only_target_mapping', 'start');
     assertK2HostedDueOnlyTargetProbe(
-      await context.actorTodayReviewTargets(context.primaryActor.id),
+      await context.actorTodayReviewTargets(context.actors.primary),
       expectedReviewIds,
     );
     context.checkpoint('fixture_k208_due_only_target_mapping', 'pass');
 
     context.checkpoint('fixture_k208_due_only_replay', 'start');
-    const replay = (await context.apiRequest(context.primarySession.accessToken, todayRoute)).payload;
+    const replay = (await context.api.primary.request(todayRoute)).payload;
     assertK2HostedDueOnlyPlanReplay(generated, replay);
-    const afterReplay = await context.actorSnapshot(context.primaryActor.id);
+    const afterReplay = await context.actorSnapshot(context.actors.primary);
     assertK2RetainedStateUnchanged(generatedSnapshot, afterReplay);
-    if (JSON.stringify(await context.actorLineage(context.primaryActor.id)) !==
+    if (JSON.stringify(await context.actorLineage(context.actors.primary)) !==
         JSON.stringify(primaryLineageBefore)) {
       throw new Error('K2 hosted acceptance due-only replay changed competence or Review evidence.');
     }
     context.checkpoint('fixture_k208_due_only_replay', 'pass');
 
     context.checkpoint('fixture_k208_due_only_profile_isolation', 'start');
-    await context.apiRequest(
-      context.observerSession.accessToken,
-      todayRoute,
+    await context.api.observer.request(
+      '/v1/today?languageProfileId=actor:primary',
       {},
       [404],
     );
-    const observerAfter = await context.actorSnapshot(context.observerActor.id);
+    const observerAfter = await context.actorSnapshot(context.actors.observer);
     assertK2RetainedStateUnchanged(observerBefore, observerAfter);
-    assertK2RetainedStateUnchanged(generatedSnapshot, await context.actorSnapshot(context.primaryActor.id));
+    assertK2RetainedStateUnchanged(generatedSnapshot, await context.actorSnapshot(context.actors.primary));
     context.checkpoint('fixture_k208_due_only_profile_isolation', 'pass');
   },
 };

@@ -83,6 +83,15 @@ class ProbeError(Exception):
     pass
 
 
+# The base-candidate order must come from the production ContentStore. The probe
+# passes its existing read-only transaction to that implementation; it never
+# creates a second connection or reimplements its fit ordering.
+API_SOURCE = Path(__file__).resolve().parents[3] / "services" / "api" / "src"
+sys.path.insert(0, str(API_SOURCE))
+from lingua_api.content.store import PostgresContentStore  # noqa: E402
+from lingua_api.memory.domain import AuthenticatedActor  # noqa: E402
+
+
 def _require_verified_staging_connection(database_url: str) -> None:
     try:
         parsed = urlsplit(database_url)
@@ -457,6 +466,286 @@ def _anchor_material(connection) -> dict[str, bool]:
     }
 
 
+def _k208_fixture_privilege_preflight(connection) -> dict[str, bool]:
+    _table_inventory(connection)
+    role_rows = connection.execute(
+        """SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication,
+                  rolbypassrls, rolcanlogin, rolinherit
+           FROM pg_roles
+           WHERE rolname = ANY(%s)
+           ORDER BY rolname""",
+        ([EXPECTED_READONLY_ROLE, "anon", "authenticated", "service_role"],),
+    ).fetchall()
+    expected_role_flags = {
+        "anon": (False, False, False, False, False, False, True),
+        "authenticated": (False, False, False, False, False, False, True),
+        EXPECTED_READONLY_ROLE: (False, False, False, False, False, True, False),
+        "service_role": (False, False, False, False, True, False, True),
+    }
+    if {row[0]: tuple(row[1:]) for row in role_rows} != expected_role_flags:
+        raise ProbeError
+
+    schema_rows = connection.execute(
+        """SELECT role.rolname, schema.nspname,
+                  has_schema_privilege(role.oid, schema.oid, 'USAGE'),
+                  has_schema_privilege(role.oid, schema.oid, 'CREATE')
+           FROM pg_roles AS role
+           CROSS JOIN pg_namespace AS schema
+           WHERE role.rolname = ANY(%s)
+             AND schema.nspname = ANY(ARRAY['auth', 'public'])
+           ORDER BY role.rolname, schema.nspname""",
+        ([EXPECTED_READONLY_ROLE, "anon", "authenticated", "service_role"],),
+    ).fetchall()
+    expected_schema_flags = {
+        ("anon", "auth"): (True, False),
+        ("anon", "public"): (False, False),
+        ("authenticated", "auth"): (True, False),
+        ("authenticated", "public"): (False, False),
+        (EXPECTED_READONLY_ROLE, "auth"): (False, False),
+        (EXPECTED_READONLY_ROLE, "public"): (True, False),
+        ("service_role", "auth"): (True, False),
+        ("service_role", "public"): (True, False),
+    }
+    if {(row[0], row[1]): tuple(row[2:]) for row in schema_rows} != expected_schema_flags:
+        raise ProbeError
+    public_schema_acl_rows = connection.execute(
+        """SELECT schema.nspname,
+                  EXISTS (
+                      SELECT 1
+                      FROM aclexplode(COALESCE(schema.nspacl, acldefault('n', schema.nspowner))) AS acl
+                      WHERE acl.grantee = 0
+                  ) AS has_public_grant
+           FROM pg_namespace AS schema
+           WHERE schema.nspname = ANY(ARRAY['auth', 'public'])
+           ORDER BY schema.nspname"""
+    ).fetchall()
+    if public_schema_acl_rows != [("auth", False), ("public", False)]:
+        raise ProbeError
+
+    owner_rls_rows = connection.execute(
+        """WITH expected_relations(schema_name, relation_name, relation_kind,
+                                   expected_owner, expected_rls, expected_force) AS (
+               VALUES
+                   ('public', 'users', 'r', 'postgres', true, false),
+                   ('public', 'user_languages', 'r', 'postgres', true, false),
+                   ('public', 'user_concept_states', 'r', 'postgres', true, false),
+                   ('public', 'v_learner_concept_retrievability', 'v', 'postgres', false, false),
+                   ('auth', 'users', 'r', 'supabase_auth_admin', true, false)
+           )
+           SELECT expected.schema_name, expected.relation_name,
+                  relation.relkind::text, owner.rolname,
+                  relation.relrowsecurity, relation.relforcerowsecurity,
+                  expected.relation_kind, expected.expected_owner,
+                  expected.expected_rls, expected.expected_force,
+                  (SELECT count(*)::integer FROM pg_policy AS policy
+                   WHERE policy.polrelid = relation.oid)
+           FROM expected_relations AS expected
+           JOIN pg_namespace AS schema ON schema.nspname = expected.schema_name
+           JOIN pg_class AS relation
+             ON relation.relnamespace = schema.oid
+            AND relation.relname = expected.relation_name
+           JOIN pg_roles AS owner ON owner.oid = relation.relowner
+           ORDER BY expected.schema_name, expected.relation_name"""
+    ).fetchall()
+    expected_owner_rls_rows = [
+        ("auth", "users", "r", "supabase_auth_admin", True, False, "r", "supabase_auth_admin", True, False, 0),
+        ("public", "user_concept_states", "r", "postgres", True, False, "r", "postgres", True, False, 2),
+        ("public", "user_languages", "r", "postgres", True, False, "r", "postgres", True, False, 2),
+        ("public", "users", "r", "postgres", True, False, "r", "postgres", True, False, 2),
+        ("public", "v_learner_concept_retrievability", "v", "postgres", False, False, "v", "postgres", False, False, 0),
+    ]
+    if owner_rls_rows != expected_owner_rls_rows:
+        raise ProbeError
+
+    policy_rows = connection.execute(
+        """SELECT schema.nspname, relation.relname, policy.polname, policy.polcmd,
+                  policy.polpermissive,
+                  ARRAY(SELECT CASE WHEN granted_role.role_oid = 0 THEN 'PUBLIC'
+                                    ELSE pg_get_userbyid(granted_role.role_oid) END
+                        FROM unnest(policy.polroles) AS granted_role(role_oid)
+                        ORDER BY 1),
+                  pg_get_expr(policy.polqual, policy.polrelid),
+                  pg_get_expr(policy.polwithcheck, policy.polrelid)
+           FROM pg_policy AS policy
+           JOIN pg_class AS relation ON relation.oid = policy.polrelid
+           JOIN pg_namespace AS schema ON schema.oid = relation.relnamespace
+           WHERE schema.nspname = 'public'
+             AND relation.relname = ANY(ARRAY['users', 'user_languages', 'user_concept_states'])
+           ORDER BY relation.relname, policy.polname"""
+    ).fetchall()
+    expected_policies = [
+        ("public", "user_concept_states", "k2_hosted_acceptance_reader_select_all", "r", True,
+         [EXPECTED_READONLY_ROLE], "true", None),
+        ("public", "user_concept_states", "user_concept_states_select_own", "r", True,
+         ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
+        ("public", "user_languages", "k2_hosted_acceptance_reader_select_all", "r", True,
+         [EXPECTED_READONLY_ROLE], "true", None),
+        ("public", "user_languages", "user_languages_select_own", "r", True,
+         ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
+        ("public", "users", "k2_hosted_acceptance_reader_select_all", "r", True,
+         [EXPECTED_READONLY_ROLE], "true", None),
+        ("public", "users", "users_select_own", "r", True,
+         ["authenticated"], "(( SELECT auth.uid() AS uid) = id)", None),
+    ]
+    if policy_rows != expected_policies:
+        raise ProbeError
+
+    privilege_rows = connection.execute(
+        """WITH expected_relations(schema_name, relation_name) AS (
+               VALUES ('public', 'users'), ('public', 'user_languages'),
+                      ('public', 'user_concept_states'),
+                      ('public', 'v_learner_concept_retrievability'), ('auth', 'users')
+           ), relations AS (
+               SELECT expected.schema_name, expected.relation_name, relation.oid
+               FROM expected_relations AS expected
+               JOIN pg_namespace AS schema ON schema.nspname = expected.schema_name
+               JOIN pg_class AS relation
+                 ON relation.relnamespace = schema.oid
+                AND relation.relname = expected.relation_name
+           ), roles AS (
+               SELECT oid, rolname
+               FROM pg_roles
+               WHERE rolname = ANY(%s)
+           )
+           SELECT relation.schema_name, relation.relation_name, role.rolname,
+                  has_table_privilege(role.oid, relation.oid, 'SELECT'),
+                  has_table_privilege(role.oid, relation.oid, 'INSERT'),
+                  has_table_privilege(role.oid, relation.oid, 'UPDATE'),
+                  has_table_privilege(role.oid, relation.oid, 'DELETE'),
+                  has_table_privilege(role.oid, relation.oid, 'TRUNCATE')
+           FROM relations AS relation CROSS JOIN roles AS role
+           ORDER BY relation.schema_name, relation.relation_name, role.rolname""",
+        ([EXPECTED_READONLY_ROLE, "anon", "authenticated", "service_role"],),
+    ).fetchall()
+    expected_privileges = []
+    for schema_name, relation_name in [
+        ("auth", "users"),
+        ("public", "user_concept_states"),
+        ("public", "user_languages"),
+        ("public", "users"),
+        ("public", "v_learner_concept_retrievability"),
+    ]:
+        for role_name in sorted(expected_role_flags):
+            if schema_name == "auth":
+                flags = (False, False, False, False, False)
+            elif relation_name == "v_learner_concept_retrievability":
+                flags = (role_name == "service_role", False, False, False, False)
+            elif role_name == "service_role":
+                flags = (True, True, True, True, True)
+            elif role_name == EXPECTED_READONLY_ROLE:
+                flags = (True, False, False, False, False)
+            else:
+                flags = (False, False, False, False, False)
+            expected_privileges.append((schema_name, relation_name, role_name, *flags))
+    if privilege_rows != expected_privileges:
+        raise ProbeError
+    return {
+        "fixtureCapabilityReady": True,
+        "authBoundaryUnchanged": True,
+        "learnerOwnerRlsPolicyBaseline": True,
+        "readerSelectOnly": True,
+        "serviceFixtureAndViewAclBaseline": True,
+    }
+
+
+def _k208_catalog_preflight(connection) -> dict[str, Any]:
+    _table_inventory(connection)
+    rows = connection.execute(
+        """SELECT item.id,
+                  ((metrics.token_count + 179) / 180)::integer AS estimated_minutes,
+                  count(DISTINCT linked.concept_id)::integer AS linked_count
+           FROM public.content_items AS item
+           JOIN public.content_metrics AS metrics ON metrics.content_id = item.id
+           JOIN public.proficiency_levels AS level ON level.id = item.curated_level_id
+           JOIN public.source_records AS record ON record.id = item.source_record_id
+           JOIN public.data_sources AS source ON source.id = record.source_id
+           JOIN public.licenses AS license ON license.id = source.license_id
+           JOIN public.content_concepts AS linked ON linked.content_id = item.id
+           WHERE item.language_code = 'en'
+             AND item.publication_status = 'published'
+             AND public.reader_content_passes_publication_gate(item.id)
+           GROUP BY item.id, metrics.token_count
+           HAVING count(DISTINCT linked.concept_id) BETWEEN 1 AND 4"""
+    ).fetchall()
+    eligible = len(rows)
+    five_minute = sum(1 for _, minutes, _ in rows if int(minutes) == 5)
+    return {
+        "eligibleContentCount": eligible,
+        "fiveMinuteRemediationCount": five_minute,
+        "hasNovelControl": eligible >= 3,
+        "sourceRankShapeAvailable": connection.execute(
+            "SELECT to_regclass('public.v_learner_concept_retrievability') IS NOT NULL"
+        ).fetchone()[0] is True,
+    }
+
+
+def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[str, Any]:
+    actor = AuthenticatedActor(actor_id)
+    store = PostgresContentStore("")
+    resolved = store.resolve_profile(connection, actor=actor, requested_id=profile_id)
+    if resolved != profile_id:
+        raise ProbeError
+    summaries = store.list_summaries(
+        actor=actor,
+        language_profile_id=profile_id,
+        boundary=None,
+        limit=20,
+        today_as_of=None,
+        connection=connection,
+    )
+    if len(summaries) > 20:
+        raise ProbeError
+    content_ids = [summary.id for summary in summaries]
+    linked = connection.execute(
+        """SELECT item.id AS content_id,
+                  array_agg(DISTINCT link.concept_id ORDER BY link.concept_id),
+                  count(DISTINCT link.concept_id) FILTER (
+                      WHERE COALESCE(state.status, 'unseen') = 'unseen'
+                  )::integer
+           FROM unnest(%s::uuid[]) AS selected(content_id)
+           JOIN public.content_items AS item ON item.id = selected.content_id
+           LEFT JOIN public.content_concepts AS link ON link.content_id = item.id
+           LEFT JOIN public.user_concept_states AS state
+             ON state.user_id = %s AND state.user_language_id = %s
+            AND state.concept_id = link.concept_id
+           GROUP BY item.id""",
+        (content_ids, actor_id, profile_id),
+    ).fetchall() if content_ids else []
+    by_content = {row[0]: row for row in linked}
+    result = []
+    for summary in summaries:
+        row = by_content.get(summary.id)
+        if row is None:
+            raise ProbeError
+        concept_ids = [] if row[1] is None else [str(value) for value in row[1]]
+        unseen = int(row[2])
+        if len(concept_ids) > 100 or unseen < 0 or unseen > len(concept_ids):
+            raise ProbeError
+        progress = summary.reading_progress
+        result.append({
+            "contentId": str(summary.id),
+            "estimatedMinutes": summary.estimated_minutes,
+            "linkedConceptIds": concept_ids,
+            "unseenCount": unseen,
+            "isSaved": summary.is_saved,
+            "isUnfinished": progress is not None and not progress.is_completed,
+            "isCompleted": progress is not None and progress.is_completed,
+        })
+    state_rows = connection.execute(
+        """SELECT DISTINCT state.concept_id
+           FROM public.user_concept_states AS state
+           JOIN public.content_concepts AS link ON link.concept_id = state.concept_id
+           WHERE state.user_id = %s AND state.user_language_id = %s
+             AND link.content_id = ANY(%s)
+           ORDER BY state.concept_id""",
+        (actor_id, profile_id, content_ids),
+    ).fetchall() if content_ids else []
+    return {
+        "candidates": result,
+        "stateConceptIds": [str(row[0]) for row in state_rows],
+    }
+
+
 def _actor_lineage(connection, actor_id: UUID) -> dict[str, Any]:
     state = connection.execute(
         """SELECT recognition_evidence_count, listening_evidence_count,
@@ -601,8 +890,10 @@ def _today_review_targets(connection, actor_id: UUID) -> dict[str, Any]:
 def main() -> int:
     action = os.environ.get("K2_ACCEPTANCE_PROBE_ACTION", "")
     actor_value = os.environ.get("K2_ACCEPTANCE_ACTOR_ID", "")
+    profile_value = os.environ.get("K2_ACCEPTANCE_PROFILE_ID", "")
     try:
         actor_id = UUID(actor_value) if actor_value else None
+        profile_id = UUID(profile_value) if profile_value else None
         if action not in {
             "retained_snapshot",
             "actor_snapshot",
@@ -611,12 +902,22 @@ def main() -> int:
             "actor_absent",
             "anchor_material",
             "today_review_targets",
+            "k208_fixture_privilege_preflight",
+            "k208_catalog_preflight",
+            "k208_candidate_base",
         }:
             raise ProbeError
         if (
             action in {"actor_snapshot", "actor_lineage", "actor_absent", "today_review_targets"}
             and actor_id is None
         ):
+            raise ProbeError
+        if action == "k208_candidate_base":
+            if actor_id is None or profile_id is None:
+                raise ProbeError
+        elif profile_id is not None:
+            raise ProbeError
+        if action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight"} and actor_id is not None:
             raise ProbeError
 
         with _connection() as connection:
@@ -627,6 +928,12 @@ def main() -> int:
                 _table_inventory(connection)
                 _migration_head(connection)
                 output = _anchor_material(connection)
+            elif action == "k208_fixture_privilege_preflight":
+                output = _k208_fixture_privilege_preflight(connection)
+            elif action == "k208_catalog_preflight":
+                output = _k208_catalog_preflight(connection)
+            elif action == "k208_candidate_base":
+                output = _k208_candidate_base(connection, actor_id, profile_id)
             elif action == "actor_lineage":
                 output = _actor_lineage(connection, actor_id)
             elif action == "today_review_targets":

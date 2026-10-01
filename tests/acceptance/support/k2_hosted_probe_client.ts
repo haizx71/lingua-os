@@ -40,7 +40,10 @@ export type K2ProbeAction =
   | 'today_review_targets'
   | 'migrations'
   | 'actor_absent'
-  | 'anchor_material';
+  | 'anchor_material'
+  | 'k208_fixture_privilege_preflight'
+  | 'k208_catalog_preflight'
+  | 'k208_candidate_base';
 export type K2RetainedSnapshot = {
   readonly tables: Readonly<Record<(typeof EXPECTED_TABLES)[number], {
     readonly rows: number;
@@ -77,6 +80,18 @@ export type K2HostedTodayReviewTargets = Readonly<{
   targetCount: number;
   reviewItemIds: readonly string[];
 }>;
+export type K2HostedCandidateBaseProof = Readonly<{
+  stateConceptIds: readonly string[];
+  candidates: readonly Readonly<{
+    contentId: string;
+    estimatedMinutes: number;
+    linkedConceptIds: readonly string[];
+    unseenCount: number;
+    isSaved: boolean;
+    isUnfinished: boolean;
+    isCompleted: boolean;
+  }>[];
+}>;
 export const K2_APPROVED_APP_MIGRATION_HEAD = '0020' as const;
 const K2_APPROVED_APP_MIGRATION_COUNT = 20 as const;
 export type K2HostedProbeResult =
@@ -84,6 +99,20 @@ export type K2HostedProbeResult =
   | K2HostedAnchorMaterial
   | K2HostedActorLineageProof
   | K2HostedTodayReviewTargets
+  | K2HostedCandidateBaseProof
+  | Readonly<{
+      authBoundaryUnchanged: boolean;
+      fixtureCapabilityReady: boolean;
+      learnerOwnerRlsPolicyBaseline: boolean;
+      readerSelectOnly: boolean;
+      serviceFixtureAndViewAclBaseline: boolean;
+    }>
+  | Readonly<{
+      eligibleContentCount: number;
+      fiveMinuteRemediationCount: number;
+      hasNovelControl: boolean;
+      sourceRankShapeAvailable: boolean;
+    }>
   | {
       readonly appMigrationHead: typeof K2_APPROVED_APP_MIGRATION_HEAD;
       readonly appliedMigrations: typeof K2_APPROVED_APP_MIGRATION_COUNT;
@@ -91,6 +120,82 @@ export type K2HostedProbeResult =
 
 function isSafeCount(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function parseK2HostedCandidateBaseProof(value: unknown): K2HostedCandidateBaseProof {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(['candidates', 'stateConceptIds'])) {
+    throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+  }
+  const candidates = (value as { candidates?: unknown }).candidates;
+  const stateConceptIds = (value as { stateConceptIds?: unknown }).stateConceptIds;
+  if (!Array.isArray(candidates) || candidates.length > 20 || !Array.isArray(stateConceptIds) ||
+      stateConceptIds.length > 80 || stateConceptIds.some(id => typeof id !== 'string' || !UUID_RE.test(id)) ||
+      new Set(stateConceptIds).size !== stateConceptIds.length) {
+    throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+  }
+  const seenContent = new Set<string>();
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate) ||
+        JSON.stringify(Object.keys(candidate).sort()) !== JSON.stringify([
+          'contentId', 'estimatedMinutes', 'isCompleted', 'isSaved', 'isUnfinished',
+          'linkedConceptIds', 'unseenCount',
+        ])) {
+      throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+    }
+    const row = candidate as Record<string, unknown>;
+    if (typeof row.contentId !== 'string' || !UUID_RE.test(row.contentId) || seenContent.has(row.contentId) ||
+        !isSafeCount(row.estimatedMinutes) || row.estimatedMinutes > 1440 ||
+        !Array.isArray(row.linkedConceptIds) || row.linkedConceptIds.length > 100 ||
+        row.linkedConceptIds.some(id => typeof id !== 'string' || !UUID_RE.test(id)) ||
+        new Set(row.linkedConceptIds).size !== row.linkedConceptIds.length ||
+        !isSafeCount(row.unseenCount) || row.unseenCount > row.linkedConceptIds.length ||
+        typeof row.isSaved !== 'boolean' || typeof row.isUnfinished !== 'boolean' ||
+        typeof row.isCompleted !== 'boolean') {
+      throw new Error('K2 hosted acceptance candidate base proof was invalid.');
+    }
+    seenContent.add(row.contentId);
+  }
+  return value as K2HostedCandidateBaseProof;
+}
+
+export function parseK2HostedFixtureCapability(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([
+        'authBoundaryUnchanged', 'fixtureCapabilityReady', 'learnerOwnerRlsPolicyBaseline',
+        'readerSelectOnly', 'serviceFixtureAndViewAclBaseline',
+      ]) || Object.values(value).some(item => typeof item !== 'boolean')) {
+    throw new Error('K2 hosted acceptance fixture privilege proof was invalid.');
+  }
+  return value as {
+    authBoundaryUnchanged: boolean;
+    fixtureCapabilityReady: boolean;
+    learnerOwnerRlsPolicyBaseline: boolean;
+    readerSelectOnly: boolean;
+    serviceFixtureAndViewAclBaseline: boolean;
+  };
+}
+
+export function parseK2HostedCatalogPreflight(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([
+        'eligibleContentCount', 'fiveMinuteRemediationCount', 'hasNovelControl', 'sourceRankShapeAvailable',
+      ])) {
+    throw new Error('K2 hosted acceptance content catalog proof was invalid.');
+  }
+  const row = value as Record<string, unknown>;
+  if (!isSafeCount(row.eligibleContentCount) || !isSafeCount(row.fiveMinuteRemediationCount) ||
+      typeof row.hasNovelControl !== 'boolean' || typeof row.sourceRankShapeAvailable !== 'boolean') {
+    throw new Error('K2 hosted acceptance content catalog proof was invalid.');
+  }
+  return value as {
+    eligibleContentCount: number;
+    fiveMinuteRemediationCount: number;
+    hasNovelControl: boolean;
+    sourceRankShapeAvailable: boolean;
+  };
 }
 
 function parseSnapshot(value: unknown, requireVisibleRetainedLearners: boolean): K2RetainedSnapshot {
@@ -236,6 +341,7 @@ export function buildK2ProbeChildEnvironment(
   databaseUrl: string,
   actorId?: string,
   systemEnv: NodeJS.ProcessEnv = process.env,
+  profileId?: string,
 ): NodeJS.ProcessEnv {
   return {
     PATH: systemEnv.PATH,
@@ -243,6 +349,7 @@ export function buildK2ProbeChildEnvironment(
     K2_STAGING_READONLY_DATABASE_URL: databaseUrl,
     K2_ACCEPTANCE_PROBE_ACTION: action,
     ...(actorId ? { K2_ACCEPTANCE_ACTOR_ID: actorId } : {}),
+    ...(profileId ? { K2_ACCEPTANCE_PROFILE_ID: profileId } : {}),
     ...(process.platform === 'win32' && systemEnv.SystemRoot
       ? { SystemRoot: systemEnv.SystemRoot }
       : {}),
@@ -253,6 +360,7 @@ export async function runK2HostedProbe(
   action: K2ProbeAction,
   databaseUrl: string,
   actorId?: string,
+  profileId?: string,
 ): Promise<K2HostedProbeResult> {
   if (!databaseUrl.trim()) {
     throw new Error('K2 hosted acceptance read-only probe configuration is missing.');
@@ -262,14 +370,20 @@ export async function runK2HostedProbe(
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '')) {
     throw new Error('K2 hosted acceptance actor probe requires a canonical actor identity.');
   }
+  if ((action === 'k208_candidate_base' &&
+       (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '') ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(profileId ?? ''))) ||
+      (action !== 'k208_candidate_base' && profileId !== undefined)) {
+    throw new Error('K2 hosted acceptance candidate probe requires the exact fresh actor and profile binding.');
+  }
   if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' &&
-      action !== 'today_review_targets' && actorId !== undefined) {
+      action !== 'today_review_targets' && action !== 'k208_candidate_base' && actorId !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected actor identity.');
   }
 
   const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
   const probeScript = path.resolve(__dirname, 'k2_hosted_probe.py');
-  const childEnv = buildK2ProbeChildEnvironment(action, databaseUrl, actorId);
+  const childEnv = buildK2ProbeChildEnvironment(action, databaseUrl, actorId, process.env, profileId);
 
   let stdout: string;
   try {
@@ -292,6 +406,9 @@ export async function runK2HostedProbe(
   if (action === 'actor_lineage') return parseK2HostedActorLineage(value);
   if (action === 'today_review_targets') return parseK2HostedTodayReviewTargets(value);
   if (action === 'anchor_material') return parseK2HostedAnchorMaterial(value);
+  if (action === 'k208_candidate_base') return parseK2HostedCandidateBaseProof(value);
+  if (action === 'k208_fixture_privilege_preflight') return parseK2HostedFixtureCapability(value);
+  if (action === 'k208_catalog_preflight') return parseK2HostedCatalogPreflight(value);
   return parseK2HostedMigrationProof(value);
 }
 

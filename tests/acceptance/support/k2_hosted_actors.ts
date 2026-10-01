@@ -346,6 +346,33 @@ export async function createK2HostedActor(
   return { id: created.id, email, password, ownership };
 }
 
+/** Revalidates the exact current-process actor and server-owned run marker before fixture access. */
+export async function verifyK2FreshActorOwnership(
+  config: K2HostedConfig,
+  actor: K2HostedActor,
+  admin: K2AdminClient,
+  now = Date.now(),
+): Promise<void> {
+  if (!exactTargetOwner(actor.ownership, config) ||
+      actor.ownership.runId !== config.githubRunId ||
+      actor.ownership.runAttempt !== config.githubRunAttempt ||
+      !actorEmailMatches({ email: actor.email } as User, actor.ownership)) {
+    throw new Error('K2 hosted acceptance fixture actor binding was not current-run owned.');
+  }
+  const expiry = validateExpiry(actor.ownership);
+  if (expiry.expires <= now) {
+    throw new Error('K2 hosted acceptance fixture actor binding expired.');
+  }
+  let fetched;
+  try { fetched = await admin.auth.admin.getUserById(actor.id); }
+  catch { throw new Error('K2 hosted acceptance fixture actor ownership could not be revalidated.'); }
+  const user = fetched.data?.user;
+  if (fetched.error || !user || user.id !== actor.id ||
+      !ownershipMatches(user, actor.ownership, actor.email)) {
+    throw new Error('K2 hosted acceptance fixture actor ownership could not be revalidated.');
+  }
+}
+
 async function rollbackFreshActor(
   admin: K2AdminClient,
   userId: string,
@@ -587,6 +614,7 @@ async function deleteExactMarkedUser(
   user: User,
   ownership: K2ActorOwnership,
 ): Promise<void> {
+  validateExpiry(ownership);
   if (!user.email || !actorEmailMatches(user, ownership)) {
     throw new Error('K2 hosted acceptance cleanup refused an actor whose reserved address did not match.');
   }
@@ -816,6 +844,7 @@ export async function cleanupK2Actor(
   ) {
     throw new Error('K2 hosted acceptance cleanup refused an actor outside the current staging mark.');
   }
+  validateExpiry(actor.ownership);
   if (learner) {
     try {
       await learner.auth.signOut({ scope: 'global' });
@@ -850,6 +879,7 @@ export async function cleanupFreshK2HostedActorIdentity(
   ) {
     throw new Error('K2 hosted acceptance refused fresh-identity cleanup outside the current run.');
   }
+  validateExpiry(identity.ownership);
   let current;
   try { current = await admin.auth.admin.getUserById(identity.id); }
   catch { throw new Error('K2 hosted acceptance fresh-identity cleanup could not re-check Auth.'); }
@@ -862,8 +892,8 @@ export async function cleanupFreshK2HostedActorIdentity(
   }
   const user = current.data?.user;
   if (current.error || !user || user.id !== identity.id || user.email !== identity.email ||
-      !actorEmailMatches(user, identity.ownership)) {
-    throw new Error('K2 hosted acceptance fresh-identity cleanup refused a changed UUID/email pair.');
+      !ownershipMatches(user, identity.ownership, identity.email)) {
+    throw new Error('K2 hosted acceptance fresh-identity cleanup refused changed Auth ownership.');
   }
   try {
     const deleted = await admin.auth.admin.deleteUser(identity.id);

@@ -385,3 +385,135 @@ def test_today_review_targets_probe_fails_closed_on_invalid_or_unbounded_plan_ro
         probe._today_review_targets(
             InvalidPlanConnection(), UUID("550e8400-e29b-41d4-a716-446655440000")
         )
+
+
+class K208PrivilegeConnection(InventoryConnection):
+    def __init__(self, drift: str | None = None):
+        super().__init__()
+        self.drift = drift
+
+    def execute(self, query: Any, params: Any = None) -> Result:
+        statement = str(query)
+        if "SELECT rolname, rolsuper, rolcreatedb" in statement:
+            flags = {
+                "anon": (False, False, False, False, False, False, True),
+                "authenticated": (False, False, False, False, False, False, True),
+                probe.EXPECTED_READONLY_ROLE: (False, False, False, False, False, True, False),
+                "service_role": (False, False, False, False, True, False, True),
+            }
+            if self.drift == "service_bypass":
+                flags["service_role"] = (False, False, False, False, False, False, True)
+            return Result(rows=[(name, *flags[name]) for name in sorted(flags)])
+        if "CROSS JOIN pg_namespace AS schema" in statement:
+            flags = {
+                ("anon", "auth"): (True, False),
+                ("anon", "public"): (False, False),
+                ("authenticated", "auth"): (True, False),
+                ("authenticated", "public"): (False, False),
+                (probe.EXPECTED_READONLY_ROLE, "auth"): (False, False),
+                (probe.EXPECTED_READONLY_ROLE, "public"): (True, False),
+                ("service_role", "auth"): (True, False),
+                ("service_role", "public"): (True, False),
+            }
+            return Result(rows=[(role, schema, *values) for (role, schema), values in sorted(flags.items())])
+        if "FROM aclexplode" in statement:
+            rows = [("auth", False), ("public", False)]
+            if self.drift == "public_auth_schema_grant":
+                rows[0] = ("auth", True)
+            return Result(rows=rows)
+        if "WITH expected_relations(schema_name, relation_name, relation_kind" in statement:
+            return Result(rows=[
+                ("auth", "users", "r", "supabase_auth_admin", True, False,
+                 "r", "supabase_auth_admin", True, False, 0),
+                ("public", "user_concept_states", "r", "postgres", True, False,
+                 "r", "postgres", True, False, 2),
+                ("public", "user_languages", "r", "postgres", True, False,
+                 "r", "postgres", True, False, 2),
+                ("public", "users", "r", "postgres", True, False,
+                 "r", "postgres", True, False, 2),
+                ("public", "v_learner_concept_retrievability", "v", "postgres", False, False,
+                 "v", "postgres", False, False, 0),
+            ])
+        if "policy.polname, policy.polcmd" in statement:
+            rows = [
+                ("public", "user_concept_states", "k2_hosted_acceptance_reader_select_all", "r", True,
+                 [probe.EXPECTED_READONLY_ROLE], "true", None),
+                ("public", "user_concept_states", "user_concept_states_select_own", "r", True,
+                 ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
+                ("public", "user_languages", "k2_hosted_acceptance_reader_select_all", "r", True,
+                 [probe.EXPECTED_READONLY_ROLE], "true", None),
+                ("public", "user_languages", "user_languages_select_own", "r", True,
+                 ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
+                ("public", "users", "k2_hosted_acceptance_reader_select_all", "r", True,
+                 [probe.EXPECTED_READONLY_ROLE], "true", None),
+                ("public", "users", "users_select_own", "r", True,
+                 ["authenticated"], "(( SELECT auth.uid() AS uid) = id)", None),
+            ]
+            if self.drift == "policy_with_check":
+                rows[-1] = (*rows[-1][:-1], "true")
+            return Result(rows=rows)
+        if "WITH expected_relations(schema_name, relation_name)" in statement:
+            rows = []
+            for schema_name, relation_name in [
+                ("auth", "users"),
+                ("public", "user_concept_states"),
+                ("public", "user_languages"),
+                ("public", "users"),
+                ("public", "v_learner_concept_retrievability"),
+            ]:
+                for role_name in ("anon", "authenticated", probe.EXPECTED_READONLY_ROLE, "service_role"):
+                    if schema_name == "auth":
+                        flags = (False, False, False, False, False)
+                    elif relation_name == "v_learner_concept_retrievability":
+                        flags = (role_name == "service_role", False, False, False, False)
+                    elif role_name == "service_role":
+                        flags = (True, True, True, True, True)
+                    elif role_name == probe.EXPECTED_READONLY_ROLE:
+                        flags = (True, False, False, False, False)
+                    else:
+                        flags = (False, False, False, False, False)
+                    rows.append((schema_name, relation_name, role_name, *flags))
+            if self.drift == "reader_auth_access":
+                index = next(
+                    index for index, row in enumerate(rows)
+                    if row[:3] == ("auth", "users", probe.EXPECTED_READONLY_ROLE)
+                )
+                rows[index] = (*rows[index][:3], True, False, False, False, False)
+            if self.drift == "reader_view_access":
+                index = next(
+                    index for index, row in enumerate(rows)
+                    if row[:3] == ("public", "v_learner_concept_retrievability", probe.EXPECTED_READONLY_ROLE)
+                )
+                rows[index] = (*rows[index][:3], True, False, False, False, False)
+            return Result(rows=rows)
+        return super().execute(query, params)
+
+
+def test_k208_privilege_preflight_attests_the_fixed_metadata_baseline_only() -> None:
+    connection = K208PrivilegeConnection()
+
+    assert probe._k208_fixture_privilege_preflight(connection) == {
+        "fixtureCapabilityReady": True,
+        "authBoundaryUnchanged": True,
+        "learnerOwnerRlsPolicyBaseline": True,
+        "readerSelectOnly": True,
+        "serviceFixtureAndViewAclBaseline": True,
+    }
+    assert all("FROM auth.users" not in query for query in connection.calls)
+    assert all("FROM public.users" not in query for query in connection.calls)
+    assert all("FROM public.user_concept_states" not in query for query in connection.calls)
+
+
+@pytest.mark.parametrize(
+    "drift",
+    [
+        "service_bypass",
+        "public_auth_schema_grant",
+        "policy_with_check",
+        "reader_auth_access",
+        "reader_view_access",
+    ],
+)
+def test_k208_privilege_preflight_fails_closed_on_boundary_drift(drift: str) -> None:
+    with pytest.raises(probe.ProbeError):
+        probe._k208_fixture_privilege_preflight(K208PrivilegeConnection(drift))

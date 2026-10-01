@@ -10,7 +10,7 @@ import {
 import { k2RetainedTableNames, type K2HostedActorLineageProof, type K2RetainedSnapshot } from './k2_hosted_probe_client';
 
 function id(index: number): string {
-  return `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`;
+  return `opaque-${index.toString(16).padStart(32, '0')}`;
 }
 
 function snapshot(overrides: Readonly<Record<string, number>> = {}, changedToday = false): K2RetainedSnapshot {

@@ -4,7 +4,10 @@ import {
   k2HostedWaveCheckpoint,
   markK2HostedCheckpoint,
   markK2HostedFinalizerComplete,
+  createK2OpaqueIdProjector,
+  normalizeK2WaveRequest,
   runK2ProtectedAuthUiSignIn,
+  verifyK2FixtureZeroRowHead,
   type K2ProtectedAuthUiInteractions,
   type K2ProtectedAuthUiResponse,
 } from './k2_hosted_runner';
@@ -79,7 +82,8 @@ describe('K2 hosted phase diagnostics', () => {
   it('keeps the due-only subcase on its own closed checkpoint', () => {
     expect(k2HostedWaveCheckpoint('K2-07')).toBe('wave_k2_07');
     expect(k2HostedWaveCheckpoint('K2-08-DUE-ONLY')).toBe('wave_k2_08_due_only');
-    expect(() => k2HostedWaveCheckpoint('K2-08' as never)).toThrow('wave is not implemented');
+    expect(k2HostedWaveCheckpoint('K2-08')).toBe('wave_k2_08');
+    expect(() => k2HostedWaveCheckpoint('invalid' as never)).toThrow('wave is not implemented');
   });
 
   it('rejects an unlisted phase without logging or retaining its value', () => {
@@ -125,6 +129,82 @@ describe('K2 hosted phase diagnostics', () => {
       expect(failedTestInfo.annotations).toEqual([]);
     }
     expect(log).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('K2 hosted wave request boundary', () => {
+  const ids = createK2OpaqueIdProjector(() => '00000000-0000-4000-8000-000000000099');
+  const reviewId = '00000000-0000-4000-8000-000000000001';
+  const profileId = '00000000-0000-4000-8000-000000000002';
+  const profiles = { primary: profileId } as const;
+
+  it('accepts only the fixed GET projections without request bodies or arbitrary options', () => {
+    expect(normalizeK2WaveRequest('primary', profiles, ids,
+      '/v1/today?languageProfileId=actor:primary', {})).toMatchObject({
+      route: `/v1/today?languageProfileId=${profileId}`,
+      options: { method: 'GET' },
+    });
+    for (const options of [
+      { body: { actorId: 'private-actor-marker' } },
+      { idempotencyKey: 'unexpected-key' },
+      { authorization: 'Bearer private-token-marker' },
+    ]) {
+      expect(() => normalizeK2WaveRequest('primary', profiles, ids,
+        '/v1/today?languageProfileId=actor:primary', options as never)).toThrow();
+    }
+    expect(() => normalizeK2WaveRequest('primary', profiles, ids,
+      '/v1/today?languageProfileId=actor:primary&languageProfileId=actor:observer', {})).toThrow();
+  });
+
+  it('rejects body or idempotency data on read routes and Library writes', () => {
+    const cases = [
+      ['/v1/dictionary/search?languageCode=en&limit=100&query=a', { idempotencyKey: 'x' }],
+      ['/v1/concepts/k2-anchor', { body: {} }],
+      ['/v1/library/concepts/k2-anchor', { method: 'PUT', idempotencyKey: 'x' }],
+      ['/v1/review/queue?languageProfileId=actor:primary', { idempotencyKey: 'x' }],
+    ] as const;
+    for (const [route, options] of cases) {
+      expect(() => normalizeK2WaveRequest('primary', profiles, ids, route, options))
+        .toThrow('unapproved');
+    }
+  });
+
+  it('allows only a bounded answer payload on a runner-mapped Review item', () => {
+    ids.bind('review-one', reviewId);
+    expect(normalizeK2WaveRequest('primary', profiles, ids, '/v1/review/review-one/answer', {
+      method: 'POST',
+      idempotencyKey: 'k2-replay-answer',
+      body: { correct: false, exerciseMode: 'self_recall', rating: 'again', responseTimeMs: 900 },
+    })).toMatchObject({ route: `/v1/review/${reviewId}/answer`, options: { method: 'POST' } });
+    expect(() => normalizeK2WaveRequest('primary', profiles, ids, '/v1/review/review-one/answer', {
+      method: 'POST',
+      idempotencyKey: 'k2-replay-answer',
+      body: { actorId: reviewId, correct: false, exerciseMode: 'self_recall', rating: 'again', responseTimeMs: 900 },
+    })).toThrow('Review answer payload');
+  });
+});
+
+describe('K2 hosted zero-row fixture probe', () => {
+  it('uses the pinned relation, HEAD, and a formal limit=0 request without returning rows or counts', async () => {
+    const limit = vi.fn(async (value: number) => ({ data: null, error: null, status: 200, count: null, limit: value }));
+    const select = vi.fn((_columns: string, options: { head: boolean }) => ({ limit }));
+    const from = vi.fn((_table: string) => ({ select }));
+    await expect(verifyK2FixtureZeroRowHead({ from } as never)).resolves.toBeUndefined();
+    expect(from).toHaveBeenCalledExactlyOnceWith('user_concept_states');
+    expect(select).toHaveBeenCalledExactlyOnceWith('id', { head: true });
+    expect(limit).toHaveBeenCalledExactlyOnceWith(0);
+  });
+
+  it('fails closed if the HEAD request returns any body or a count', async () => {
+    for (const result of [
+      { data: [], error: null, status: 200, count: null },
+      { data: null, error: null, status: 200, count: 0 },
+    ]) {
+      const client = {
+        from: () => ({ select: () => ({ limit: async () => result }) }),
+      };
+      await expect(verifyK2FixtureZeroRowHead(client as never)).rejects.toThrow('HEAD limit=0');
+    }
   });
 });
 
