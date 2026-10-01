@@ -390,6 +390,14 @@ def build_preview(pack: dict[str, Any], snapshot: dict[str, Any]) -> dict[str, A
     if approval.get("publication_authorized") is not False:
         violations.append("publication_authorized must remain false during preview")
 
+    staging_owner_approved = (
+        approval.get("approval_reference") == "PR #38"
+        and approval.get("approved_on") == "2026-10-01"
+        and approval.get("scope") == "staging_hosted_acceptance_only"
+        and approval.get("editorial_review") == "approved_by_owner_2026-10-01_staging_only"
+        and approval.get("rights_review") == "approved_by_owner_2026-10-01_staging_only"
+    )
+
     preview_items = [
         _preview_item(
             items_by_id[item_id],
@@ -424,7 +432,14 @@ def build_preview(pack: dict[str, Any], snapshot: dict[str, Any]) -> dict[str, A
         "candidate_status": pack.get("candidate_status"),
         "preview_only": True,
         "publication_authorized": False,
-        "publication_status": "blocked_pending_human_editorial_and_rights_approval",
+        "owner_approval_scope": (
+            "staging_hosted_acceptance_only" if staging_owner_approved else "unverified_or_pending"
+        ),
+        "publication_status": (
+            "blocked_pending_exact_hash_independent_review_and_authorized_admin_execution"
+            if staging_owner_approved
+            else "blocked_pending_human_editorial_and_rights_approval"
+        ),
         "dry_run_scope": "production_Admin_DTO_and_Reader_matcher_only; no_database_catalog_or_actor_probe",
         "matcher_policy": POLICY_VERSION,
         "approved_catalog_snapshot": {

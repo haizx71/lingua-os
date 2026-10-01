@@ -4,7 +4,7 @@
 
 This packet contains exactly three original English Reader article candidates for the staging competitor-matrix fixture: one novel control (`N`), one weak remediation (`W`), and one forgotten remediation (`F`). It is not a publication packet. The approved public English catalog snapshot is source SHA `5e44412d4afd3bc1a8939182f780b175ae71e9f8`; it contains 99 approved forms across 94 concepts and excludes Auth and learner data.
 
-Authoring history: initial AI-assisted draft with **GPT-6 Luna / Medium**, followed by an independent bounded prose revision with **GPT-6 Luna / Max**. Human English editorial review and rights/provenance approval remain pending. No external text or corpus was used. Publication is not authorized.
+Authoring history: original AI-assisted draft with **GPT-6 Luna / Medium**, followed by bounded prose revision with **GPT-6 Luna / Max**. The current metadata application and production-backed preview worker is **GPT-6 Luna / Max**. On 2026-10-01, the project owner approved the exact PR #38 N/W/F article bodies and A1/A2/B1 placement, together with the four metadata values below, for staging/hosted acceptance only. No external text or corpus was used. This approval does not authorize public or production publication; publication remains unauthorized pending exact-hash independent review and the normal authorized Admin execution gate.
 
 ## Candidate sequence
 
@@ -34,13 +34,13 @@ The ordering N < W < F is a catalog-fit prediction from configured ranks and lev
 - **W — “Coffee, Carefully Noticed”** (A2; Weak remediation): Jo revisits coffee through varied cup and setting contexts; the prose does not claim a learner outcome.
 - **F — “Water Along the Hill Path”** (B1; Forgotten remediation): Linh follows a town water route and garden use, revisiting water without claiming recovery.
 
-The curated level sequence is A1 → A2 → B1. The preview proves deterministic catalog matching and bounded candidate structure only. Human editorial and rights approval remain required before any publication.
+The curated level sequence is A1 → A2 → B1. The preview proves deterministic catalog matching and bounded candidate structure only. The owner has approved the exact article text, levels, and proposed metadata for staging/hosted acceptance only; exact-hash review and normal Admin authorization remain required before publication.
 
-## Proposed publication metadata after owner approval
+## Owner-approved staging metadata (PR #38, approved 2026-10-01)
 
-The following values are a proposal only. They are not approved now and do not change the candidate DTO. `source_version` remains `k208-minimal-content-pack-v1`; article titles, bodies, and levels remain as shown below.
+The project owner approved exactly these four values for all three DTOs for staging/hosted acceptance only. They are now applied. `source_version` remains `k208-minimal-content-pack-v1`; article titles, bodies, levels, and mapped targets remain unchanged. Applied content-pack SHA256: `5eb2d97d94f6288f6195c22cf9ae87d7e912ce09dc9b97e4eab626620fa4a679`. This scope does not authorize publication; the applied hash still requires independent review and the normal authorized Admin execution gate.
 
-After independent review and explicit owner approval, Commander automation may apply exactly these four approved fields to each article. The owner reviews and approves the proposal; the owner does not manually write metadata rows. After automation applies the approved values, rerun preview and independent review against the new DTO hash before using Admin validate or publish.
+These exact values are already applied to each article DTO under the project owner's 2026-10-01 PR #38 staging-only approval. The owner does not manually write metadata rows. The metadata-applied hash requires its own independent review and the normal authorized Admin execution path before any hosted action; no Admin content write has occurred.
 
 | Field | Proposed value for each article |
 |---|---|
@@ -49,7 +49,7 @@ After independent review and explicit owner approval, Commander automation may a
 | `attribution_text` | `LINGUA OS original first-party article. AI-assisted drafting, reviewed by the project owner for staging Reader use.` |
 | `rights_statement` | `Original AI-assisted first-party text; owner-approved use in LINGUA OS staging Reader. No external text was reused.` |
 
-These values remain pending human editorial and rights approval. No metadata automation, validation, or publication is authorized before those approvals.
+Owner editorial and rights approval for these exact values is recorded on 2026-10-01 for staging/hosted acceptance only. `publication_authorized` remains false. No Admin create, validate, or publish action and no hosted content write is claimed.
 
 ## Complete article text
 
@@ -204,7 +204,11 @@ table. She thinks about the path the water takes before it reaches her.
 
 ## Approval status
 
-- Human English editorial review: **pending**.
-- Rights/provenance review: **pending**; first-party authorship is a candidate claim until the owner records approval.
-- Publication: **not authorized**.
-- Next gate: owner editorial and rights approval before any publication.
+- Human editorial review: project owner approved the exact PR #38 N/W/F bodies and A1/A2/B1 placement on 2026-10-01 for staging/hosted acceptance only.
+- Rights/provenance review: project owner approved the four exact metadata values above on 2026-10-01 for staging/hosted acceptance only.
+- Approval source: PR #38. The applied DTO content-pack SHA256 is `5eb2d97d94f6288f6195c22cf9ae87d7e912ce09dc9b97e4eab626620fa4a679`.
+- Historical independent review: PASS with no HIGH/BLOCKER content issue for the prior exact input set only: content pack `b9530370b2626205bd872b48af51ebeb25547e24f41be46654da6f478019760b`, editorial preview `c830dca6ac73985ad97518ab88a58e310e590eb5735de5ad41527fcafbf03373`, and catalog snapshot `ae28bd4b1e2fa0617f11ddc8a0bfd01a38e3bb2ed35d83a5a051abf7dc3e0d07`. That disposition does not review or certify the metadata-applied hash.
+- Independent review of the metadata-applied hash: pending.
+- Publication: **not authorized**; no actual hosted create, validation, publication, or catalog change is claimed.
+- Execution: normal owner-authorized Admin path remains blocked. A read-only Admin GET returned an access-denied page; no hosted write was attempted.
+- Next gate: independent review of the new exact hashes, then the authorized Admin execution path and actorless catalog preflight. Actors remain gated on the complete catalog-only check.

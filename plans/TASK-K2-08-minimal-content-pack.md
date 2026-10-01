@@ -1,6 +1,6 @@
 # TASK-K2-08 — Minimal First-Party Reader Pack
 
-Status: **PREVIEW ONLY — NOT APPROVED FOR HOSTED WRITES OR PUBLICATION**
+Status: **OWNER APPROVAL FOR STAGING-ONLY ACCEPTANCE RECORDED — PREVIEW ONLY; NO HOSTED WRITES OR PUBLICATION**
 Base source: `5e44412d4afd3bc1a8939182f780b175ae71e9f8`
 Scope: three first-party English Reader articles to unblock the K2-08 catalog gate.
 
@@ -8,9 +8,11 @@ Scope: three first-party English Reader articles to unblock the K2-08 catalog ga
 
 Create one novel control (`N`), one weak remediation candidate (`W`), and one forgotten
 remediation candidate (`F`) using the existing Admin content path. Preserve the approved
-Reader matcher, publication gate, learner state, Auth, and schema. Do not create actors or
-start hosted K2-08 until the actorless catalog gate passes and the content has separate
-human editorial and rights approval.
+Reader matcher, publication gate, learner state, Auth, and schema. The project owner has
+approved the exact PR #38 article text, levels, and four metadata values for staging/hosted
+acceptance only. Do not write hosted content until the metadata-applied hashes pass separate
+independent review and root confirms the normal authorized Admin path. Do not create actors
+until the exact actorless catalog gate passes.
 
 Current source and migration gates are already recorded as passing in `STATUS.md`. The
 full hosted gate remains blocked: the last recorded run stopped at
@@ -48,11 +50,11 @@ each article; packet metadata alone is not publication proof.
 
 ## Current local artifacts
 
-- `knowledge/staging/k208-minimal-content-pack/content-pack.json` — first-party candidate
-  packet; approval metadata must remain pending until a human approves the exact final
-  content and rights claims.
-- `knowledge/staging/k208-minimal-content-pack/editorial-preview.md` — author-owned
-  human-readable editorial packet.
+- `knowledge/staging/k208-minimal-content-pack/content-pack.json` — owner-approved
+  staging/hosted-acceptance candidate; exact approval is recorded in its manifest.
+  publication_authorized remains false.
+- `knowledge/staging/k208-minimal-content-pack/editorial-preview.md` — human-readable
+  article packet and staging-only owner-approval record.
 - `knowledge/staging/k208-minimal-content-pack/catalog-match-snapshot.json` — approved
   public-only snapshot with 99 forms across 94 concepts at the base SHA above; no Auth or
   learner data.
@@ -64,10 +66,9 @@ each article; packet metadata alone is not publication proof.
 
 ## Current local candidate evidence
 
-The final preview packet is frozen at SHA256
-`b9530370b2626205bd872b48af51ebeb25547e24f41be46654da6f478019760b`. The
-production-backed preview passes with zero violations against the approved snapshot at
-`ae28bd4b1e2fa0617f11ddc8a0bfd01a38e3bb2ed35d83a5a051abf7dc3e0d07`:
+The owner-approved staging candidate now applies exactly the four PR #38 metadata values to all three DTOs. The immutable article/title/level/source-version/target projection SHA256 remains 175e6b6acb78e15986f94d0b7f8ab14bcc4ab47fca614c09987ac8563d7d9642.
+
+The production-backed preview passes with zero violations against the approved public catalog snapshot:
 
 | Item | Level | Tokens | Sentences | Minutes | Concepts | Annotations | Target matches |
 |---|---:|---:|---:|---:|---|---:|---:|
@@ -75,81 +76,55 @@ production-backed preview passes with zero violations against the approved snaps
 | W | A2 | 876 | 69 | 5 | coffee, in, on | 76 | 35 coffee |
 | F | B1 | 859 | 74 | 5 | water, in, on | 76 | 49 water |
 
-Every sentence has at least one approved match; per-sentence concept counts stay within
-four. A strict audit verified exact UTF-16 source slices and non-overlap for all 234
-annotations across 215 sentences. W and F targets occur only in their own items. The
-editorial preview contains the complete final article bodies and the proposed metadata
-block. The frozen artifacts are:
+All 215 sentences have a match; all 234 UTF-16 spans are exact, on code-point boundaries, and non-overlapping. W and F targets occur only in their own items. The frozen current artifacts are:
 
-- content pack: SHA256 `b9530370b2626205bd872b48af51ebeb25547e24f41be46654da6f478019760b`;
-- editorial preview: SHA256 `c830dca6ac73985ad97518ab88a58e310e590eb5735de5ad41527fcafbf03373`;
-- approved public catalog snapshot: SHA256
-  `ae28bd4b1e2fa0617f11ddc8a0bfd01a38e3bb2ed35d83a5a051abf7dc3e0d07`;
-- preview result: SHA256 `88dd92405d41df4295472c33d892dc981d1b3feefa8443ca6a40b47d9d6e9233`.
+- content pack: SHA256 5eb2d97d94f6288f6195c22cf9ae87d7e912ce09dc9b97e4eab626620fa4a679;
+- editorial preview: SHA256 039503232d8a310a97d7de819fe544b785c070cd5dda767fc2595dc4690c41ed;
+- approved public catalog snapshot: SHA256 ae28bd4b1e2fa0617f11ddc8a0bfd01a38e3bb2ed35d83a5a051abf7dc3e0d07;
+- preview result: SHA256 9b47705593bab7c942e1eefac28d51d368bd01cf1f96a9ab9035a77cf64de170.
 
-The result binds those three input hashes, reports `dry_run_pass: true`,
-`publication_authorized: false`, and `fresh_actor_baseline.proven: false`. A static
-catalog-fit calculation predicts N → W → F under the exact-three-row and fresh-profile
-assumptions described below. This is not a live catalog check, selector execution, or
-actual fresh-actor baseline.
+The result binds those three input hashes, reports dry_run_pass true, publication_authorized false, owner_approval_scope staging_hosted_acceptance_only, and fresh_actor_baseline.proven false. N → W → F remains a static catalog-fit prediction only, not a live selector result or actor baseline.
 
-The independent Max editorial review is still required for these exact content-pack and
-editorial-preview hashes. Neither the structural pass nor the catalog-fit prediction
-authorizes validation, publication, or actor creation.
+Historical independent review: the reviewer reported PASS with no HIGH/BLOCKER content issue for the prior exact input set only: content pack b9530370b2626205bd872b48af51ebeb25547e24f41be46654da6f478019760b, editorial preview c830dca6ac73985ad97518ab88a58e310e590eb5735de5ad41527fcafbf03373, and snapshot ae28bd4b1e2fa0617f11ddc8a0bfd01a38e3bb2ed35d83a5a051abf7dc3e0d07. That disposition is retained as historical exact-input evidence; it does not review the metadata-applied hashes above. A separate review of the current hashes is pending. No hosted write, validation, publication, actor creation, or live selector run has occurred.
 
 ## Human approval gate
 
-The authored articles are AI-assisted candidates. Human English editorial review and
-rights/provenance approval are required before any Admin validation or publication. The
-owner approval must cover the exact article text and the four proposed post-approval values
-in `editorial-preview.md`, bound to the content-pack SHA256
-`b9530370b2626205bd872b48af51ebeb25547e24f41be46654da6f478019760b` and editorial-preview
-SHA256 `c830dca6ac73985ad97518ab88a58e310e590eb5735de5ad41527fcafbf03373`. The current
-DTO metadata remains explicitly pending and is not approved for publication.
+The project owner explicitly approved PR #38 on 2026-10-01. Approval covers the exact N/W/F article bodies, A1/A2/B1 placement, and these four metadata values for staging/hosted acceptance only:
 
-After that exact approval, the authorized executor may apply only the four approved
-`author_name`, `source_name`, `attribution_text`, and `rights_statement` values to the
-three DTOs; `source_version` remains `k208-minimal-content-pack-v1`. That exact preapproved
-metadata transition does not require a second owner editorial approval. It does change the
-content-pack hash, so the executor must rerun the production-backed preview and obtain a
-separate review of the new exact hash before Admin validation or publication. Any change
-to article text or deviation from the approved metadata proposal requires renewed owner
-approval.
+- author_name: LINGUA OS Editorial (AI-assisted)
+- source_name: LINGUA OS First-Party Reader
+- attribution_text: LINGUA OS original first-party article. AI-assisted drafting, reviewed by the project owner for staging Reader use.
+- rights_statement: Original AI-assisted first-party text; owner-approved use in LINGUA OS staging Reader. No external text was reused.
 
-`AdminContentApplication.validate_content` automatically marks a clean source record
-`approved` and its content item `reviewed`. It checks that rights and attribution fields
-are present, but does not establish that a human actually approved the text or that the
-rights claims are true. Do not call it while the packet still says review is pending, and
-do not use non-empty placeholder metadata to cross that state transition.
+These values are now applied to each DTO. source_version remains k208-minimal-content-pack-v1; titles, levels, article bodies, and mapped targets are unchanged. This approval is restricted to staging/hosted acceptance and does not authorize public or production publication.
+
+The historical independent review covers only the earlier frozen hash set listed above. The metadata-applied content-pack and editorial-preview hashes require a separate independent review before any hosted Admin create/validate/publish action. publication_authorized remains false until the exact current hashes have been reviewed and root confirms the normal authorized Admin execution gate.
+
+AdminContentApplication.validate_content automatically marks a clean source record approved and its content item reviewed. It checks that rights and attribution fields are present, but does not establish that the owner authorized a different scope or that rights claims are true. Do not call it before the current exact-hash review and authorized Admin gate. No second owner approval is needed for the exact four values already approved; any deviation from them or any change to story text, title, level, source version, or target mapping requires renewed owner approval.
 
 ## Authorization and safe execution path
 
-The existing HTTP boundary is `POST /v1/admin/content`, followed by the normal
-`POST /v1/admin/content/{contentId}/validate` and `/publish` operations. Every route checks
-a verified Supabase actor JWT and the server-side `LINGUA_ADMIN_USER_IDS` allowlist. The
-existing `/admin/content/new` and content-detail UI use these routes.
+The existing HTTP boundary is POST /v1/admin/content, followed by the normal
+POST /v1/admin/content/{contentId}/validate and /publish operations. Every route checks
+a verified Supabase actor JWT and the server-side LINGUA_ADMIN_USER_IDS allowlist. The
+existing /admin/content/new and content-detail UI use these routes.
 
-No unattended authorized execution path is currently established. `AdminContentApplication`
-methods themselves take a database URL and do not enforce the HTTP actor/owner policy, so
-calling them directly from a local script would bypass that boundary. The current local
-process has a `DATABASE_URL`, but its fixed capability check did not match the staging
-pooler and strict TLS verification settings; it did not connect. Existing hosted workflow
-database access is read-only. Do not copy or mint an owner JWT, use a service-role key as
-an Admin actor, change the owner allowlist/grants/secrets, or call the application directly
-until a reviewer accepts a narrowly scoped trusted control plane.
+No normal owner-authorized Admin execution path is currently established. The fixed local
+database capability check did not match the staging pooler and strict TLS verification
+settings, so it did not connect. Existing hosted workflow database access is read-only.
+Do not copy or mint an owner JWT, use a service-role key as an Admin actor, change the
+owner allowlist/grants/secrets, or call AdminContentApplication directly: its methods do
+not enforce the HTTP actor/owner policy.
 
-The desktop browser check could not load its request-header policy, so it did not inspect
-tabs or session state and did not establish an authorized Admin UI session. If a normal
-owner-authorized UI session is available later, use only the existing Admin HTTP path. If
-it is not, stop at the human approval gate; no alternate execution path is accepted in this
-plan. No credential entry or extraction is part of this plan.
+A read-only Codex IAB Admin GET returned an access-denied page (Bạn không có quyền thực hiện thao tác này.). No learner page was opened and no hosted write was attempted. This did not establish an authorized Admin session. Keep the execution gate closed until root confirms a normal owner-authorized Admin path. No credential entry or extraction is part of this plan.
 
 ## Actorless catalog gate before actor creation
 
-The existing `_k208_catalog_preflight` checks aggregate eligibility counts and availability
-of the learner-retrievability view. It does not prove that the exact pack forms the full
-N/W/F matrix. Before any actor is created, an existing read-only staging probe must prove
-all of the following using catalog tables only:
+The latest root-reported read-only Supabase evidence is migration head 0020 and zero
+eligible published K2-08 English Reader items. The existing `_k208_catalog_preflight` checks aggregate eligibility counts and availability of the learner-retrievability view; it does
+not prove that the exact pack forms the full N/W/F matrix. After authorized staging writes,
+but before any actor is created, an existing read-only staging probe must prove all of the
+following using catalog tables only:
 
 1. The global eligible English Reader catalog contains exactly the three intended pack
    items (the verified pre-change eligible count is zero); all three pass
@@ -185,13 +160,13 @@ all four actors.
 
 ## Conditional publication sequence
 
-Proceed only after separate Max review, exact-hash human editorial/rights approval of the
-article text and proposed metadata, and root authorization of the execution path:
+Proceed only after a separate Max review accepts the exact metadata-applied hashes and
+root confirms the normal authorized Admin execution path. The owner approval for the exact
+PR #38 text and metadata is already recorded and staging-only:
 
-1. After owner approval, apply only the four exact metadata values already approved in the
-   proposal. Rerun the production-backed preview against the changed DTO hash and obtain a
-   separate review of that exact hash. Stop if any article or metadata field differs from
-   the approved packet/proposal.
+1. Confirm the four already-approved metadata values and exact preview hashes. Do not
+   change article text, title, level, source version, or mapped targets. Stop if any field
+   differs from the owner-approved PR #38 packet.
 2. Before the first hosted content write, take the existing retained learner-state
    snapshot in memory through the read-only probe. Record only table counts/hashes, never
    rows, actor UUIDs, or Auth data.
@@ -201,9 +176,10 @@ article text and proposed metadata, and root authorization of the execution path
    not blindly repeat POST.
 4. Confirm the matcher-produced sentences, concepts, counts, and offsets through the
    returned Admin projection. Make no manual concept deletions or offset edits.
-5. Only after the separate human approval already covers the exact content and truthful
-   metadata, invoke Admin validation. Stop on any issue; do not force a state transition.
-   Publish only records returned as `reviewed` and only after all three pass.
+5. Only after separate review of the current exact hashes and root confirmation of the
+   authorized Admin path, invoke Admin validation under the staging-only owner approval.
+   Stop on any issue; do not force a state transition. Do not claim publication authorized
+   or any published status before all required gates pass.
 6. Before any actor setup, run the actorless exact catalog gate above and compare the
    retained learner-state counts/hashes with the pre-write snapshot. Stop on any
    difference or unexpected catalog row.
@@ -218,14 +194,8 @@ until the complete actorless catalog gate passes.
 
 ## Explicit remaining gates
 
-- The frozen packet has passed the local production-backed dry-run and strict UTF-16 span
-  audit; the recorded input and report hashes above must remain unchanged for review.
-- A configured independent GPT-6 Luna / Max review must accept the exact packet and
-  editorial-preview hashes with no HIGH/BLOCKER issue.
-- A human owner must explicitly approve the final English editorial quality, A1/A2/B1
-  placement, first-party authorship/rights, attribution, proposed post-approval metadata,
-  and the exact content-pack plus editorial-preview hashes.
-- Root must establish the authorized Admin execution path and decide whether the
-  catalog-only probe addition is needed.
-- After publication, the exact actorless catalog and learner-state comparison must pass
-  before any actors are created; full K2-08 acceptance remains a separate later gate.
+- The exact metadata-applied pack/preview hashes above must receive a separate independent Max review; the historical review applies only to its listed prior inputs.
+- Root must establish a normal owner-authorized Admin execution path. The current read-only Admin GET was denied; no credentials, allowlist changes, service-role bypass, or direct application calls are allowed.
+- publication_authorized remains false; no hosted writes or publication have been made.
+- After authorized staging publication, the exact actorless catalog and learner-state comparison must pass before any actors are created. Root reports the current eligible published catalog count is zero.
+- The full K2-08 fresh-actor baseline/order and state-isolation proof remains a separate later gate after the actorless preflight; the local rank-order calculation is prediction only.
