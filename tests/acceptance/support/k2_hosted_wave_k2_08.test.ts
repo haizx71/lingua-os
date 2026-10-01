@@ -64,12 +64,12 @@ function snapshot(actor: Actor, generated: boolean): K2RetainedSnapshot {
   return { tables, totalRows: Object.values(tables).reduce((total, item) => total + item.rows, 0) };
 }
 
-function lineage(actor: Actor): K2HostedActorLineageProof {
-  const due = actor === 'primary' || actor === 'observer' ? 20 : 0;
+function lineage(_actor: Actor): K2HostedActorLineageProof {
   return {
-    userConceptStateRows: due + (actor === 'observer' ? 2 : actor === 'scenario-c' ? 1 : 0),
-    reviewItemRows: due,
-    fsrsStateRows: due,
+    // This proof is scoped to the fixed K2 anchor; actor-wide totals come from snapshot().
+    userConceptStateRows: 0,
+    reviewItemRows: 0,
+    fsrsStateRows: 0,
     recognitionEvidenceCount: 0,
     listeningEvidenceCount: 0,
     productionEvidenceCount: 0,
@@ -143,7 +143,7 @@ function contextWithApi(): Readonly<{
   const savedByActor = new Map<Actor, Set<string>>(actors.map(actor => [actor, new Set()]));
   const generationCount = new Map<Actor, number>(actors.map(actor => [actor, 0]));
   const dueHandles = Array.from({ length: 20 }, (_, index) => opaque(index + 1));
-  const allSearchHandles = [...dueHandles, opaque(21), opaque(22), opaque(23)];
+  const allSearchHandles = ['k2-anchor', ...dueHandles, opaque(21), opaque(22), opaque(23)];
   const reviewIds = new Map<Actor, readonly string[]>(actors.map((actor, index) => [
     actor,
     dueHandles.map((_, itemIndex) => opaque(200 + index * 30 + itemIndex)),
@@ -249,6 +249,7 @@ describe('K2-08 full four-actor hosted wave', () => {
     await expect(k2HostedWaveK208.run(context)).resolves.toBeUndefined();
 
     expect([...savedByActor.values()].map(items => items.size)).toEqual([20, 20, 0, 0]);
+    expect([...savedByActor.values()].every(items => !items.has('k2-anchor'))).toBe(true);
     expect(context.verifyDueCandidateIsolation).toHaveBeenCalledOnce();
     expect(context.fixtureSetup?.seedForgottenWeakPair).toHaveBeenCalledOnce();
     expect(context.fixtureSetup?.seedWeakOnly).toHaveBeenCalledOnce();
@@ -280,6 +281,110 @@ describe('K2-08 full four-actor hosted wave', () => {
     };
 
     await expect(k2HostedWaveK208.run(incompleteContext)).rejects.toThrow('candidate input proof');
+    expect([...generationCount.values()]).toEqual([0, 0, 0, 0]);
+  });
+
+  it('rejects the fixed anchor in any selected remediation target before saving the due backlog', async () => {
+    const { context, savedByActor } = contextWithApi();
+    const observerMatrix = context.candidateMatrix?.observer;
+    if (!observerMatrix) throw new Error('Expected the observer candidate matrix.');
+    const anchorTargetContext: K2HostedWaveContext = {
+      ...context,
+      candidateMatrix: {
+        ...context.candidateMatrix,
+        observer: {
+          ...observerMatrix,
+          novel: { ...observerMatrix.novel, linkedConceptHandles: ['k2-anchor'] },
+        },
+      },
+    };
+
+    await expect(k2HostedWaveK208.run(anchorTargetContext))
+      .rejects.toThrow('remediation graph included the fixed anchor concept');
+    expect([...savedByActor.values()].every(items => items.size === 0)).toBe(true);
+  });
+
+  it('rejects an oversized Dictionary page before removing its anchor row', async () => {
+    const { context, savedByActor } = contextWithApi();
+    const primaryApi = context.api.primary;
+    const oversizedPage = [
+      ...Array.from({ length: 100 }, (_, index) => ({ id: opaque(500 + index) })),
+      { id: 'k2-anchor' },
+    ];
+    const oversizedContext: K2HostedWaveContext = {
+      ...context,
+      api: {
+        ...context.api,
+        primary: {
+          async request(route, options, expectedStatuses) {
+            if (route.startsWith('/v1/dictionary/search?')) {
+              return { status: 200, payload: { data: oversizedPage } };
+            }
+            return primaryApi.request(route, options, expectedStatuses);
+          },
+        },
+      },
+    };
+
+    await expect(k2HostedWaveK208.run(oversizedContext))
+      .rejects.toThrow('due-only dictionary response was invalid');
+    expect([...savedByActor.values()].every(items => items.size === 0)).toBe(true);
+  });
+
+  it('keeps the actor-wide snapshot row totals exact when the anchor proof is scoped', async () => {
+    const { context, generationCount } = contextWithApi();
+    const originalSnapshot = context.actorSnapshot;
+    const wrongAggregateContext: K2HostedWaveContext = {
+      ...context,
+      actorSnapshot: async actor => {
+        const current = await originalSnapshot(actor);
+        if (actor !== 'primary') return current;
+        return {
+          ...current,
+          totalRows: current.totalRows - 1,
+          tables: {
+            ...current.tables,
+            user_concept_states: { ...current.tables.user_concept_states, rows: 19 },
+          },
+        };
+      },
+    };
+
+    await expect(k2HostedWaveK208.run(wrongAggregateContext))
+      .rejects.toThrow('Test actor snapshot mismatch');
+    expect([...generationCount.values()]).toEqual([0, 0, 0, 0]);
+  });
+
+  it.each([
+    ['anchor state rows', { userConceptStateRows: 1 }],
+    ['anchor review rows', { reviewItemRows: 1 }],
+    ['anchor FSRS rows', { fsrsStateRows: 1 }],
+    ['recognition evidence', { recognitionEvidenceCount: 1 }],
+    ['listening evidence', { listeningEvidenceCount: 1 }],
+    ['production evidence', { productionEvidenceCount: 1 }],
+    ['production mass', { productionPositiveMass: '0.1' }],
+    ['negative production mass', { productionNegativeMass: '0.1' }],
+    ['review event', {
+      events: [{
+        exerciseMode: 'self_recall' as const,
+        evidenceMode: 'recognition' as const,
+        correct: true,
+        responseTextMatchesAnchor: false,
+        resultProductionEvidenceCount: null,
+      }],
+    }],
+  ])('fails closed for nonzero %s in the anchor proof', async (_label, delta) => {
+    const { context, generationCount } = contextWithApi();
+    const originalLineage = context.actorLineage;
+    const alteredContext: K2HostedWaveContext = {
+      ...context,
+      actorLineage: async actor => actor === 'primary'
+        ? { ...await originalLineage(actor), ...delta }
+        : originalLineage(actor),
+    };
+
+    await expect(k2HostedWaveK208.run(alteredContext))
+      .rejects.toThrow('fixture setup changed unexpected learner evidence');
     expect([...generationCount.values()]).toEqual([0, 0, 0, 0]);
   });
 });
