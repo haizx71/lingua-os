@@ -1,5 +1,7 @@
 # K2-08 Hosted Fixture Readiness
 
+**Historical readiness record:** the inspection below predates the accepted fixture redesign and PR #35 merge. Current source/CI PASS, migration 0020 rollout, and the remaining published-content blocker are recorded in `reviews/K2-08-fixture-boundary-design-review.md` and `STATUS.md`. Historical NO-GO/NOT APPLIED statements below describe that earlier checkpoint.
+
 **Checkpoint date:** 2026-10-01
 **Repository baseline:** `master` at `2c3284a2deb4fac18683b660a751039e36b007f7`
 **Review scope:** bounded Today V2 specification and hosted-fixture prerequisites

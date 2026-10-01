@@ -16,27 +16,37 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
   `finalizer_complete`. This does not cover listening or cloze: eligible staging
   material is not published. See `reviews/K2-07-hosted-acceptance-review.md` and
   `plans/TASK-K2-07-hosted-acceptance-harness.md`.
-- **TASK-K2-08: FIXTURE SOURCE REVIEW PASS; REVISED CI PENDING; PR #35 UNMERGED; FULL HOSTED BLOCKED.**
+- **TASK-K2-08: SOURCE/CI PASS; PR #35 MERGED; MIGRATION 0020 APPLIED; FULL HOSTED BLOCKED BY CONTENT.**
   Independent configured GPT-6 Luna / Max review passed on revised source
   `64bbd4df71ce9483290b5d86562ef5722d3ceddd`, closing the response-profile
   ownership HIGH with no remaining HIGH/BLOCKER. Normal actor JWT requests,
   runner-private fixed fixtures, bounded read-only proofs and deterministic
   cleanup replace the old Auth/RLS capability proposal without changing grants
-  or policies. Next: exact-head CI (including real PostgreSQL differential),
-  normal reviewed merge, root-owned migration ledger reconciliation and `0020`,
-  then full hosted acceptance once approved published Reader content is ready.
+  or policies. Exact head `3501c87` passed Knowledge Audit CI
+  [36853391143](https://github.com/haizx71/lingua-os/actions/runs/36853391143)
+  and Security Gate [36853391160](https://github.com/haizx71/lingua-os/actions/runs/36853391160);
+  PR #35 merged normally at `1ac2060`. Guarded canonical registry reconciliation
+  and product migration `0020` passed; all 20 application checksums match source.
+  Next: approved published Reader competitors, then full protected master-only
+  acceptance with replay, actor isolation, cleanup/Auth absence/zero residue,
+  retained learner comparison and independent evidence review. Staging currently
+  has zero eligible published items; do not create actors before catalog preflight.
+  Full workflow [36856076010](https://github.com/haizx71/lingua-os/actions/runs/36856076010)
+  passed infrastructure/privilege preflights and stopped at `preflight_k208_catalog`
+  before actor creation; current-run cleanup passed. Learner assertions and the
+  retained comparison remain unexecuted. Do not repeat until content changes.
   See `reviews/K2-08-fixture-boundary-design-review.md`.
-  Prior product-only CI evidence follows; it does not certify the revised harness.
+  Historical product-only CI evidence follows; current revised evidence is above.
   Reviewed source snapshot `ecb830418e81cc60e573fe91acf7382563ac0568` is based
   on the verified `master` snapshot `2c3284a2deb4fac18683b660a751039e36b007f7`;
-  it is not in `master`. Exact-head Knowledge Audit CI
+  that original source is now included in PR #35's merge. Historical exact-head Knowledge Audit CI
   [36795488328](https://github.com/haizx71/lingua-os/actions/runs/36795488328)
   and Security Gate
   [36795488330](https://github.com/haizx71/lingua-os/actions/runs/36795488330)
   passed, and independent GPT-6 Luna / Max review found no HIGH/BLOCKER issues.
   Full hosted/live Phase C remains blocked pending reviewed published content and
-  the revised source/CI and rollout gates above. The due-only
-  source subcase is not overall hosted proof. Migration `0020` is NOT APPLIED.
+  the full actor cycle after content readiness. The due-only
+  source subcase is not overall hosted proof. Migration `0020` is applied.
   The historical fixture Auth/RLS proposal remains NO-GO because its proposed
   non-owner function role cannot read server-owned Auth metadata under current
   default-deny RLS; no managed Auth policy or alternate signing change is
