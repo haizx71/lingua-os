@@ -235,10 +235,18 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
 - **Schema impact:** none expected; use `lexemes`, `lexeme_forms`, `word_senses`, and
   `concept_senses`. Add an index only through a reviewed migration if query-plan evidence requires
   it.
-- **Domain/service impact:** replace the legacy `lexemes.concept_id`-only candidate path with
-  sense-aware resolution while retaining deterministic cursor ordering and provenance gates.
-- **Importer impact:** extend deterministic candidate/import validation for shared lemmas, multiple
-  senses, form deduplication, bridge identity, collision behavior, and idempotent reapply.
+- **Domain/service impact:** preserve matched lexeme identities and approved `concept_senses`
+  bridges, with legacy direct `lexemes.concept_id` fallback only when a concept has no bridge rows.
+  Canonical/detail lookup prefers the approved direct lexeme; secondary fallback uses only that
+  concept’s own approved bridge in deterministic order. Detail definitions come only from that
+  concept’s bridge, with legacy direct fallback only when it has no bridge rows; never return
+  sibling-concept senses. Preserve accepted Brain learner projection semantics.
+- **Importer impact:** K2-09 keeps the current importer candidate format and apply semantics
+  unchanged. Run its existing form-deduplication, no-overwrite collision, provenance, deterministic
+  plan/hash, and idempotent-reapply checks; document the production-starter importer’s one
+  concept-linked lexeme / one order-1-sense limitation. Do not add a shared-lemma or multi-sense
+  candidate/import format here; any such change needs a separate explicit future specification
+  and review.
 - **API impact:** likely additive grouped lemma/sense response. Preserve existing endpoint path and
   authenticated actor-scoped learner enrichment; perform normal OpenAPI generation/freshness.
 - **Frontend impact:** Dictionary renders one lemma group with ordered senses and independent
@@ -251,12 +259,25 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
   ADR-022 and are not broadened.
 - **Dependencies:** K2-02 bridge plus K2-04 through K2-08 contract/runtime state.
 - **Required tests:** exact lemma, case/whitespace normalization, inflection (`went` to `go`), one
-  shared lemma with multiple ordered senses/concepts, independent badges, cursor stability,
-  collision/dedup/import idempotency, no search-side writes, actor isolation, contract/frontend
-  grouping, and Library/Reader regressions.
-- **Hosted acceptance:** a staged polysemous/inflected fixture resolves to one lemma and every
-  expected sense with independent owned learner badges; repeated searches are stable and perform
-  zero writes; explicit save activates only the chosen concept; cleanup passes.
+  shared lemma with multiple ordered senses/concepts, independent Brain-derived status/mastery/
+  competence and actor-owned saved badges, cursor stability, existing importer collision/form
+  deduplication/provenance/idempotency regressions (no new import semantics), no search-side writes,
+  actor isolation, contract/frontend grouping, Dictionary/Brain canonical-detail regression, and
+  Library/Reader regressions. Extend CI path selectors/triggers and disposable-PostgreSQL
+  integration commands to execute the Dictionary source and its focused database API tests.
+- **Hosted acceptance:** live catalog feasibility found 94 eligible approved English lexemes, none
+  with at least two approved senses and at least two approved linked concepts, and zero approved
+  `went` forms. A controlled fixture is required. Hosted fixture architecture is BLOCKED / NOT
+  AUTHORIZED pending independent Max review of a bounded transaction in the existing trusted
+  server-side database control plane. It must lock exact parents to serialize FK inserts, guard
+  source/hash/tree identity, enumerate CASCADE/RESTRICT/SET NULL dependents (including
+  `phrase_specifications.headword_concept_id`), prove no outside acceptance-actor, ordinary learner,
+  or catalog references, account for restrictive-FK behavior, abort on unknown/outside affected
+  rows or SET NULL side effects, and define crash recovery. Admin request-by-request
+  deletion is insufficient. Once separately approved, learner behavior remains normal actor
+  HTTP/JWT/RLS; search writes nothing, explicit save activates only the chosen concept, and
+  fixture/actor cleanup plus retained comparison must pass. No roles, grants, Auth, RLS, or
+  SECURITY DEFINER changes.
 
 ## K2-10 — End-to-End Verification and Documentation Seal
 
