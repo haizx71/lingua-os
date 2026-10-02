@@ -15,3 +15,15 @@ The proposed private receipt migration is limited to run/source protocol metadat
 ## Limit of verdict
 
 This review accepts the bounded architecture as design only. It does not verify implementation. Hosted setup/inspect/cleanup code and migration do not yet exist; current source review has passed, but exact-head CI and hosted K2-09 acceptance remain pending. No hosted fixture write is authorized. The acceptance record must separately prove fixture/Auth absence, zero rows owned by selected actors across 27 learner tables, and unchanged retained comparison; a terminal control-plane receipt is not a substitute.
+
+
+## Final private DTO/spec checkpoint — 2026-10-02
+
+**Verdict:** PASS with no HIGH/BLOCKER for the exact frozen plan/manifest package. This approves the reviewed specification for bounded local implementation and tests only; it is not source, migration, CI, or hosted acceptance.
+
+- Independent reviewer: GPT-6 Luna / Max. Product/fixture implementation: GPT-6 Luna / Max. Documentation: GPT-6 Luna / Medium. Operator: Commander.
+- Exact reviewed plan SHA256: `7b72b146d253f0b205480a7d61077566f9d84d06dafcab111036a997a0ccf51f`.
+- Exact reviewed guard SHA256: `650b0c693b3ae6c1f623b7bbc757fa7f011c3e005dd7c7068133df69b5320b27`.
+- Reviewed frozen diff SHA256: `3909cec0a131242005eabd7c27cfd4d239c0333fdaa3e95311725090dfcd6006`, 26,791 bytes, against HEAD `5ce2b3a`.
+- The prior HIGH on complete FK/trigger scope is resolved by the pinned full inventory. The prior MED is resolved by the ABSENT preflight, strict DTO, cleanup barrier, and new private effective ACL specification. Future local PostgreSQL gates must prove owner/BYPASS/REST denial behavior; this documentation review does not claim that proof has run.
+- Commander authorizes bounded local implementation and tests after this documentation writer lock is released. Source review, CI, migration/security gates, and hosted acceptance remain pending. No hosted fixture writes are authorized.
