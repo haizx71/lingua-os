@@ -119,7 +119,7 @@ def list_brain_concepts(
         limit=limit,
     )
     return BrainConceptListResponseDto(
-        data=[_concept_summary(item) for item in page.items],
+        data=[brain_concept_summary_dto(item) for item in page.items],
         meta=CursorResponseMetaDto(
             request_id=request.state.request_id,
             next_cursor=page.next_cursor,
@@ -157,12 +157,12 @@ def _summary(value: BrainSummaryProjection) -> BrainSummaryDto:
         memory_health=None,
         competence=_competence(value.competence),
         starting_level_estimate=None,
-        recent_concepts=[_concept_summary(item) for item in value.recent_concepts],
+        recent_concepts=[brain_concept_summary_dto(item) for item in value.recent_concepts],
         calculated_at=value.calculated_at,
     )
 
 
-def _concept_summary(item: BrainConceptListItem) -> BrainConceptSummaryDto:
+def brain_concept_summary_dto(item: BrainConceptListItem) -> BrainConceptSummaryDto:
     learner = item.learner
     return BrainConceptSummaryDto(
         concept=_identity(item.identity, learner),

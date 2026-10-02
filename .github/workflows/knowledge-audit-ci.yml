@@ -42,6 +42,16 @@ on:
       - 'contracts/enums.json'
       - 'packages/types/src/enums.ts'
       - 'plans/TASK-K2-08-today-remediation-v2.md'
+      - 'services/api/src/lingua_api/dictionary/**'
+      - 'tests/backend/database/test_dictionary_reader_analyze_api.py'
+      - 'tests/backend/contracts/test_openapi_v1.py'
+      - 'apps/web/src/features/dictionary/**'
+      - 'tests/frontend/task009-concept-discovery-save.test.tsx'
+      - 'tests/frontend/e2e/f10-library-dictionary.test.tsx'
+      - 'tests/frontend/e2e/f08-language-brain.test.tsx'
+      - 'tests/frontend/p1-brain-live.test.tsx'
+      - 'tests/frontend/task-library-001-library-live.test.tsx'
+      - 'packages/types/src/api/dtos.ts'
       - '.github/workflows/knowledge-audit-ci.yml'
   workflow_dispatch:
 
@@ -192,6 +202,61 @@ jobs:
           tests/backend/database/test_brain_api.py
           tests/backend/database/test_review_api.py
 
+  dictionary-postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24
+        env:
+          POSTGRES_PASSWORD: lingua_test_password
+          POSTGRES_DB: lingua_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lingua_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:lingua_test_password@127.0.0.1:5432/lingua_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked backend test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements/backend-dev.lock
+      - name: Verify Dictionary and Brain Python formatting and lint
+        run: |
+          python -m ruff format --check \
+            services/api/src/lingua_api/brain/routes.py \
+            services/api/src/lingua_api/brain/store.py \
+            services/api/src/lingua_api/dictionary/domain.py \
+            services/api/src/lingua_api/dictionary/models.py \
+            services/api/src/lingua_api/dictionary/routes.py \
+            services/api/src/lingua_api/dictionary/service.py \
+            services/api/src/lingua_api/dictionary/store.py \
+            tests/backend/contracts/test_openapi_v1.py \
+            tests/backend/database/test_dictionary_reader_analyze_api.py
+          python -m ruff check \
+            services/api/src/lingua_api/brain/routes.py \
+            services/api/src/lingua_api/brain/store.py \
+            services/api/src/lingua_api/dictionary/domain.py \
+            services/api/src/lingua_api/dictionary/models.py \
+            services/api/src/lingua_api/dictionary/routes.py \
+            services/api/src/lingua_api/dictionary/service.py \
+            services/api/src/lingua_api/dictionary/store.py \
+            tests/backend/contracts/test_openapi_v1.py \
+            tests/backend/database/test_dictionary_reader_analyze_api.py
+      - name: Verify Dictionary contract and bridge behavior against PostgreSQL
+        run: >-
+          python -m pytest -q
+          tests/backend/database/test_dictionary_reader_analyze_api.py
+          tests/backend/contracts/test_openapi_v1.py
+
   today-postgres-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -315,3 +380,11 @@ jobs:
           pnpm contracts:check-generated
           pnpm exec vitest run tests/frontend/e2e/f06-smart-review.test.tsx tests/frontend/pendingAnswer.test.ts
           pnpm --filter @lingua/web typecheck
+      - name: Verify Dictionary, Library, and Brain frontend regressions
+        run: >-
+          pnpm exec vitest run
+          tests/frontend/task009-concept-discovery-save.test.tsx
+          tests/frontend/e2e/f10-library-dictionary.test.tsx
+          tests/frontend/e2e/f08-language-brain.test.tsx
+          tests/frontend/p1-brain-live.test.tsx
+          tests/frontend/task-library-001-library-live.test.tsx

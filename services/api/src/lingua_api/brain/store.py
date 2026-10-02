@@ -335,6 +335,74 @@ class PostgresBrainStore:
             evidence=evidence,
         )
 
+    @staticmethod
+    def load_concept_summaries(
+        snapshot: BrainSnapshot, *, profile_id: UUID, concept_ids: set[UUID]
+    ) -> dict[UUID, tuple[BrainConceptListItem, bool]]:
+        """Load actor-scoped Brain projections for linked catalog concepts in one batch."""
+        if not concept_ids:
+            return {}
+        rows = snapshot.connection.execute(
+            f"""
+            SELECT concept.id, concept.language_code, concept.canonical_key,
+                   COALESCE(lexeme.lemma, concept.canonical_key), lexeme.part_of_speech,
+                   framework.code, level.code, level.label,
+                   source.name, license.code, source.attribution_text, source.source_url,
+                   license.attribution_required,
+                   COALESCE(retrievability.effective_status, state.status),
+                   state.competence_parameter_set_id,
+                   state.recognition, state.recognition_confidence,
+                   state.recognition_evidence_count, state.recognition_last_evidence_at,
+                   state.listening, state.listening_confidence,
+                   state.listening_evidence_count, state.listening_last_evidence_at,
+                   state.production, state.production_confidence,
+                   state.production_evidence_count, state.production_last_evidence_at,
+                   state.mastery, state.confidence, state.exposure_count, state.last_seen_at,
+                   memory.state, memory.due_at, memory.last_review_at,
+                   CASE WHEN item.status = 'active' AND memory.due_at <= %s
+                        THEN true ELSE false END,
+                   saved.concept_id IS NOT NULL
+            FROM concepts AS concept
+            JOIN source_records AS concept_record ON concept_record.id = concept.source_record_id
+            JOIN data_sources AS source ON source.id = concept_record.source_id
+            JOIN licenses AS license ON license.id = source.license_id
+            LEFT JOIN user_concept_states AS state
+              ON state.user_id = %s AND state.user_language_id = %s
+             AND state.concept_id = concept.id
+             AND state.competence_parameter_set_id IS NOT NULL
+            LEFT JOIN v_learner_concept_retrievability AS retrievability
+              ON retrievability.user_id = state.user_id
+             AND retrievability.user_language_id = state.user_language_id
+             AND retrievability.concept_id = state.concept_id
+            LEFT JOIN review_items AS item
+              ON item.user_id = %s AND item.user_language_id = %s
+             AND item.concept_id = concept.id
+            LEFT JOIN fsrs_states AS memory
+              ON memory.review_item_id = item.id AND memory.user_id = item.user_id
+            LEFT JOIN LATERAL ({_LEXEME_SQL}) AS lexeme ON true
+            LEFT JOIN LATERAL ({_LEVEL_SQL}) AS mapped ON true
+            LEFT JOIN proficiency_levels AS level ON level.id = mapped.level_id
+            LEFT JOIN proficiency_frameworks AS framework ON framework.id = level.framework_id
+            LEFT JOIN user_saved_concepts AS saved
+              ON saved.user_id = %s AND saved.user_language_id = %s
+             AND saved.concept_id = concept.id
+            WHERE concept.id = ANY(%s) AND concept.language_code = 'en'
+              AND {allowed_record_sql("concept.source_record_id")}
+            ORDER BY concept.id
+            """,
+            (
+                snapshot.as_of,
+                snapshot.actor.id,
+                profile_id,
+                snapshot.actor.id,
+                profile_id,
+                snapshot.actor.id,
+                profile_id,
+                list(concept_ids),
+            ),
+        ).fetchall()
+        return {_uuid(row[0]): (_list_item(row[:35]), bool(row[35])) for row in rows}
+
 
 _ANCHOR_SQL = """
     SELECT concept_id FROM user_concept_states
@@ -352,10 +420,25 @@ _ANCHOR_SQL = """
 
 _LEXEME_SQL = f"""
     SELECT candidate.lemma, candidate.part_of_speech
-    FROM lexemes AS candidate
-    WHERE candidate.concept_id = concept.id
-      AND {allowed_record_sql("candidate.source_record_id")}
-    ORDER BY candidate.normalized_form, candidate.id
+    FROM (
+        SELECT direct.lemma, direct.part_of_speech, 0 AS preference,
+               direct.normalized_form, direct.id
+        FROM lexemes AS direct
+        WHERE direct.concept_id = concept.id
+          AND direct.language_code = concept.language_code
+          AND {allowed_record_sql("direct.source_record_id")}
+        UNION ALL
+        SELECT linked.lemma, linked.part_of_speech, 1 AS preference,
+               linked.normalized_form, linked.id
+        FROM concept_senses AS bridge
+        JOIN word_senses AS sense ON sense.id = bridge.word_sense_id
+        JOIN lexemes AS linked ON linked.id = sense.lexeme_id
+        WHERE bridge.concept_id = concept.id
+          AND linked.language_code = concept.language_code
+          AND {allowed_record_sql("sense.source_record_id")}
+          AND {allowed_record_sql("linked.source_record_id")}
+    ) AS candidate
+    ORDER BY candidate.preference, candidate.normalized_form, candidate.id
     LIMIT 1
 """
 
@@ -458,17 +541,40 @@ def _load_recent(snapshot: BrainSnapshot, profile_id: UUID) -> list[BrainConcept
 def _load_definitions(snapshot: BrainSnapshot, concept_id: UUID) -> list[DefinitionProjection]:
     rows = snapshot.connection.execute(
         f"""
-        SELECT sense.definition, sense.translated_definition,
-               sense.definition_language_code, sense.sense_order
-        FROM lexemes AS lexeme
-        JOIN word_senses AS sense ON sense.lexeme_id = lexeme.id
-        WHERE lexeme.concept_id = %s
-          AND {allowed_record_sql("lexeme.source_record_id")}
-          AND {allowed_record_sql("sense.source_record_id")}
-        ORDER BY lexeme.normalized_form, lexeme.id, sense.sense_order
+        WITH own_senses AS (
+            SELECT lexeme.id AS lexeme_id, lexeme.normalized_form,
+                   sense.id AS sense_id, sense.definition, sense.translated_definition,
+                   sense.definition_language_code, sense.sense_order
+            FROM concept_senses AS bridge
+            JOIN word_senses AS sense ON sense.id = bridge.word_sense_id
+            JOIN lexemes AS lexeme ON lexeme.id = sense.lexeme_id
+            JOIN concepts AS concept ON concept.id = bridge.concept_id
+            WHERE bridge.concept_id = %s
+              AND lexeme.language_code = concept.language_code
+              AND {allowed_record_sql("lexeme.source_record_id")}
+              AND {allowed_record_sql("sense.source_record_id")}
+            UNION ALL
+            SELECT lexeme.id AS lexeme_id, lexeme.normalized_form,
+                   sense.id AS sense_id, sense.definition, sense.translated_definition,
+                   sense.definition_language_code, sense.sense_order
+            FROM concepts AS concept
+            JOIN lexemes AS lexeme ON lexeme.concept_id = concept.id
+            JOIN word_senses AS sense ON sense.lexeme_id = lexeme.id
+            WHERE concept.id = %s
+              AND lexeme.language_code = concept.language_code
+              AND {allowed_record_sql("lexeme.source_record_id")}
+              AND {allowed_record_sql("sense.source_record_id")}
+              AND NOT EXISTS (
+                  SELECT 1 FROM concept_senses AS bridge
+                  WHERE bridge.concept_id = concept.id
+              )
+        )
+        SELECT definition, translated_definition, definition_language_code, sense_order
+        FROM own_senses
+        ORDER BY normalized_form, lexeme_id, sense_order, sense_id
         LIMIT 100
         """,
-        (concept_id,),
+        (concept_id, concept_id),
     ).fetchall()
     return [
         DefinitionProjection(
@@ -525,10 +631,24 @@ def _load_relations(snapshot: BrainSnapshot, concept_id: UUID) -> list[RelationP
         JOIN concepts AS target ON target.id = relation.target_concept_id
         LEFT JOIN LATERAL (
             SELECT candidate.lemma
-            FROM lexemes AS candidate
-            WHERE candidate.concept_id = target.id
-              AND {allowed_record_sql("candidate.source_record_id")}
-            ORDER BY candidate.normalized_form, candidate.id LIMIT 1
+            FROM (
+                SELECT direct.lemma, 0 AS preference, direct.normalized_form, direct.id
+                FROM lexemes AS direct
+                WHERE direct.concept_id = target.id
+                  AND direct.language_code = target.language_code
+                  AND {allowed_record_sql("direct.source_record_id")}
+                UNION ALL
+                SELECT linked.lemma, 1 AS preference, linked.normalized_form, linked.id
+                FROM concept_senses AS bridge
+                JOIN word_senses AS sense ON sense.id = bridge.word_sense_id
+                JOIN lexemes AS linked ON linked.id = sense.lexeme_id
+                WHERE bridge.concept_id = target.id
+                  AND linked.language_code = target.language_code
+                  AND {allowed_record_sql("sense.source_record_id")}
+                  AND {allowed_record_sql("linked.source_record_id")}
+            ) AS candidate
+            ORDER BY candidate.preference, candidate.normalized_form, candidate.id
+            LIMIT 1
         ) AS lexeme ON true
         WHERE relation.source_concept_id = %s
           AND source.language_code = 'en' AND target.language_code = 'en'

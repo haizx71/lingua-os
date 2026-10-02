@@ -16,6 +16,13 @@ win.
 The remaining authoritative roadmap is K2-04 through K2-10. K2-01 through K2-03 are prerequisites,
 not remaining implementation waves.
 
+## Current execution checkpoint — 2026-10-02
+
+- K2-08 is DONE: full hosted acceptance, cleanup, current-run retained comparison, and independent final review PASS. See the current K2-08 checkpoint in `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
+- K2-09 product source is frozen at the 16-file diff SHA256 `e03a501398cd4c89495c576844afb3935c9e5aa43a7490372014aa5068f245e5`; independent GPT-6 Luna / Max source review PASS with no HIGH/BLOCKER. Exact-head CI remains pending. Worker-reported local checks are recorded in `reviews/K2-09-dictionary-normalization-source-review.md`; independent reviewer did not rerun them.
+- K2-09 hosted fixture architecture has conditional design-only PASS after the 75-day terminal receipt policy and strict exact-run idempotency/reaper guards were recorded. This does not authorize fixture implementation or hosted writes. Exact private DTO/spec review, implementation, migration/security gate, and hosted acceptance remain pending. See `plans/TASK-K2-09-hosted-fixture-control.md` and `reviews/K2-09-hosted-fixture-architecture-review.md`.
+- K2-10 remains blocked on K2-09 hosted acceptance. Migration `0020`, accepted K2-06/K2-07 behavior, and the importer’s existing one-candidate/one-sense format remain unchanged.
+
 ## Recorded contradictions and resolutions
 
 1. **Migration number collision.** The design documents reserve `0016` for learner
@@ -56,7 +63,7 @@ not remaining implementation waves.
     master reports newer suite partitions/totals. K2-10 uses the tests discovered at execution time
     and reports exact executed counts rather than forcing obsolete totals.
 
-Latest execution checkpoint — 2026-10-01: K2-04 through K2-06 are accepted predecessors;
+Historical execution checkpoint — 2026-10-01: K2-04 through K2-06 are accepted predecessors;
 K2-07 source, hosted acceptance, cleanup, and retained-state comparison are PASS at master
 `c696ac935852c4ebcd9e1183521996e5b12ad273`. K2-08 is READY to begin; K2-09 and K2-10 remain
 sequentially downstream. K2-07 staging exercised self-recall and typing; listening and cloze
@@ -235,10 +242,18 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
 - **Schema impact:** none expected; use `lexemes`, `lexeme_forms`, `word_senses`, and
   `concept_senses`. Add an index only through a reviewed migration if query-plan evidence requires
   it.
-- **Domain/service impact:** replace the legacy `lexemes.concept_id`-only candidate path with
-  sense-aware resolution while retaining deterministic cursor ordering and provenance gates.
-- **Importer impact:** extend deterministic candidate/import validation for shared lemmas, multiple
-  senses, form deduplication, bridge identity, collision behavior, and idempotent reapply.
+- **Domain/service impact:** preserve matched lexeme identities and approved `concept_senses`
+  bridges, with legacy direct `lexemes.concept_id` fallback only when a concept has no bridge rows.
+  Canonical/detail lookup prefers the approved direct lexeme; secondary fallback uses only that
+  concept’s own approved bridge in deterministic order. Detail definitions come only from that
+  concept’s bridge, with legacy direct fallback only when it has no bridge rows; never return
+  sibling-concept senses. Preserve accepted Brain learner projection semantics.
+- **Importer impact:** K2-09 keeps the current importer candidate format and apply semantics
+  unchanged. Run its existing form-deduplication, no-overwrite collision, provenance, deterministic
+  plan/hash, and idempotent-reapply checks; document the production-starter importer’s one
+  concept-linked lexeme / one order-1-sense limitation. Do not add a shared-lemma or multi-sense
+  candidate/import format here; any such change needs a separate explicit future specification
+  and review.
 - **API impact:** likely additive grouped lemma/sense response. Preserve existing endpoint path and
   authenticated actor-scoped learner enrichment; perform normal OpenAPI generation/freshness.
 - **Frontend impact:** Dictionary renders one lemma group with ordered senses and independent
@@ -251,12 +266,22 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
   ADR-022 and are not broadened.
 - **Dependencies:** K2-02 bridge plus K2-04 through K2-08 contract/runtime state.
 - **Required tests:** exact lemma, case/whitespace normalization, inflection (`went` to `go`), one
-  shared lemma with multiple ordered senses/concepts, independent badges, cursor stability,
-  collision/dedup/import idempotency, no search-side writes, actor isolation, contract/frontend
-  grouping, and Library/Reader regressions.
-- **Hosted acceptance:** a staged polysemous/inflected fixture resolves to one lemma and every
-  expected sense with independent owned learner badges; repeated searches are stable and perform
-  zero writes; explicit save activates only the chosen concept; cleanup passes.
+  shared lemma with multiple ordered senses/concepts, independent Brain-derived status/mastery/
+  competence and actor-owned saved badges, cursor stability, existing importer collision/form
+  deduplication/provenance/idempotency regressions (no new import semantics), no search-side writes,
+  actor isolation, contract/frontend grouping, Dictionary/Brain canonical-detail regression, and
+  Library/Reader regressions. Extend CI path selectors/triggers and disposable-PostgreSQL
+  integration commands to execute the Dictionary source and its focused database API tests.
+- **Hosted acceptance:** live catalog feasibility found 94 eligible approved English lexemes, none
+  with at least two approved senses and at least two approved linked concepts, and zero approved
+  `went` forms. A controlled fixture is required. Fixture architecture has conditional design-only
+  PASS in the separate K2-09 control-plane plan/review; source, migration/security gate, exact private
+  DTO/spec review, and hosted acceptance remain pending. No hosted fixture writes are authorized.
+  Implementation must retain atomic exact-tree guards, parent locks, all-reference checks across the
+  44-FK inventory, strict same-run idempotency, and cleanup after authoritative GitHub run-attempt
+  checks. Actor behavior remains normal HTTP/JWT/RLS; search writes nothing, explicit save activates
+  only the chosen concept, and the existing 27-table retained comparison remains required. No roles,
+  grants, Auth, RLS, or SECURITY DEFINER changes.
 
 ## K2-10 — End-to-End Verification and Documentation Seal
 

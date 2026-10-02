@@ -47,6 +47,7 @@ class DictionaryApplication:
         language_code: str | None,
         cursor: str | None,
         limit: int,
+        include_lemma_groups: bool = False,
     ) -> DictionaryPage:
         normalized_query = _normalize_query(query)
         requested_language = "en" if language_code is None else language_code
@@ -86,7 +87,20 @@ class DictionaryApplication:
                             concept_id=last.id,
                         )
                     )
-                return DictionaryPage(tuple(items), next_cursor, has_more)
+                lemma_groups = None
+                if include_lemma_groups and items:
+                    lemma_groups = tuple(
+                        self._store.load_lemma_groups(
+                            snapshot,
+                            profile_id=profile_id,
+                            language_code=requested_language,
+                            query=normalized_query,
+                            concept_ids={item.id for item in items},
+                        )
+                    )
+                elif include_lemma_groups:
+                    lemma_groups = ()
+                return DictionaryPage(tuple(items), next_cursor, has_more, lemma_groups)
         except BrainNotFound as error:
             raise DictionaryNotFound("active English profile was not found") from error
 
