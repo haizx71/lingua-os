@@ -2,6 +2,8 @@
 
 Updated: 2026-10-02
 
+The source/deployment, recovery, and gate sections before **Final closure** are a historical checkpoint from before PR #41 merged. Their pending-review and LOCKED statements are superseded by the final closure; the original failed run remains failed as recorded.
+
 ## Scope and disposition
 
 This document records the cleanup failure and bounded recovery evidence for hosted K2-08 run `36932709277` on master `58a3b738b145dd18bdb40869bab1662e6fae4840`. Runtime facts were supplied by the root operator; this author did not independently access hosted services or the database. No actor identifiers, credentials, raw learner rows, or Auth records are included.
@@ -36,3 +38,15 @@ The Commander’s fresh retained-state snapshot excluded exactly the two disposa
 - K2-09 and K2-10 remain **LOCKED** until full K2-08 hosted acceptance and independent review pass.
 
 Evidence packet prepared by **GPT-6 Luna / Medium**; implementation by **GPT-6 Luna / Max**; independent source reviewer: **GPT-6 Luna / Max**; independent one-off SQL reviewer: **GPT-6 Luna / Max**; hosted operator: **Commander**.
+
+## Final closure — 2026-10-02
+
+The source change was PR #41, head `43d3500fe4437009a3b13b6ec275e0fc54fb6d41`, four-file diff SHA256 `73e9e560da73015f9523e95466cada4b07f0e868c6e14846cc431d1ef87d5c64`. Independent source review by GPT-6 Luna / Max returned PASS with no HIGH/BLOCKER. Exact-head Security Gate `36940358882` and Vercel Preview succeeded; normal merge produced master `dc3fab04f56abdcfbdfd164991fc248a2665098c`. Render deployment `dep-davenh0473hc73f2goi0`, its health check, and Vercel Production deployment `6797487205` attest that SHA.
+
+The new full hosted acceptance run was workflow `36940909998` in master acceptance mode. Hosted job `110631923274` succeeded (one test, 19.6 minutes), and cleanup job `110637771202` succeeded. Ordered UTC evidence: fresh retained baseline began 23:29:28 and passed 23:30:07; the first actor was created after baseline at 23:30:07; the wave passed at 23:42:50; actor cleanup passed at 23:45:23; fresh-identity cleanup passed at 23:47:43; retained comparison and finalizer completion passed at 23:48:22. This run’s full retained-state comparison passed.
+
+Separate final review by GPT-6 Luna / Max checked ordered markers, the exact `actor_absent` chain, the 27-table inventory, and fail-closed finalizer proof; no HIGH/BLOCKER was reported. Commander’s terminal hashed-roster proof showed zero of the four selected disposable Auth records and zero rows owned by those actors across the 27 learner tables. The current 27-table retained snapshot is 83 rows / 72,325 bytes and stable after cleanup.
+
+The earlier 61-row / 51,535-byte cleanup-window baseline spans another interval and is not presented as the new run’s baseline. Its 15 changed tables reflect persisted changes timestamped no later than 23:18:03 UTC, before the new run’s 23:27:30 dispatch; none correspond to persisted changes at or after dispatch. No learner data was modified to force the earlier snapshot to match. The earlier run `36932709277` remains **FAIL**; its missing full-run comparison is not retroactively supplied by this new run.
+
+**Final gate:** K2-08 hosted acceptance, cleanup, fresh full-run retained comparison, and independent final review are PASS. K2-09 is READY; K2-10 is blocked on K2-09. K2-06/K2-07 accepted behavior and migration `0020` are unchanged. Hosted operator: Commander; implementation and independent reviews: GPT-6 Luna / Max; documentation worker: GPT-6 Luna / Medium.
