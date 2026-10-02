@@ -553,6 +553,55 @@ def test_concept_part_of_speech_is_optional_nullable_for_non_lexical_concepts() 
     assert "partOfSpeech" not in schemas["TodayActivity"]["properties"]
 
 
+def test_dictionary_lemma_groups_are_additive_and_default_off() -> None:
+    spec = load_yaml(OPENAPI_PATH)
+    operation = spec["paths"]["/v1/dictionary/search"]["get"]
+    parameters = {
+        parameter["name"]: parameter
+        for raw_parameter in operation["parameters"]
+        for parameter in (
+            local_ref_target(spec, raw_parameter["$ref"])
+            if "$ref" in raw_parameter
+            else raw_parameter,
+        )
+    }
+    include_groups = parameters["includeLemmaGroups"]
+    response = spec["components"]["schemas"]["DictionarySearchResponse"]
+    schemas = spec["components"]["schemas"]
+
+    assert include_groups["in"] == "query"
+    assert include_groups["schema"] == {"type": "boolean", "default": False}
+    assert "lemmaGroups" not in response["required"]
+    assert response["properties"]["data"]["items"]["$ref"] == (
+        "#/components/schemas/ConceptSummary"
+    )
+    assert response["properties"]["lemmaGroups"]["items"]["$ref"] == (
+        "#/components/schemas/DictionaryLemmaGroup"
+    )
+    assert schemas["DictionarySense"]["properties"]["concepts"]["items"]["$ref"] == (
+        "#/components/schemas/DictionaryLinkedConcept"
+    )
+    assert set(schemas["BrainConceptSummary"]["properties"]) <= set(
+        schemas["DictionaryLinkedConcept"]["properties"]
+    )
+    assert schemas["DictionaryLinkedConcept"]["properties"]["isSaved"]["type"] == "boolean"
+    lemma_group = schemas["DictionaryLemmaGroup"]
+    assert "partOfSpeech" not in lemma_group["required"]
+    part_of_speech = lemma_group["properties"]["partOfSpeech"]["oneOf"]
+    assert {item["$ref"] for item in part_of_speech if "$ref" in item} == {
+        "#/components/schemas/PartOfSpeech"
+    }
+    assert any(item.get("type") == "null" for item in part_of_speech)
+
+
+def test_dictionary_personalized_gets_are_private_and_uncached() -> None:
+    spec = load_yaml(OPENAPI_PATH)
+    for path in ("/v1/dictionary/search", "/v1/concepts/{conceptId}"):
+        response = spec["paths"][path]["get"]["responses"]["200"]
+        cache_control = local_ref_target(spec, response["headers"]["Cache-Control"]["$ref"])
+        assert cache_control["schema"]["const"] == "private, no-store"
+
+
 def test_critical_mutations_are_retry_safe_and_concurrent_edits_are_guarded() -> None:
     spec = load_yaml(OPENAPI_PATH)
     idempotent_mutations = {

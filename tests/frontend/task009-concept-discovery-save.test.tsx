@@ -10,6 +10,9 @@ import {
   MockApiClient,
   HttpApiClient,
   mockConceptSummary,
+  mockBrainConceptSummary,
+  mockAdditionalBrainConceptSummaries,
+  mockConceptDetail,
   mockSecondConceptSummary,
   type ApiClient,
   type DictionarySearchResponseDto,
@@ -123,7 +126,7 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
     fireEvent.change(searchInput, { target: { value: 'appointment' } });
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith({ query: 'appointment' });
+      expect(searchSpy).toHaveBeenCalledWith({ query: 'appointment', includeLemmaGroups: true });
     });
 
     expect(await screen.findByRole('heading', { level: 2, name: 'appointment' })).toBeInTheDocument();
@@ -160,6 +163,142 @@ describe('TASK-009 MINI: Live Concept Discovery + Explicit Save/Learn UI', () =>
 
     // Verify Save button is tagged with concept term
     expect(screen.getByRole('button', { name: /Lưu từ appointment để học/i })).toBeInTheDocument();
+  });
+
+  it('renders complete lemma senses with independent actor-scoped concept save actions', async () => {
+    const searchSpy = vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+      data: [mockConceptSummary],
+      meta: { requestId: 'req-groups', hasMore: false, pageSize: 1 },
+      lemmaGroups: [
+        {
+          lexemeId: '34000000-0000-4000-8000-000000000101',
+          lemma: 'go',
+          partOfSpeech: 'verb',
+          matchedForms: ['go', 'went'],
+          senses: [
+            {
+              senseId: '36000000-0000-4000-8000-000000000101',
+              senseOrder: 1,
+              definition: 'Move from one place to another.',
+              definitionLanguageCode: 'en',
+              translatedDefinition: 'Đi từ nơi này đến nơi khác.',
+              translationLanguageCode: 'vi',
+              concepts: [
+                { ...mockBrainConceptSummary, isSaved: true },
+                { ...mockAdditionalBrainConceptSummaries[0], isSaved: false },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const saveSpy = vi.spyOn(api, 'saveConceptToLibrary');
+    const inspectSpy = vi.spyOn(api, 'getConcept').mockResolvedValue({
+      data: {
+        ...mockConceptDetail,
+        id: mockSecondConceptSummary.id,
+        canonicalForm: 'available',
+        definitions: [
+          {
+            definition: 'Ready for use or free to meet.',
+            translation: 'Có thể sử dụng hoặc có thời gian rảnh.',
+            languageCode: 'en',
+            order: 0,
+          },
+        ],
+        examples: [
+          {
+            ...mockConceptDetail.examples[0],
+            text: 'This seat is available.',
+            translation: 'Chỗ ngồi này còn trống.',
+          },
+        ],
+      },
+      meta: { requestId: 'req-available-detail' },
+    });
+
+    await renderDictionary();
+    fireEvent.change(screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i), {
+      target: { value: 'go' },
+    });
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'go' })).toBeInTheDocument();
+    expect(screen.getByText('went')).toBeInTheDocument();
+    expect(screen.getByText('Đi từ nơi này đến nơi khác.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lưu từ available để học/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Đã lưu từ appointment vào kho học/i)).toBeInTheDocument();
+    expect(searchSpy).toHaveBeenCalledWith({ query: 'go', includeLemmaGroups: true });
+
+    fireEvent.click(screen.getByRole('button', { name: /Xem chi tiết từ available/i }));
+    expect(await screen.findByText('Có thể sử dụng hoặc có thời gian rảnh.')).toBeInTheDocument();
+    expect(screen.getByText(/This seat is available/)).toBeInTheDocument();
+    expect(inspectSpy).toHaveBeenCalledWith(mockSecondConceptSummary.id);
+
+    fireEvent.click(screen.getByRole('button', { name: /Lưu từ available để học/i }));
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledWith(mockAdditionalBrainConceptSummaries[0].concept.id));
+    expect(await screen.findByLabelText(/Đã lưu từ available vào kho học/i)).toBeInTheDocument();
+  });
+
+  it('keeps flat Save and Inspect actions when a legacy lemma has no senses', async () => {
+    vi.spyOn(api, 'searchDictionary').mockResolvedValue({
+      data: [mockConceptSummary],
+      meta: { requestId: 'req-empty-sense', hasMore: false, pageSize: 1 },
+      lemmaGroups: [
+        {
+          lexemeId: '34000000-0000-4000-8000-000000000105',
+          lemma: 'appointment',
+          partOfSpeech: 'noun',
+          matchedForms: ['appointment'],
+          senses: [],
+        },
+      ],
+    });
+
+    await renderDictionary();
+    fireEvent.change(screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i), {
+      target: { value: 'appointment' },
+    });
+
+    expect(await screen.findAllByRole('heading', { level: 2, name: 'appointment' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /Xem chi tiết từ appointment/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lưu từ appointment để học/i })).toBeInTheDocument();
+  });
+
+  it('clears a prior grouped saved badge immediately when the next query fails', async () => {
+    vi.spyOn(api, 'searchDictionary')
+      .mockResolvedValueOnce({
+        data: [mockConceptSummary],
+        meta: { requestId: 'req-grouped-first', hasMore: false, pageSize: 1 },
+        lemmaGroups: [
+          {
+            lexemeId: '34000000-0000-4000-8000-000000000101',
+            lemma: 'go',
+            partOfSpeech: 'verb',
+            matchedForms: ['go'],
+            senses: [
+              {
+                senseId: '36000000-0000-4000-8000-000000000101',
+                senseOrder: 1,
+                definition: 'Move from one place to another.',
+                definitionLanguageCode: 'en',
+                concepts: [{ ...mockBrainConceptSummary, isSaved: true }],
+              },
+            ],
+          },
+        ],
+      })
+      .mockRejectedValueOnce(new Error('Search is unavailable'));
+
+    await renderDictionary();
+    const search = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh/i);
+    fireEvent.change(search, { target: { value: 'go' } });
+    expect(await screen.findByRole('heading', { level: 2, name: 'go' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Đã lưu từ appointment vào kho học/i)).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'missing' } });
+    expect(screen.queryByRole('heading', { level: 2, name: 'go' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Đã lưu từ appointment vào kho học/i)).not.toBeInTheDocument();
+    expect(await screen.findByText('Search is unavailable')).toBeInTheDocument();
   });
 
   it('TEST-009-03: empty/no-result state handled cleanly when query yields no items', async () => {

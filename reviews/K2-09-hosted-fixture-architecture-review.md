@@ -1,0 +1,17 @@
+# K2-09 Hosted Fixture Architecture Review
+
+**Verdict:** Conditional design-only PASS; no HIGH/BLOCKER in the reviewed architecture after resolving run-ID anti-replay retention. This does not approve implementation, migration, credentials, or hosted fixture writes.
+**Reviewer:** GPT-6 Luna / Max (`/root/k208_pack_independent_review`). **Operator:** Commander. **Documentation:** GPT-6 Luna / Medium.
+**Design:** `plans/TASK-K2-09-hosted-fixture-control.md`.
+
+## Reviewed boundary
+
+The design confines runtime access to the exact existing Render staging service/project/database and retains its existing database credential there. GitHub authorization uses a dedicated OIDC audience, fixed issuer/JWKS/RS256 validation, immutable repository/owner/workflow/ref/event/actor claims, signed run metadata, and anti-replay. The direct workflow intentionally does not depend on reusable-workflow `job_workflow_ref`; unsigned triggering actor/mode/wave are not treated as token authorization.
+
+Fixture setup and cleanup are designed as bounded atomic transactions with exact source/hash/tree guards, parent row locks, serialized FK insert protection, full catalog dependency inspection, rollback on unexpected effects, and static redacted errors. The reviewed 44-FK inventory includes catalog CASCADE, RESTRICT, and SET NULL paths, including `phrase_specifications.headword_concept_id`, and at least eight known restrictive learner concept references; all references and side effects must be enumerated, not inferred from that abbreviated list. The control plane does not read or write Auth or learner tables. Actor behavior stays on normal JWT/API/RLS paths; existing scoped Auth cleanup and the 27-table retained-state comparison remain separate. Existing competence projection defaults apply without adding fixture policy rows.
+
+The proposed private receipt migration is limited to run/source protocol metadata, with default-deny RLS, no public client ACL, no added roles/grants, same-run replay rejection, 75-day terminal retention after close, and down-migration refusal while receipts remain. Retention is a conservative inference from the 30-day rerun window plus the 35-day workflow duration limit and buffer, not a GitHub guarantee. Only the exact same ACTIVE repo/run/attempt/SHA/template/source-record ID+hash and full fixture tree may be returned idempotently; this path performs no insert, update, reset, timestamp refresh, or upsert. On a unique-key race, reread the committed receipt and full tree. Partial/missing/drifted state, wrong claims, later attempts, or terminal receipts return static conflict; never repair or recreate. Cleanup cannot adopt a later attempt. The separate owner-guarded janitor uses an ephemeral GitHub token and verifies both the exact stored attempt and the run’s latest attempt; TTL alone is insufficient. Local PostgreSQL tests, source/security review, CI, migration gates, and explicit Commander authorization precede any hosted write.
+
+## Limit of verdict
+
+This review accepts the bounded architecture as design only. It does not verify implementation. Hosted setup/inspect/cleanup code and migration do not yet exist; current source review has passed, but exact-head CI and hosted K2-09 acceptance remain pending. No hosted fixture write is authorized. The acceptance record must separately prove fixture/Auth absence, zero rows owned by selected actors across 27 learner tables, and unchanged retained comparison; a terminal control-plane receipt is not a substitute.

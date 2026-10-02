@@ -5,6 +5,7 @@ import {
   isLinguaActorAbortedError,
   type ApiClient,
   type ConceptDetailDto,
+  type DictionaryLemmaGroupDto,
 } from '@lingua/types';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { getApiClient } from '../../lib/api/client';
@@ -34,6 +35,7 @@ export interface ConceptDiscoveryState {
   readonly searchError: Error | null;
   readonly retrySearch: () => void;
   readonly results: readonly ConceptSearchResultViewModel[];
+  readonly lemmaGroups: readonly DictionaryLemmaGroupDto[] | null;
   readonly savedConceptIds: ReadonlySet<string>;
   readonly isSaved: (conceptId: string) => boolean;
   readonly isSaving: (conceptId: string) => boolean;
@@ -66,6 +68,7 @@ export function useConceptDiscovery({
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<Error | null>(null);
   const [searchResults, setSearchResults] = useState<readonly ConceptSearchResultViewModel[]>([]);
+  const [lemmaGroups, setLemmaGroups] = useState<readonly DictionaryLemmaGroupDto[] | null>(null);
   const [savedConceptIds, setSavedConceptIds] = useState<ReadonlySet<string>>(() => new Set());
   const [savingConceptIds, setSavingConceptIds] = useState<ReadonlySet<string>>(() => new Set());
   const [saveError, setSaveError] = useState<ConceptSaveError | null>(null);
@@ -93,6 +96,7 @@ export function useConceptDiscovery({
     if (prevActorIdRef.current !== null && prevActorIdRef.current !== currentActorId) {
       setSearchQuery('');
       setSearchResults([]);
+      setLemmaGroups(null);
       setSavedConceptIds(new Set());
       setSavingConceptIds(new Set());
       setSaveError(null);
@@ -202,6 +206,7 @@ export function useConceptDiscovery({
       const trimmed = queryText.trim();
       if (!trimmed) {
         setSearchResults([]);
+        setLemmaGroups(null);
         setIsSearching(false);
         setSearchError(null);
         return;
@@ -210,6 +215,7 @@ export function useConceptDiscovery({
       // If query exceeds OpenAPI max_length (120), return empty result immediately
       if (trimmed.length > 120) {
         setSearchResults([]);
+        setLemmaGroups(null);
         setIsSearching(false);
         setSearchError(null);
         return;
@@ -221,9 +227,11 @@ export function useConceptDiscovery({
 
       setIsSearching(true);
       setSearchError(null);
+      setSearchResults([]);
+      setLemmaGroups(null);
 
       try {
-        const response = await api.searchDictionary({ query: trimmed });
+        const response = await api.searchDictionary({ query: trimmed, includeLemmaGroups: true });
         if (seq !== searchSequenceRef.current) return;
         if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
 
@@ -244,6 +252,7 @@ export function useConceptDiscovery({
           return mapConceptSummaryToSearchResultViewModel(summary, savedConceptIds.has(summary.id));
         });
         setSearchResults(mapped);
+        setLemmaGroups(response.lemmaGroups ?? null);
       } catch (err) {
         if (seq !== searchSequenceRef.current) return;
         if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
@@ -298,12 +307,22 @@ export function useConceptDiscovery({
     }
   }, [searchQuery, executeSearch]);
 
+  const updateSearchQuery = useCallback((query: string) => {
+    searchSequenceRef.current++;
+    setSearchQuery(query);
+    setSearchResults([]);
+    setLemmaGroups(null);
+    setSearchError(null);
+  }, []);
+
   const clearSearch = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
+    searchSequenceRef.current++;
     setSearchQuery('');
     setSearchResults([]);
+    setLemmaGroups(null);
     setIsSearching(false);
     setSearchError(null);
   }, []);
@@ -417,12 +436,13 @@ export function useConceptDiscovery({
 
   return {
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: updateSearchQuery,
     clearSearch,
     isSearching,
     searchError,
     retrySearch,
     results: effectiveResults,
+    lemmaGroups,
     savedConceptIds,
     isSaved: (id: string) => savedConceptIds.has(id),
     isSaving: (id: string) => savingConceptIds.has(id),

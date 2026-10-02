@@ -1166,6 +1166,8 @@ export interface components {
         readonly DictionarySearchResponse: {
             readonly data: readonly components["schemas"]["ConceptSummary"][];
             readonly meta: components["schemas"]["CursorResponseMeta"];
+            /** @description Complete approved lemma groups associated with the concepts on this page. Groups do not alter flat result ordering or cursor advancement and may repeat, complete, on later pages. */
+            readonly lemmaGroups?: readonly components["schemas"]["DictionaryLemmaGroup"][];
         };
         readonly ReaderAnalyzeRequest: {
             readonly title?: string;
@@ -1590,6 +1592,35 @@ export interface components {
             readonly exposureCount: number;
             /** Format: date-time */
             readonly lastSeenAt?: string;
+        };
+        readonly DictionaryLinkedConcept: {
+            readonly concept: components["schemas"]["ConceptSummary"];
+            readonly competence: components["schemas"]["CompetenceSignals"];
+            readonly mastery: number | null;
+            readonly confidence: number;
+            readonly memory?: components["schemas"]["MemorySnapshot"];
+            readonly exposureCount: number;
+            /** Format: date-time */
+            readonly lastSeenAt?: string;
+            readonly isSaved: boolean;
+        };
+        readonly DictionarySense: {
+            /** Format: uuid */
+            readonly senseId: string;
+            readonly senseOrder: number;
+            readonly definition: string;
+            readonly definitionLanguageCode: components["schemas"]["LanguageCode"];
+            readonly translatedDefinition?: string;
+            readonly translationLanguageCode?: components["schemas"]["LanguageCode"];
+            readonly concepts: readonly components["schemas"]["DictionaryLinkedConcept"][];
+        };
+        readonly DictionaryLemmaGroup: {
+            /** Format: uuid */
+            readonly lexemeId: string;
+            readonly lemma: string;
+            readonly partOfSpeech?: components["schemas"]["PartOfSpeech"] | null;
+            readonly matchedForms: readonly string[];
+            readonly senses: readonly components["schemas"]["DictionarySense"][];
         };
         readonly BrainSummary: {
             /** Format: uuid */
@@ -2388,6 +2419,7 @@ export interface operations {
             /** @description Concept detail with optional attribution when the source or license requires it. */
             readonly 200: {
                 headers: {
+                    readonly "Cache-Control": components["headers"]["PrivateNoStore"];
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -2405,6 +2437,7 @@ export interface operations {
             readonly query: {
                 readonly query: string;
                 readonly languageCode?: components["schemas"]["LanguageCode"];
+                readonly includeLemmaGroups?: boolean;
                 /** @description Opaque cursor returned by the previous page. Clients must not parse it. */
                 readonly cursor?: components["parameters"]["Cursor"];
                 readonly limit?: components["parameters"]["Limit"];
@@ -2418,6 +2451,7 @@ export interface operations {
             /** @description Matching concept summaries. */
             readonly 200: {
                 headers: {
+                    readonly "Cache-Control": components["headers"]["PrivateNoStore"];
                     readonly [name: string]: unknown;
                 };
                 content: {

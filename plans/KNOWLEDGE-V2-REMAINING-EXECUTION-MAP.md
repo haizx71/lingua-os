@@ -16,6 +16,13 @@ win.
 The remaining authoritative roadmap is K2-04 through K2-10. K2-01 through K2-03 are prerequisites,
 not remaining implementation waves.
 
+## Current execution checkpoint — 2026-10-02
+
+- K2-08 is DONE: full hosted acceptance, cleanup, current-run retained comparison, and independent final review PASS. See the current K2-08 checkpoint in `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
+- K2-09 product source is frozen at the 16-file diff SHA256 `e03a501398cd4c89495c576844afb3935c9e5aa43a7490372014aa5068f245e5`; independent GPT-6 Luna / Max source review PASS with no HIGH/BLOCKER. Exact-head CI remains pending. Worker-reported local checks are recorded in `reviews/K2-09-dictionary-normalization-source-review.md`; independent reviewer did not rerun them.
+- K2-09 hosted fixture architecture has conditional design-only PASS after the 75-day terminal receipt policy and strict exact-run idempotency/reaper guards were recorded. This does not authorize fixture implementation or hosted writes. Exact private DTO/spec review, implementation, migration/security gate, and hosted acceptance remain pending. See `plans/TASK-K2-09-hosted-fixture-control.md` and `reviews/K2-09-hosted-fixture-architecture-review.md`.
+- K2-10 remains blocked on K2-09 hosted acceptance. Migration `0020`, accepted K2-06/K2-07 behavior, and the importer’s existing one-candidate/one-sense format remain unchanged.
+
 ## Recorded contradictions and resolutions
 
 1. **Migration number collision.** The design documents reserve `0016` for learner
@@ -56,7 +63,7 @@ not remaining implementation waves.
     master reports newer suite partitions/totals. K2-10 uses the tests discovered at execution time
     and reports exact executed counts rather than forcing obsolete totals.
 
-Latest execution checkpoint — 2026-10-01: K2-04 through K2-06 are accepted predecessors;
+Historical execution checkpoint — 2026-10-01: K2-04 through K2-06 are accepted predecessors;
 K2-07 source, hosted acceptance, cleanup, and retained-state comparison are PASS at master
 `c696ac935852c4ebcd9e1183521996e5b12ad273`. K2-08 is READY to begin; K2-09 and K2-10 remain
 sequentially downstream. K2-07 staging exercised self-recall and typing; listening and cloze
@@ -267,17 +274,14 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
   integration commands to execute the Dictionary source and its focused database API tests.
 - **Hosted acceptance:** live catalog feasibility found 94 eligible approved English lexemes, none
   with at least two approved senses and at least two approved linked concepts, and zero approved
-  `went` forms. A controlled fixture is required. Hosted fixture architecture is BLOCKED / NOT
-  AUTHORIZED pending independent Max review of a bounded transaction in the existing trusted
-  server-side database control plane. It must lock exact parents to serialize FK inserts, guard
-  source/hash/tree identity, enumerate CASCADE/RESTRICT/SET NULL dependents (including
-  `phrase_specifications.headword_concept_id`), prove no outside acceptance-actor, ordinary learner,
-  or catalog references, account for restrictive-FK behavior, abort on unknown/outside affected
-  rows or SET NULL side effects, and define crash recovery. Admin request-by-request
-  deletion is insufficient. Once separately approved, learner behavior remains normal actor
-  HTTP/JWT/RLS; search writes nothing, explicit save activates only the chosen concept, and
-  fixture/actor cleanup plus retained comparison must pass. No roles, grants, Auth, RLS, or
-  SECURITY DEFINER changes.
+  `went` forms. A controlled fixture is required. Fixture architecture has conditional design-only
+  PASS in the separate K2-09 control-plane plan/review; source, migration/security gate, exact private
+  DTO/spec review, and hosted acceptance remain pending. No hosted fixture writes are authorized.
+  Implementation must retain atomic exact-tree guards, parent locks, all-reference checks across the
+  44-FK inventory, strict same-run idempotency, and cleanup after authoritative GitHub run-attempt
+  checks. Actor behavior remains normal HTTP/JWT/RLS; search writes nothing, explicit save activates
+  only the chosen concept, and the existing 27-table retained comparison remains required. No roles,
+  grants, Auth, RLS, or SECURITY DEFINER changes.
 
 ## K2-10 — End-to-End Verification and Documentation Seal
 

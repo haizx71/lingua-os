@@ -552,6 +552,9 @@ paths:
       responses:
         '200':
           description: Concept detail with optional attribution when the source or license requires it.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
           content:
             application/json:
               schema:
@@ -578,11 +581,20 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/LanguageCode'
+        - name: includeLemmaGroups
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Matching concept summaries.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
           content:
             application/json:
               schema:
@@ -1939,6 +1951,13 @@ components:
           maxItems: 100
           items: { $ref: '#/components/schemas/ConceptSummary' }
         meta: { $ref: '#/components/schemas/CursorResponseMeta' }
+        lemmaGroups:
+          type: array
+          description: >-
+            Complete approved lemma groups associated with the concepts on this page. Groups do
+            not alter flat result ordering or cursor advancement and may repeat, complete, on
+            later pages.
+          items: { $ref: '#/components/schemas/DictionaryLemmaGroup' }
     ReaderAnalyzeRequest:
       type: object
       additionalProperties: false
@@ -2517,6 +2536,57 @@ components:
         memory: { $ref: '#/components/schemas/MemorySnapshot' }
         exposureCount: { type: integer, minimum: 0 }
         lastSeenAt: { type: string, format: date-time }
+    DictionaryLinkedConcept:
+      type: object
+      additionalProperties: false
+      required: [concept, competence, mastery, confidence, exposureCount, isSaved]
+      properties:
+        concept: { $ref: '#/components/schemas/ConceptSummary' }
+        competence: { $ref: '#/components/schemas/CompetenceSignals' }
+        mastery:
+          oneOf:
+            - { type: number, minimum: 0, maximum: 1 }
+            - { type: 'null' }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        memory: { $ref: '#/components/schemas/MemorySnapshot' }
+        exposureCount: { type: integer, minimum: 0 }
+        lastSeenAt: { type: string, format: date-time }
+        isSaved: { type: boolean }
+    DictionarySense:
+      type: object
+      additionalProperties: false
+      required: [senseId, senseOrder, definition, definitionLanguageCode, concepts]
+      dependentRequired:
+        translatedDefinition: [translationLanguageCode]
+        translationLanguageCode: [translatedDefinition]
+      properties:
+        senseId: { type: string, format: uuid }
+        senseOrder: { type: integer, minimum: 1 }
+        definition: { type: string, minLength: 1 }
+        definitionLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        translatedDefinition: { type: string, minLength: 1 }
+        translationLanguageCode: { $ref: '#/components/schemas/LanguageCode' }
+        concepts:
+          type: array
+          items: { $ref: '#/components/schemas/DictionaryLinkedConcept' }
+    DictionaryLemmaGroup:
+      type: object
+      additionalProperties: false
+      required: [lexemeId, lemma, matchedForms, senses]
+      properties:
+        lexemeId: { type: string, format: uuid }
+        lemma: { type: string, minLength: 1, maxLength: 300 }
+        partOfSpeech:
+          oneOf:
+            - $ref: '#/components/schemas/PartOfSpeech'
+            - type: 'null'
+        matchedForms:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+        senses:
+          type: array
+          items: { $ref: '#/components/schemas/DictionarySense' }
     BrainSummary:
       type: object
       additionalProperties: false
