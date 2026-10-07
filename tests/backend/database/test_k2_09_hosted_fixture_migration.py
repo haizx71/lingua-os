@@ -82,7 +82,9 @@ def test_0021_private_receipt_owner_acl_rls_columns_and_no_fk(
             ).fetchone() == (False, False)
             assert connection.execute(
                 """
-                SELECT bool_or(has_table_privilege(%s, 'private.k2_hosted_fixture_receipts', privilege))
+                SELECT bool_or(
+                    has_table_privilege(%s, 'private.k2_hosted_fixture_receipts', privilege)
+                )
                 FROM unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE',
                                   'REFERENCES', 'TRIGGER']) AS privileges(privilege)
                 """,

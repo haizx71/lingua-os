@@ -44,6 +44,8 @@ from lingua_api.dictionary.cursor import InvalidDictionaryCursor
 from lingua_api.dictionary.domain import DictionaryNotFound, DictionaryValidationError
 from lingua_api.dictionary.routes import router as dictionary_router
 from lingua_api.dictionary.service import DictionaryApplication
+from lingua_api.hosted_fixture.routes import router as hosted_fixture_router
+from lingua_api.hosted_fixture.store import PostgresFixtureStore
 from lingua_api.library.domain import (
     InvalidLibraryCursor,
     LibraryNotFound,
@@ -177,6 +179,9 @@ def create_app(
     application.state.assessment_application = (
         AssessmentApplication(resolved_database_url) if resolved_database_url is not None else None
     )
+    application.state.hosted_fixture_store = (
+        PostgresFixtureStore(resolved_database_url) if resolved_database_url is not None else None
+    )
     application.state.library_application = (
         LibraryApplication(
             resolved_database_url,
@@ -206,6 +211,7 @@ def create_app(
     application.include_router(today_router)
     application.include_router(brain_router)
     application.include_router(assessment_router)
+    application.include_router(hosted_fixture_router)
     application.include_router(library_router)
 
     @application.get("/health", response_model=HealthResponse, include_in_schema=False)
