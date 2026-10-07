@@ -337,11 +337,12 @@ def test_concept_senses_cascade_on_concept_and_word_sense_delete(
     ).fetchone() == (1,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_legacy_sense_backfill_is_exact_and_learner_state_free(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    database_url = isolated_migrated_postgres_url
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=6) == [
+    database_url, migrations_dir = isolated_postgres_at_migration
+    assert migrate_down(database_url, migrations_dir, steps=6) == [
         "0020",
         "0019",
         "0018",
@@ -358,7 +359,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
         )
         conn.commit()
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == [
+    assert migrate_up(database_url, migrations_dir) == [
         "0015",
         "0016",
         "0017",
@@ -366,7 +367,7 @@ def test_legacy_sense_backfill_is_exact_and_learner_state_free(
         "0019",
         "0020",
     ]
-    assert migrate_up(database_url, MIGRATIONS_DIR) == []
+    assert migrate_up(database_url, migrations_dir) == []
 
     with _connect(database_url) as conn:
         rows = conn.execute(

@@ -1206,10 +1206,14 @@ def test_fastapi_reader_operations_match_frozen_operation_metadata(
         assert actual["security"] == [{"bearerAuth": []}]
 
 
-def test_0005_rollback_refuses_reader_activity(isolated_migrated_postgres_url: str) -> None:
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
+def test_0005_rollback_refuses_reader_activity(
+    isolated_postgres_at_migration: tuple[str, Path],
+) -> None:
+    database_url, migrations_dir = isolated_postgres_at_migration
     actor_id = uuid.uuid4()
     profile_id = uuid.uuid4()
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (actor_id,))
         connection.execute("INSERT INTO users (id) VALUES (%s)", (actor_id,))
         connection.execute(
@@ -1235,9 +1239,7 @@ def test_0005_rollback_refuses_reader_activity(isolated_migrated_postgres_url: s
             (actor_id, uuid.uuid4(), "d" * 64, uuid.uuid4()),
         )
 
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=11
-    ) == [
+    assert migrate_down(database_url, migrations_dir, steps=11) == [
         "0020",
         "0019",
         "0018",
@@ -1250,17 +1252,9 @@ def test_0005_rollback_refuses_reader_activity(isolated_migrated_postgres_url: s
         "0011",
         "0010",
     ]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0009"]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0008"]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0007"]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0006"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0009"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0008"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0007"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0006"]
     with pytest.raises(psycopg.errors.RaiseException, match="Refusing lossy TASK-008 rollback"):
-        migrate_down(isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1)
+        migrate_down(database_url, migrations_dir, steps=1)

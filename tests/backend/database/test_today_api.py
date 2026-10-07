@@ -807,12 +807,14 @@ def test_today_runtime_operations_match_frozen_openapi(today_api: TodayApiSeed) 
     }
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_0006_rollback_refuses_generated_today_plans(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
+    database_url, migrations_dir = isolated_postgres_at_migration
     actor_id = uuid.uuid4()
     profile_id = uuid.uuid4()
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (actor_id,))
         connection.execute("INSERT INTO users (id) VALUES (%s)", (actor_id,))
         connection.execute(
@@ -840,9 +842,7 @@ def test_0006_rollback_refuses_generated_today_plans(
             (actor_id, profile_id),
         )
 
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=11
-    ) == [
+    assert migrate_down(database_url, migrations_dir, steps=11) == [
         "0020",
         "0019",
         "0018",
@@ -855,17 +855,19 @@ def test_0006_rollback_refuses_generated_today_plans(
         "0011",
         "0010",
     ]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0009"]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0008"]
-    assert migrate_down(
-        isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1
-    ) == ["0007"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0009"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0008"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0007"]
     with pytest.raises(psycopg.errors.RaiseException, match="Refusing lossy TASK-010 rollback"):
-        migrate_down(isolated_migrated_postgres_url, ROOT / "database" / "migrations", steps=1)
+        migrate_down(database_url, migrations_dir, steps=1)
+
+    with psycopg.connect(database_url) as connection:
+        assert connection.execute(
+            "SELECT version FROM schema_migrations WHERE version = '0006'"
+        ).fetchone() == ("0006",)
+        assert connection.execute(
+            "SELECT count(*) FROM today_plans WHERE user_id = %s", (actor_id,)
+        ).fetchone() == (1,)
 
 
 def test_k208_candidate_base_probe_matches_production_store_and_today_order(

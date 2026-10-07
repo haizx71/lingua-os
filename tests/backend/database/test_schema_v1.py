@@ -167,10 +167,17 @@ def _seed_concept(
     return row[0]  # type: ignore[return-value]
 
 
-def test_empty_database_migration_is_reproducible_and_reversible(
+def test_empty_database_public_migrations_through_0020_are_reproducible_and_reversible(
     postgres_url: str, tmp_path: Path
 ) -> None:
-    migrations_dir = Path(__file__).resolve().parents[3] / "database" / "migrations"
+    """Reproduce/reverse the public migration prefix through 0020, excluding private 0021."""
+    source_migrations_dir = Path(__file__).resolve().parents[3] / "database" / "migrations"
+    migrations_dir = tmp_path / "public_migrations_through_0020"
+    migrations_dir.mkdir()
+    for migration_path in source_migrations_dir.glob("*.sql"):
+        version = migration_path.name[:4]
+        if version.isdigit() and version <= "0020":
+            shutil.copyfile(migration_path, migrations_dir / migration_path.name)
     database_name = f"lingua_migration_{uuid.uuid4().hex}"
     admin_url = make_conninfo(postgres_url, dbname="postgres")
     isolated_url = make_conninfo(postgres_url, dbname=database_name)
@@ -234,7 +241,7 @@ def test_empty_database_migration_is_reproducible_and_reversible(
             "0020",
         ]
 
-        copied_migrations = tmp_path / "migrations"
+        copied_migrations = tmp_path / "modified_migrations"
         shutil.copytree(migrations_dir, copied_migrations)
         up_file = next(copied_migrations.glob("0001_*.up.sql"))
         up_file.write_text(up_file.read_text(encoding="utf-8") + "\n-- changed\n", encoding="utf-8")

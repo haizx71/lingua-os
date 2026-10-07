@@ -137,11 +137,13 @@ def test_today_reason_code_check_accepts_remediation_and_rejects_unknown_values(
     ).fetchone() == (allowed,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_0020_reason_code_migration_rolls_back_and_reapplies_safely(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1) == ["0020"]
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, migrations_dir = isolated_postgres_at_migration
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0020"]
+    with psycopg.connect(database_url) as connection:
         actor_id, profile_id, review_item_id, concept_id = _seed_owner_and_review(connection)
         plan_id = _insert_plan(connection, actor_id, profile_id)
         activity_id = _insert_review_activity(
@@ -161,13 +163,15 @@ def test_0020_reason_code_migration_rolls_back_and_reapplies_safely(
                 (["WEAK_REMEDIATION", "CONTENT_FIT"], activity_id),
             )
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == ["0020"]
+    assert migrate_up(database_url, migrations_dir) == ["0020"]
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_0020_rollback_refuses_persisted_remediation_reasons_before_changing_constraint(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, migrations_dir = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as connection:
         actor_id, profile_id, review_item_id, concept_id = _seed_owner_and_review(connection)
         plan_id = _insert_plan(connection, actor_id, profile_id)
         activity_id = _insert_review_activity(
@@ -187,9 +191,9 @@ def test_0020_rollback_refuses_persisted_remediation_reasons_before_changing_con
         )
 
     with pytest.raises(psycopg.errors.RaiseException, match="Refusing 0020 rollback"):
-        migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1)
+        migrate_down(database_url, migrations_dir, steps=1)
 
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         constraint = connection.execute(
             """
             SELECT pg_get_constraintdef(constraint_row.oid)
