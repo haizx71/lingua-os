@@ -16,7 +16,14 @@ win.
 The remaining authoritative roadmap is K2-04 through K2-10. K2-01 through K2-03 are prerequisites,
 not remaining implementation waves.
 
-## Current execution checkpoint — 2026-10-02
+## Current execution checkpoint — 2026-10-08
+
+- K2-08 remains DONE with full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; see `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
+- K2-09 product source, independent product review, exact-head CI, merge, and deployment remain PASS as recorded below. Backend base HEAD is `4d07a6d1ff6c62f27561eeb3f111f77f83ced261`. The separate 18-path Node/harness packet is committed and pushed on isolated branch `codex/k209-hosted-fixture-control` at `ea53d57f35fe0a3cd94a6dec5f038419a702d8e1`; raw aggregate SHA256 `7f00b0daea3230d4531b16a297db9ee78552a034c92ce2d725fce34abb8ef7ed` matches the Git-LF manifest. Source diff against base SHA256 `6ac04cc2e71cab807c7ff904aa93a699574d19a5794065c059bc52d86d321b7d`, 193,568 bytes. Independent GPT-6 Luna / Max review passed with no HIGH/BLOCKER, independently recomputed the manifest, and ran 22 focused tests. Writer-reported broader checks include 158 Vitest tests across five files plus tsc, ESLint, and diff check passing; Ruff and 31 probe pytest checks remain passing from the prior freeze. Exact-head CI remains pending.
+- Migration `d4faf92` is isolated but has not been applied. The latest read-only hosted metadata check at 2026-10-07 18:48:19 UTC observed application registry count 20/head 0020 and private-schema absence; remote master and Render health/source SHA remained the existing product merge `7bc877b85bf643af21498da0ba44e2c157e0ae03`. Registry state and the fresh 44-FK metadata inventory are recorded in `reviews/K2-09-hosted-fixture-source-migration-gate-review.md`. The scoped recovery JSON is metadata-only and accepted solely for additive 0021 recovery comparison; it is not a full backup or a hosted-down waiver. Migration/security/registry checks, deployment attestation, and full hosted fixture acceptance/cleanup/retained comparison remain pending; no hosted writes have occurred.
+- K2-10 remains BLOCKED until K2-09 full hosted acceptance and cleanup/retained comparison pass. Migration 0020 and accepted K2-06/K2-07 behavior remain unchanged.
+
+## Historical execution checkpoint — 2026-10-02
 
 - K2-08 is DONE: full hosted acceptance, cleanup, current-run retained comparison, and independent final review PASS. See the current K2-08 checkpoint in `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
 - K2-09 product source is frozen at the 16-file diff SHA256 `e03a501398cd4c89495c576844afb3935c9e5aa43a7490372014aa5068f245e5`; independent GPT-6 Luna / Max source review PASS with no HIGH/BLOCKER. PR #43 merged at `7bc877b85bf643af21498da0ba44e2c157e0ae03`. Exact tested PR head `29da9f8b7f96a3d2ca8c8c3de4fd02b51d6dde65` passed Security Gate `37013641196` and all six Knowledge Audit jobs in `37013641469`; CI summaries are in `reviews/K2-09-dictionary-normalization-source-review.md`. Vercel Preview `6809598033` passed on the PR head. Render `dep-davr78rm8hqs73ccnee0` and Vercel Production deployment `6809699550` are healthy/successful against merged SHA `7bc877b85bf643af21498da0ba44e2c157e0ae03`. Implementation-worker local checks are separately recorded; independent reviewer did not rerun them. Query-plan performance remains unmeasured.
@@ -274,9 +281,10 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
   integration commands to execute the Dictionary source and its focused database API tests.
 - **Hosted acceptance:** live catalog feasibility found 94 eligible approved English lexemes, none
   with at least two approved senses and at least two approved linked concepts, and zero approved
-  `went` forms. A controlled fixture is required. Fixture architecture has conditional design-only
-  PASS in the separate K2-09 control-plane plan/review; source, migration/security gate, exact private
-  DTO/spec review, and hosted acceptance remain pending. No hosted fixture writes are authorized.
+  `went` forms. A controlled fixture is required. Fixture architecture and exact private DTO/spec
+  review have passed design gates. Bounded local setup/inspect/cleanup source is frozen and independently
+  reviewed PASS; migration/security gate, exact-head CI, deployment, and hosted acceptance remain pending.
+  No hosted fixture writes are authorized.
   Implementation must retain atomic exact-tree guards, parent locks, all-reference checks across the
   44-FK inventory, strict same-run idempotency, and cleanup after authoritative GitHub run-attempt
   checks. Actor behavior remains normal HTTP/JWT/RLS; search writes nothing, explicit save activates
