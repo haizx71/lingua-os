@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from threading import Barrier, Event
 from time import monotonic, sleep
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -163,7 +163,9 @@ def _enable_fixed_target(monkeypatch: pytest.MonkeyPatch, local_database_url: st
     monkeypatch.delenv("RENDER_PROJECT_ID", raising=False)
     original_connect = psycopg.connect
 
-    def connect_local_fixture_database(conninfo: object, *args: object, **kwargs: object):
+    def connect_local_fixture_database(
+        conninfo: object, *args: object, **kwargs: object
+    ) -> psycopg.Connection[tuple[object, ...]]:
         if conninfo == _TEST_SERVICE_DATABASE_URL:
             assert kwargs.get("sslmode") == "verify-full"
             assert kwargs.get("sslrootcert") == _verified_pinned_ca_path()
@@ -275,18 +277,22 @@ def test_store_disables_prepared_statements_for_shared_transaction_pooler(
     assert args == (database_url,)
     assert kwargs["prepare_threshold"] is None
     assert kwargs["sslmode"] == "verify-full"
-    pinned_ca_path = Path(str(kwargs["sslrootcert"]))
+    sslrootcert = kwargs["sslrootcert"]
+    assert isinstance(sslrootcert, str)
+    pinned_ca_path = Path(sslrootcert)
     assert pinned_ca_path == Path(_verified_pinned_ca_path())
     assert hashlib.sha256(pinned_ca_path.read_bytes()).hexdigest() == _PINNED_CA_SHA256
     effective_tls = conninfo_to_dict(
         make_conninfo(
             database_url,
             sslmode=kwargs["sslmode"],
-            sslrootcert=kwargs["sslrootcert"],
+            sslrootcert=sslrootcert,
         )
     )
     assert effective_tls["sslmode"] == "verify-full"
-    assert Path(effective_tls["sslrootcert"]) == pinned_ca_path
+    effective_ca_path = effective_tls["sslrootcert"]
+    assert isinstance(effective_ca_path, str)
+    assert Path(effective_ca_path) == pinned_ca_path
     assert "statement_timeout=8000" in str(kwargs["options"])
 
 
@@ -742,6 +748,7 @@ def test_setup_collision_preflight_preserves_the_preexisting_catalog_row(
             (SOURCE_NAME, SOURCE_VERSION),
         ).fetchone()
         assert source_record_id is not None
+        conflicting_row: tuple[str, str, UUID | str]
         if collision in {"concept_id", "canonical_key"}:
             concept_id = ids.owner_concept if collision == "concept_id" else uuid4()
             canonical_key = (
@@ -926,38 +933,38 @@ def test_cross_schema_foreign_key_drift_blocks_setup_and_cleanup_atomically(
                 f'INSERT INTO "{schema}".external_reference (id, concept_id) VALUES (1, %s)',
                 (concept_id,),
             )
-            before_cleanup = (
-                *fixture_counts(connection),
-                *connection.execute(
-                    "SELECT state FROM private.k2_hosted_fixture_receipts WHERE run_id=%s",
-                    (claims.run_id,),
-                ).fetchone(),
-                *connection.execute(
-                    """
-                    SELECT concept_id::text FROM "k209_external_fk_test".external_reference
-                    WHERE id=1
-                    """
-                ).fetchone(),
-            )
+            receipt_row = connection.execute(
+                "SELECT state FROM private.k2_hosted_fixture_receipts WHERE run_id=%s",
+                (claims.run_id,),
+            ).fetchone()
+            assert receipt_row is not None
+            external_reference_row = connection.execute(
+                """
+                SELECT concept_id::text FROM "k209_external_fk_test".external_reference
+                WHERE id=1
+                """
+            ).fetchone()
+            assert external_reference_row is not None
+            before_cleanup = (*fixture_counts(connection), *receipt_row, *external_reference_row)
             assert before_cleanup[:6] == (1, 2, 1, 1, 2, 3)
 
         with pytest.raises(FixtureConflict):
             store.cleanup(claims)
 
         with psycopg.connect(isolated_migrated_postgres_url) as connection:
-            after_cleanup = (
-                *fixture_counts(connection),
-                *connection.execute(
-                    "SELECT state FROM private.k2_hosted_fixture_receipts WHERE run_id=%s",
-                    (claims.run_id,),
-                ).fetchone(),
-                *connection.execute(
-                    """
-                    SELECT concept_id::text FROM "k209_external_fk_test".external_reference
-                    WHERE id=1
-                    """
-                ).fetchone(),
-            )
+            receipt_row = connection.execute(
+                "SELECT state FROM private.k2_hosted_fixture_receipts WHERE run_id=%s",
+                (claims.run_id,),
+            ).fetchone()
+            assert receipt_row is not None
+            external_reference_row = connection.execute(
+                """
+                SELECT concept_id::text FROM "k209_external_fk_test".external_reference
+                WHERE id=1
+                """
+            ).fetchone()
+            assert external_reference_row is not None
+            after_cleanup = (*fixture_counts(connection), *receipt_row, *external_reference_row)
             assert after_cleanup == before_cleanup
             assert after_cleanup[-2] == "ACTIVE"
             assert after_cleanup[-1] == concept_id

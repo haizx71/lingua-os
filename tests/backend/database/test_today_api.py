@@ -962,13 +962,15 @@ def test_k208_candidate_base_probe_matches_production_store_and_today_order(
                 "INSERT INTO learner_profiles (user_id, time_zone) VALUES (%s, 'Asia/Ho_Chi_Minh')",
                 (actor_id,),
             )
-            profile_id = connection.execute(
+            profile_row = connection.execute(
                 """INSERT INTO user_languages
                        (user_id, language_code, interface_language_code, native_language_code,
                         goal, daily_minutes)
                    VALUES (%s, 'en', 'vi', 'vi', 'communication', 15) RETURNING id""",
                 (actor_id,),
-            ).fetchone()[0]
+            ).fetchone()
+            assert profile_row is not None
+            profile_id = profile_row[0]
             profile_ids.append(uuid.UUID(str(profile_id)))
 
         baseline_orders: list[list[str]] = []

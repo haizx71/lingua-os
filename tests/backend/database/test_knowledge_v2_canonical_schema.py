@@ -23,7 +23,9 @@ from lingua_api.catalog.models import (
     PhoneticTranscriptionDto,
 )
 from psycopg import Connection, errors
+from psycopg.conninfo import conninfo_to_dict
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session
 
 from database.migrate import _connect, _database_url
@@ -373,7 +375,35 @@ def test_browser_roles_have_zero_privileges_on_knowledge_v2_canonical_tables(
 # -----------------------------------------------------------------------------
 
 
-def test_sqlalchemy_orm_and_pydantic_dto_roundtrip() -> None:
+def test_sqlalchemy_orm_and_pydantic_dto_roundtrip(
+    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    isolated_conninfo = conninfo_to_dict(isolated_migrated_postgres_url)
+    username = isolated_conninfo.get("user")
+    password = isolated_conninfo.get("password")
+    host = isolated_conninfo.get("host")
+    port = isolated_conninfo.get("port")
+    database = isolated_conninfo.get("dbname")
+    assert isinstance(username, str)
+    assert isinstance(password, str)
+    assert isinstance(host, str)
+    assert isinstance(port, str)
+    assert isinstance(database, str)
+    connection_options: dict[str, str] = {}
+    for key, value in isolated_conninfo.items():
+        if key not in {"user", "password", "host", "port", "dbname"}:
+            assert isinstance(value, str)
+            connection_options[key] = value
+    database_url = URL.create(
+        "postgresql",
+        username=username,
+        password=password,
+        host=host,
+        port=int(port),
+        database=database,
+        query=connection_options,
+    ).render_as_string(hide_password=False)
+    monkeypatch.setenv("DATABASE_URL", database_url)
     db_url = _database_url()
     # Normalize postgresql:// prefix for SQLAlchemy
     sa_url = db_url.replace("postgresql://", "postgresql+psycopg://")
