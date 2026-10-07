@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
   createLearnerProfile,
+  cleanupK209FixtureAfterActorProofs,
+  cleanupK209FixtureAfterCurrentRun,
+  k209ExpectedActorAbsenceIds,
   allK208CompetitorsEligibleForStates,
   k2HostedWaveCheckpoint,
   markK2HostedCheckpoint,
@@ -18,6 +21,7 @@ import {
 } from './k2_hosted_runner';
 import {
   K2_HOSTED_MARKER_KEY,
+  K2_HOSTED_FIXTURE_READ_TOKEN_HEADER,
   K2_HOSTED_STAGING_SUPABASE_REF,
   K2_HOSTED_WORKFLOW,
   K2_HOSTED_WORKFLOW_REF,
@@ -25,8 +29,10 @@ import {
   getK2ActorOwnership,
   type K2AuthenticatedActor,
   type K2FreshActorIdentity,
+  type K2HostedFixtureDto,
   type K2HostedConfig,
 } from './k2_hosted_actors';
+import * as k2HostedProbeClient from './k2_hosted_probe_client';
 import type { TestInfo } from '@playwright/test';
 import { assertK2HostedDueOnlyPlanReplay } from './k2_hosted_wave_k2_08_due_only';
 
@@ -93,6 +99,21 @@ describe('K2 hosted phase diagnostics', () => {
       type: 'k2-hosted-phase',
       description: 'primary_profile_bootstrap:start',
     }]);
+  });
+
+  it('records a distinct ABSENT receipt proof without claiming the fixture was closed', () => {
+    const testInfo = diagnosticTestInfo();
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    markK2HostedCheckpoint(testInfo, 'finalizer_k209_fixture_absent_proof', 'pass');
+    expect(testInfo.annotations).toEqual([{
+      type: 'k2-hosted-phase',
+      description: 'finalizer_k209_fixture_absent_proof:pass',
+    }]);
+    expect(log).toHaveBeenCalledWith(JSON.stringify({
+      type: 'k2_hosted_phase',
+      phase: 'finalizer_k209_fixture_absent_proof',
+      event: 'pass',
+    }));
   });
 
   it('keeps the due-only subcase on its own closed checkpoint', () => {
@@ -204,6 +225,118 @@ describe('K2 hosted wave request boundary', () => {
       '/v1/dictionary/search?query=a&languageCode=en&limit=100&cursor=unexpected',
       {},
     )).toThrow('Dictionary operation');
+  });
+
+  it('maps only the exact K2-09 fixture queries and opaque concept handles', () => {
+    const fixture: K2HostedFixtureDto = {
+      handles: { ownerConcept: 'k2-09-owner', secondaryConcept: 'k2-09-secondary', lexeme: 'k2-09-lexeme' },
+      ids: {
+        ownerConceptId: '00000000-0000-4000-8000-000000000011',
+        secondaryConceptId: '00000000-0000-4000-8000-000000000012',
+        lexemeId: '00000000-0000-4000-8000-000000000013',
+      },
+      lemma: `kfixture${'a'.repeat(64)}`,
+      inflectedForm: `kfixture${'a'.repeat(64)}s`,
+    };
+    const fixtureIds = createK2OpaqueIdProjector(() => '00000000-0000-4000-8000-000000000099');
+    fixtureIds.bind('k2-09-owner', fixture.ids.ownerConceptId);
+    fixtureIds.bind('k2-09-secondary', fixture.ids.secondaryConceptId);
+    fixtureIds.bind('k2-09-lexeme', fixture.ids.lexemeId);
+    const groupedRoute = `/v1/dictionary/search?query=${fixture.inflectedForm}` +
+      '&languageCode=en&limit=100&includeLemmaGroups=true';
+    const grouped = normalizeK2WaveRequest(
+      'primary', profiles, fixtureIds, groupedRoute, {}, fixture,
+    );
+    expect(new URL(grouped.route, 'https://wave.invalid').searchParams.get('query'))
+      .toBe(fixture.inflectedForm);
+    expect(normalizeK2WaveRequest(
+      'primary', profiles, fixtureIds, '/v1/brain/concepts/k2-09-secondary', {}, fixture,
+    ).route).toBe(`/v1/brain/concepts/${fixture.ids.secondaryConceptId}`);
+    expect(normalizeK2WaveRequest(
+      'primary', profiles, fixtureIds, '/v1/library/concepts/k2-09-owner', { method: 'PUT' }, fixture,
+    ).route).toBe(`/v1/library/concepts/${fixture.ids.ownerConceptId}`);
+    expect(() => normalizeK2WaveRequest('primary', profiles, fixtureIds, groupedRoute, {}))
+      .toThrow('Dictionary operation');
+    expect(() => normalizeK2WaveRequest('primary', profiles, fixtureIds,
+      groupedRoute.replace('includeLemmaGroups=true', 'includeLemmaGroups=false'), {}, fixture))
+      .toThrow('Dictionary operation');
+  });
+
+  it('projects grouped fixture rows to fixed handles and preserves the default flat response shape', () => {
+    const fixture: K2HostedFixtureDto = {
+      handles: { ownerConcept: 'k2-09-owner', secondaryConcept: 'k2-09-secondary', lexeme: 'k2-09-lexeme' },
+      ids: {
+        ownerConceptId: '00000000-0000-4000-8000-000000000021',
+        secondaryConceptId: '00000000-0000-4000-8000-000000000022',
+        lexemeId: '00000000-0000-4000-8000-000000000023',
+      },
+      lemma: `kfixture${'b'.repeat(64)}`,
+      inflectedForm: `kfixture${'b'.repeat(64)}s`,
+    };
+    let opaqueSequence = 99;
+    const projector = createK2OpaqueIdProjector(() =>
+      `00000000-0000-4000-8000-${String(opaqueSequence++).padStart(12, '0')}`);
+    projector.bind('k2-09-owner', fixture.ids.ownerConceptId);
+    projector.bind('k2-09-secondary', fixture.ids.secondaryConceptId);
+    projector.bind('k2-09-lexeme', fixture.ids.lexemeId);
+    const dimension = { score: 0.5, confidence: 0.5, evidenceCount: 1 };
+    const linked = (id: string, isSaved: boolean) => ({
+      concept: {
+        id,
+        canonicalForm: id === fixture.ids.ownerConceptId ? 'owner-canonical' : 'secondary-canonical',
+        status: 'discovered',
+        isDue: false,
+      },
+      competence: { recognition: dimension, listening: dimension, production: dimension },
+      mastery: null,
+      confidence: 0.5,
+      exposureCount: 0,
+      isSaved,
+    });
+    const owner = linked(fixture.ids.ownerConceptId, true);
+    const secondary = linked(fixture.ids.secondaryConceptId, false);
+    const route = `/v1/dictionary/search?query=${fixture.inflectedForm}` +
+      '&languageCode=en&limit=100&includeLemmaGroups=true';
+    const payload = {
+      data: [{ id: fixture.ids.ownerConceptId }, { id: fixture.ids.secondaryConceptId }],
+      meta: {
+        requestId: '00000000-0000-4000-8000-000000000031',
+        apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 2,
+      },
+      lemmaGroups: [{
+        lexemeId: fixture.ids.lexemeId,
+        lemma: fixture.lemma,
+        partOfSpeech: 'noun',
+        matchedForms: [fixture.inflectedForm],
+        senses: [
+          { senseId: '00000000-0000-4000-8000-000000000032', senseOrder: 1,
+            definition: 'K2-09 fixture sense one.', definitionLanguageCode: 'en',
+            concepts: [owner, secondary] },
+          { senseId: '00000000-0000-4000-8000-000000000033', senseOrder: 2,
+            definition: 'K2-09 fixture sense two.', definitionLanguageCode: 'en',
+            concepts: [owner] },
+        ],
+      }],
+    };
+    const projected = projectK2WaveApiPayload(route, payload, projector, undefined, fixture);
+    expect(JSON.stringify(projected)).not.toContain(fixture.ids.ownerConceptId);
+    expect(JSON.stringify(projected)).not.toContain(fixture.ids.secondaryConceptId);
+    expect(JSON.stringify(projected)).not.toContain(fixture.ids.lexemeId);
+    expect(projected).toMatchObject({
+      data: [{ id: 'k2-09-owner' }, { id: 'k2-09-secondary' }],
+      lemmaGroups: [{
+        lexemeId: 'k2-09-lexeme',
+        senses: [
+          { concepts: [{ concept: { id: 'k2-09-owner' } }, { concept: { id: 'k2-09-secondary' } }] },
+          { concepts: [{ concept: { id: 'k2-09-owner' } }] },
+        ],
+      }],
+    });
+    const flat = projectK2WaveApiPayload(route.replace('&includeLemmaGroups=true', ''), {
+      data: [{ id: fixture.ids.ownerConceptId }, { id: fixture.ids.secondaryConceptId }],
+      meta: payload.meta,
+    }, projector, undefined, fixture);
+    expect(flat).not.toHaveProperty('lemmaGroups');
   });
 
   it('rejects body or idempotency data on read routes and Library writes', () => {
@@ -673,6 +806,199 @@ describe('K2-08 bounded competitor eligibility', () => {
     expect(allK208CompetitorsEligibleForStates(
       [...selectedCandidates, nonselectedCandidate], knownConcepts,
     )).toBe(false);
+  });
+});
+
+describe('K2-09 finalizer fixture cleanup barrier', () => {
+  const expectedActorIds = k209ExpectedActorAbsenceIds(
+    ['primary-actor-marker', 'observer-actor-marker'],
+    ['fresh-identity-marker', 'observer-actor-marker'],
+  );
+
+  it('retains all run actors and fresh identities exactly once for both residue proofs', () => {
+    expect(expectedActorIds).toEqual([
+      'primary-actor-marker',
+      'observer-actor-marker',
+      'fresh-identity-marker',
+    ]);
+  });
+
+  it('proves the same expected actor set before and after fixture cleanup in order', async () => {
+    const events: string[] = [];
+    const before = vi.fn(async (actorIds: readonly string[]) => {
+      expect(actorIds).toEqual(expectedActorIds);
+      events.push('actor-absence-before');
+    });
+    const cleanup = vi.fn(async () => { events.push('fixture-cleanup'); });
+    const after = vi.fn(async (actorIds: readonly string[]) => {
+      expect(actorIds).toEqual(expectedActorIds);
+      events.push('actor-absence-after');
+    });
+
+    await expect(cleanupK209FixtureAfterActorProofs(
+      expectedActorIds,
+      before,
+      cleanup,
+      after,
+    )).resolves.toBeUndefined();
+
+    expect(events).toEqual(['actor-absence-before', 'fixture-cleanup', 'actor-absence-after']);
+    expect(before).toHaveBeenCalledOnce();
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(after).toHaveBeenCalledOnce();
+  });
+
+  it.each(['ownership graph', 'actor absence'])('blocks fixture cleanup when the before-proof fails at %s', async stage => {
+    const events: string[] = [];
+    const failure = new Error(`synthetic ${stage} proof failure`);
+    const before = vi.fn(async () => {
+      events.push(stage);
+      throw failure;
+    });
+    const cleanup = vi.fn(async () => { events.push('fixture-cleanup'); });
+    const after = vi.fn(async () => { events.push('actor-absence-after'); });
+
+    await expect(cleanupK209FixtureAfterActorProofs(
+      expectedActorIds,
+      before,
+      cleanup,
+      after,
+    )).rejects.toBe(failure);
+
+    expect(events).toEqual([stage]);
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(after).not.toHaveBeenCalled();
+  });
+});
+
+describe('K2-09 current-run fixture recovery', () => {
+  const fixtureConfig = {
+    apiOrigin: '',
+    githubSha: 'a'.repeat(40),
+    githubToken: 'github-read-token-marker',
+    readonlyDatabaseUrl: 'postgresql://reader.invalid/test',
+    oidcRequestUrl: 'https://pipelines.actions.githubusercontent.com/runtime/token',
+    oidcRequestToken: 'oidc-request-token-marker',
+  } as K2HostedConfig;
+  const active = {
+    protocolVersion: 'k2-09-bridge-fixture.v1',
+    receiptState: 'ACTIVE',
+    fixturePresent: true,
+    fixture: {
+      handles: { ownerConcept: 'k2-09-owner', secondaryConcept: 'k2-09-secondary', lexeme: 'k2-09-lexeme' },
+      ids: {
+        ownerConceptId: '00000000-0000-4000-8000-000000000001',
+        secondaryConceptId: '00000000-0000-4000-8000-000000000002',
+        lexemeId: '00000000-0000-4000-8000-000000000003',
+      },
+      lemma: `kfixture${'a'.repeat(64)}`,
+      inflectedForm: `kfixture${'a'.repeat(64)}s`,
+    },
+    counts: { sourceRecords: 1, concepts: 2, lexemes: 1, forms: 1, senses: 2, bridges: 3 },
+  };
+  const closed = {
+    protocolVersion: 'k2-09-bridge-fixture.v1',
+    receiptState: 'CLOSED',
+    fixturePresent: false,
+    fixture: null,
+    counts: { sourceRecords: 0, concepts: 0, lexemes: 0, forms: 0, senses: 0, bridges: 0 },
+  };
+  const absent = { ...closed, receiptState: 'ABSENT' };
+
+  function probeGraph() {
+    return vi.spyOn(k2HostedProbeClient, 'runK2HostedProbe').mockResolvedValue({
+      ownershipGraphValid: true,
+      ownedTableCount: 27,
+      ownershipEdgeCount: 27,
+      incomingConstraintCount: 51,
+    } as never);
+  }
+
+  it.each([
+    ['ACTIVE', active, ['GET', 'POST', 'GET'], 0],
+    ['CLOSED', closed, ['GET'], 0],
+    ['ABSENT', absent, ['GET', 'GET'], 1],
+  ] as const)('handles current-run %s with the bounded receipt proof path', async (_state, receipt, expectedMethods, authenticatedInspectCount) => {
+    const graph = probeGraph();
+    const calls: Array<{ method: string | undefined; path: string; readToken: string | null }> = [];
+    let cleanupPosted = false;
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-response-marker' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      calls.push({ method: init?.method, path: url.pathname, readToken });
+      if (url.pathname.endsWith('/cleanup')) {
+        cleanupPosted = true;
+        return Response.json({
+          protocolVersion: 'k2-09-bridge-fixture.v1',
+          receiptState: 'CLOSED',
+          fixturePresent: false,
+          counts: active.counts,
+        });
+      }
+      if (receipt.receiptState === 'ABSENT' && !readToken) return Response.json(absent);
+      if (cleanupPosted) return Response.json(closed);
+      return Response.json(receipt);
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK209FixtureAfterCurrentRun(fixtureConfig)).resolves.toBeUndefined();
+      expect(calls.map(call => call.method)).toEqual(expectedMethods);
+      expect(calls.filter(call => call.readToken !== null)).toHaveLength(authenticatedInspectCount);
+      expect(calls.some(call => call.method === 'POST' && call.path.endsWith('/cleanup')))
+        .toBe(receipt.receiptState === 'ACTIVE');
+      expect(graph).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('fails closed on an old-SHA ABSENT check and does not post cleanup or run the after-proof', async () => {
+    const graph = probeGraph();
+    const calls: Array<{ method: string | undefined; readToken: string | null }> = [];
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-response-marker' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      calls.push({ method: init?.method, readToken });
+      if (readToken) return Response.json({ error: 'forbidden' }, { status: 403 });
+      return Response.json(absent);
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK209FixtureAfterCurrentRun(fixtureConfig))
+        .rejects.toThrow('could not be independently verified');
+      expect(calls.map(call => call.method)).toEqual(['GET', 'GET']);
+      expect(calls[0]?.readToken).toBeNull();
+      expect(calls[1]?.readToken).toBe('github-read-token-marker');
+      expect(graph).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('blocks current-run fixture cleanup when the ownership graph proof fails', async () => {
+    const graph = vi.spyOn(k2HostedProbeClient, 'runK2HostedProbe')
+      .mockResolvedValue({
+        ownershipGraphValid: false,
+        ownedTableCount: 27,
+        ownershipEdgeCount: 27,
+        incomingConstraintCount: 51,
+      } as never);
+    const request = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK209FixtureAfterCurrentRun(fixtureConfig))
+        .rejects.toThrow('actor ownership graph proof failed closed');
+      expect(graph).toHaveBeenCalledOnce();
+      expect(request).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

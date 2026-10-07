@@ -43,6 +43,336 @@ EXPECTED_LEARNER_TABLES = (
     "user_skill_states",
     "users",
 )
+DIRECT_USER_OWNER_TABLES = tuple(
+    table
+    for table in EXPECTED_LEARNER_TABLES
+    if table not in {"users", "profile_mutation_results", "reader_exposure_concepts"}
+)
+# These are all remaining FKs that reference one of the 27 Auth-owned learner
+# tables. The two recursive owner edges are included alongside the other known
+# inter-learner cascades; the three RESTRICT edges deliberately remain pinned.
+NONOWNER_INBOUND_FKS = (
+    (
+        "assessment_attempt_items",
+        "assessment_attempt_items_attempt_id_user_id_template_id_fkey",
+        ("attempt_id", "user_id", "template_id"),
+        "assessment_attempts",
+        ("id", "user_id", "template_id"),
+        "c",
+        True,
+    ),
+    (
+        "assessment_responses",
+        "assessment_responses_attempt_id_user_id_template_id_fkey",
+        ("attempt_id", "user_id", "template_id"),
+        "assessment_attempts",
+        ("id", "user_id", "template_id"),
+        "c",
+        True,
+    ),
+    (
+        "assessment_results",
+        "assessment_results_attempt_id_user_id_template_id_fkey",
+        ("attempt_id", "user_id", "template_id"),
+        "assessment_attempts",
+        ("id", "user_id", "template_id"),
+        "c",
+        True,
+    ),
+    (
+        "reader_exposure_concepts",
+        "reader_exposure_concepts_exposure_event_id_user_id_user_la_fkey",
+        ("exposure_event_id", "user_id", "user_language_id", "language_code"),
+        "exposure_events",
+        ("id", "user_id", "user_language_id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "learning_events",
+        "learning_events_causation_fkey",
+        ("causation_learning_event_id",),
+        "learning_events",
+        ("learning_event_id",),
+        "r",
+        False,
+    ),
+    (
+        "fsrs_states",
+        "fsrs_states_review_item_id_user_id_fkey",
+        ("review_item_id", "user_id"),
+        "review_items",
+        ("id", "user_id"),
+        "c",
+        True,
+    ),
+    (
+        "review_events",
+        "review_events_review_item_id_user_id_fkey",
+        ("review_item_id", "user_id"),
+        "review_items",
+        ("id", "user_id"),
+        "c",
+        True,
+    ),
+    (
+        "today_activity_review_items",
+        "today_activity_review_items_review_item_id_user_id_languag_fkey",
+        ("review_item_id", "user_id", "language_code"),
+        "review_items",
+        ("id", "user_id", "language_code"),
+        "r",
+        True,
+    ),
+    (
+        "today_plan_activities",
+        "today_plan_activities_review_item_id_user_id_language_code_fkey",
+        ("review_item_id", "user_id", "language_code"),
+        "review_items",
+        ("id", "user_id", "language_code"),
+        "r",
+        False,
+    ),
+    (
+        "today_activity_review_items",
+        "today_activity_review_items_activity_id_user_id_language_c_fkey",
+        ("activity_id", "user_id", "language_code"),
+        "today_plan_activities",
+        ("id", "user_id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "today_plan_activities",
+        "today_plan_activities_plan_id_user_id_language_code_fkey",
+        ("plan_id", "user_id", "language_code"),
+        "today_plans",
+        ("id", "user_id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "assessment_attempts",
+        "assessment_attempts_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "concept_save_intents",
+        "concept_save_intents_user_id_user_language_id_language_cod_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "exposure_events",
+        "exposure_events_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "learning_events",
+        "learning_events_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "profile_mutation_results",
+        "profile_mutation_results_user_id_language_profile_id_fkey",
+        ("user_id", "language_profile_id"),
+        "user_languages",
+        ("user_id", "id"),
+        "c",
+        True,
+    ),
+    (
+        "reader_exposure_concepts",
+        "reader_exposure_concepts_user_id_user_language_id_language_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "review_items",
+        "review_items_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "today_plans",
+        "today_plans_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "user_concept_states",
+        "user_concept_states_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "user_content_progress",
+        "user_content_progress_user_id_user_language_id_language_co_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "user_language_projection_heads",
+        "user_language_projection_heads_user_id_user_language_id_fkey",
+        ("user_id", "user_language_id"),
+        "user_languages",
+        ("user_id", "id"),
+        "c",
+        True,
+    ),
+    (
+        "user_saved_concepts",
+        "user_saved_concepts_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "user_saved_content",
+        "user_saved_content_user_id_user_language_id_language_code_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "user_saved_sentences",
+        "user_saved_sentences_user_id_user_language_id_language_cod_fkey",
+        ("user_id", "user_language_id", "language_code"),
+        "user_languages",
+        ("user_id", "id", "language_code"),
+        "c",
+        True,
+    ),
+    (
+        "user_skill_states",
+        "user_skill_states_user_id_user_language_id_fkey",
+        ("user_id", "user_language_id"),
+        "user_languages",
+        ("user_id", "id"),
+        "c",
+        True,
+    ),
+)
+ROOT_AUTH_OWNER_FK = (
+    "public",
+    "users",
+    "users_id_fkey",
+    ("id",),
+    "auth",
+    "users",
+    ("id",),
+    "c",
+    "a",
+    "s",
+    True,
+    False,
+    False,
+    True,
+)
+
+
+def _expected_inbound_owner_fk_closure() -> frozenset[tuple[Any, ...]]:
+    edges = {ROOT_AUTH_OWNER_FK}
+    for table in DIRECT_USER_OWNER_TABLES:
+        edges.add(
+            (
+                "public",
+                table,
+                f"{table}_user_id_fkey",
+                ("user_id",),
+                "public",
+                "users",
+                ("id",),
+                "c",
+                "a",
+                "s",
+                True,
+                False,
+                False,
+                True,
+            )
+        )
+    for (
+        source,
+        name,
+        source_columns,
+        target,
+        target_columns,
+        delete_action,
+        source_not_null,
+    ) in NONOWNER_INBOUND_FKS:
+        edges.add(
+            (
+                "public",
+                source,
+                name,
+                source_columns,
+                "public",
+                target,
+                target_columns,
+                delete_action,
+                "a",
+                "s",
+                True,
+                False,
+                False,
+                source_not_null,
+            )
+        )
+    return frozenset(edges)
+
+
+EXPECTED_INBOUND_OWNER_FK_CLOSURE = _expected_inbound_owner_fk_closure()
+OWNER_FK_SIGNATURES = frozenset(
+    {
+        ("public", "users", "users_id_fkey"),
+        *(("public", table, f"{table}_user_id_fkey") for table in DIRECT_USER_OWNER_TABLES),
+        (
+            "public",
+            "reader_exposure_concepts",
+            "reader_exposure_concepts_exposure_event_id_user_id_user_la_fkey",
+        ),
+        (
+            "public",
+            "profile_mutation_results",
+            "profile_mutation_results_user_id_language_profile_id_fkey",
+        ),
+    }
+)
 EXPECTED_CATALOG_TABLES = (
     "audio_assets",
     "concepts",
@@ -65,11 +395,12 @@ EXPECTED_CATALOG_TABLES = (
     "word_senses",
 )
 EXPECTED_READONLY_ROLE = "k2_hosted_acceptance_reader"
-EXPECTED_APP_MIGRATION_HEAD = "0020"
+EXPECTED_APP_MIGRATION_HEAD = "0021"
 EXPECTED_SUPABASE_PLATFORM_TAIL = (
     "concept_save_intent_auth_erasure_0019",
     "k2_hosted_acceptance_reader_staging",
     "today_remediation_reason_codes_0020",
+    "k2_09_hosted_fixture_control_0021",
 )
 K2_ANCHOR_CONCEPT_ID = UUID("7f110000-0000-4000-8000-000000000004")
 K2_ANCHOR_LEMMA = "frll-anchor"
@@ -330,14 +661,14 @@ def _migration_head(connection) -> dict[str, Any]:
     rows = connection.execute(
         "SELECT version, name FROM public.schema_migrations ORDER BY version"
     ).fetchall()
-    expected = [f"{number:04d}" for number in range(1, 21)]
-    if [row[0] for row in rows] != expected or rows[-1][1] != "today_remediation_reason_codes":
+    expected = [f"{number:04d}" for number in range(1, 22)]
+    if [row[0] for row in rows] != expected or rows[-1][1] != "k2_09_hosted_fixture_control":
         raise ProbeError
     migration_rows = connection.execute(
         "SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version"
     ).fetchall()
-    platform_tail = tuple(row[1] for row in migration_rows[-3:])
-    platform_versions = [row[0] for row in migration_rows[-3:]]
+    platform_tail = tuple(row[1] for row in migration_rows[-len(EXPECTED_SUPABASE_PLATFORM_TAIL) :])
+    platform_versions = [row[0] for row in migration_rows[-len(EXPECTED_SUPABASE_PLATFORM_TAIL) :]]
     if (
         len(migration_rows) < len(EXPECTED_SUPABASE_PLATFORM_TAIL)
         or platform_tail != EXPECTED_SUPABASE_PLATFORM_TAIL
@@ -371,6 +702,106 @@ def _migration_head(connection) -> dict[str, Any]:
     if privileges != (True, True, False, False, False, False, False, False):
         raise ProbeError
     return {"appMigrationHead": rows[-1][0], "appliedMigrations": len(rows)}
+
+
+def _actor_ownership_graph(connection) -> dict[str, Any]:
+    rows = connection.execute(
+        """SELECT source_namespace.nspname::text, source_table.relname::text,
+                  constraint_row.conname::text,
+                  ARRAY(
+                      SELECT source_column.attname::text
+                      FROM unnest(constraint_row.conkey) WITH ORDINALITY AS key(attnum, ordinal)
+                      JOIN pg_catalog.pg_attribute AS source_column
+                        ON source_column.attrelid = constraint_row.conrelid
+                       AND source_column.attnum = key.attnum
+                      ORDER BY key.ordinal
+                  ),
+                  target_namespace.nspname::text, target_table.relname::text,
+                  ARRAY(
+                      SELECT target_column.attname::text
+                      FROM unnest(constraint_row.confkey) WITH ORDINALITY AS key(attnum, ordinal)
+                      JOIN pg_catalog.pg_attribute AS target_column
+                        ON target_column.attrelid = constraint_row.confrelid
+                       AND target_column.attnum = key.attnum
+                      ORDER BY key.ordinal
+                  ),
+                  constraint_row.confdeltype::text, constraint_row.confupdtype::text,
+                  constraint_row.confmatchtype::text, constraint_row.convalidated,
+                  constraint_row.condeferrable, constraint_row.condeferred,
+                  NOT EXISTS (
+                      SELECT 1
+                      FROM unnest(constraint_row.conkey) AS key(attnum)
+                      JOIN pg_catalog.pg_attribute AS source_column
+                        ON source_column.attrelid = constraint_row.conrelid
+                       AND source_column.attnum = key.attnum
+                      WHERE NOT source_column.attnotnull
+                  )
+             FROM pg_catalog.pg_constraint AS constraint_row
+             JOIN pg_catalog.pg_class AS source_table
+               ON source_table.oid = constraint_row.conrelid
+             JOIN pg_catalog.pg_namespace AS source_namespace
+               ON source_namespace.oid = source_table.relnamespace
+             JOIN pg_catalog.pg_class AS target_table
+               ON target_table.oid = constraint_row.confrelid
+             JOIN pg_catalog.pg_namespace AS target_namespace
+               ON target_namespace.oid = target_table.relnamespace
+            WHERE constraint_row.contype = 'f'
+              AND (
+                  (target_namespace.nspname = 'public'
+                   AND target_table.relname::text = ANY(%s))
+                  OR (source_namespace.nspname = 'public'
+                      AND source_table.relname = 'users'
+                      AND target_namespace.nspname = 'auth'
+                      AND target_table.relname = 'users')
+              )
+            ORDER BY target_namespace.nspname, target_table.relname,
+                     source_namespace.nspname, source_table.relname, constraint_row.conname""",
+        (list(EXPECTED_LEARNER_TABLES),),
+    ).fetchall()
+    actual_edges = frozenset(
+        (
+            row[0],
+            row[1],
+            row[2],
+            tuple(row[3]),
+            row[4],
+            row[5],
+            tuple(row[6]),
+            row[7],
+            row[8],
+            row[9],
+            row[10],
+            row[11],
+            row[12],
+            row[13],
+        )
+        for row in rows
+    )
+    actual_owner_signatures = {edge[:3] for edge in actual_edges}
+    if (
+        len(EXPECTED_LEARNER_TABLES) != 27
+        or len(DIRECT_USER_OWNER_TABLES) != 24
+        or len(OWNER_FK_SIGNATURES) != 27
+        or len(actual_edges) != len(rows)
+        or actual_edges != EXPECTED_INBOUND_OWNER_FK_CLOSURE
+        or not OWNER_FK_SIGNATURES.issubset(actual_owner_signatures)
+        or any(
+            edge[7] != "c"
+            or edge[10] is not True
+            or edge[11] is not False
+            or edge[12] is not False
+            or edge[13] is not True
+            for edge in actual_edges
+            if edge[:3] in OWNER_FK_SIGNATURES
+        )
+    ):
+        raise ProbeError
+    return {
+        "ownershipGraphValid": True,
+        "ownedTableCount": 27,
+        "ownershipEdgeCount": 27,
+        "incomingConstraintCount": 51,
+    }
 
 
 def _anchor_material(connection) -> dict[str, bool]:
@@ -512,7 +943,9 @@ def _k208_fixture_privilege_preflight(connection) -> dict[str, bool]:
         """SELECT schema.nspname,
                   EXISTS (
                       SELECT 1
-                      FROM aclexplode(COALESCE(schema.nspacl, acldefault('n', schema.nspowner))) AS acl
+                      FROM aclexplode(
+                          COALESCE(schema.nspacl, acldefault('n', schema.nspowner))
+                      ) AS acl
                       WHERE acl.grantee = 0
                   ) AS has_public_grant
            FROM pg_namespace AS schema
@@ -548,11 +981,47 @@ def _k208_fixture_privilege_preflight(connection) -> dict[str, bool]:
            ORDER BY expected.schema_name, expected.relation_name"""
     ).fetchall()
     expected_owner_rls_rows = [
-        ("auth", "users", "r", "supabase_auth_admin", True, False, "r", "supabase_auth_admin", True, False, 0),
-        ("public", "user_concept_states", "r", "postgres", True, False, "r", "postgres", True, False, 2),
+        (
+            "auth",
+            "users",
+            "r",
+            "supabase_auth_admin",
+            True,
+            False,
+            "r",
+            "supabase_auth_admin",
+            True,
+            False,
+            0,
+        ),
+        (
+            "public",
+            "user_concept_states",
+            "r",
+            "postgres",
+            True,
+            False,
+            "r",
+            "postgres",
+            True,
+            False,
+            2,
+        ),
         ("public", "user_languages", "r", "postgres", True, False, "r", "postgres", True, False, 2),
         ("public", "users", "r", "postgres", True, False, "r", "postgres", True, False, 2),
-        ("public", "v_learner_concept_retrievability", "v", "postgres", False, False, "v", "postgres", False, False, 0),
+        (
+            "public",
+            "v_learner_concept_retrievability",
+            "v",
+            "postgres",
+            False,
+            False,
+            "v",
+            "postgres",
+            False,
+            False,
+            0,
+        ),
     ]
     if owner_rls_rows != expected_owner_rls_rows:
         raise ProbeError
@@ -574,18 +1043,66 @@ def _k208_fixture_privilege_preflight(connection) -> dict[str, bool]:
            ORDER BY relation.relname, policy.polname"""
     ).fetchall()
     expected_policies = [
-        ("public", "user_concept_states", "k2_hosted_acceptance_reader_select_all", "r", True,
-         [EXPECTED_READONLY_ROLE], "true", None),
-        ("public", "user_concept_states", "user_concept_states_select_own", "r", True,
-         ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
-        ("public", "user_languages", "k2_hosted_acceptance_reader_select_all", "r", True,
-         [EXPECTED_READONLY_ROLE], "true", None),
-        ("public", "user_languages", "user_languages_select_own", "r", True,
-         ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
-        ("public", "users", "k2_hosted_acceptance_reader_select_all", "r", True,
-         [EXPECTED_READONLY_ROLE], "true", None),
-        ("public", "users", "users_select_own", "r", True,
-         ["authenticated"], "(( SELECT auth.uid() AS uid) = id)", None),
+        (
+            "public",
+            "user_concept_states",
+            "k2_hosted_acceptance_reader_select_all",
+            "r",
+            True,
+            [EXPECTED_READONLY_ROLE],
+            "true",
+            None,
+        ),
+        (
+            "public",
+            "user_concept_states",
+            "user_concept_states_select_own",
+            "r",
+            True,
+            ["authenticated"],
+            "(( SELECT auth.uid() AS uid) = user_id)",
+            None,
+        ),
+        (
+            "public",
+            "user_languages",
+            "k2_hosted_acceptance_reader_select_all",
+            "r",
+            True,
+            [EXPECTED_READONLY_ROLE],
+            "true",
+            None,
+        ),
+        (
+            "public",
+            "user_languages",
+            "user_languages_select_own",
+            "r",
+            True,
+            ["authenticated"],
+            "(( SELECT auth.uid() AS uid) = user_id)",
+            None,
+        ),
+        (
+            "public",
+            "users",
+            "k2_hosted_acceptance_reader_select_all",
+            "r",
+            True,
+            [EXPECTED_READONLY_ROLE],
+            "true",
+            None,
+        ),
+        (
+            "public",
+            "users",
+            "users_select_own",
+            "r",
+            True,
+            ["authenticated"],
+            "(( SELECT auth.uid() AS uid) = id)",
+            None,
+        ),
     ]
     if policy_rows != expected_policies:
         raise ProbeError
@@ -675,7 +1192,8 @@ def _k208_catalog_preflight(connection) -> dict[str, Any]:
         "hasNovelControl": eligible >= 3,
         "sourceRankShapeAvailable": connection.execute(
             "SELECT to_regclass('public.v_learner_concept_retrievability') IS NOT NULL"
-        ).fetchone()[0] is True,
+        ).fetchone()[0]
+        is True,
     }
 
 
@@ -698,8 +1216,9 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
     if len(summaries) > 20:
         raise ProbeError
     content_ids = [summary.id for summary in summaries]
-    linked = connection.execute(
-        """SELECT item.id AS content_id,
+    linked = (
+        connection.execute(
+            """SELECT item.id AS content_id,
                   array_agg(DISTINCT link.concept_id ORDER BY link.concept_id),
                   count(DISTINCT link.concept_id) FILTER (
                       WHERE COALESCE(state.status, 'unseen') = 'unseen'
@@ -711,8 +1230,11 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
              ON state.user_id = %s AND state.user_language_id = %s
             AND state.concept_id = link.concept_id
            GROUP BY item.id""",
-        (content_ids, actor_id, profile_id),
-    ).fetchall() if content_ids else []
+            (content_ids, actor_id, profile_id),
+        ).fetchall()
+        if content_ids
+        else []
+    )
     by_content = {row[0]: row for row in linked}
     result = []
     for summary in summaries:
@@ -724,24 +1246,30 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
         if len(concept_ids) > 100 or unseen < 0 or unseen > len(concept_ids):
             raise ProbeError
         progress = summary.reading_progress
-        result.append({
-            "contentId": str(summary.id),
-            "estimatedMinutes": summary.estimated_minutes,
-            "linkedConceptIds": concept_ids,
-            "unseenCount": unseen,
-            "isSaved": summary.is_saved,
-            "isUnfinished": progress is not None and not progress.is_completed,
-            "isCompleted": progress is not None and progress.is_completed,
-        })
-    state_rows = connection.execute(
-        """SELECT DISTINCT state.concept_id, state.status, state.state_version
+        result.append(
+            {
+                "contentId": str(summary.id),
+                "estimatedMinutes": summary.estimated_minutes,
+                "linkedConceptIds": concept_ids,
+                "unseenCount": unseen,
+                "isSaved": summary.is_saved,
+                "isUnfinished": progress is not None and not progress.is_completed,
+                "isCompleted": progress is not None and progress.is_completed,
+            }
+        )
+    state_rows = (
+        connection.execute(
+            """SELECT DISTINCT state.concept_id, state.status, state.state_version
            FROM public.user_concept_states AS state
            JOIN public.content_concepts AS link ON link.concept_id = state.concept_id
            WHERE state.user_id = %s AND state.user_language_id = %s
              AND link.content_id = ANY(%s)
            ORDER BY state.concept_id""",
-        (actor_id, profile_id, content_ids),
-    ).fetchall() if content_ids else []
+            (actor_id, profile_id, content_ids),
+        ).fetchall()
+        if content_ids
+        else []
+    )
     return {
         "candidates": result,
         "stateConceptIds": [str(row[0]) for row in state_rows],
@@ -947,19 +1475,23 @@ def main() -> int:
         raw_concepts = json.loads(concept_values) if concept_values else None
         due_concept_ids = None
         if raw_concepts is not None:
-            if (not isinstance(raw_concepts, list) or len(raw_concepts) != 20 or
-                    any(not isinstance(value, str) for value in raw_concepts)):
+            if (
+                not isinstance(raw_concepts, list)
+                or len(raw_concepts) != 20
+                or any(not isinstance(value, str) for value in raw_concepts)
+            ):
                 raise ProbeError
             due_concept_ids = [UUID(value) for value in raw_concepts]
-            if len(set(due_concept_ids)) != 20 or any(str(value) != raw for value, raw in zip(
-                due_concept_ids, raw_concepts, strict=True
-            )):
+            if len(set(due_concept_ids)) != 20 or any(
+                str(value) != raw for value, raw in zip(due_concept_ids, raw_concepts, strict=True)
+            ):
                 raise ProbeError
         if action not in {
             "retained_snapshot",
             "actor_snapshot",
             "actor_lineage",
             "migrations",
+            "actor_ownership_graph",
             "actor_absent",
             "anchor_material",
             "today_review_targets",
@@ -984,13 +1516,20 @@ def main() -> int:
                 raise ProbeError
         elif due_concept_ids is not None:
             raise ProbeError
-        if action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight"} and actor_id is not None:
+        if (
+            action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight"}
+            and actor_id is not None
+        ):
             raise ProbeError
 
         with _connection() as connection:
             if action == "migrations":
                 _table_inventory(connection)
                 output: dict[str, Any] = _migration_head(connection)
+            elif action == "actor_ownership_graph":
+                _table_inventory(connection)
+                _migration_head(connection)
+                output = _actor_ownership_graph(connection)
             elif action == "anchor_material":
                 _table_inventory(connection)
                 _migration_head(connection)

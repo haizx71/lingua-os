@@ -6,6 +6,7 @@ import psycopg
 import pytest
 
 from database.migrate import migrate_down, migrate_up
+from tests.acceptance.support import k2_hosted_probe
 
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATIONS = ROOT / "database" / "migrations"
@@ -125,6 +126,147 @@ def test_0021_private_receipt_owner_acl_rls_columns_and_no_fk(
             "created_at",
             "closed_at",
         )
+
+
+def test_actor_ownership_graph_matches_all_27_tables_and_51_inbound_fks(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        assert k2_hosted_probe._actor_ownership_graph(connection) == {
+            "ownershipGraphValid": True,
+            "ownedTableCount": 27,
+            "ownershipEdgeCount": 27,
+            "incomingConstraintCount": 51,
+        }
+        causation = connection.execute(
+            """
+            SELECT source_namespace.nspname, source_table.relname,
+                   constraint_row.conname, constraint_row.confdeltype,
+                   constraint_row.convalidated, constraint_row.condeferrable,
+                   ARRAY(
+                       SELECT attribute.attname::text
+                       FROM unnest(constraint_row.conkey) WITH ORDINALITY AS key(attnum, ordinal)
+                       JOIN pg_catalog.pg_attribute AS attribute
+                         ON attribute.attrelid = constraint_row.conrelid
+                        AND attribute.attnum = key.attnum
+                       ORDER BY key.ordinal
+                   ),
+                   target_namespace.nspname, target_table.relname,
+                   ARRAY(
+                       SELECT attribute.attname::text
+                       FROM unnest(constraint_row.confkey) WITH ORDINALITY AS key(attnum, ordinal)
+                       JOIN pg_catalog.pg_attribute AS attribute
+                         ON attribute.attrelid = constraint_row.confrelid
+                        AND attribute.attnum = key.attnum
+                       ORDER BY key.ordinal
+                   )
+            FROM pg_catalog.pg_constraint AS constraint_row
+            JOIN pg_catalog.pg_class AS source_table
+              ON source_table.oid = constraint_row.conrelid
+            JOIN pg_catalog.pg_namespace AS source_namespace
+              ON source_namespace.oid = source_table.relnamespace
+            JOIN pg_catalog.pg_class AS target_table
+              ON target_table.oid = constraint_row.confrelid
+            JOIN pg_catalog.pg_namespace AS target_namespace
+              ON target_namespace.oid = target_table.relnamespace
+            WHERE constraint_row.contype = 'f'
+              AND source_namespace.nspname = 'public'
+              AND source_table.relname = 'learning_events'
+              AND target_namespace.nspname = 'public'
+              AND target_table.relname = 'learning_events'
+            """
+        ).fetchone()
+        assert causation == (
+            "public",
+            "learning_events",
+            "learning_events_causation_fkey",
+            "r",
+            True,
+            False,
+            ["causation_learning_event_id"],
+            "public",
+            "learning_events",
+            ["learning_event_id"],
+        )
+
+
+def test_cross_actor_causation_restrict_aborts_auth_cascade_atomically(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    from uuid import uuid4
+
+    actor_a, actor_b = uuid4(), uuid4()
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        connection.execute("INSERT INTO auth.users (id) VALUES (%s), (%s)", (actor_a, actor_b))
+        connection.execute("INSERT INTO public.users (id) VALUES (%s), (%s)", (actor_a, actor_b))
+        connection.execute(
+            "INSERT INTO public.learner_profiles (user_id, time_zone) "
+            "VALUES (%s, 'Etc/UTC'), (%s, 'Etc/UTC')",
+            (actor_a, actor_b),
+        )
+        profiles = connection.execute(
+            """
+            INSERT INTO public.user_languages
+                (user_id, language_code, interface_language_code, native_language_code,
+                 goal, current_level_id, daily_minutes)
+            VALUES (%s, 'en', 'vi', 'vi', 'communication',
+                    '00000000-0000-4000-8100-000000000001', 20),
+                   (%s, 'en', 'vi', 'vi', 'communication',
+                    '00000000-0000-4000-8100-000000000001', 20)
+            RETURNING user_id, id
+            """,
+            (actor_a, actor_b),
+        ).fetchall()
+        profile_by_actor = {row[0]: row[1] for row in profiles}
+        event_a = connection.execute(
+            """
+            INSERT INTO public.learning_events (user_id, user_language_id, event_type)
+            VALUES (%s, %s, 'learning.review.completed.v1') RETURNING learning_event_id
+            """,
+            (actor_a, profile_by_actor[actor_a]),
+        ).fetchone()[0]
+        event_b = connection.execute(
+            """
+            INSERT INTO public.learning_events
+                (user_id, user_language_id, event_type, causation_learning_event_id)
+            VALUES (%s, %s, 'learning.review.completed.v1', %s) RETURNING learning_event_id
+            """,
+            (actor_b, profile_by_actor[actor_b], event_a),
+        ).fetchone()[0]
+
+    # The distinct actor-B causal reference must block deleting actor A and
+    # roll back the entire Auth cascade, preserving both users and both events.
+    with (
+        pytest.raises(psycopg.Error),
+        psycopg.connect(isolated_migrated_postgres_url) as connection,
+    ):
+        connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_a,))
+    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+        assert connection.execute(
+            "SELECT count(*) FROM auth.users WHERE id = ANY(%s)", ([actor_a, actor_b],)
+        ).fetchone() == (2,)
+        assert connection.execute(
+            "SELECT count(*) FROM public.users WHERE id = ANY(%s)", ([actor_a, actor_b],)
+        ).fetchone() == (2,)
+        assert connection.execute(
+            "SELECT count(*) FROM public.learning_events WHERE learning_event_id = ANY(%s)",
+            ([event_a, event_b],),
+        ).fetchone() == (2,)
+
+        # Learning events are append-only. Delete the synthetic referencing
+        # actor through the normal Auth cascade, then A can be erased normally.
+        connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_b,))
+        connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_a,))
+        assert connection.execute(
+            "SELECT count(*) FROM auth.users WHERE id = ANY(%s)", ([actor_a, actor_b],)
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT count(*) FROM public.users WHERE id = ANY(%s)", ([actor_a, actor_b],)
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT count(*) FROM public.learning_events WHERE learning_event_id = ANY(%s)",
+            ([event_a, event_b],),
+        ).fetchone() == (0,)
 
 
 @pytest.mark.parametrize("state", ["ACTIVE", "CLOSED"])
