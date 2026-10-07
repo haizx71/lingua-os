@@ -218,21 +218,25 @@ def test_cross_actor_causation_restrict_aborts_auth_cascade_atomically(
             (actor_a, actor_b),
         ).fetchall()
         profile_by_actor = {row[0]: row[1] for row in profiles}
-        event_a = connection.execute(
+        event_a_row = connection.execute(
             """
             INSERT INTO public.learning_events (user_id, user_language_id, event_type)
             VALUES (%s, %s, 'learning.review.completed.v1') RETURNING learning_event_id
             """,
             (actor_a, profile_by_actor[actor_a]),
-        ).fetchone()[0]
-        event_b = connection.execute(
+        ).fetchone()
+        assert event_a_row is not None
+        event_a = event_a_row[0]
+        event_b_row = connection.execute(
             """
             INSERT INTO public.learning_events
                 (user_id, user_language_id, event_type, causation_learning_event_id)
             VALUES (%s, %s, 'learning.review.completed.v1', %s) RETURNING learning_event_id
             """,
             (actor_b, profile_by_actor[actor_b], event_a),
-        ).fetchone()[0]
+        ).fetchone()
+        assert event_b_row is not None
+        event_b = event_b_row[0]
 
     # The distinct actor-B causal reference must block deleting actor A and
     # roll back the entire Auth cascade, preserving both users and both events.

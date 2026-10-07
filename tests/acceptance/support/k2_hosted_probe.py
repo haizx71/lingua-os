@@ -306,7 +306,7 @@ ROOT_AUTH_OWNER_FK = (
 
 
 def _expected_inbound_owner_fk_closure() -> frozenset[tuple[Any, ...]]:
-    edges = {ROOT_AUTH_OWNER_FK}
+    edges: set[tuple[Any, ...]] = {ROOT_AUTH_OWNER_FK}
     for table in DIRECT_USER_OWNER_TABLES:
         edges.add(
             (
@@ -447,7 +447,7 @@ def _require_verified_staging_connection(database_url: str) -> None:
         raise ProbeError
 
 
-def _connection():
+def _connection() -> psycopg.Connection[tuple[Any, ...]]:
     database_url = os.environ.get("K2_STAGING_READONLY_DATABASE_URL", "").strip()
     if not database_url:
         raise ProbeError
@@ -485,7 +485,7 @@ def _connection():
     return connection
 
 
-def _table_inventory(connection) -> tuple[str, ...]:
+def _table_inventory(connection: psycopg.Connection[tuple[Any, ...]]) -> tuple[str, ...]:
     rows = connection.execute(
         """WITH RECURSIVE learner_owned_tables(table_oid) AS (
                SELECT 'public.users'::regclass::oid
@@ -615,7 +615,9 @@ def _table_inventory(connection) -> tuple[str, ...]:
     return actual
 
 
-def _snapshot(connection, actor_id: UUID | None) -> dict[str, Any]:
+def _snapshot(
+    connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID | None
+) -> dict[str, Any]:
     inventory = _table_inventory(connection)
     tables: dict[str, dict[str, Any]] = {}
     total_rows = 0
@@ -657,7 +659,7 @@ def _snapshot(connection, actor_id: UUID | None) -> dict[str, Any]:
     return {"tables": tables, "totalRows": total_rows}
 
 
-def _migration_head(connection) -> dict[str, Any]:
+def _migration_head(connection: psycopg.Connection[tuple[Any, ...]]) -> dict[str, Any]:
     rows = connection.execute(
         "SELECT version, name FROM public.schema_migrations ORDER BY version"
     ).fetchall()
@@ -704,7 +706,7 @@ def _migration_head(connection) -> dict[str, Any]:
     return {"appMigrationHead": rows[-1][0], "appliedMigrations": len(rows)}
 
 
-def _actor_ownership_graph(connection) -> dict[str, Any]:
+def _actor_ownership_graph(connection: psycopg.Connection[tuple[Any, ...]]) -> dict[str, Any]:
     rows = connection.execute(
         """SELECT source_namespace.nspname::text, source_table.relname::text,
                   constraint_row.conname::text,
@@ -804,7 +806,7 @@ def _actor_ownership_graph(connection) -> dict[str, Any]:
     }
 
 
-def _anchor_material(connection) -> dict[str, bool]:
+def _anchor_material(connection: psycopg.Connection[tuple[Any, ...]]) -> dict[str, bool]:
     lexeme = connection.execute(
         "SELECT id FROM public.lexemes WHERE concept_id = %s ORDER BY id LIMIT 1",
         (K2_ANCHOR_CONCEPT_ID,),
@@ -897,7 +899,9 @@ def _anchor_material(connection) -> dict[str, bool]:
     }
 
 
-def _k208_fixture_privilege_preflight(connection) -> dict[str, bool]:
+def _k208_fixture_privilege_preflight(
+    connection: psycopg.Connection[tuple[Any, ...]],
+) -> dict[str, bool]:
     _table_inventory(connection)
     role_rows = connection.execute(
         """SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication,
@@ -1165,7 +1169,9 @@ def _k208_fixture_privilege_preflight(connection) -> dict[str, bool]:
     }
 
 
-def _k208_catalog_preflight(connection) -> dict[str, Any]:
+def _k208_catalog_preflight(
+    connection: psycopg.Connection[tuple[Any, ...]],
+) -> dict[str, Any]:
     _table_inventory(connection)
     rows = connection.execute(
         """SELECT item.id,
@@ -1186,18 +1192,22 @@ def _k208_catalog_preflight(connection) -> dict[str, Any]:
     ).fetchall()
     eligible = len(rows)
     five_minute = sum(1 for _, minutes, _ in rows if int(minutes) == 5)
+    source_rank_shape_row = connection.execute(
+        "SELECT to_regclass('public.v_learner_concept_retrievability') IS NOT NULL"
+    ).fetchone()
+    if source_rank_shape_row is None:
+        raise ProbeError
     return {
         "eligibleContentCount": eligible,
         "fiveMinuteRemediationCount": five_minute,
         "hasNovelControl": eligible >= 3,
-        "sourceRankShapeAvailable": connection.execute(
-            "SELECT to_regclass('public.v_learner_concept_retrievability') IS NOT NULL"
-        ).fetchone()[0]
-        is True,
+        "sourceRankShapeAvailable": source_rank_shape_row[0] is True,
     }
 
 
-def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[str, Any]:
+def _k208_candidate_base(
+    connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID, profile_id: UUID
+) -> dict[str, Any]:
     actor = AuthenticatedActor(actor_id)
     store = PostgresContentStore("")
     resolved = store.resolve_profile(connection, actor=actor, requested_id=profile_id)
@@ -1285,7 +1295,7 @@ def _k208_candidate_base(connection, actor_id: UUID, profile_id: UUID) -> dict[s
 
 
 def _k208_due_candidate_overlap(
-    connection,
+    connection: psycopg.Connection[tuple[Any, ...]],
     actor_id: UUID,
     profile_id: UUID,
     due_concept_ids: list[UUID],
@@ -1323,7 +1333,9 @@ def _k208_due_candidate_overlap(
     return {"overlapCount": row[0]}
 
 
-def _actor_lineage(connection, actor_id: UUID) -> dict[str, Any]:
+def _actor_lineage(
+    connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID
+) -> dict[str, Any]:
     state = connection.execute(
         """SELECT recognition_evidence_count, listening_evidence_count,
                   production_evidence_count, production_positive_mass::text,
@@ -1394,7 +1406,9 @@ def _actor_lineage(connection, actor_id: UUID) -> dict[str, Any]:
     }
 
 
-def _today_review_targets(connection, actor_id: UUID) -> dict[str, Any]:
+def _today_review_targets(
+    connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID
+) -> dict[str, Any]:
     row = connection.execute(
         """
         WITH latest_plan AS (
@@ -1539,14 +1553,22 @@ def main() -> int:
             elif action == "k208_catalog_preflight":
                 output = _k208_catalog_preflight(connection)
             elif action == "k208_candidate_base":
+                if actor_id is None or profile_id is None:
+                    raise ProbeError
                 output = _k208_candidate_base(connection, actor_id, profile_id)
             elif action == "k208_due_candidate_overlap":
+                if actor_id is None or profile_id is None or due_concept_ids is None:
+                    raise ProbeError
                 output = _k208_due_candidate_overlap(
                     connection, actor_id, profile_id, due_concept_ids
                 )
             elif action == "actor_lineage":
+                if actor_id is None:
+                    raise ProbeError
                 output = _actor_lineage(connection, actor_id)
             elif action == "today_review_targets":
+                if actor_id is None:
+                    raise ProbeError
                 output = _today_review_targets(connection, actor_id)
             elif action == "retained_snapshot":
                 output = _snapshot(connection, None)
