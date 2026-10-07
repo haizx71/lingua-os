@@ -1,6 +1,6 @@
 # TASK-K2-09 — Dictionary Normalization and Complete Lemma/Sense Groups
 
-**Status:** PRODUCT PLAN ACCEPTED; frozen source implementation passed independent review with no HIGH/BLOCKER. Exact-head CI remains pending. Hosted fixture architecture has conditional design-only PASS after anti-replay retention clarification; implementation/migration gates and hosted execution remain pending, and no hosted fixture writes are authorized.
+**Status:** PRODUCT PLAN ACCEPTED; frozen source implementation passed independent review with no HIGH/BLOCKER, exact-head CI, and deployment gates. Hosted fixture architecture has conditional design-only PASS; exact private DTO review, fixture implementation/migration gates, and hosted execution remain pending, and no hosted fixture writes are authorized.
 **Prepared by:** GPT-6 Luna / Medium, after K2-08 hosted acceptance PASS.
 **Dependencies:** K2-02 lexeme/sense bridge and accepted K2-04–K2-08 runtime state. K2-08 full hosted acceptance and independent review are complete as recorded in `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
 
@@ -8,11 +8,12 @@
 
 - Frozen implementation: 16 product files, diff SHA256 `e03a501398cd4c89495c576844afb3935c9e5aa43a7490372014aa5068f245e5`, 99,065 bytes, based on plan commit `15671dcdb0969947ff21a86e262adbfbaa3c7b1a` and project base `097c673`.
 - Implementation worker and independent source reviewer: GPT-6 Luna / Max; Commander is the operator; this packet was prepared by GPT-6 Luna / Medium.
-- Independent source review of the exact 16-file binary diff passed with no HIGH/BLOCKER. The reviewer verified fixes, legacy empty-group behavior, query invalidation, `went` coverage, and diff check, but did not rerun test suites. Exact-head CI remains pending.
-- Implementation-worker-reported checks pass: 66 Dictionary/Brain/OpenAPI PostgreSQL integration checks; 102 UI checks across Dictionary/Library/Brain/cross-surface behavior; 14 importer checks; typecheck, generated contract freshness, mypy across 89 files, Ruff, ESLint, YAML validation, and diff check. These are not an independent test rerun or CI verdict.
+- Independent source review of the exact 16-file binary diff passed with no HIGH/BLOCKER. The reviewer verified fixes, legacy empty-group behavior, query invalidation, `went` coverage, and diff check, but did not rerun test suites.
+- Exact tested head `29da9f8b7f96a3d2ca8c8c3de4fd02b51d6dde65` passed Security Gate run `37013641196` and all six Knowledge Audit jobs in run `37013641469`. CI summaries: Dictionary PostgreSQL 48 passed; Grammar 62; Today 40; retrievability 382 passed / 1 deselected; knowledge-audit 57 tests; frontend stages 9 and 102 tests passed. Security-gate step summaries: hosted-harness unit/workflow security 191 passed across 10 files, read-only hosted-probe tests 25 passed, and browser OIDC redirect check 1 passed.
+- PR #43 merged normally to master at `7bc877b85bf643af21498da0ba44e2c157e0ae03` on 2026-10-02 13:37:37 UTC. Vercel Preview `6809598033` passed against the exact tested PR head. Render `dep-davr78rm8hqs73ccnee0` is live and `/health` is OK, and Vercel Production deployment `6809699550` succeeded, both against merged SHA `7bc877b85bf643af21498da0ba44e2c157e0ae03`. The worker’s separate local results remain 66 backend/Brain/OpenAPI, 102 UI, and 14 importer checks; the independent reviewer did not rerun those local suites.
 - Implemented behavior includes default flat-response and cursor compatibility; grouped bridge-backed lemmas/senses; exact `went` → `go` matching and complete groups; actor-specific concept badges; zero GET-side writes; and legacy flat behavior for zero-sense concepts. Independent review verified the personalized-cache and cross-language bridge fixes. Non-English candidates remain rejected with 404 before grouped store access; this behavior is unchanged and does not broaden the API language contract.
 - No product migration or index was added. Query-plan performance remains unmeasured. The current importer stays unchanged and retains its one-candidate/one-sense limitation.
-- Hosted fixture design review is documented separately in `reviews/K2-09-hosted-fixture-architecture-review.md`; the bounded proposal is in `plans/TASK-K2-09-hosted-fixture-control.md`. Architecture review is design-only and conditional; no hosted setup or cleanup implementation has passed source review, and hosted writes remain unauthorized.
+- Hosted fixture design review is documented separately in `reviews/K2-09-hosted-fixture-architecture-review.md`; the bounded proposal is in `plans/TASK-K2-09-hosted-fixture-control.md`. The private DTO plan is under Max review; fixture source, migration/security gate, and hosted acceptance remain pending. Architecture review is design-only and conditional; no hosted setup or cleanup implementation has passed source review, and hosted writes remain unauthorized.
 
 ## Objective and invariants
 
@@ -43,12 +44,12 @@ Do not change unrelated UI, accepted Library/Reader behavior, learner memory lin
 
 ## Frozen implementation scope and remaining gates
 
-1. Product contract and source implementation are frozen. Independent GPT-6 Luna / Max source review passed with no HIGH/BLOCKER; exact-head CI remains pending. The current approved staging catalog has no qualifying fixture, and hosted execution remains blocked by source/CI/migration gates.
+1. Product contract and source implementation are frozen. Independent GPT-6 Luna / Max source review passed with no HIGH/BLOCKER; exact-head CI and same-SHA deployment gates passed. The current approved staging catalog has no qualifying fixture, and hosted execution remains blocked by fixture-source/private-DTO/migration gates.
 2. Backend bridge candidate resolution, matched lexeme/form retention, complete grouped projection, and actor-specific concept badges are implemented in the frozen diff. Preserve source allowlists and the backward-compatible flat response.
 3. OpenAPI/generated types and Dictionary UI presentation are implemented in the frozen diff, including ordered senses, stable lexeme identity, independent per-concept Save/Learn, and existing Library/Reader behavior.
 4. The current importer candidate format and apply semantics remain unchanged. Worker-reported `knowledge/tests/test_catalog_import.py` checks cover current form deduplication, no-overwrite collision behavior, provenance failure, deterministic plan/hash, and idempotent reapply. The production-starter importer remains limited to one concept-linked lexeme and one order-1 sense; shared-lemma/multi-sense import requires a separate future specification.
 5. No product migration or index was added. Query-plan performance is unmeasured; a migration remains contingent on measured evidence and separate review. Browser access stays through the API.
-6. Do not alter frozen product source. Exact-head CI and migration/security checks remain pending. Hosted fixture source or writes must wait for exact private DTO/spec review, migration/security review, and explicit Commander authorization after the conditional architecture design PASS.
+6. Do not alter frozen product source. Hosted fixture source or writes must wait for exact private DTO/spec review, implementation/source review, migration/security gates, and explicit Commander authorization after the conditional architecture design PASS.
 
 ## Verification plan
 
@@ -87,6 +88,6 @@ Do not change unrelated UI, accepted Library/Reader behavior, learner memory lin
 
 ## Remaining release gates
 
-- Exact-head CI for the frozen product implementation remains pending; independent source review passed with no HIGH/BLOCKER.
+- Exact-head CI and deployment for frozen product source passed; independent source review passed with no HIGH/BLOCKER.
 - Control-plane fixture architecture has conditional design-only approval. Its implementation, migration/security gate, and full hosted acceptance remain pending; hosted writes are not authorized.
 - Whether actual query plans justify any index. Do not answer this by inventing public fields, new normalization rules, or grants.

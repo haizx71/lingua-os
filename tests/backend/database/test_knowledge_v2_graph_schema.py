@@ -317,11 +317,12 @@ def test_foreign_keys_and_delete_cascades_only_the_v2_edges(
     ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_legacy_backfill_reapply_and_learner_isolation(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    database_url = isolated_migrated_postgres_url
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=5) == [
+    database_url, migrations_dir = isolated_postgres_at_migration
+    assert migrate_down(database_url, migrations_dir, steps=5) == [
         "0020",
         "0019",
         "0018",
@@ -344,8 +345,8 @@ def test_legacy_backfill_reapply_and_learner_isolation(
         )
         conn.commit()
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0016", "0017", "0018", "0019", "0020"]
-    assert migrate_up(database_url, MIGRATIONS_DIR) == []
+    assert migrate_up(database_url, migrations_dir) == ["0016", "0017", "0018", "0019", "0020"]
+    assert migrate_up(database_url, migrations_dir) == []
 
     with _connect(database_url) as conn:
         row = conn.execute(

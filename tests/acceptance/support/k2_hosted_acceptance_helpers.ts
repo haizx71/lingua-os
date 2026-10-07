@@ -1,16 +1,16 @@
 export type K2LanguageProfileRecord = Readonly<Record<string, unknown>>;
-export type K2HostedRunMode = 'acceptance' | 'janitor' | 'cleanup-current';
-export type K2HostedWaveSelector = 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08';
+export type K2HostedRunMode = 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap';
+export type K2HostedWaveSelector = 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09';
 
 export function resolveK2HostedRunMode(value: string | undefined): K2HostedRunMode {
   const mode = value ?? 'acceptance';
-  if (mode === 'acceptance' || mode === 'janitor' || mode === 'cleanup-current') return mode;
+  if (mode === 'acceptance' || mode === 'janitor' || mode === 'cleanup-current' || mode === 'fixture-reap') return mode;
   throw new Error('K2 hosted acceptance run mode is invalid; no hosted actor was created.');
 }
 
 export function resolveK2HostedWaveSelector(value: string | undefined): K2HostedWaveSelector {
   if (value === undefined || value === 'K2-07') return 'K2-07';
-  if (value === 'K2-08-DUE-ONLY' || value === 'K2-08') return value;
+  if (value === 'K2-08-DUE-ONLY' || value === 'K2-08' || value === 'K2-09') return value;
   throw new Error('K2 hosted acceptance wave selector is invalid; no hosted actor was created.');
 }
 

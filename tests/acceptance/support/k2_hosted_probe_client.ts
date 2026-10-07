@@ -39,6 +39,7 @@ export type K2ProbeAction =
   | 'actor_lineage'
   | 'today_review_targets'
   | 'migrations'
+  | 'actor_ownership_graph'
   | 'actor_absent'
   | 'anchor_material'
   | 'k208_fixture_privilege_preflight'
@@ -81,6 +82,12 @@ export type K2HostedTodayReviewTargets = Readonly<{
   targetCount: number;
   reviewItemIds: readonly string[];
 }>;
+export type K2ActorOwnershipGraph = Readonly<{
+  ownershipGraphValid: true;
+  ownedTableCount: 27;
+  ownershipEdgeCount: 27;
+  incomingConstraintCount: 51;
+}>;
 export type K2HostedCandidateBaseProof = Readonly<{
   stateConceptIds: readonly string[];
   stateStatuses: readonly Readonly<{
@@ -98,13 +105,14 @@ export type K2HostedCandidateBaseProof = Readonly<{
     isCompleted: boolean;
   }>[];
 }>;
-export const K2_APPROVED_APP_MIGRATION_HEAD = '0020' as const;
-const K2_APPROVED_APP_MIGRATION_COUNT = 20 as const;
+export const K2_APPROVED_APP_MIGRATION_HEAD = '0021' as const;
+const K2_APPROVED_APP_MIGRATION_COUNT = 21 as const;
 export type K2HostedProbeResult =
   | K2RetainedSnapshot
   | K2HostedAnchorMaterial
   | K2HostedActorLineageProof
   | K2HostedTodayReviewTargets
+  | K2ActorOwnershipGraph
   | K2HostedCandidateBaseProof
   | Readonly<{ overlapCount: number }>
   | Readonly<{
@@ -310,6 +318,26 @@ export function parseK2HostedMigrationProof(value: unknown): {
   };
 }
 
+export function parseK2ActorOwnershipGraph(value: unknown): K2ActorOwnershipGraph {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([
+        'incomingConstraintCount', 'ownedTableCount', 'ownershipEdgeCount', 'ownershipGraphValid',
+      ])) {
+    throw new Error('K2 hosted acceptance actor ownership graph proof was invalid.');
+  }
+  const proof = value as Record<string, unknown>;
+  if (proof.ownershipGraphValid !== true || proof.ownedTableCount !== 27 ||
+      proof.ownershipEdgeCount !== 27 || proof.incomingConstraintCount !== 51) {
+    throw new Error('K2 hosted acceptance actor ownership graph proof was invalid.');
+  }
+  return {
+    ownershipGraphValid: true,
+    ownedTableCount: 27,
+    ownershipEdgeCount: 27,
+    incomingConstraintCount: 51,
+  };
+}
+
 export function parseK2HostedTodayReviewTargets(value: unknown): K2HostedTodayReviewTargets {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('K2 hosted acceptance Today target probe returned invalid output.');
@@ -474,6 +502,7 @@ export async function runK2HostedProbe(
   if (action === 'retained_snapshot') return parseK2RetainedSnapshot(value);
   if (action === 'actor_snapshot' || action === 'actor_absent') return parseK2ActorSnapshot(value);
   if (action === 'actor_lineage') return parseK2HostedActorLineage(value);
+  if (action === 'actor_ownership_graph') return parseK2ActorOwnershipGraph(value);
   if (action === 'today_review_targets') return parseK2HostedTodayReviewTargets(value);
   if (action === 'anchor_material') return parseK2HostedAnchorMaterial(value);
   if (action === 'k208_candidate_base') return parseK2HostedCandidateBaseProof(value);

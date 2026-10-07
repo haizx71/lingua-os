@@ -24,6 +24,8 @@
     "tests/acceptance/support/k2_hosted_wave_k2_08_due_only.test.ts",
     "tests/acceptance/support/k2_hosted_wave_k2_08.ts",
     "tests/acceptance/support/k2_hosted_wave_k2_08.test.ts",
+    "tests/acceptance/support/k2_hosted_wave_k2_09.ts",
+    "tests/acceptance/support/k2_hosted_wave_k2_09.test.ts",
     "tests/acceptance/support/k2_hosted_workflow_security.test.ts"
   ]
 }

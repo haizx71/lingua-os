@@ -121,10 +121,12 @@ def test_concept_save_intents_cascade_only_after_auth_identity_erasure(
         ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, migrations_dir = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as connection:
         actor_id, profile_id, concept_id = _seed_owner_and_concept(connection)
         connection.execute(
             """
@@ -136,11 +138,11 @@ def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
         )
         connection.commit()
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=2) == [
+    assert migrate_down(database_url, migrations_dir, steps=2) == [
         "0020",
         "0019",
     ]
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         with (
             pytest.raises(psycopg.errors.CheckViolation, match="immutable"),
             connection.transaction(),
@@ -154,8 +156,8 @@ def test_0019_auth_erasure_cleanup_rolls_back_and_reapplies(
             "SELECT count(*) FROM concept_save_intents WHERE user_id = %s", (actor_id,)
         ).fetchone() == (1,)
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == ["0019", "0020"]
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    assert migrate_up(database_url, migrations_dir) == ["0019", "0020"]
+    with psycopg.connect(database_url) as connection:
         connection.execute("SET ROLE supabase_auth_admin")
         connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_id,))
         connection.execute("RESET ROLE")
@@ -245,8 +247,12 @@ def test_learning_events_source_type_accepts_concept_save_intent(
         )
 
 
-def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str) -> None:
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
+def test_migration_0009_rollback_and_replay(
+    isolated_postgres_at_migration: tuple[str, Path],
+) -> None:
+    database_url, migrations_dir = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as connection:
         table_exists = connection.execute(
             """
             SELECT 1 FROM information_schema.tables
@@ -255,7 +261,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_exists is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=11) == [
+    assert migrate_down(database_url, migrations_dir, steps=11) == [
         "0020",
         "0019",
         "0018",
@@ -268,9 +274,9 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         "0011",
         "0010",
     ]
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS_DIR, steps=1) == ["0009"]
+    assert migrate_down(database_url, migrations_dir, steps=1) == ["0009"]
 
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         table_after_down = connection.execute(
             """
             SELECT 1 FROM information_schema.tables
@@ -279,7 +285,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         ).fetchone()
         assert table_after_down is None
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS_DIR) == [
+    assert migrate_up(database_url, migrations_dir) == [
         "0009",
         "0010",
         "0011",
@@ -294,7 +300,7 @@ def test_migration_0009_rollback_and_replay(isolated_migrated_postgres_url: str)
         "0020",
     ]
 
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         table_after_up = connection.execute(
             """
             SELECT 1 FROM information_schema.tables

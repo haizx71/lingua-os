@@ -14,6 +14,10 @@ export const K2_HOSTED_OWNER_LOGIN = 'haizx71';
 export const K2_HOSTED_WORKFLOW_REF =
   `${K2_HOSTED_REPOSITORY}/.github/workflows/k2-hosted-acceptance.yml@refs/heads/master`;
 export const K2_HOSTED_STAGING_SUPABASE_REF = 'bdmtdvvnbicgkfririjo';
+export const K2_HOSTED_FIXTURE_OIDC_AUDIENCE =
+  'https://lingua-api-staging.onrender.com/internal/k2-hosted-fixtures';
+export const K2_HOSTED_FIXTURE_API_ORIGIN = 'https://lingua-api-staging.onrender.com';
+export const K2_HOSTED_FIXTURE_READ_TOKEN_HEADER = 'X-GitHub-Read-Token';
 export const K2_HOSTED_READONLY_DATABASE_ROLE = 'k2_hosted_acceptance_reader';
 export const K2_HOSTED_MARKER_KEY = 'lingua_k2_hosted_acceptance';
 export const K2_VERCEL_ATTESTATION_PATH = '/api/k2-vercel-attestation';
@@ -53,6 +57,52 @@ export interface K2HostedConfig {
   readonly oidcRequestUrl: string;
   readonly oidcRequestToken: string;
 }
+
+export type K2HostedFixtureCounts = Readonly<{
+  sourceRecords: number;
+  concepts: number;
+  lexemes: number;
+  forms: number;
+  senses: number;
+  bridges: number;
+}>;
+
+export type K2HostedFixtureDto = Readonly<{
+  handles: Readonly<{
+    ownerConcept: 'k2-09-owner';
+    secondaryConcept: 'k2-09-secondary';
+    lexeme: 'k2-09-lexeme';
+  }>;
+  ids: Readonly<{
+    ownerConceptId: string;
+    secondaryConceptId: string;
+    lexemeId: string;
+  }>;
+  lemma: string;
+  inflectedForm: string;
+}>;
+
+export type K2HostedFixtureControlResult = Readonly<{
+  protocolVersion: 'k2-09-bridge-fixture.v1';
+  receiptState: 'ABSENT' | 'ACTIVE' | 'CLOSED';
+  fixturePresent: boolean;
+  fixture: K2HostedFixtureDto | null;
+  counts: K2HostedFixtureCounts;
+}>;
+
+export type K2HostedFixtureSetupResult = K2HostedFixtureControlResult & Readonly<{
+  receiptState: 'ACTIVE';
+  fixturePresent: true;
+  fixture: K2HostedFixtureDto;
+  disposition: 'created' | 'verified_existing';
+}>;
+
+export type K2HostedFixtureReapResult = Readonly<{
+  protocolVersion: 'k2-09-bridge-fixture.v1';
+  processedCount: number;
+  closedFixtureCount: number;
+  purgedReceiptCount: number;
+}>;
 
 export interface K2ActorOwnership {
   readonly version: 2;
@@ -142,13 +192,9 @@ export interface K2LearnerClient {
 
 export function validateK2HostedEnvironment(
   env: Record<string, string | undefined> = process.env,
-  mode: 'acceptance' | 'janitor' | 'cleanup-current' = 'acceptance',
+  mode: 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap' = 'acceptance',
 ): K2HostedConfig {
-  const required = [
-    'K2_STAGING_SUPABASE_URL',
-    'K2_STAGING_SUPABASE_PROJECT_REF',
-    'K2_STAGING_SUPABASE_SECRET_KEY',
-    'K2_STAGING_READONLY_DATABASE_URL',
+  const identityRequired = [
     'GITHUB_REPOSITORY',
     'GITHUB_REF',
     'GITHUB_EVENT_NAME',
@@ -158,6 +204,12 @@ export function validateK2HostedEnvironment(
     'GITHUB_WORKFLOW_REF',
     'GITHUB_SHA',
   ] as const;
+  const stagingRequired = [
+    'K2_STAGING_SUPABASE_URL',
+    'K2_STAGING_SUPABASE_PROJECT_REF',
+    'K2_STAGING_SUPABASE_SECRET_KEY',
+    'K2_STAGING_READONLY_DATABASE_URL',
+  ] as const;
   const acceptanceRequired = [
     'K2_STAGING_API_ORIGIN',
     'K2_STAGING_SUPABASE_PUBLISHABLE_KEY',
@@ -166,16 +218,52 @@ export function validateK2HostedEnvironment(
     'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
   ] as const;
   const ownerActorRequired = mode !== 'janitor' || env.GITHUB_EVENT_NAME === 'workflow_dispatch';
-  const githubApiTokenRequired = mode !== 'cleanup-current';
+  const githubApiTokenRequired = mode !== 'cleanup-current' || env.K2_ACCEPTANCE_WAVE === 'K2-09';
   const missing = [
-    ...required,
+    ...identityRequired,
+    ...(mode === 'fixture-reap' ? [] : stagingRequired),
     ...(mode === 'acceptance' ? acceptanceRequired : []),
+    ...(mode === 'fixture-reap' ||
+      (mode === 'cleanup-current' && env.K2_ACCEPTANCE_WAVE === 'K2-09') ? [
+      'ACTIONS_ID_TOKEN_REQUEST_URL', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN',
+    ] : []),
     ...(githubApiTokenRequired && mode !== 'acceptance' ? ['K2_GITHUB_TOKEN'] : []),
     ...(ownerActorRequired ? ['GITHUB_ACTOR', 'GITHUB_TRIGGERING_ACTOR'] : []),
   ]
     .filter(name => !env[name]?.trim());
   if (missing.length > 0) {
     throw new Error(`K2 hosted acceptance is not configured: missing ${missing.join(', ')}.`);
+  }
+
+  if (mode === 'fixture-reap') {
+    if (env.GITHUB_REPOSITORY !== K2_HOSTED_REPOSITORY ||
+        env.GITHUB_REF !== 'refs/heads/master' || env.GITHUB_EVENT_NAME !== 'workflow_dispatch' ||
+        env.GITHUB_WORKFLOW !== K2_HOSTED_WORKFLOW || env.GITHUB_WORKFLOW_REF !== K2_HOSTED_WORKFLOW_REF ||
+        !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA!.trim()) ||
+        !/^\d{1,20}$/.test(env.GITHUB_RUN_ID!) || !/^\d{1,5}$/.test(env.GITHUB_RUN_ATTEMPT!) ||
+        env.GITHUB_ACTOR!.trim().toLowerCase() !== K2_HOSTED_OWNER_LOGIN ||
+        env.GITHUB_TRIGGERING_ACTOR!.trim().toLowerCase() !== K2_HOSTED_OWNER_LOGIN) {
+      throw new Error('K2 hosted fixture reaper must run from the exact master workflow under the repository owner.');
+    }
+    return {
+      apiOrigin: K2_HOSTED_FIXTURE_API_ORIGIN,
+      supabaseUrl: '',
+      supabaseProjectRef: '',
+      publishableKey: '',
+      secretKey: '',
+      readonlyDatabaseUrl: '',
+      githubRepository: env.GITHUB_REPOSITORY!,
+      githubRef: env.GITHUB_REF!,
+      githubEventName: env.GITHUB_EVENT_NAME!,
+      githubRunId: env.GITHUB_RUN_ID!,
+      githubRunAttempt: env.GITHUB_RUN_ATTEMPT!,
+      githubWorkflow: env.GITHUB_WORKFLOW!,
+      githubWorkflowRef: env.GITHUB_WORKFLOW_REF!,
+      githubSha: env.GITHUB_SHA!.trim(),
+      githubToken: env.K2_GITHUB_TOKEN!.trim(),
+      oidcRequestUrl: env.ACTIONS_ID_TOKEN_REQUEST_URL!.trim(),
+      oidcRequestToken: env.ACTIONS_ID_TOKEN_REQUEST_TOKEN!.trim(),
+    };
   }
 
   const supabaseProjectRef = env.K2_STAGING_SUPABASE_PROJECT_REF!.trim();
@@ -1010,6 +1098,330 @@ export function createGithubTrustedSourceToken(
   config: Pick<K2HostedConfig, 'oidcRequestUrl' | 'oidcRequestToken'>,
   request: typeof fetch = fetch,
 ): Promise<string> {
+  return createGithubOidcToken(config, 'https://vercel.com', 'protected Vercel', request);
+}
+
+export function createK2HostedFixtureOidcToken(
+  config: Pick<K2HostedConfig, 'oidcRequestUrl' | 'oidcRequestToken'>,
+  request: typeof fetch = fetch,
+): Promise<string> {
+  return createGithubOidcToken(
+    config,
+    K2_HOSTED_FIXTURE_OIDC_AUDIENCE,
+    'hosted fixture control',
+    request,
+  );
+}
+
+export function requestK2HostedFixtureControl(
+  config: Pick<K2HostedConfig, 'apiOrigin' | 'githubToken'>,
+  operation: 'inspect', oidcToken: string, githubReadToken?: string, request?: typeof fetch,
+): Promise<K2HostedFixtureControlResult>;
+export function requestK2HostedFixtureControl(
+  config: Pick<K2HostedConfig, 'apiOrigin' | 'githubToken'>,
+  operation: 'setup', oidcToken: string, githubReadToken: string, request?: typeof fetch,
+): Promise<K2HostedFixtureSetupResult>;
+export function requestK2HostedFixtureControl(
+  config: Pick<K2HostedConfig, 'apiOrigin' | 'githubToken'>,
+  operation: 'cleanup', oidcToken: string, githubReadToken?: undefined, request?: typeof fetch,
+): Promise<K2HostedFixtureControlResult>;
+export function requestK2HostedFixtureControl(
+  config: Pick<K2HostedConfig, 'apiOrigin' | 'githubToken'>,
+  operation: 'reap-expired', oidcToken: string, githubReadToken: string, request?: typeof fetch,
+): Promise<K2HostedFixtureReapResult>;
+export async function requestK2HostedFixtureControl(
+  _config: Pick<K2HostedConfig, 'apiOrigin' | 'githubToken'>,
+  operation: 'inspect' | 'setup' | 'cleanup' | 'reap-expired',
+  oidcToken: string,
+  githubReadToken?: string,
+  request: typeof fetch = fetch,
+): Promise<K2HostedFixtureControlResult | K2HostedFixtureSetupResult | K2HostedFixtureReapResult> {
+  const githubReadRequired = operation === 'setup' || operation === 'reap-expired';
+  const readToken = githubReadToken?.trim();
+  if (!oidcToken.trim() ||
+      (githubReadRequired && !readToken) ||
+      (operation === 'inspect' && githubReadToken !== undefined && !readToken) ||
+      (operation === 'cleanup' && githubReadToken !== undefined)) {
+    throw new Error('K2 hosted fixture control request configuration was invalid.');
+  }
+  const method = operation === 'inspect' ? 'GET' : 'POST';
+  let response: Response;
+  try {
+    response = await request(
+      new URL(`/internal/k2-hosted-fixtures/k2-09/${operation}`, K2_HOSTED_FIXTURE_API_ORIGIN),
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${oidcToken}`,
+          ...(readToken === undefined ? {} : {
+            [K2_HOSTED_FIXTURE_READ_TOKEN_HEADER]: readToken,
+          }),
+        },
+        signal: AbortSignal.timeout(30_000),
+        redirect: 'error',
+      },
+    );
+  } catch {
+    throw new Error('K2 hosted fixture control request failed; provider details were suppressed.');
+  }
+  if (response.status !== 200) {
+    throw new Error('K2 hosted fixture control request returned an unexpected status.');
+  }
+  let payload: unknown;
+  try { payload = await response.json(); }
+  catch { throw new Error('K2 hosted fixture control response was invalid.'); }
+  if (operation === 'setup') return parseK2HostedFixtureSetupResult(payload);
+  if (operation === 'cleanup') return parseK2HostedFixtureCleanupResult(payload);
+  if (operation === 'reap-expired') return parseK2HostedFixtureReapResult(payload);
+  return parseK2HostedFixtureInspection(payload);
+}
+
+/** Sets up the exact fixture once, then confirms its committed tree via no-token ACTIVE inspect. */
+export async function setupK2HostedFixtureWithRecovery(
+  config: K2HostedConfig,
+): Promise<K2HostedFixtureDto> {
+  let fixture: K2HostedFixtureDto | null = null;
+  try {
+    const token = await createK2HostedFixtureOidcToken(config);
+    const setup = await requestK2HostedFixtureControl(config, 'setup', token, config.githubToken);
+    if ('disposition' in setup && setup.receiptState === 'ACTIVE') fixture = setup.fixture;
+  } catch {
+    // Setup may have committed atomically while its response was lost. Never retry
+    // setup here; only the exact ACTIVE receipt can recover its server-owned DTO.
+  }
+  if (!fixture) {
+    try {
+      const token = await createK2HostedFixtureOidcToken(config);
+      const inspected = await requestK2HostedFixtureControl(config, 'inspect', token);
+      if (inspected.receiptState === 'ACTIVE' && inspected.fixturePresent && inspected.fixture) {
+        fixture = inspected.fixture;
+      }
+    } catch {
+      // ABSENT inspection needs the contents:read proof and cannot recover setup.
+    }
+  }
+  if (!fixture) throw new Error('K2 hosted acceptance K2-09 fixture setup could not be confirmed.');
+
+  const verifyToken = await createK2HostedFixtureOidcToken(config);
+  const verified = await requestK2HostedFixtureControl(config, 'inspect', verifyToken);
+  if (verified.receiptState !== 'ACTIVE' || !verified.fixturePresent || !verified.fixture ||
+      JSON.stringify(verified.fixture) !== JSON.stringify(fixture)) {
+    throw new Error('K2 hosted acceptance K2-09 fixture setup could not be confirmed.');
+  }
+  return fixture;
+}
+
+export type K2HostedFixtureCleanupOutcome = 'absent' | 'closed';
+
+function isExactK2HostedFixtureAbsent(value: K2HostedFixtureControlResult): boolean {
+  return value.receiptState === 'ABSENT' && !value.fixturePresent && value.fixture === null &&
+    Object.values(value.counts).every(count => count === 0);
+}
+
+/** ABSENT needs an authenticated read proof; ACTIVE/CLOSED are available without that token. */
+async function inspectK2HostedFixtureForCleanup(
+  config: K2HostedConfig,
+): Promise<K2HostedFixtureControlResult> {
+  let oidcToken: string | undefined;
+  let unauthenticated: K2HostedFixtureControlResult | undefined;
+  try {
+    oidcToken = await createK2HostedFixtureOidcToken(config);
+    unauthenticated = await requestK2HostedFixtureControl(config, 'inspect', oidcToken);
+    if (unauthenticated.receiptState !== 'ABSENT') return unauthenticated;
+  } catch {
+    // An ABSENT receipt requires the current-master GitHub proof. Retry once below.
+  }
+
+  const githubReadToken = config.githubToken.trim();
+  if (!githubReadToken) {
+    throw new Error('K2 hosted fixture cleanup could not be independently verified.');
+  }
+  try {
+    const token = oidcToken ?? await createK2HostedFixtureOidcToken(config);
+    const authenticated = await requestK2HostedFixtureControl(
+      config, 'inspect', token, githubReadToken,
+    );
+    if (isExactK2HostedFixtureAbsent(authenticated)) return authenticated;
+  } catch {
+    // Do not expose whether current master, OIDC claims, or the GitHub API check differed.
+  }
+  throw new Error('K2 hosted fixture cleanup could not be independently verified.');
+}
+
+/** Cleans an ACTIVE receipt, accepts a verified no-receipt run, and proves CLOSED after cleanup. */
+export async function cleanupK2HostedFixtureWithRecovery(
+  config: K2HostedConfig,
+  expectedFixture?: K2HostedFixtureDto | null,
+): Promise<K2HostedFixtureCleanupOutcome> {
+  const before = await inspectK2HostedFixtureForCleanup(config);
+  if (before.receiptState === 'ABSENT') return 'absent';
+  if (before.receiptState === 'CLOSED') return 'closed';
+  if (!before.fixturePresent || !before.fixture || (expectedFixture &&
+      JSON.stringify(before.fixture) !== JSON.stringify(expectedFixture))) {
+    throw new Error('K2 hosted fixture cleanup could not be independently verified.');
+  }
+  const activeFixture = before.fixture;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const cleanupToken = await createK2HostedFixtureOidcToken(config);
+      const closed = await requestK2HostedFixtureControl(config, 'cleanup', cleanupToken);
+      if (closed.receiptState !== 'CLOSED' || closed.fixturePresent || closed.fixture !== null) {
+        throw new Error('K2 hosted fixture cleanup response was invalid.');
+      }
+    } catch {
+      // The request may have committed while its response was lost. Inspect below;
+      // an ACTIVE receipt gets one bounded idempotent retry.
+    }
+    let inspected: K2HostedFixtureControlResult;
+    try {
+      const inspectToken = await createK2HostedFixtureOidcToken(config);
+      inspected = await requestK2HostedFixtureControl(config, 'inspect', inspectToken);
+    } catch {
+      throw new Error('K2 hosted fixture cleanup could not be independently verified.');
+    }
+    if (inspected.receiptState === 'CLOSED' && !inspected.fixturePresent &&
+        inspected.fixture === null && Object.values(inspected.counts).every(count => count === 0)) {
+      return 'closed';
+    }
+    if (inspected.receiptState !== 'ACTIVE' || !inspected.fixturePresent || !inspected.fixture ||
+        JSON.stringify(inspected.fixture) !== JSON.stringify(activeFixture) || attempt > 0) {
+      throw new Error('K2 hosted fixture cleanup could not be independently verified.');
+    }
+  }
+  throw new Error('K2 hosted fixture cleanup could not be independently verified.');
+}
+
+/** Requires the canonical Auth not-found response for an exact in-memory actor id. */
+export async function assertK2HostedAuthAbsent(admin: K2AdminClient, userId: string): Promise<void> {
+  let result;
+  try { result = await admin.auth.admin.getUserById(userId); }
+  catch { throw new Error('K2 hosted acceptance Auth absence proof failed.'); }
+  if (!isCanonicalUserNotFound(result.error)) {
+    throw new Error('K2 hosted acceptance Auth absence proof failed.');
+  }
+}
+
+function exactObject(value: unknown, keys: readonly string[]): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...keys].sort())) return null;
+  return value as Record<string, unknown>;
+}
+
+function parseK2HostedFixtureCounts(value: unknown, present: boolean): K2HostedFixtureCounts | null {
+  const record = exactObject(value, ['sourceRecords', 'concepts', 'lexemes', 'forms', 'senses', 'bridges']);
+  if (!record) return null;
+  const expected = present
+    ? { sourceRecords: 1, concepts: 2, lexemes: 1, forms: 1, senses: 2, bridges: 3 }
+    : { sourceRecords: 0, concepts: 0, lexemes: 0, forms: 0, senses: 0, bridges: 0 };
+  if (Object.entries(expected).some(([key, count]) => record[key] !== count)) return null;
+  return expected;
+}
+
+function parseK2HostedFixtureDescriptor(value: unknown): K2HostedFixtureDto | null {
+  const descriptor = exactObject(value, ['handles', 'ids', 'lemma', 'inflectedForm']);
+  if (!descriptor) return null;
+  const handles = exactObject(descriptor.handles, ['ownerConcept', 'secondaryConcept', 'lexeme']);
+  const ids = exactObject(descriptor.ids, ['ownerConceptId', 'secondaryConceptId', 'lexemeId']);
+  if (!handles || !ids || handles.ownerConcept !== 'k2-09-owner' ||
+      handles.secondaryConcept !== 'k2-09-secondary' || handles.lexeme !== 'k2-09-lexeme' ||
+      Object.values(ids).some(id => typeof id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)) ||
+      new Set(Object.values(ids)).size !== 3 || typeof descriptor.lemma !== 'string' ||
+      !/^kfixture[a-p]{64}$/.test(descriptor.lemma) ||
+      descriptor.inflectedForm !== `${descriptor.lemma}s`) return null;
+  return {
+    handles: {
+      ownerConcept: 'k2-09-owner',
+      secondaryConcept: 'k2-09-secondary',
+      lexeme: 'k2-09-lexeme',
+    },
+    ids: {
+      ownerConceptId: ids.ownerConceptId as string,
+      secondaryConceptId: ids.secondaryConceptId as string,
+      lexemeId: ids.lexemeId as string,
+    },
+    lemma: descriptor.lemma,
+    inflectedForm: descriptor.inflectedForm,
+  };
+}
+
+function parseK2HostedFixtureInspection(value: unknown): K2HostedFixtureControlResult {
+  const record = exactObject(value, [
+    'protocolVersion', 'receiptState', 'fixturePresent', 'fixture', 'counts',
+  ]);
+  if (!record || record.protocolVersion !== 'k2-09-bridge-fixture.v1' ||
+      !['ABSENT', 'ACTIVE', 'CLOSED'].includes(String(record.receiptState)) ||
+      typeof record.fixturePresent !== 'boolean') {
+    throw new Error('K2 hosted fixture inspection response was invalid.');
+  }
+  const state = record.receiptState as K2HostedFixtureControlResult['receiptState'];
+  const present = state === 'ACTIVE';
+  const fixture = present ? parseK2HostedFixtureDescriptor(record.fixture) : null;
+  const counts = parseK2HostedFixtureCounts(record.counts, present);
+  if (record.fixturePresent !== present || (present && !fixture) || (!present && record.fixture !== null) || !counts) {
+    throw new Error('K2 hosted fixture inspection response was invalid.');
+  }
+  return { protocolVersion: 'k2-09-bridge-fixture.v1', receiptState: state, fixturePresent: present, fixture, counts };
+}
+
+function parseK2HostedFixtureSetupResult(value: unknown): K2HostedFixtureSetupResult {
+  const record = exactObject(value, [
+    'protocolVersion', 'receiptState', 'disposition', 'fixturePresent', 'fixture', 'counts',
+  ]);
+  if (!record || record.protocolVersion !== 'k2-09-bridge-fixture.v1' ||
+      record.receiptState !== 'ACTIVE' || record.fixturePresent !== true ||
+      !['created', 'verified_existing'].includes(String(record.disposition))) {
+    throw new Error('K2 hosted fixture setup response was invalid.');
+  }
+  const fixture = parseK2HostedFixtureDescriptor(record.fixture);
+  const counts = parseK2HostedFixtureCounts(record.counts, true);
+  if (!fixture || !counts) throw new Error('K2 hosted fixture setup response was invalid.');
+  return {
+    protocolVersion: 'k2-09-bridge-fixture.v1', receiptState: 'ACTIVE', disposition: record.disposition as 'created' | 'verified_existing',
+    fixturePresent: true, fixture, counts,
+  };
+}
+
+function parseK2HostedFixtureCleanupResult(value: unknown): K2HostedFixtureControlResult {
+  const record = exactObject(value, ['protocolVersion', 'receiptState', 'fixturePresent', 'counts']);
+  const counts = record && (
+    parseK2HostedFixtureCounts(record.counts, true) ??
+    parseK2HostedFixtureCounts(record.counts, false)
+  );
+  if (!record || record.protocolVersion !== 'k2-09-bridge-fixture.v1' ||
+      record.receiptState !== 'CLOSED' || record.fixturePresent !== false || !counts) {
+    throw new Error('K2 hosted fixture cleanup response was invalid.');
+  }
+  return {
+    protocolVersion: 'k2-09-bridge-fixture.v1', receiptState: 'CLOSED',
+    fixturePresent: false, fixture: null, counts,
+  };
+}
+
+function parseK2HostedFixtureReapResult(value: unknown): K2HostedFixtureReapResult {
+  const record = exactObject(value, ['protocolVersion', 'processedCount', 'closedFixtureCount', 'purgedReceiptCount']);
+  const safeCount = (count: unknown) => Number.isSafeInteger(count) && (count as number) >= 0 && (count as number) <= 10;
+  if (!record || record.protocolVersion !== 'k2-09-bridge-fixture.v1' ||
+      !safeCount(record.processedCount) || !safeCount(record.closedFixtureCount) ||
+      !safeCount(record.purgedReceiptCount) ||
+      (record.closedFixtureCount as number) + (record.purgedReceiptCount as number) > (record.processedCount as number)) {
+    throw new Error('K2 hosted fixture reaper response was invalid.');
+  }
+  return {
+    protocolVersion: 'k2-09-bridge-fixture.v1',
+    processedCount: record.processedCount as number,
+    closedFixtureCount: record.closedFixtureCount as number,
+    purgedReceiptCount: record.purgedReceiptCount as number,
+  };
+}
+
+function createGithubOidcToken(
+  config: Pick<K2HostedConfig, 'oidcRequestUrl' | 'oidcRequestToken'>,
+  audience: string,
+  purpose: string,
+  request: typeof fetch,
+): Promise<string> {
   return (async () => {
     let requestUrl: URL;
     try { requestUrl = new URL(config.oidcRequestUrl); }
@@ -1040,7 +1452,7 @@ export function createGithubTrustedSourceToken(
         `fragmentInvalid=${requestUrl.hash !== ''}).`,
       );
     }
-    requestUrl.searchParams.set('audience', 'https://vercel.com');
+    requestUrl.searchParams.set('audience', audience);
     let response: Response;
     try {
       response = await request(requestUrl, {
@@ -1049,21 +1461,21 @@ export function createGithubTrustedSourceToken(
         redirect: 'error',
       });
     } catch {
-      throw new Error('K2 hosted acceptance could not obtain its protected Vercel OIDC token.');
+      throw new Error(`K2 hosted acceptance could not obtain its ${purpose} OIDC token.`);
     }
     if (!response.ok) {
-      throw new Error('K2 hosted acceptance could not obtain its protected Vercel OIDC token.');
+      throw new Error(`K2 hosted acceptance could not obtain its ${purpose} OIDC token.`);
     }
     let value: unknown;
     try {
       value = await response.json();
     } catch {
-      throw new Error('K2 hosted acceptance received an invalid protected Vercel OIDC response.');
+      throw new Error(`K2 hosted acceptance received an invalid ${purpose} OIDC response.`);
     }
     if (!value || typeof value !== 'object' || !('value' in value) ||
         typeof (value as { value?: unknown }).value !== 'string' ||
         !(value as { value: string }).value.trim()) {
-      throw new Error('K2 hosted acceptance received an invalid protected Vercel OIDC response.');
+      throw new Error(`K2 hosted acceptance received an invalid ${purpose} OIDC response.`);
     }
     return (value as { value: string }).value;
   })();

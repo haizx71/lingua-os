@@ -64,6 +64,7 @@ describe('K2 hosted workflow credential boundary', () => {
   const acceptance = asMap(secretJobs['hosted-acceptance'], 'hosted-acceptance job');
   const janitor = asMap(secretJobs.janitor, 'janitor job');
   const cleanup = asMap(secretJobs['current-run-cleanup'], 'current-run-cleanup job');
+  const fixtureReaper = asMap(secretJobs['fixture-reaper'], 'fixture-reaper job');
   const securityGate = asMap(securityJobs['security-gate'], 'security-gate job');
   const dbPreflight = asMap(asMap(dbPreflightWorkflow.jobs, 'db preflight jobs')['readonly-preflight'], 'readonly-preflight job');
   const todayCi = readWorkflow('.github/workflows/knowledge-audit-ci.yml');
@@ -131,6 +132,7 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_workflow_security.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_runner.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.test.ts');
     expect(harnessTests).toContain('tests/frontend/k2-vercel-attestation.test.ts');
     expect(stepNamed(securityGate, 'Typecheck hosted acceptance harness').run)
       .toBe('pnpm exec tsc --noEmit -p tsconfig.k2-harness.json');
@@ -140,6 +142,8 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_runner.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.test.ts');
     expect(stepNamed(todayPostgres, 'Verify Today policy and persistence against PostgreSQL').run)
       .toContain('tests/backend/database/test_today_api.py');
     expect(readFileSync(resolve(process.cwd(), 'tests/backend/database/test_today_api.py'), 'utf8'))
@@ -155,7 +159,7 @@ describe('K2 hosted workflow credential boundary', () => {
     const dispatchInputs = asMap(asMap(secretWorkflow.on, 'secret workflow triggers').workflow_dispatch,
       'workflow_dispatch trigger').inputs;
     const waveInput = asMap(asMap(dispatchInputs, 'workflow_dispatch inputs').wave, 'wave selector input');
-    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY', 'K2-08']);
+    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY', 'K2-08', 'K2-09']);
     expect(guard).toContain("github.event_name == 'workflow_dispatch'");
     expect(guard).toContain("github.repository == 'haizx71/lingua-os'");
     expect(guard).toContain("github.ref == 'refs/heads/master'");
@@ -166,6 +170,7 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(guard).toContain("inputs.wave == 'K2-07'");
     expect(guard).toContain("inputs.wave == 'K2-08-DUE-ONLY'");
     expect(guard).toContain("inputs.wave == 'K2-08'");
+    expect(guard).toContain("inputs.wave == 'K2-09'");
     const preflight = stepNamed(acceptance, 'Verify run SHA and selected wave before staging secrets');
     const acceptanceStep = stepNamed(acceptance, 'Run protected selected K2 hosted subcase');
     expect(stepsFor(acceptance).indexOf(preflight)).toBeLessThan(stepsFor(acceptance).indexOf(acceptanceStep));
@@ -175,6 +180,7 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(preflight.run).toContain('K2_REQUESTED_WAVE');
     expect(preflight.run).toContain("'K2-08-DUE-ONLY'");
     expect(preflight.run).toContain("'K2-08'");
+    expect(preflight.run).toContain("'K2-09'");
     expect(JSON.stringify(preflight)).not.toContain('secrets.');
     expect(acceptanceStep.run).toContain('--grep "hosted lifecycle"');
     expect(asMap(acceptanceStep.env, 'selected hosted subcase environment').K2_ACCEPTANCE_WAVE)
@@ -251,7 +257,50 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(cleanupGuard).toContain(`github.workflow_ref == '${WORKFLOW_REF}'`);
     expect(cleanupGuard).toContain("github.ref == 'refs/heads/master'");
     expect(cleanupGuard).not.toContain('github.sha');
-    expect(JSON.stringify(cleanup)).not.toContain('id-token');
+    expect(asMap(cleanup.permissions, 'current-run-cleanup permissions')).toEqual({
+      contents: 'read',
+      'id-token': 'write',
+    });
     expect(cleanup.needs).toEqual(['hosted-acceptance']);
+    const cleanupStep = stepNamed(cleanup, 'Recover only actors marked for this workflow run');
+    const cleanupEnv = asMap(cleanupStep.env, 'current-run cleanup environment');
+    expect(cleanupEnv.K2_ACCEPTANCE_WAVE).toBe('${{ inputs.wave }}');
+    expect(cleanupEnv.K2_ACCEPTANCE_MODE).toBe('cleanup-current');
+    expect(cleanupEnv.K2_GITHUB_TOKEN).toBe("${{ inputs.wave == 'K2-09' && github.token || '' }}");
+  });
+
+  it('isolates the fixture reaper behind owner dispatch, current master, and minimal permissions', () => {
+    const triggers = asMap(secretWorkflow.on, 'workflow triggers');
+    const inputs = asMap(asMap(triggers.workflow_dispatch, 'dispatch trigger').inputs, 'dispatch inputs');
+    expect(asMap(inputs.mode, 'dispatch mode').options).toEqual(['acceptance', 'janitor', 'fixture-reap']);
+    const guard = String(fixtureReaper.if);
+    for (const condition of [
+      "github.event_name == 'workflow_dispatch'",
+      "inputs.mode == 'fixture-reap'",
+      "github.repository == 'haizx71/lingua-os'",
+      "github.ref == 'refs/heads/master'",
+      `github.workflow_ref == '${WORKFLOW_REF}'`,
+      `github.actor == '${OWNER}'`,
+      `github.triggering_actor == '${OWNER}'`,
+    ]) expect(guard).toContain(condition);
+    expect(asMap(fixtureReaper.permissions, 'fixture-reaper permissions')).toEqual({
+      contents: 'read',
+      actions: 'read',
+      'id-token': 'write',
+    });
+    expect(fixtureReaper.environment).toBeUndefined();
+    expect(JSON.stringify(fixtureReaper)).not.toContain('secrets.');
+    const preflight = stepNamed(fixtureReaper, 'Verify dispatch SHA is still the master tip before fixture reaping');
+    const action = stepNamed(fixtureReaper, 'Run guarded TTL fixture reaper only');
+    expect(stepsFor(fixtureReaper).indexOf(preflight)).toBeLessThan(stepsFor(fixtureReaper).indexOf(action));
+    expect(preflight.run).toContain("/git/ref/heads/master");
+    expect(preflight.run).toContain("redirect: 'error'");
+    expect(asMap(action.env, 'fixture-reaper environment')).toEqual({
+      K2_ACCEPTANCE_MODE: 'fixture-reap',
+      K2_GITHUB_TOKEN: '${{ github.token }}',
+      GITHUB_ACTOR: '${{ github.actor }}',
+      GITHUB_TRIGGERING_ACTOR: '${{ github.triggering_actor }}',
+    });
+    expect(action.run).toContain('--grep "fixture reaper only closes expired completed run receipts"');
   });
 });

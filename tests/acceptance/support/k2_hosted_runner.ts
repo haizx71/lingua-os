@@ -4,14 +4,19 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   assertNoK2ActorsRemain,
   K2_HOSTED_STAGING_SUPABASE_REF,
+  assertK2HostedAuthAbsent,
   authenticateK2HostedActor,
+  cleanupK2HostedFixtureWithRecovery,
   cleanupK2RunActors,
   cleanupFreshK2HostedActorIdentity,
   createGithubTrustedSourceToken,
+  createK2HostedFixtureOidcToken,
   createK2AdminClient,
   createK2HostedActor,
   createK2LearnerClient,
   reapExpiredK2Actors,
+  requestK2HostedFixtureControl,
+  setupK2HostedFixtureWithRecovery,
   validateK2HostedEnvironment,
   verifyK2HostedDeploymentAttestations,
   verifyK2HostedCurrentMasterSha,
@@ -21,6 +26,8 @@ import {
   type K2AdminClient,
   type K2AuthenticatedActor,
   type K2HostedActor,
+  type K2HostedFixtureDto,
+  type K2HostedFixtureControlResult,
   type K2FreshActorIdentity,
   type K2HostedConfig,
 } from './k2_hosted_actors';
@@ -56,7 +63,7 @@ export type K2HostedApiRequest = (
 
 export type K2WaveActorHandle = 'primary' | 'observer' | 'scenario-c' | 'scenario-d';
 export type K2WaveReport = 'k2-07-untested-modalities' | 'k2-07-selected-modes' |
-  'k2-08-due-only-scope' | 'k2-08-full-scope';
+  'k2-08-due-only-scope' | 'k2-08-full-scope' | 'k2-09-bridge-dictionary';
 export type K2WaveApiResult = Readonly<{ status: number; payload: unknown }>;
 export type K2WaveApiOptions = Readonly<{
   method?: string;
@@ -104,6 +111,8 @@ const K2_HOSTED_PHASES = [
   'preflight_k208_catalog',
   'preflight_k208_empty_head',
   'preflight_k208_actor_candidates',
+  'preflight_k209_ownership_graph',
+  'preflight_k209_fixture_inspect',
   'prior_expired_actor_cleanup',
   'prior_interrupted_actor_cleanup',
   'prior_actor_absence_check',
@@ -127,6 +136,7 @@ const K2_HOSTED_PHASES = [
   'wave_k2_07',
   'wave_k2_08',
   'wave_k2_08_due_only',
+  'wave_k2_09',
   'fixture_k208_due_only_dictionary_search',
   'fixture_k208_due_only_save_backlog',
   'fixture_k208_due_only_seed_snapshot',
@@ -140,6 +150,9 @@ const K2_HOSTED_PHASES = [
   'fixture_k208_weak_only',
   'fixture_k208_candidate_matrix',
   'fixture_k208_post_setup_snapshots',
+  'fixture_k209_setup',
+  'fixture_k209_review_answer',
+  'fixture_k209_review_replay',
   'fixture_k208_today_generation',
   'fixture_k208_cross_actor_isolation',
   'fixture_anchor_material',
@@ -164,6 +177,11 @@ const K2_HOSTED_PHASES = [
   'finalizer_begin',
   'finalizer_actor_cleanup',
   'finalizer_fresh_identity_cleanup',
+  'finalizer_k209_actor_absence_before_fixture_cleanup',
+  'finalizer_k209_fixture_cleanup',
+  'finalizer_k209_fixture_closed_proof',
+  'finalizer_k209_fixture_absent_proof',
+  'finalizer_k209_actor_absence_after_fixture_cleanup',
   'finalizer_retained_comparison',
   'finalizer_complete',
 ] as const;
@@ -226,6 +244,7 @@ export interface K2HostedWaveContext {
     seedForgottenWeakPair(): Promise<void>;
     seedWeakOnly(): Promise<void>;
   }>;
+  readonly fixture?: K2HostedFixtureDto;
   readonly anchorMaterial: () => Promise<K2HostedAnchorMaterial>;
   readonly requireSnapshotRows: (snapshot: K2RetainedSnapshot, expected: Readonly<Record<string, number>>) => void;
   readonly report: (kind: K2WaveReport) => void;
@@ -233,7 +252,7 @@ export interface K2HostedWaveContext {
 }
 
 export interface K2HostedWavePlugin {
-  readonly waveId: 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08';
+  readonly waveId: 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09';
   readonly actorCount: 2 | 4;
   run(context: K2HostedWaveContext): Promise<void>;
 }
@@ -242,6 +261,7 @@ export function k2HostedWaveCheckpoint(waveId: K2HostedWavePlugin['waveId']): K2
   if (waveId === 'K2-07') return 'wave_k2_07';
   if (waveId === 'K2-08-DUE-ONLY') return 'wave_k2_08_due_only';
   if (waveId === 'K2-08') return 'wave_k2_08';
+  if (waveId === 'K2-09') return 'wave_k2_09';
   throw new Error('K2 hosted acceptance wave is not implemented.');
 }
 
@@ -363,6 +383,7 @@ export function normalizeK2WaveRequest(
   opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
   route: string,
   options: K2WaveApiOptions,
+  fixture?: K2HostedFixtureDto,
 ): Readonly<{ route: string; options: Parameters<typeof requestK2HostedApi>[3] }> {
   if (!route.startsWith('/v1/') || route.startsWith('//')) {
     throw new Error('K2 hosted acceptance refused an unapproved wave route.');
@@ -385,9 +406,14 @@ export function normalizeK2WaveRequest(
   let normalizedPath = url.pathname;
   if (url.pathname === '/v1/dictionary/search') {
     const query = url.searchParams.get('query');
-    if (method !== 'GET' || JSON.stringify(queryKeys) !== JSON.stringify(['languageCode', 'limit', 'query']) ||
+    const grouped = url.searchParams.get('includeLemmaGroups');
+    const baseKeys = ['languageCode', 'limit', 'query'];
+    const allowedKeys = grouped === null ? baseKeys : [...baseKeys, 'includeLemmaGroups'];
+    const isFixtureQuery = !!fixture && [fixture.lemma, fixture.inflectedForm].includes(query ?? '');
+    if (method !== 'GET' || JSON.stringify(queryKeys) !== JSON.stringify(allowedKeys.sort()) ||
         url.searchParams.get('languageCode') !== 'en' || url.searchParams.get('limit') !== '100' ||
-        query === null || !/^[a-z]$/.test(query) || options.body !== undefined ||
+        query === null || (!/^[a-z]$/.test(query) && !isFixtureQuery) ||
+        (grouped !== null && (!isFixtureQuery || grouped !== 'true')) || options.body !== undefined ||
         options.idempotencyKey !== undefined) {
       throw new Error('K2 hosted acceptance refused an unapproved Dictionary operation.');
     }
@@ -395,6 +421,7 @@ export function normalizeK2WaveRequest(
       query,
       languageCode: 'en',
       limit: '100',
+      ...(grouped === null ? {} : { includeLemmaGroups: 'true' }),
     })}`;
   } else if (url.pathname.startsWith('/v1/concepts/')) {
     if (method !== 'GET' || queryKeys.length !== 0 || options.body !== undefined ||
@@ -406,6 +433,16 @@ export function normalizeK2WaveRequest(
       ? WAVE_CANONICAL_CONCEPT_ID
       : opaqueIds.resolve(handle);
     normalizedPath = `/v1/concepts/${encodeURIComponent(id)}`;
+  } else if (url.pathname.startsWith('/v1/brain/concepts/')) {
+    if (!fixture || method !== 'GET' || queryKeys.length !== 0 || options.body !== undefined ||
+        options.idempotencyKey !== undefined) {
+      throw new Error('K2 hosted acceptance refused an unapproved Brain concept operation.');
+    }
+    const handle = decodeURIComponent(url.pathname.slice('/v1/brain/concepts/'.length));
+    if (handle !== 'k2-09-owner' && handle !== 'k2-09-secondary') {
+      throw new Error('K2 hosted acceptance refused an unapproved Brain concept operation.');
+    }
+    normalizedPath = `/v1/brain/concepts/${encodeURIComponent(opaqueIds.resolve(handle))}`;
   } else if (url.pathname.startsWith('/v1/library/concepts/')) {
     if (method !== 'PUT' || queryKeys.length !== 0 || options.body !== undefined ||
         options.idempotencyKey !== undefined) {
@@ -487,6 +524,7 @@ function createBoundWaveApi(
   profiles: Readonly<Partial<Record<K2WaveActorHandle, string>>>,
   opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
   onConceptSaved: (actor: K2WaveActorHandle, conceptId: string) => void,
+  fixture?: K2HostedFixtureDto,
 ): K2BoundWaveApi {
   const expectedOwnProfileId = profiles[actorHandle];
   if (!expectedOwnProfileId || !UUID_PATTERN.test(expectedOwnProfileId)) {
@@ -498,7 +536,7 @@ function createBoundWaveApi(
       if (expectedStatuses.some(status => ![200, 403, 404].includes(status))) {
         throw new Error('K2 hosted acceptance refused an unapproved expected status.');
       }
-      const request = normalizeK2WaveRequest(actorHandle, profiles, opaqueIds, route, options);
+      const request = normalizeK2WaveRequest(actorHandle, profiles, opaqueIds, route, options, fixture);
       const idempotencyKey = options.idempotencyKey
         ? (idempotencyKeys.get(options.idempotencyKey) ?? randomUUID())
         : undefined;
@@ -517,7 +555,9 @@ function createBoundWaveApi(
       }
       return {
         status: result.response.status,
-        payload: projectK2WaveApiPayload(request.route, result.payload, opaqueIds, expectedOwnProfileId),
+        payload: projectK2WaveApiPayload(
+          request.route, result.payload, opaqueIds, expectedOwnProfileId, fixture,
+        ),
       };
     },
   };
@@ -560,6 +600,132 @@ function projectedCount(value: unknown, maximum: number): number {
   return value as number;
 }
 
+function projectedFraction(value: unknown, nullable = false): number | null {
+  if (nullable && value === null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return value;
+}
+
+function projectK209Competence(raw: unknown): JsonObject {
+  const competence = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+  const result: JsonObject = {};
+  for (const dimension of ['recognition', 'listening', 'production']) {
+    const score = object(competence[dimension], 'K2 hosted acceptance learner response projection was invalid.');
+    result[dimension] = {
+      score: projectedFraction(score.score),
+      confidence: projectedFraction(score.confidence),
+      evidenceCount: projectedCount(score.evidenceCount, 1_000_000),
+      ...(typeof score.updatedAt === 'string' ? { updatedAt: score.updatedAt } : {}),
+    };
+  }
+  return result;
+}
+
+function projectK209Memory(raw: unknown): JsonObject | null {
+  if (raw === undefined || raw === null) return null;
+  const memory = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+  if (typeof memory.state !== 'string' || typeof memory.dueAt !== 'string' ||
+      typeof memory.isDue !== 'boolean' ||
+      (memory.lastReviewedAt !== undefined && typeof memory.lastReviewedAt !== 'string')) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return {
+    state: memory.state,
+    dueAt: memory.dueAt,
+    isDue: memory.isDue,
+    ...(typeof memory.lastReviewedAt === 'string' ? { lastReviewedAt: memory.lastReviewedAt } : {}),
+  };
+}
+
+function projectK209LinkedConcept(
+  raw: unknown,
+  opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
+): JsonObject {
+  const item = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+  const concept = object(item.concept, 'K2 hosted acceptance learner response projection was invalid.');
+  if (typeof concept.canonicalForm !== 'string' ||
+      !['unseen', 'discovered', 'learning', 'familiar', 'active', 'mastered', 'weak', 'forgotten']
+        .includes(String(concept.status)) || typeof concept.isDue !== 'boolean' ||
+      typeof item.isSaved !== 'boolean' ||
+      (item.lastSeenAt !== undefined && typeof item.lastSeenAt !== 'string')) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return {
+    concept: {
+      id: projectedId(concept.id, opaqueIds),
+      canonicalForm: concept.canonicalForm,
+      status: concept.status,
+      isDue: concept.isDue,
+    },
+    competence: projectK209Competence(item.competence),
+    mastery: projectedFraction(item.mastery, true),
+    confidence: projectedFraction(item.confidence),
+    memory: projectK209Memory(item.memory),
+    exposureCount: projectedCount(item.exposureCount, 1_000_000),
+    lastSeenAt: typeof item.lastSeenAt === 'string' ? item.lastSeenAt : null,
+    isSaved: item.isSaved,
+  };
+}
+
+function projectK209DictionaryGroup(
+  raw: unknown,
+  fixture: K2HostedFixtureDto,
+  opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
+): JsonObject {
+  const group = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+  if (group.lemma !== fixture.lemma || typeof group.lexemeId !== 'string' ||
+      !Array.isArray(group.matchedForms) || group.matchedForms.length < 1 ||
+      group.matchedForms.length > 20 || group.matchedForms.some(form => typeof form !== 'string') ||
+      !Array.isArray(group.senses) || group.senses.length > 100 ||
+      (group.partOfSpeech !== undefined && group.partOfSpeech !== null && typeof group.partOfSpeech !== 'string')) {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return {
+    lexemeId: projectedId(group.lexemeId, opaqueIds),
+    lemma: group.lemma,
+    ...(typeof group.partOfSpeech === 'string' ? { partOfSpeech: group.partOfSpeech } : {}),
+    matchedForms: [...group.matchedForms],
+    senses: group.senses.map(rawSense => {
+      const sense = object(rawSense, 'K2 hosted acceptance learner response projection was invalid.');
+      if (!Number.isSafeInteger(sense.senseOrder) || (sense.senseOrder as number) < 1 ||
+          typeof sense.definition !== 'string' || typeof sense.definitionLanguageCode !== 'string' ||
+          !Array.isArray(sense.concepts) || sense.concepts.length > 100 ||
+          (sense.translatedDefinition !== undefined && typeof sense.translatedDefinition !== 'string') ||
+          (sense.translationLanguageCode !== undefined && typeof sense.translationLanguageCode !== 'string')) {
+        throw new Error('K2 hosted acceptance learner response projection was invalid.');
+      }
+      return {
+        senseId: projectedId(sense.senseId, opaqueIds),
+        senseOrder: sense.senseOrder,
+        definition: sense.definition,
+        definitionLanguageCode: sense.definitionLanguageCode,
+        ...(typeof sense.translatedDefinition === 'string'
+          ? { translatedDefinition: sense.translatedDefinition } : {}),
+        ...(typeof sense.translationLanguageCode === 'string'
+          ? { translationLanguageCode: sense.translationLanguageCode } : {}),
+        concepts: sense.concepts.map(concept => projectK209LinkedConcept(concept, opaqueIds)),
+      };
+    }),
+  };
+}
+
+function projectK209CursorMeta(raw: unknown): JsonObject {
+  const meta = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+  if (typeof meta.requestId !== 'string' || !UUID_PATTERN.test(meta.requestId) || meta.apiVersion !== '1.0' ||
+      !(meta.nextCursor === null || (typeof meta.nextCursor === 'string' && meta.nextCursor.length <= 512)) ||
+      typeof meta.hasMore !== 'boolean') {
+    throw new Error('K2 hosted acceptance learner response projection was invalid.');
+  }
+  return {
+    apiVersion: '1.0',
+    hasMore: meta.hasMore,
+    pageSize: projectedCount(meta.pageSize, 100),
+    hasNextCursor: meta.nextCursor !== null,
+  };
+}
+
 function projectTodayActivity(
   raw: unknown,
   opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
@@ -597,13 +763,37 @@ export function projectK2WaveApiPayload(
   payload: unknown,
   opaqueIds: ReturnType<typeof createK2OpaqueIdProjector>,
   expectedOwnProfileId?: string,
+  fixture?: K2HostedFixtureDto,
 ): unknown {
   const envelope = object(payload, 'K2 hosted acceptance learner response projection was invalid.');
   const rawData = envelope.data;
-  const pathname = new URL(route, 'https://k2-wave.invalid').pathname;
+  const routeUrl = new URL(route, 'https://k2-wave.invalid');
+  const pathname = routeUrl.pathname;
   if (pathname === '/v1/dictionary/search') {
     if (!Array.isArray(rawData) || rawData.length > 100) {
       throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    }
+    const query = routeUrl.searchParams.get('query');
+    const fixtureQuery = !!fixture && [fixture.lemma, fixture.inflectedForm].includes(query ?? '');
+    if (fixtureQuery) {
+      const data = rawData.map(raw => ({
+        id: projectedId(object(raw, 'K2 hosted acceptance learner response projection was invalid.').id, opaqueIds),
+      }));
+      const meta = projectK209CursorMeta(envelope.meta);
+      if (routeUrl.searchParams.get('includeLemmaGroups') === 'true') {
+        if (!Array.isArray(envelope.lemmaGroups) || envelope.lemmaGroups.length > 100) {
+          throw new Error('K2 hosted acceptance learner response projection was invalid.');
+        }
+        return {
+          data,
+          meta,
+          lemmaGroups: envelope.lemmaGroups.map(group => projectK209DictionaryGroup(group, fixture, opaqueIds)),
+        };
+      }
+      if (Object.hasOwn(envelope, 'lemmaGroups')) {
+        throw new Error('K2 hosted acceptance learner response projection was invalid.');
+      }
+      return { data, meta };
     }
     return { data: rawData.map(raw => ({
       id: projectedId(object(raw, 'K2 hosted acceptance learner response projection was invalid.').id, opaqueIds),
@@ -611,7 +801,62 @@ export function projectK2WaveApiPayload(
   }
   if (pathname.startsWith('/v1/concepts/')) {
     const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    if (fixture) {
+      if (!Array.isArray(data.definitions) || data.definitions.length > 100) {
+        throw new Error('K2 hosted acceptance learner response projection was invalid.');
+      }
+      return { data: {
+        id: projectedId(data.id, opaqueIds),
+        definitions: data.definitions.map(raw => {
+          const definition = object(raw, 'K2 hosted acceptance learner response projection was invalid.');
+          if (typeof definition.definition !== 'string' || typeof definition.languageCode !== 'string' ||
+              !Number.isSafeInteger(definition.order) ||
+              (definition.translation !== undefined && typeof definition.translation !== 'string')) {
+            throw new Error('K2 hosted acceptance learner response projection was invalid.');
+          }
+          return {
+            definition: definition.definition,
+            languageCode: definition.languageCode,
+            order: definition.order,
+            ...(typeof definition.translation === 'string' ? { translation: definition.translation } : {}),
+          };
+        }),
+      } };
+    }
     return { data: { id: projectedId(data.id, opaqueIds) } };
+  }
+  if (pathname.startsWith('/v1/brain/concepts/')) {
+    if (!fixture) throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
+    const concept = object(data.concept, 'K2 hosted acceptance learner response projection was invalid.');
+    const learner = object(concept.learner, 'K2 hosted acceptance learner response projection was invalid.');
+    const evidence = object(data.evidence, 'K2 hosted acceptance learner response projection was invalid.');
+    if (!['unseen', 'discovered', 'learning', 'familiar', 'active', 'mastered', 'weak', 'forgotten']
+      .includes(String(data.status)) || typeof learner.isDue !== 'boolean' ||
+      !['unseen', 'discovered', 'learning', 'familiar', 'active', 'mastered', 'weak', 'forgotten']
+        .includes(String(learner.status)) ||
+      !Number.isSafeInteger(evidence.reviewCount) || (evidence.reviewCount as number) < 0 ||
+      (evidence.lastSeenAt !== undefined && typeof evidence.lastSeenAt !== 'string') ||
+      (evidence.lastReviewedAt !== undefined && typeof evidence.lastReviewedAt !== 'string')) {
+      throw new Error('K2 hosted acceptance learner response projection was invalid.');
+    }
+    return { data: {
+      concept: {
+        id: projectedId(concept.id, opaqueIds),
+        learner: { status: learner.status, isDue: learner.isDue },
+      },
+      status: data.status,
+      competence: projectK209Competence(data.competence),
+      mastery: projectedFraction(data.mastery, true),
+      confidence: projectedFraction(data.confidence),
+      memory: projectK209Memory(data.memory),
+      evidence: {
+        exposureCount: projectedCount(evidence.exposureCount, 1_000_000),
+        reviewCount: projectedCount(evidence.reviewCount, 1_000_000),
+        lastSeenAt: typeof evidence.lastSeenAt === 'string' ? evidence.lastSeenAt : null,
+        lastReviewedAt: typeof evidence.lastReviewedAt === 'string' ? evidence.lastReviewedAt : null,
+      },
+    } };
   }
   if (pathname.startsWith('/v1/library/concepts/')) {
     const data = object(rawData, 'K2 hosted acceptance learner response projection was invalid.');
@@ -708,6 +953,7 @@ function reportWaveAnnotation(testInfo: TestInfo, kind: K2WaveReport): void {
     'k2-07-selected-modes': 'self_recall, typing',
     'k2-08-due-only-scope': 'K2-08 due-only subcase; this does not satisfy full K2-08 hosted acceptance.',
     'k2-08-full-scope': 'K2-08 full four-scenario hosted gate; not closed until every required gate passes.',
+    'k2-09-bridge-dictionary': 'K2-09 bridge-backed Dictionary, normal Save/Review, Brain parity, and residue gate.',
   };
   if (!Object.hasOwn(descriptions, kind)) {
     throw new Error('K2 hosted acceptance report annotation was invalid.');
@@ -1149,6 +1395,74 @@ async function verifyActorGone(config: K2HostedConfig, actorId: string): Promise
   }
 }
 
+async function verifyK209OwnershipGraph(config: K2HostedConfig): Promise<void> {
+  const result = await runK2HostedProbe('actor_ownership_graph', config.readonlyDatabaseUrl);
+  if (!('ownershipGraphValid' in result) || result.ownershipGraphValid !== true ||
+      result.ownedTableCount !== 27 || result.ownershipEdgeCount !== 27 ||
+      result.incomingConstraintCount !== 51) {
+    throw new Error('K2 hosted acceptance actor ownership graph proof failed closed.');
+  }
+}
+
+/** Current-run recovery can close a receipt only after Auth cleanup and FK-cascade proof. */
+export async function cleanupK209FixtureAfterCurrentRun(config: K2HostedConfig): Promise<void> {
+  await verifyK209OwnershipGraph(config);
+  await cleanupK2HostedFixtureWithRecovery(config);
+  // cleanupK2RunActors exhaustively lists and removes only this run's marked or
+  // recoverable identities, verifying every known actor's 27-table snapshot.
+  // The exact 27-owner/51-inbound-FK graph above proves an absent Auth identity
+  // cannot leave actor-owned rows behind when a process crashed after cascade.
+  await verifyK209OwnershipGraph(config);
+}
+
+export function k209ExpectedActorAbsenceIds(
+  actorIds: readonly string[],
+  freshIdentityIds: readonly string[],
+): readonly string[] {
+  return Object.freeze([...new Set([...actorIds, ...freshIdentityIds])]);
+}
+
+/** Keeps the exact current-run actor set behind both sides of fixture cleanup. */
+export async function cleanupK209FixtureAfterActorProofs(
+  expectedActorIds: readonly string[],
+  verifyBefore: (actorIds: readonly string[]) => Promise<void>,
+  cleanupFixture: () => Promise<void>,
+  verifyAfter: (actorIds: readonly string[]) => Promise<void>,
+): Promise<void> {
+  const actorIds = Object.freeze([...expectedActorIds]);
+  if (actorIds.length === 0 || actorIds.some(actorId => !actorId.trim()) ||
+      new Set(actorIds).size !== actorIds.length) {
+    throw new Error('K2 hosted acceptance expected actor absence set was invalid.');
+  }
+  await verifyBefore(actorIds);
+  await cleanupFixture();
+  await verifyAfter(actorIds);
+}
+
+async function verifyK209ActorAbsence(
+  config: K2HostedConfig,
+  admin: K2AdminClient,
+  actorIds: readonly string[],
+): Promise<void> {
+  const uniqueIds = [...new Set(actorIds)];
+  if (uniqueIds.length === 0) {
+    throw new Error('K2 hosted acceptance expected actor absence set was empty.');
+  }
+  for (const actorId of uniqueIds) {
+    await assertK2HostedAuthAbsent(admin, actorId);
+    await verifyActorGone(config, actorId);
+  }
+}
+
+function isK209ReceiptState(
+  value: unknown,
+  expected: K2HostedFixtureControlResult['receiptState'],
+): value is K2HostedFixtureControlResult {
+  return !!value && typeof value === 'object' &&
+    'receiptState' in value && value.receiptState === expected &&
+    'fixturePresent' in value && value.fixturePresent === (expected === 'ACTIVE');
+}
+
 export async function createLearnerProfile(config: K2HostedConfig, session: K2AuthenticatedActor): Promise<string> {
   const meResponse = await requestK2HostedApi(config, session.accessToken, '/v1/me');
   const me = dataObject(meResponse.payload,
@@ -1287,6 +1601,8 @@ export async function runK2HostedWave(
   const learnerClients: ReturnType<typeof createK2LearnerClient>[] = [];
   const sessions: K2AuthenticatedActor[] = [];
   let retainedBaseline: K2RetainedSnapshot | null = null;
+  let k209SetupAttempted = false;
+  let k209Fixture: K2HostedFixtureDto | null = null;
   let cleanupError = false;
   let actorCleanupPassed = false;
   let freshIdentityCleanupPassed = true;
@@ -1323,6 +1639,22 @@ export async function runK2HostedWave(
       throw new Error('K2 hosted acceptance staging migration head is not approved.');
     }
     checkpoint('preflight_migration_probe', 'pass');
+
+    if (plugin.waveId === 'K2-09') {
+      checkpoint('preflight_k209_ownership_graph', 'start');
+      await verifyK209OwnershipGraph(config);
+      checkpoint('preflight_k209_ownership_graph', 'pass');
+      checkpoint('preflight_k209_fixture_inspect', 'start');
+      const fixtureOidc = await createK2HostedFixtureOidcToken(config);
+      const fixtureState = await requestK2HostedFixtureControl(
+        config, 'inspect', fixtureOidc, config.githubToken,
+      );
+      if (!isK209ReceiptState(fixtureState, 'ABSENT') || fixtureState.fixture !== null ||
+          Object.values(fixtureState.counts).some(count => count !== 0)) {
+        throw new Error('K2 hosted acceptance K2-09 fixture preflight was not exactly ABSENT.');
+      }
+      checkpoint('preflight_k209_fixture_inspect', 'pass');
+    }
 
     if (plugin.waveId === 'K2-08') {
       checkpoint('preflight_k208_fixture_capability', 'start');
@@ -1421,6 +1753,14 @@ export async function runK2HostedWave(
       profileIds.push(await createLearnerProfile(config, sessions[index]));
       checkpoint(profileBootstrapPhases[index], 'pass');
     }
+
+    if (plugin.waveId === 'K2-09') {
+      checkpoint('fixture_k209_setup', 'start');
+      k209SetupAttempted = true;
+      k209Fixture = await setupK2HostedFixtureWithRecovery(config);
+      checkpoint('fixture_k209_setup', 'pass');
+    }
+
     const wavePhase = k2HostedWaveCheckpoint(plugin.waveId);
     checkpoint(wavePhase, 'start');
     const actorHandles = WAVE_ACTOR_HANDLES.slice(0, actors.length);
@@ -1435,6 +1775,11 @@ export async function runK2HostedWave(
     }
     const opaqueIds = createK2OpaqueIdProjector();
     opaqueIds.bind(WAVE_CANONICAL_CONCEPT_HANDLE, WAVE_CANONICAL_CONCEPT_ID);
+    if (k209Fixture) {
+      opaqueIds.bind('k2-09-owner', k209Fixture.ids.ownerConceptId);
+      opaqueIds.bind('k2-09-secondary', k209Fixture.ids.secondaryConceptId);
+      opaqueIds.bind('k2-09-lexeme', k209Fixture.ids.lexemeId);
+    }
     const savedConceptIds = new Map<K2WaveActorHandle, Set<string>>(
       actorHandles.map(handle => [handle, new Set<string>()]),
     );
@@ -1445,6 +1790,7 @@ export async function runK2HostedWave(
       apiByHandle.set(handle, createBoundWaveApi(
         config, session, handle, profileIdByHandle, opaqueIds,
         (savedActor, conceptId) => savedConceptIds.get(savedActor)?.add(conceptId),
+        k209Fixture ?? undefined,
       ));
     }
     const primaryHandle = actorHandles[0];
@@ -1540,6 +1886,7 @@ export async function runK2HostedWave(
           },
         },
       } : {}),
+      ...(k209Fixture ? { fixture: k209Fixture } : {}),
       anchorMaterial: () => anchorMaterial(config),
       requireSnapshotRows: requireK2ActorSnapshotRows,
       report: kind => reportWaveAnnotation(testInfo, kind),
@@ -1548,6 +1895,12 @@ export async function runK2HostedWave(
     checkpoint(wavePhase, 'pass');
   } finally {
     checkpoint('finalizer_begin', 'start');
+    const expectedK209ActorIds = plugin.waveId === 'K2-09'
+      ? k209ExpectedActorAbsenceIds(
+        actors.map(actor => actor.id),
+        freshActorIdentities.map(identity => identity.id),
+      )
+      : [];
     try { await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); }
     catch { /* The page may not have reached the protected origin. */ }
     try { await browserContext.clearCookies(); } catch { /* Context may already be closing. */ }
@@ -1584,6 +1937,40 @@ export async function runK2HostedWave(
     }
     if (freshIdentityCleanupPassed) checkpoint('finalizer_fresh_identity_cleanup', 'pass');
     freshActorIdentities.splice(0, freshActorIdentities.length);
+
+    if (plugin.waveId === 'K2-09' && k209SetupAttempted) {
+      let mayCloseFixture = actorCleanupPassed && freshIdentityCleanupPassed && !cleanupError;
+      if (mayCloseFixture) {
+        try {
+          await cleanupK209FixtureAfterActorProofs(
+            expectedK209ActorIds,
+            async actorIds => {
+              checkpoint('finalizer_k209_actor_absence_before_fixture_cleanup', 'start');
+              await verifyK209OwnershipGraph(config);
+              await verifyK209ActorAbsence(config, admin, actorIds);
+              checkpoint('finalizer_k209_actor_absence_before_fixture_cleanup', 'pass');
+            },
+            async () => {
+              checkpoint('finalizer_k209_fixture_cleanup', 'start');
+              const outcome = await cleanupK2HostedFixtureWithRecovery(config, k209Fixture);
+              checkpoint('finalizer_k209_fixture_cleanup', 'pass');
+              checkpoint(
+                outcome === 'absent'
+                  ? 'finalizer_k209_fixture_absent_proof'
+                  : 'finalizer_k209_fixture_closed_proof',
+                'pass',
+              );
+            },
+            async actorIds => {
+              checkpoint('finalizer_k209_actor_absence_after_fixture_cleanup', 'start');
+              await verifyK209OwnershipGraph(config);
+              await verifyK209ActorAbsence(config, admin, actorIds);
+              checkpoint('finalizer_k209_actor_absence_after_fixture_cleanup', 'pass');
+            },
+          );
+        } catch { cleanupError = true; }
+      }
+    }
 
     if (retainedBaseline) {
       checkpoint('finalizer_retained_comparison', 'start');

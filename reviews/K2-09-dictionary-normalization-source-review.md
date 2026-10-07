@@ -1,6 +1,6 @@
 # K2-09 Dictionary Normalization — Source Gate Record
 
-**Checkpoint:** 2026-10-02. Frozen source passed independent review with no HIGH/BLOCKER; exact-head CI is pending.
+**Checkpoint:** 2026-10-02. Frozen source passed independent review with no HIGH/BLOCKER, exact-head CI, and same-merged-SHA deployment checks. Hosted fixture implementation and acceptance remain pending.
 
 ## Scope and current evidence
 
@@ -20,4 +20,4 @@
 
 ## Gate status
 
-Independent source verdict: **PASS, no HIGH/BLOCKER**. Exact-head CI: **PENDING**. Migration/security gate: **PENDING**. Hosted setup, cleanup, and acceptance: **NOT IMPLEMENTED / NOT AUTHORIZED**. Query-plan performance is unmeasured. Fixture architecture review is separate and design-only; it does not pass the migration or hosted gates. K2-10 remains blocked on K2-09.
+Independent source verdict: **PASS, no HIGH/BLOCKER**. Exact-head CI and same-merged-SHA deployment: **PASS**. Migration/security gate: **PENDING**. Hosted setup, cleanup, and acceptance: **NOT IMPLEMENTED / NOT AUTHORIZED**. Query-plan performance is unmeasured. Fixture architecture review is separate and design-only; it does not pass the migration or hosted gates. K2-10 remains blocked on K2-09.

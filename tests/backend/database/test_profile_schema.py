@@ -420,11 +420,13 @@ def test_profile_replay_insert_racing_auth_erasure_cannot_leave_orphan(
         ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_0018_0019_auth_erasure_migrations_roll_back_and_reapply_without_data_loss(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
+    database_url, migrations_dir = isolated_postgres_at_migration
     actor_id = uuid.uuid4()
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         _insert_profile_replay(connection, actor_id=actor_id)
         connection.commit()
         migration_0018 = connection.execute(
@@ -436,12 +438,12 @@ def test_0018_0019_auth_erasure_migrations_roll_back_and_reapply_without_data_lo
         assert migration_0018 is not None
         assert migration_0019 is not None
 
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=3) == [
+    assert migrate_down(database_url, migrations_dir, steps=3) == [
         "0020",
         "0019",
         "0018",
     ]
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         foreign_key = connection.execute(
             """
             SELECT pg_get_constraintdef(oid)
@@ -458,13 +460,13 @@ def test_0018_0019_auth_erasure_migrations_roll_back_and_reapply_without_data_lo
             (actor_id,),
         ).fetchone() == (1,)
 
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == [
+    assert migrate_up(database_url, migrations_dir) == [
         "0018",
         "0019",
         "0020",
     ]
-    assert migrate_up(isolated_migrated_postgres_url, MIGRATIONS) == []
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    assert migrate_up(database_url, migrations_dir) == []
+    with psycopg.connect(database_url) as connection:
         foreign_key = connection.execute(
             """
             SELECT pg_get_constraintdef(oid)
@@ -502,6 +504,7 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
         "0018",
         "0019",
         "0020",
+        "0021",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()
@@ -579,10 +582,17 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
 
 
 def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
-    postgres_url: str,
+    postgres_url: str, tmp_path: Path
 ) -> None:
+    migrations_dir = tmp_path / "migrations_through_0020"
+    migrations_dir.mkdir()
+    for migration_path in MIGRATIONS.glob("*.sql"):
+        version = migration_path.name[:4]
+        if version.isdigit() and version <= "0020":
+            shutil.copyfile(migration_path, migrations_dir / migration_path.name)
+
     with _isolated_database(postgres_url) as database_url:
-        migrate_up(database_url, MIGRATIONS)
+        migrate_up(database_url, migrations_dir)
         actor_id = uuid.uuid4()
         with psycopg.connect(database_url) as connection:
             connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (actor_id,))
@@ -592,7 +602,7 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
 
-        assert migrate_down(database_url, MIGRATIONS, steps=11) == [
+        assert migrate_down(database_url, migrations_dir, steps=11) == [
             "0020",
             "0019",
             "0018",
@@ -605,10 +615,10 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
             "0011",
             "0010",
         ]
-        assert migrate_down(database_url, MIGRATIONS, steps=1) == ["0009"]
-        assert migrate_down(database_url, MIGRATIONS, steps=1) == ["0008"]
+        assert migrate_down(database_url, migrations_dir, steps=1) == ["0009"]
+        assert migrate_down(database_url, migrations_dir, steps=1) == ["0008"]
         with pytest.raises(psycopg.errors.RaiseException, match="timezone cannot be invented"):
-            migrate_down(database_url, MIGRATIONS, steps=1)
+            migrate_down(database_url, migrations_dir, steps=1)
 
         with psycopg.connect(database_url) as connection:
             connection.execute(
@@ -620,7 +630,7 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id,),
             )
         with pytest.raises(psycopg.errors.RaiseException, match="learner revision changes"):
-            migrate_down(database_url, MIGRATIONS, steps=1)
+            migrate_down(database_url, migrations_dir, steps=1)
 
         profile_id = uuid.uuid4()
         with psycopg.connect(database_url) as connection:
@@ -638,7 +648,7 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
         with pytest.raises(
             psycopg.errors.RaiseException, match="native language cannot be collapsed"
         ):
-            migrate_down(database_url, MIGRATIONS, steps=1)
+            migrate_down(database_url, migrations_dir, steps=1)
 
         with psycopg.connect(database_url) as connection:
             connection.execute(
@@ -657,4 +667,4 @@ def test_profile_migration_refuses_lossy_rollback_after_bootstrap(
                 (actor_id, uuid.uuid4(), "c" * 64, profile_id),
             )
         with pytest.raises(psycopg.errors.RaiseException, match="replay exists"):
-            migrate_down(database_url, MIGRATIONS, steps=1)
+            migrate_down(database_url, migrations_dir, steps=1)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import socket
 import subprocess
 import time
@@ -113,6 +114,49 @@ def isolated_migrated_postgres_url(postgres_url: str) -> Iterator[str]:
             connection.execute(AUTH_BOOTSTRAP.read_text(encoding="utf-8"))
         migrate_up(database_url, MIGRATIONS_DIR)
         yield database_url
+    finally:
+        with psycopg.connect(admin_url, autocommit=True) as admin:
+            admin.execute(
+                sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(database_name))
+            )
+
+
+@pytest.fixture
+def isolated_postgres_at_migration(
+    postgres_url: str, request: pytest.FixtureRequest, tmp_path: Path
+) -> Iterator[tuple[str, Path]]:
+    """Create a disposable database migrated through the requested version only."""
+    target_version = getattr(request, "param", None)
+    if (
+        not isinstance(target_version, str)
+        or len(target_version) != 4
+        or not target_version.isdigit()
+    ):
+        raise pytest.UsageError("migration boundary must be a four-digit version string")
+
+    prefix_migrations_dir = tmp_path / "migrations"
+    prefix_migrations_dir.mkdir()
+    included_versions: set[str] = set()
+    for migration_path in MIGRATIONS_DIR.glob("*.sql"):
+        version = migration_path.name[:4]
+        if version.isdigit() and version <= target_version:
+            shutil.copyfile(migration_path, prefix_migrations_dir / migration_path.name)
+            included_versions.add(version)
+    if target_version not in included_versions:
+        raise pytest.UsageError(f"unknown migration boundary {target_version}")
+
+    database_name = f"lingua_boundary_{uuid.uuid4().hex}"
+    admin_url = make_conninfo(postgres_url, dbname="postgres")
+    database_url = make_conninfo(postgres_url, dbname=database_name)
+    with psycopg.connect(admin_url, autocommit=True) as admin:
+        admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+    try:
+        with psycopg.connect(database_url) as connection:
+            connection.execute(AUTH_BOOTSTRAP.read_text(encoding="utf-8"))
+        applied = migrate_up(database_url, prefix_migrations_dir)
+        if not applied or applied[-1] != target_version:
+            pytest.fail(f"isolated migration prefix did not end at {target_version}")
+        yield database_url, prefix_migrations_dir
     finally:
         with psycopg.connect(admin_url, autocommit=True) as admin:
             admin.execute(

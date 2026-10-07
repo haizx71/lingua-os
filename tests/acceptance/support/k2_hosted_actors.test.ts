@@ -2,6 +2,9 @@ import { AuthApiError, type User } from '@supabase/supabase-js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   K2_HOSTED_MARKER_KEY,
+  K2_HOSTED_FIXTURE_OIDC_AUDIENCE,
+  K2_HOSTED_FIXTURE_API_ORIGIN,
+  K2_HOSTED_FIXTURE_READ_TOKEN_HEADER,
   K2_HOSTED_OWNER_LOGIN,
   K2_HOSTED_READONLY_DATABASE_ROLE,
   K2_HOSTED_STAGING_SUPABASE_REF,
@@ -15,6 +18,10 @@ import {
   cleanupFreshK2HostedActorIdentity,
   assertNoK2ActorsRemain,
   createGithubTrustedSourceToken,
+  createK2HostedFixtureOidcToken,
+  cleanupK2HostedFixtureWithRecovery,
+  requestK2HostedFixtureControl,
+  setupK2HostedFixtureWithRecovery,
   getK2ActorOwnership,
   reapExpiredK2Actors,
   validateK2HostedEnvironment,
@@ -147,6 +154,58 @@ function validEnvironment(): Record<string, string> {
     K2_GITHUB_TOKEN: 'placeholder',
     ACTIONS_ID_TOKEN_REQUEST_URL: 'https://pipelines.actions.githubusercontent.com/runtime/token',
     ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'placeholder',
+  };
+}
+
+const FIXTURE_LEMMA = `kfixture${'a'.repeat(64)}`;
+const FIXTURE_PRESENT_COUNTS = {
+  sourceRecords: 1, concepts: 2, lexemes: 1, forms: 1, senses: 2, bridges: 3,
+} as const;
+const FIXTURE_ZERO_COUNTS = {
+  sourceRecords: 0, concepts: 0, lexemes: 0, forms: 0, senses: 0, bridges: 0,
+} as const;
+const FIXTURE_DESCRIPTOR = {
+  handles: {
+    ownerConcept: 'k2-09-owner',
+    secondaryConcept: 'k2-09-secondary',
+    lexeme: 'k2-09-lexeme',
+  },
+  ids: {
+    ownerConceptId: '00000000-0000-4000-8000-000000000001',
+    secondaryConceptId: '00000000-0000-4000-8000-000000000002',
+    lexemeId: '00000000-0000-4000-8000-000000000003',
+  },
+  lemma: FIXTURE_LEMMA,
+  inflectedForm: `${FIXTURE_LEMMA}s`,
+} as const;
+
+function activeFixtureInspection() {
+  return {
+    protocolVersion: 'k2-09-bridge-fixture.v1',
+    receiptState: 'ACTIVE',
+    fixturePresent: true,
+    fixture: FIXTURE_DESCRIPTOR,
+    counts: FIXTURE_PRESENT_COUNTS,
+  };
+}
+
+function closedFixtureInspection() {
+  return {
+    protocolVersion: 'k2-09-bridge-fixture.v1',
+    receiptState: 'CLOSED',
+    fixturePresent: false,
+    fixture: null,
+    counts: FIXTURE_ZERO_COUNTS,
+  };
+}
+
+function absentFixtureInspection() {
+  return {
+    protocolVersion: 'k2-09-bridge-fixture.v1',
+    receiptState: 'ABSENT',
+    fixturePresent: false,
+    fixture: null,
+    counts: FIXTURE_ZERO_COUNTS,
   };
 }
 
@@ -306,6 +365,38 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       ...env,
       K2_STAGING_READONLY_DATABASE_URL: env.K2_STAGING_READONLY_DATABASE_URL.replace(':5432/', ':6543/'),
     })).toThrow('read-only database URL');
+  });
+
+  it('keeps reaper minimal and requires read proof only for K2-09 current-run recovery', () => {
+    const reaperEnv = validEnvironment();
+    for (const key of [
+      'K2_STAGING_API_ORIGIN', 'K2_STAGING_SUPABASE_URL', 'K2_STAGING_SUPABASE_PROJECT_REF',
+      'K2_STAGING_SUPABASE_PUBLISHABLE_KEY', 'K2_STAGING_SUPABASE_SECRET_KEY',
+      'K2_STAGING_READONLY_DATABASE_URL',
+    ]) delete reaperEnv[key];
+    const reaper = validateK2HostedEnvironment(reaperEnv, 'fixture-reap');
+    expect(reaper.apiOrigin).toBe(K2_HOSTED_FIXTURE_API_ORIGIN);
+    expect(reaper.supabaseUrl).toBe('');
+    expect(reaper.secretKey).toBe('');
+    expect(reaper.readonlyDatabaseUrl).toBe('');
+
+    const recoveryEnv = validEnvironment();
+    delete recoveryEnv.K2_STAGING_API_ORIGIN;
+    delete recoveryEnv.K2_GITHUB_TOKEN;
+    recoveryEnv.K2_ACCEPTANCE_WAVE = 'K2-09';
+    expect(() => validateK2HostedEnvironment(recoveryEnv, 'cleanup-current'))
+      .toThrow('K2_GITHUB_TOKEN');
+    recoveryEnv.K2_GITHUB_TOKEN = 'github-read-token-placeholder';
+    const recovery = validateK2HostedEnvironment(recoveryEnv, 'cleanup-current');
+    expect(recovery.githubToken).toBe('github-read-token-placeholder');
+    expect(recovery.apiOrigin).toBe('');
+    const priorWaveEnv = { ...recoveryEnv, K2_ACCEPTANCE_WAVE: 'K2-08' };
+    delete priorWaveEnv.K2_GITHUB_TOKEN;
+    expect(validateK2HostedEnvironment(priorWaveEnv, 'cleanup-current').githubToken).toBe('');
+    expect(() => validateK2HostedEnvironment({
+      ...recoveryEnv,
+      ACTIONS_ID_TOKEN_REQUEST_URL: '',
+    }, 'cleanup-current')).toThrow('ACTIONS_ID_TOKEN_REQUEST_URL');
   });
 
   it('requires both the repository owner and owner-triggered acceptance dispatch', () => {
@@ -1258,6 +1349,301 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     expect(requestedHostname).toBe(expectedHostname);
     expect(authorization).toBe('Bearer runtime-oidc-token-placeholder');
     expect(redirectMode).toBe('error');
+  });
+
+  it('mints the private fixture token only for its fixed internal audience', async () => {
+    let requestedAudience = '';
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      requestedAudience = new URL(String(input)).searchParams.get('audience') ?? '';
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer runtime-oidc-token-placeholder');
+      expect(init?.redirect).toBe('error');
+      return Response.json({ value: 'fixture-token-placeholder' });
+    });
+
+    await expect(createK2HostedFixtureOidcToken({
+      oidcRequestUrl: 'https://pipelines.actions.githubusercontent.com/runtime/token',
+      oidcRequestToken: 'runtime-oidc-token-placeholder',
+    }, request)).resolves.toBe('fixture-token-placeholder');
+    expect(requestedAudience).toBe(K2_HOSTED_FIXTURE_OIDC_AUDIENCE);
+  });
+
+  it('sends only fixed fixture routes and uses GitHub read tokens on the approved operations', async () => {
+    const calls: Array<{ url: URL; init: RequestInit | undefined }> = [];
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      calls.push({ url: new URL(String(input)), init });
+      if (new URL(String(input)).pathname.endsWith('/setup')) {
+        return Response.json({
+          ...activeFixtureInspection(),
+          disposition: 'created',
+        });
+      }
+      if (new URL(String(input)).pathname.endsWith('/cleanup')) {
+        return Response.json({
+          protocolVersion: 'k2-09-bridge-fixture.v1',
+          receiptState: 'CLOSED',
+          fixturePresent: false,
+          counts: FIXTURE_PRESENT_COUNTS,
+        });
+      }
+      return Response.json(activeFixtureInspection());
+    });
+    const cfg = config({ apiOrigin: 'https://untrusted.invalid' });
+
+    await requestK2HostedFixtureControl(cfg, 'inspect', 'oidc-placeholder', undefined, request);
+    await requestK2HostedFixtureControl(cfg, 'inspect', 'oidc-placeholder', 'read-token-placeholder', request);
+    await requestK2HostedFixtureControl(cfg, 'setup', 'oidc-placeholder', 'read-token-placeholder', request);
+    await requestK2HostedFixtureControl(cfg, 'cleanup', 'oidc-placeholder', undefined, request);
+    await expect(requestK2HostedFixtureControl(cfg, 'setup', 'oidc-placeholder', undefined, request))
+      .rejects.toThrow('configuration was invalid');
+    await expect(requestK2HostedFixtureControl(cfg, 'cleanup', 'oidc-placeholder', 'unexpected-token', request))
+      .rejects.toThrow('configuration was invalid');
+
+    expect(calls.map(({ url }) => url.href)).toEqual([
+      `${K2_HOSTED_FIXTURE_API_ORIGIN}/internal/k2-hosted-fixtures/k2-09/inspect`,
+      `${K2_HOSTED_FIXTURE_API_ORIGIN}/internal/k2-hosted-fixtures/k2-09/inspect`,
+      `${K2_HOSTED_FIXTURE_API_ORIGIN}/internal/k2-hosted-fixtures/k2-09/setup`,
+      `${K2_HOSTED_FIXTURE_API_ORIGIN}/internal/k2-hosted-fixtures/k2-09/cleanup`,
+    ]);
+    expect(calls.map(({ init }) => init?.method)).toEqual(['GET', 'GET', 'POST', 'POST']);
+    expect(calls.every(({ url, init }) => url.search === '' && init?.body === undefined &&
+      init?.redirect === 'error')).toBe(true);
+    expect(new Headers(calls[0]?.init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER)).toBeNull();
+    expect(new Headers(calls[1]?.init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER))
+      .toBe('read-token-placeholder');
+    expect(new Headers(calls[2]?.init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER))
+      .toBe('read-token-placeholder');
+    expect(new Headers(calls[3]?.init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER)).toBeNull();
+    expect(request).toHaveBeenCalledTimes(4);
+  });
+
+  it('recovers a committed fixture after setup response loss without retrying setup', async () => {
+    const routes: string[] = [];
+    let setupCount = 0;
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      routes.push(`${init?.method}:${url.pathname}`);
+      if (url.pathname.endsWith('/setup')) {
+        setupCount += 1;
+        expect(new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER))
+          .toBe('test-github-placeholder');
+        throw new Error('response lost');
+      }
+      expect(new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER)).toBeNull();
+      return Response.json(activeFixtureInspection());
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(setupK2HostedFixtureWithRecovery(config())).resolves.toEqual(FIXTURE_DESCRIPTOR);
+      expect(setupCount).toBe(1);
+      expect(routes).toEqual([
+        'POST:/internal/k2-hosted-fixtures/k2-09/setup',
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('starts from ACTIVE, retries a lost cleanup only after ACTIVE inspect, then proves CLOSED', async () => {
+    const routes: Array<{ path: string; method: string | undefined; readToken: string | null }> = [];
+    let activeInspectCount = 0;
+    let cleanupCount = 0;
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      routes.push({
+        path: url.pathname,
+        method: init?.method,
+        readToken: new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER),
+      });
+      if (url.pathname.endsWith('/cleanup')) {
+        cleanupCount += 1;
+        if (cleanupCount === 1) throw new Error('response lost');
+        return Response.json({
+          protocolVersion: 'k2-09-bridge-fixture.v1',
+          receiptState: 'CLOSED',
+          fixturePresent: false,
+          counts: FIXTURE_PRESENT_COUNTS,
+        });
+      }
+      activeInspectCount += 1;
+      return Response.json(activeInspectCount < 3 ? activeFixtureInspection() : closedFixtureInspection());
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK2HostedFixtureWithRecovery(config())).resolves.toBe('closed');
+      expect(cleanupCount).toBe(2);
+      expect(activeInspectCount).toBe(3);
+      expect(routes.map(({ method, path }) => `${method}:${path}`)).toEqual([
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+        'POST:/internal/k2-hosted-fixtures/k2-09/cleanup',
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+        'POST:/internal/k2-hosted-fixtures/k2-09/cleanup',
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+      ]);
+      expect(routes.every(({ readToken }) => readToken === null)).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('treats current-run ABSENT as a no-op only after authenticated exact-zero inspection', async () => {
+    const routes: Array<{ path: string; method: string | undefined; readToken: string | null }> = [];
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      routes.push({ path: url.pathname, method: init?.method, readToken });
+      if (!readToken) return Response.json(absentFixtureInspection());
+      return Response.json(absentFixtureInspection());
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK2HostedFixtureWithRecovery(config())).resolves.toBe('absent');
+      expect(routes).toEqual([
+        {
+          path: '/internal/k2-hosted-fixtures/k2-09/inspect',
+          method: 'GET',
+          readToken: null,
+        },
+        {
+          path: '/internal/k2-hosted-fixtures/k2-09/inspect',
+          method: 'GET',
+          readToken: 'test-github-placeholder',
+        },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('fails closed when the current-master check rejects an ABSENT receipt and never posts cleanup', async () => {
+    const routes: Array<{ path: string; method: string | undefined; readToken: string | null }> = [];
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      routes.push({ path: url.pathname, method: init?.method, readToken });
+      return Response.json({ error: 'forbidden' }, { status: 403 });
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK2HostedFixtureWithRecovery(config()))
+        .rejects.toThrow('could not be independently verified');
+      expect(routes.map(({ method, path }) => `${method}:${path}`)).toEqual([
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+        'GET:/internal/k2-hosted-fixtures/k2-09/inspect',
+      ]);
+      expect(routes[0]?.readToken).toBeNull();
+      expect(routes[1]?.readToken).toBe('test-github-placeholder');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('rejects authenticated ABSENT with any fixture rows instead of treating it as a no-op', async () => {
+    const routes: Array<{ method: string | undefined; readToken: string | null }> = [];
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      routes.push({ method: init?.method, readToken });
+      if (!readToken) return Response.json({ error: 'forbidden' }, { status: 403 });
+      return Response.json({ ...absentFixtureInspection(), counts: FIXTURE_PRESENT_COUNTS });
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK2HostedFixtureWithRecovery(config()))
+        .rejects.toThrow('could not be independently verified');
+      expect(routes.map(route => route.method)).toEqual(['GET', 'GET']);
+      expect(routes[1]?.readToken).toBe('test-github-placeholder');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    ['ACTIVE', activeFixtureInspection(), 'active'],
+    ['CLOSED', closedFixtureInspection(), 'closed'],
+  ] as const)('handles an existing %s receipt without GitHub-read fallback', async (_name, inspection, state) => {
+    const routes: Array<{ path: string; method: string | undefined; readToken: string | null }> = [];
+    let cleanupCount = 0;
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      routes.push({ path: url.pathname, method: init?.method, readToken });
+      if (url.pathname.endsWith('/cleanup')) {
+        cleanupCount += 1;
+        return Response.json({
+          protocolVersion: 'k2-09-bridge-fixture.v1',
+          receiptState: 'CLOSED',
+          fixturePresent: false,
+          counts: FIXTURE_PRESENT_COUNTS,
+        });
+      }
+      return Response.json(state === 'active' && cleanupCount > 0 ? closedFixtureInspection() : inspection);
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(cleanupK2HostedFixtureWithRecovery(config())).resolves.toBe('closed');
+      expect(cleanupCount).toBe(state === 'active' ? 1 : 0);
+      expect(routes.every(route => route.readToken === null)).toBe(true);
+      expect(routes[0]?.path).toBe('/internal/k2-hosted-fixtures/k2-09/inspect');
+      if (state === 'active') {
+        expect(routes.map(({ method }) => method)).toEqual(['GET', 'POST', 'GET']);
+      } else {
+        expect(routes.map(({ method }) => method)).toEqual(['GET']);
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each(['never reaches the controller', 'loses its uncommitted response'] as const)(
+    'leaves setup that %s failed while current-run cleanup proves ABSENT', async setupFailure => {
+    const routes: Array<{ path: string; method: string | undefined; readToken: string | null }> = [];
+    const request = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.hostname.endsWith('actions.githubusercontent.com')) {
+        return Response.json({ value: 'fixture-oidc-placeholder' });
+      }
+      const readToken = new Headers(init?.headers).get(K2_HOSTED_FIXTURE_READ_TOKEN_HEADER);
+      routes.push({ path: url.pathname, method: init?.method, readToken });
+      if (url.pathname.endsWith('/setup')) {
+        if (setupFailure === 'never reaches the controller') {
+          return Response.json({ error: 'unavailable' }, { status: 503 });
+        }
+        throw new Error('setup response lost before commit');
+      }
+      if (!readToken) return Response.json({ error: 'forbidden' }, { status: 403 });
+      return Response.json(absentFixtureInspection());
+    });
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(setupK2HostedFixtureWithRecovery(config()))
+        .rejects.toThrow('setup could not be confirmed');
+      await expect(cleanupK2HostedFixtureWithRecovery(config())).resolves.toBe('absent');
+      expect(routes.some(({ method, path }) => method === 'POST' && path.endsWith('/cleanup'))).toBe(false);
+      expect(routes.filter(({ path }) => path.endsWith('/setup'))).toHaveLength(1);
+      expect(routes.at(-1)?.readToken).toBe('test-github-placeholder');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it.each([

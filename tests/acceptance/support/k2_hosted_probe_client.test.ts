@@ -5,6 +5,7 @@ import {
   k2RetainedTableNames,
   parseK2ActorSnapshot,
   parseK2HostedMigrationProof,
+  parseK2ActorOwnershipGraph,
   parseK2HostedTodayReviewTargets,
   parseK2HostedCandidateBaseProof,
   parseK2HostedDueCandidateOverlap,
@@ -55,14 +56,30 @@ describe('K2 read-only probe client', () => {
   });
 
   it('requires the approved application migration head and exact count', () => {
-    expect(parseK2HostedMigrationProof({ appMigrationHead: '0020', appliedMigrations: 20 }))
-      .toEqual({ appMigrationHead: '0020', appliedMigrations: 20 });
+    expect(parseK2HostedMigrationProof({ appMigrationHead: '0021', appliedMigrations: 21 }))
+      .toEqual({ appMigrationHead: '0021', appliedMigrations: 21 });
     expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 19 }))
       .toThrow('staging migration head does not match');
-    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0020', appliedMigrations: 19 }))
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0021', appliedMigrations: 20 }))
       .toThrow('staging migration head does not match');
-    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0019', appliedMigrations: 20 }))
+    expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0020', appliedMigrations: 21 }))
       .toThrow('staging migration head does not match');
+  });
+
+  it('accepts only the complete pinned Auth ownership and incoming-FK closure proof', () => {
+    const proof = {
+      ownershipGraphValid: true,
+      ownedTableCount: 27,
+      ownershipEdgeCount: 27,
+      incomingConstraintCount: 51,
+    } as const;
+    expect(parseK2ActorOwnershipGraph(proof)).toEqual(proof);
+    expect(() => parseK2ActorOwnershipGraph({ ...proof, incomingConstraintCount: 50 }))
+      .toThrow('actor ownership graph proof was invalid');
+    expect(() => parseK2ActorOwnershipGraph({ ...proof, ownershipGraphValid: false }))
+      .toThrow('actor ownership graph proof was invalid');
+    expect(() => parseK2ActorOwnershipGraph({ ...proof, unexpected: true }))
+      .toThrow('actor ownership graph proof was invalid');
   });
 
   it('parses only a bounded actor-scoped Today mapping and rejects malformed targets', () => {

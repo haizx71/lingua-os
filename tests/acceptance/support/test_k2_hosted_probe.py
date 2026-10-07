@@ -237,9 +237,9 @@ def test_migration_probe_distinguishes_application_and_supabase_ledgers() -> Non
                     rows=[
                         (
                             f"{number:04d}",
-                            "today_remediation_reason_codes" if number == 20 else "older",
+                            "k2_09_hosted_fixture_control" if number == 21 else "older",
                         )
-                        for number in range(1, 21)
+                        for number in range(1, 22)
                     ]
                 )
             if "FROM supabase_migrations.schema_migrations" in query:
@@ -248,6 +248,7 @@ def test_migration_probe_distinguishes_application_and_supabase_ledgers() -> Non
                         ("20260927034218", "concept_save_intent_auth_erasure_0019"),
                         ("20260928000000", "k2_hosted_acceptance_reader_staging"),
                         ("20261001000000", "today_remediation_reason_codes_0020"),
+                        ("20261007000000", "k2_09_hosted_fixture_control_0021"),
                     ]
                 )
             if "has_column_privilege" in query:
@@ -255,8 +256,8 @@ def test_migration_probe_distinguishes_application_and_supabase_ledgers() -> Non
             raise AssertionError("unexpected migration query")
 
     assert probe._migration_head(MigrationConnection()) == {
-        "appMigrationHead": "0020",
-        "appliedMigrations": 20,
+        "appMigrationHead": "0021",
+        "appliedMigrations": 21,
     }
 
 
@@ -268,9 +269,9 @@ def test_migration_probe_fails_if_supabase_ledger_is_not_at_reader_migration() -
                     rows=[
                         (
                             f"{number:04d}",
-                            "today_remediation_reason_codes" if number == 20 else "older",
+                            "k2_09_hosted_fixture_control" if number == 21 else "older",
                         )
-                        for number in range(1, 21)
+                        for number in range(1, 22)
                     ]
                 )
             return Result(rows=[("20260927034218", "concept_save_intent_auth_erasure_0019")])
@@ -287,9 +288,9 @@ def test_migration_probe_requires_supabase_0019_before_the_reader_migration() ->
                     rows=[
                         (
                             f"{number:04d}",
-                            "today_remediation_reason_codes" if number == 20 else "older",
+                            "k2_09_hosted_fixture_control" if number == 21 else "older",
                         )
-                        for number in range(1, 21)
+                        for number in range(1, 22)
                     ]
                 )
             if "FROM supabase_migrations.schema_migrations" in query:
@@ -298,6 +299,7 @@ def test_migration_probe_requires_supabase_0019_before_the_reader_migration() ->
                         ("20260927021246", "profile_replay_auth_erasure_0018"),
                         ("20260928000000", "k2_hosted_acceptance_reader_staging"),
                         ("20261001000000", "today_remediation_reason_codes_0020"),
+                        ("20261007000000", "k2_09_hosted_fixture_control_0021"),
                     ]
                 )
             if "has_column_privilege" in query:
@@ -308,7 +310,7 @@ def test_migration_probe_requires_supabase_0019_before_the_reader_migration() ->
         probe._migration_head(Missing0019Connection())
 
 
-def test_migration_probe_rejects_platform_migrations_after_the_approved_0020_tail() -> None:
+def test_migration_probe_rejects_platform_migrations_after_the_approved_0021_tail() -> None:
     class UnexpectedPlatformMigrationConnection:
         def execute(self, query: str) -> Result:
             if "FROM public.schema_migrations" in query:
@@ -316,9 +318,9 @@ def test_migration_probe_rejects_platform_migrations_after_the_approved_0020_tai
                     rows=[
                         (
                             f"{number:04d}",
-                            "today_remediation_reason_codes" if number == 20 else "older",
+                            "k2_09_hosted_fixture_control" if number == 21 else "older",
                         )
-                        for number in range(1, 21)
+                        for number in range(1, 22)
                     ]
                 )
             if "FROM supabase_migrations.schema_migrations" in query:
@@ -327,6 +329,7 @@ def test_migration_probe_rejects_platform_migrations_after_the_approved_0020_tai
                         ("20260927034218", "concept_save_intent_auth_erasure_0019"),
                         ("20260928000000", "k2_hosted_acceptance_reader_staging"),
                         ("20261001000000", "today_remediation_reason_codes_0020"),
+                        ("20261007000000", "k2_09_hosted_fixture_control_0021"),
                         ("20261002000000", "unapproved_later_migration"),
                     ]
                 )
@@ -336,6 +339,66 @@ def test_migration_probe_rejects_platform_migrations_after_the_approved_0020_tai
 
     with pytest.raises(probe.ProbeError):
         probe._migration_head(UnexpectedPlatformMigrationConnection())
+
+
+def test_actor_ownership_graph_pins_exact_incoming_fk_closure_without_reading_rows() -> None:
+    class OwnershipGraphConnection:
+        statement = ""
+        parameters = None
+
+        def execute(self, query: Any, params: Any = None) -> Result:
+            self.statement = str(query)
+            self.parameters = params
+            return Result(rows=list(probe.EXPECTED_INBOUND_OWNER_FK_CLOSURE))
+
+    connection = OwnershipGraphConnection()
+    assert probe._actor_ownership_graph(connection) == {
+        "ownershipGraphValid": True,
+        "ownedTableCount": 27,
+        "ownershipEdgeCount": 27,
+        "incomingConstraintCount": 51,
+    }
+    assert connection.parameters == (list(probe.EXPECTED_LEARNER_TABLES),)
+    assert "pg_catalog.pg_constraint" in connection.statement
+    assert "FROM auth.users" not in connection.statement
+    assert "FROM public.users" not in connection.statement
+    assert "SELECT *" not in connection.statement
+
+
+@pytest.mark.parametrize(
+    "drift",
+    ["missing_owner", "unexpected_external", "changed_action", "unvalidated", "deferrable"],
+)
+def test_actor_ownership_graph_fails_closed_on_fk_drift(drift: str) -> None:
+    rows = [list(edge) for edge in probe.EXPECTED_INBOUND_OWNER_FK_CLOSURE]
+    if drift == "missing_owner":
+        rows.pop(0)
+    elif drift == "unexpected_external":
+        external = rows[0].copy()
+        external[0:3] = [
+            "extensions",
+            "unexpected_owner_reference",
+            "unexpected_owner_reference_fkey",
+        ]
+        rows.append(external)
+    else:
+        index = next(
+            index for index, row in enumerate(rows) if row[2] == "learning_events_causation_fkey"
+        )
+        if drift == "changed_action":
+            rows[index][7] = "c"
+        elif drift == "unvalidated":
+            rows[index][10] = False
+        else:
+            rows[index][11] = True
+
+    class DriftingOwnershipGraphConnection:
+        def execute(self, query: Any, params: Any = None) -> Result:
+            del query, params
+            return Result(rows=[tuple(row) for row in rows])
+
+    with pytest.raises(probe.ProbeError):
+        probe._actor_ownership_graph(DriftingOwnershipGraphConnection())
 
 
 def test_today_review_targets_probe_returns_only_a_bounded_ordered_actor_mapping() -> None:
@@ -416,39 +479,146 @@ class K208PrivilegeConnection(InventoryConnection):
                 ("service_role", "auth"): (True, False),
                 ("service_role", "public"): (True, False),
             }
-            return Result(rows=[(role, schema, *values) for (role, schema), values in sorted(flags.items())])
+            return Result(
+                rows=[(role, schema, *values) for (role, schema), values in sorted(flags.items())]
+            )
         if "FROM aclexplode" in statement:
             rows = [("auth", False), ("public", False)]
             if self.drift == "public_auth_schema_grant":
                 rows[0] = ("auth", True)
             return Result(rows=rows)
         if "WITH expected_relations(schema_name, relation_name, relation_kind" in statement:
-            return Result(rows=[
-                ("auth", "users", "r", "supabase_auth_admin", True, False,
-                 "r", "supabase_auth_admin", True, False, 0),
-                ("public", "user_concept_states", "r", "postgres", True, False,
-                 "r", "postgres", True, False, 2),
-                ("public", "user_languages", "r", "postgres", True, False,
-                 "r", "postgres", True, False, 2),
-                ("public", "users", "r", "postgres", True, False,
-                 "r", "postgres", True, False, 2),
-                ("public", "v_learner_concept_retrievability", "v", "postgres", False, False,
-                 "v", "postgres", False, False, 0),
-            ])
+            return Result(
+                rows=[
+                    (
+                        "auth",
+                        "users",
+                        "r",
+                        "supabase_auth_admin",
+                        True,
+                        False,
+                        "r",
+                        "supabase_auth_admin",
+                        True,
+                        False,
+                        0,
+                    ),
+                    (
+                        "public",
+                        "user_concept_states",
+                        "r",
+                        "postgres",
+                        True,
+                        False,
+                        "r",
+                        "postgres",
+                        True,
+                        False,
+                        2,
+                    ),
+                    (
+                        "public",
+                        "user_languages",
+                        "r",
+                        "postgres",
+                        True,
+                        False,
+                        "r",
+                        "postgres",
+                        True,
+                        False,
+                        2,
+                    ),
+                    (
+                        "public",
+                        "users",
+                        "r",
+                        "postgres",
+                        True,
+                        False,
+                        "r",
+                        "postgres",
+                        True,
+                        False,
+                        2,
+                    ),
+                    (
+                        "public",
+                        "v_learner_concept_retrievability",
+                        "v",
+                        "postgres",
+                        False,
+                        False,
+                        "v",
+                        "postgres",
+                        False,
+                        False,
+                        0,
+                    ),
+                ]
+            )
         if "policy.polname, policy.polcmd" in statement:
             rows = [
-                ("public", "user_concept_states", "k2_hosted_acceptance_reader_select_all", "r", True,
-                 [probe.EXPECTED_READONLY_ROLE], "true", None),
-                ("public", "user_concept_states", "user_concept_states_select_own", "r", True,
-                 ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
-                ("public", "user_languages", "k2_hosted_acceptance_reader_select_all", "r", True,
-                 [probe.EXPECTED_READONLY_ROLE], "true", None),
-                ("public", "user_languages", "user_languages_select_own", "r", True,
-                 ["authenticated"], "(( SELECT auth.uid() AS uid) = user_id)", None),
-                ("public", "users", "k2_hosted_acceptance_reader_select_all", "r", True,
-                 [probe.EXPECTED_READONLY_ROLE], "true", None),
-                ("public", "users", "users_select_own", "r", True,
-                 ["authenticated"], "(( SELECT auth.uid() AS uid) = id)", None),
+                (
+                    "public",
+                    "user_concept_states",
+                    "k2_hosted_acceptance_reader_select_all",
+                    "r",
+                    True,
+                    [probe.EXPECTED_READONLY_ROLE],
+                    "true",
+                    None,
+                ),
+                (
+                    "public",
+                    "user_concept_states",
+                    "user_concept_states_select_own",
+                    "r",
+                    True,
+                    ["authenticated"],
+                    "(( SELECT auth.uid() AS uid) = user_id)",
+                    None,
+                ),
+                (
+                    "public",
+                    "user_languages",
+                    "k2_hosted_acceptance_reader_select_all",
+                    "r",
+                    True,
+                    [probe.EXPECTED_READONLY_ROLE],
+                    "true",
+                    None,
+                ),
+                (
+                    "public",
+                    "user_languages",
+                    "user_languages_select_own",
+                    "r",
+                    True,
+                    ["authenticated"],
+                    "(( SELECT auth.uid() AS uid) = user_id)",
+                    None,
+                ),
+                (
+                    "public",
+                    "users",
+                    "k2_hosted_acceptance_reader_select_all",
+                    "r",
+                    True,
+                    [probe.EXPECTED_READONLY_ROLE],
+                    "true",
+                    None,
+                ),
+                (
+                    "public",
+                    "users",
+                    "users_select_own",
+                    "r",
+                    True,
+                    ["authenticated"],
+                    "(( SELECT auth.uid() AS uid) = id)",
+                    None,
+                ),
             ]
             if self.drift == "policy_with_check":
                 rows[-1] = (*rows[-1][:-1], "true")
@@ -462,7 +632,12 @@ class K208PrivilegeConnection(InventoryConnection):
                 ("public", "users"),
                 ("public", "v_learner_concept_retrievability"),
             ]:
-                for role_name in ("anon", "authenticated", probe.EXPECTED_READONLY_ROLE, "service_role"):
+                for role_name in (
+                    "anon",
+                    "authenticated",
+                    probe.EXPECTED_READONLY_ROLE,
+                    "service_role",
+                ):
                     if schema_name == "auth":
                         flags = (False, False, False, False, False)
                     elif relation_name == "v_learner_concept_retrievability":
@@ -476,14 +651,17 @@ class K208PrivilegeConnection(InventoryConnection):
                     rows.append((schema_name, relation_name, role_name, *flags))
             if self.drift == "reader_auth_access":
                 index = next(
-                    index for index, row in enumerate(rows)
+                    index
+                    for index, row in enumerate(rows)
                     if row[:3] == ("auth", "users", probe.EXPECTED_READONLY_ROLE)
                 )
                 rows[index] = (*rows[index][:3], True, False, False, False, False)
             if self.drift == "reader_view_access":
                 index = next(
-                    index for index, row in enumerate(rows)
-                    if row[:3] == ("public", "v_learner_concept_retrievability", probe.EXPECTED_READONLY_ROLE)
+                    index
+                    for index, row in enumerate(rows)
+                    if row[:3]
+                    == ("public", "v_learner_concept_retrievability", probe.EXPECTED_READONLY_ROLE)
                 )
                 rows[index] = (*rows[index][:3], True, False, False, False, False)
             return Result(rows=rows)

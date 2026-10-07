@@ -693,11 +693,12 @@ def test_actor_profile_query_plan_is_bounded_without_new_index(
     ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_0017_checksum_rollback_reapply_and_learner_delta(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    database_url = isolated_migrated_postgres_url
-    migration = next(item for item in discover_migrations(MIGRATIONS_DIR) if item.version == "0017")
+    database_url, migrations_dir = isolated_postgres_at_migration
+    migration = next(item for item in discover_migrations(migrations_dir) if item.version == "0017")
     with _connect(database_url) as connection:
         _seed_projection(connection)
         connection.commit()
@@ -710,7 +711,7 @@ def test_0017_checksum_rollback_reapply_and_learner_delta(
         ).fetchone()
         assert registry == (migration.name, migration.checksum)
 
-    assert migrate_down(database_url, MIGRATIONS_DIR, steps=4) == [
+    assert migrate_down(database_url, migrations_dir, steps=4) == [
         "0020",
         "0019",
         "0018",
@@ -728,8 +729,8 @@ def test_0017_checksum_rollback_reapply_and_learner_delta(
         )
         assert _learner_snapshots(connection) == before
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0017", "0018", "0019", "0020"]
-    assert migrate_up(database_url, MIGRATIONS_DIR) == []
+    assert migrate_up(database_url, migrations_dir) == ["0017", "0018", "0019", "0020"]
+    assert migrate_up(database_url, migrations_dir) == []
     with _connect(database_url) as connection:
         assert _learner_snapshots(connection) == before
 

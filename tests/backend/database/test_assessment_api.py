@@ -845,14 +845,16 @@ def test_failure_after_response_insert_rolls_back_the_entire_transition(
         ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0020"], indirect=True)
 def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    seed = _seed_assessment(isolated_migrated_postgres_url)
+    database_url, migrations_dir = isolated_postgres_at_migration
+    seed = _seed_assessment(database_url)
     PostgresAssessmentStore(seed.database_url).start_or_resume(
         seed.actor, language_profile_id=seed.profile_id, idempotency_key=uuid.uuid4()
     )
-    assert migrate_down(seed.database_url, MIGRATIONS, steps=11) == [
+    assert migrate_down(seed.database_url, migrations_dir, steps=11) == [
         "0020",
         "0019",
         "0018",
@@ -865,9 +867,9 @@ def test_protected_0008_rollback_refuses_persisted_attempt_snapshots(
         "0011",
         "0010",
     ]
-    assert migrate_down(seed.database_url, MIGRATIONS, steps=1) == ["0009"]
+    assert migrate_down(seed.database_url, migrations_dir, steps=1) == ["0009"]
     with pytest.raises(psycopg.errors.RaiseException, match="assessment_attempt_items"):
-        migrate_down(seed.database_url, MIGRATIONS, steps=1)
+        migrate_down(seed.database_url, migrations_dir, steps=1)
 
 
 @contextmanager
@@ -910,6 +912,7 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
         "0018",
         "0019",
         "0020",
+        "0021",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()

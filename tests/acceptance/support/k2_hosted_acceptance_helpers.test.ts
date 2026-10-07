@@ -21,15 +21,17 @@ describe('K2 hosted acceptance response shapes', () => {
     expect(resolveK2HostedRunMode('acceptance')).toBe('acceptance');
     expect(resolveK2HostedRunMode('janitor')).toBe('janitor');
     expect(resolveK2HostedRunMode('cleanup-current')).toBe('cleanup-current');
+    expect(resolveK2HostedRunMode('fixture-reap')).toBe('fixture-reap');
     expect(() => resolveK2HostedRunMode('typo')).toThrow('run mode is invalid');
   });
 
-  it('accepts only the implemented K2-07 and full or explicitly bounded K2-08 selectors', () => {
+  it('accepts only the implemented K2-07, bounded K2-08, and K2-09 selectors', () => {
     expect(resolveK2HostedWaveSelector(undefined)).toBe('K2-07');
     expect(resolveK2HostedWaveSelector('K2-07')).toBe('K2-07');
     expect(resolveK2HostedWaveSelector('K2-08-DUE-ONLY')).toBe('K2-08-DUE-ONLY');
     expect(resolveK2HostedWaveSelector('K2-08')).toBe('K2-08');
-    for (const unsupported of ['K2-09', 'K2-10', 'k2-08-due-only', 'typo']) {
+    expect(resolveK2HostedWaveSelector('K2-09')).toBe('K2-09');
+    for (const unsupported of ['K2-10', 'k2-08-due-only', 'typo']) {
       expect(() => resolveK2HostedWaveSelector(unsupported)).toThrow('wave selector is invalid');
     }
   });
