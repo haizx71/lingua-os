@@ -19,10 +19,10 @@ not remaining implementation waves.
 ## Current execution checkpoint — 2026-10-08
 
 - K2-08 remains DONE with full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; see `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
-- K2-09 product and hosted-fixture source gates, exact-head CI, merge, and same-SHA deployments are PASS. Fixture PR #44 merged at `8f5660d1dcbd351a599d09a1e17b71a4a04e5479`; its exact head `9ef7f0e` passed Security run `37677919695`, all six Knowledge Audit jobs in `37677919737`, and Vercel Preview. Migration `0021` was applied and independently checked; details and hashes are in the source/migration review record.
-- Hosted workflow `37681286589` failed before actor creation at `preflight_k209_fixture_inspect` (503). Actor creation, retained baseline, and fixture setup were never reached; in-process actor/fresh-cleanup checkpoints are not full hosted cleanup evidence. Recovery job `112998415934` also failed on the same ABSENT inspect path. No full retained comparison or K2-09 hosted PASS is claimed.
-- The bounded fix replaces oversized `/commits/master` resolution (539,530-byte full commit-plus-diff response) with `/git/ref/heads/master` (339 bytes for the same SHA), below the accepted 98,304-byte bound. Independent GPT-6 Luna / Max source review passed with no HIGH/BLOCKER and independently ran 52 protocol tests. Implementation separately reported 52 protocol tests plus Ruff, mypy, and diff checks passing; these are distinct runs, not a combined 104-test suite. Exact-head CI, merge/deployment, and a fresh full hosted run with cleanup and retained comparison remain pending. No bounds, timeouts, TLS, authorization, grants, or cleanup rules were weakened.
-- K2-10 remains BLOCKED until K2-09 full hosted acceptance and cleanup/retained comparison pass. Migration 0020 and accepted K2-06/K2-07 behavior remain unchanged.
+- K2-09 is DONE. PR #45 exact head `ef6a00b198dc76caaed6d8b18c5370b1dc3ee599` merged at `cd062c750257a8656ba691eaf57723bc13e6012d`; exact-head Security, all six Knowledge Audit jobs, Vercel Preview, Render health, and Vercel Production passed. Migration `0021` was already applied and verified; it was not reapplied.
+- Full hosted workflow `37685182215` on merged master passed overall. Main job `113011062961` and recovery job `113016493879` succeeded. Ordered evidence passed for fresh baseline, normal actor Save/Review/answer and replay, wave, actor and fresh-identity cleanup, Auth/27-table before-and-after checks, fixture closure, current-run retained comparison, and finalizer. Separate GPT-6 Luna / Max final review verified workflow jobs, phase artifact hashes, and source assertions with no HIGH/BLOCKER. See the final review record for exact timestamps and hashes; no retained row totals are inferred from earlier snapshots.
+- Hosted attempt `37681286589` remains a historical failure before actor creation. The fixed source used `/git/ref/heads/master` instead of the oversized `/commits/master`; source review, two separate 52-test protocol runs, CI, merge, and redeployment passed before the successful hosted rerun.
+- K2-10 is DOING only for the verification seal. No new schema feature or migration is in scope. Migration 0020 and accepted K2-06/K2-07 behavior remain unchanged.
 
 ## Historical execution checkpoint — 2026-10-02
 
@@ -282,18 +282,18 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
   integration commands to execute the Dictionary source and its focused database API tests.
 - **Hosted acceptance:** live catalog feasibility found 94 eligible approved English lexemes, none
   with at least two approved senses and at least two approved linked concepts, and zero approved
-  `went` forms. A controlled fixture is required. Fixture architecture and exact private DTO/spec
-  review have passed design gates. Bounded local setup/inspect/cleanup source is frozen and independently
-  reviewed PASS; migration/security gate, exact-head CI, deployment, and hosted acceptance remain pending.
-  No hosted fixture writes are authorized.
-  Implementation must retain atomic exact-tree guards, parent locks, all-reference checks across the
-  44-FK inventory, strict same-run idempotency, and cleanup after authoritative GitHub run-attempt
-  checks. Actor behavior remains normal HTTP/JWT/RLS; search writes nothing, explicit save activates
-  only the chosen concept, and the existing 27-table retained comparison remains required. No roles,
-  grants, Auth, RLS, or SECURITY DEFINER changes.
+  `went` forms. A controlled fixture was used. Fixture architecture/spec, setup/inspect/cleanup source,
+  migration 0021, exact-head CI/deployment, and the full hosted run with current-run cleanup and
+  retained comparison have all passed the K2-09 gate. The complete markers, proof artifacts, and
+  independent final review are in `reviews/K2-09-hosted-fixture-source-migration-gate-review.md`.
+  Actor behavior remained normal HTTP/JWT/RLS; search writes nothing, explicit save activates only
+  the chosen concept. No application-role grants, Auth boundaries, existing RLS policies, or
+  SECURITY DEFINER permissions were broadened; the new private receipt ACL/RLS remains as reviewed
+  in migration `0021`.
 
 ## K2-10 — End-to-End Verification and Documentation Seal
 
+- **Current state:** DOING verification seal after K2-09 hosted PASS. No new schema feature or migration is authorized by this checkpoint.
 - **Exact objective:** prove the full Knowledge V2 system and historical FRLL boundary, reconcile
   project truth, and produce the final acceptance record.
 - **Schema impact:** none; verification only.
