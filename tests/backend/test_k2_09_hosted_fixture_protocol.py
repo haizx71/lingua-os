@@ -269,6 +269,71 @@ def test_oidc_verifier_rejects_noncanonical_or_out_of_range_run_claims(
         github.verify_oidc_token(signed)
 
 
+def test_current_master_sha_uses_compact_fixed_git_ref(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected_sha = "a" * 40
+    reference_payload = {
+        "ref": "refs/heads/master",
+        "node_id": "fixed-test-ref",
+        "url": f"{GITHUB_REPOSITORY_API}/git/refs/heads/master",
+        "object": {
+            "type": "commit",
+            "sha": expected_sha,
+            "url": f"{GITHUB_REPOSITORY_API}/git/commits/{expected_sha}",
+        },
+    }
+    calls: list[tuple[str, str, int]] = []
+
+    def get_json(url: str, *, token: str, max_bytes: int) -> dict[str, Any]:
+        calls.append((url, token, max_bytes))
+        assert url != f"{GITHUB_REPOSITORY_API}/commits/master"
+        return reference_payload
+
+    monkeypatch.setattr(github, "_github_get", get_json)
+
+    assert github.current_master_sha("fixed-local-token") == expected_sha
+    assert calls == [
+        (
+            f"{GITHUB_REPOSITORY_API}/git/ref/heads/master",
+            "fixed-local-token",
+            github.MAX_GITHUB_RESPONSE_BYTES,
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"ref": "refs/heads/other", "object": {"type": "commit", "sha": "a" * 40}},
+        {"ref": "refs/heads/master", "object": {"type": "tag", "sha": "a" * 40}},
+        {"ref": "refs/heads/master", "object": {"type": "commit", "sha": "A" * 40}},
+        {"ref": "refs/heads/master", "object": {"type": "commit", "sha": "a" * 39}},
+        {"ref": "refs/heads/master", "object": {}},
+        {"ref": "refs/heads/master", "object": "not-an-object"},
+        {"ref": "refs/heads/master"},
+    ],
+)
+def test_current_master_sha_rejects_wrong_or_unrecognized_ref_shape(
+    monkeypatch: pytest.MonkeyPatch, payload: dict[str, Any]
+) -> None:
+    calls: list[tuple[str, str, int]] = []
+
+    def get_json(url: str, *, token: str, max_bytes: int) -> dict[str, Any]:
+        calls.append((url, token, max_bytes))
+        return payload
+
+    monkeypatch.setattr(github, "_github_get", get_json)
+
+    with pytest.raises(FixtureUnavailable):
+        github.current_master_sha("fixed-local-token")
+    assert calls == [
+        (
+            f"{GITHUB_REPOSITORY_API}/git/ref/heads/master",
+            "fixed-local-token",
+            github.MAX_GITHUB_RESPONSE_BYTES,
+        )
+    ]
+
+
 def test_completed_run_pair_checks_both_fixed_attempt_and_latest_endpoints(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

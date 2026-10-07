@@ -232,11 +232,17 @@ def current_master_sha(token: str) -> str:
     if not token or len(token) > 8192:
         raise FixtureForbidden()
     payload = _github_get(
-        f"{GITHUB_REPOSITORY_API}/commits/master",
+        f"{GITHUB_REPOSITORY_API}/git/ref/heads/master",
         token=token,
         max_bytes=MAX_GITHUB_RESPONSE_BYTES,
     )
-    sha = payload.get("sha")
+    reference = payload.get("ref")
+    target = payload.get("object")
+    if reference != "refs/heads/master" or not isinstance(target, dict):
+        raise FixtureUnavailable()
+    if target.get("type") != "commit":
+        raise FixtureUnavailable()
+    sha = target.get("sha")
     if (
         not isinstance(sha, str)
         or len(sha) != 40
