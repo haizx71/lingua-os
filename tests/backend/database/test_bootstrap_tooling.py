@@ -71,7 +71,7 @@ def test_expected_application_tables_match_canonical_migrations() -> None:
     discovered = discover_expected_tables(MIGRATIONS_DIR)
     assert discovered == EXPECTED_APPLICATION_TABLES
     assert len(EXPECTED_APPLICATION_TABLES) == 63, (
-        f"Expected 63 application tables (62 migration + 1 schema_migrations), "
+        f"Expected 63 public application tables (62 migration + 1 schema_migrations), "
         f"got {len(EXPECTED_APPLICATION_TABLES)}"
     )
     assert "schema_migrations" in EXPECTED_APPLICATION_TABLES
@@ -84,14 +84,18 @@ def test_no_stale_or_missing_tables_in_verifier() -> None:
     import re
 
     pattern = re.compile(
-        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-zA-Z0-9_]+)",
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+        r"(?:(?P<schema>[a-zA-Z_][a-zA-Z0-9_]*)\.)?"
+        r"(?P<table>[a-zA-Z_][a-zA-Z0-9_]*)(?=\s|\()",
         re.IGNORECASE,
     )
     migration_tables: set[str] = set()
     for sql_file in sorted(MIGRATIONS_DIR.glob("*.up.sql")):
         content = sql_file.read_text(encoding="utf-8")
         for match in pattern.finditer(content):
-            migration_tables.add(match.group(1).lower())
+            schema = match.group("schema")
+            if schema is None or schema.lower() == "public":
+                migration_tables.add(match.group("table").lower())
 
     # All migration tables must be in EXPECTED_APPLICATION_TABLES
     missing_from_verifier = migration_tables - set(EXPECTED_APPLICATION_TABLES)
@@ -106,6 +110,7 @@ def test_no_stale_or_missing_tables_in_verifier() -> None:
     assert not unexpected_in_verifier, (
         f"Stale or unexpected tables in verifier: {unexpected_in_verifier}"
     )
+    assert "k2_hosted_fixture_receipts" not in EXPECTED_APPLICATION_TABLES
 
     # All learner tables must be accounted for in the expected application tables
     missing_learner_tables = set(CANONICAL_LEARNER_DERIVED_TABLES) - set(

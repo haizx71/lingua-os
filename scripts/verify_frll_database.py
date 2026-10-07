@@ -2,7 +2,7 @@
 
 Strictly verifies that:
 1. PostgreSQL connection is operational.
-2. All canonical migrations (0001..0020) are applied and valid in public.schema_migrations.
+2. All canonical migrations (0001..0021) are applied and valid in public.schema_migrations.
 3. Core application schema tables exist in the public schema.
 4. Deterministic FRLL catalog anchor concept exists exactly once.
 5. Zero rows exist across all learner-derived tables (strict learner isolation).
@@ -51,6 +51,7 @@ EXPECTED_MIGRATIONS = (
     "0018_profile_replay_auth_erasure",
     "0019_concept_save_intent_auth_erasure",
     "0020_today_remediation_reason_codes",
+    "0021_k2_09_hosted_fixture_control",
 )
 
 
@@ -62,14 +63,18 @@ def discover_expected_tables(migrations_dir: Path = MIGRATIONS_DIR) -> tuple[str
     database/migrate.py.
     """
     pattern = re.compile(
-        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-zA-Z0-9_]+)",
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+        r"(?:(?P<schema>[a-zA-Z_][a-zA-Z0-9_]*)\.)?"
+        r"(?P<table>[a-zA-Z_][a-zA-Z0-9_]*)(?=\s|\()",
         re.IGNORECASE,
     )
     tables: set[str] = {"schema_migrations"}
     for path in sorted(migrations_dir.glob("*.up.sql")):
         content = path.read_text(encoding="utf-8")
         for match in pattern.finditer(content):
-            tables.add(match.group(1).lower())
+            schema = match.group("schema")
+            if schema is None or schema.lower() == "public":
+                tables.add(match.group("table").lower())
     return tuple(sorted(tables))
 
 
