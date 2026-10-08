@@ -58,6 +58,7 @@ import {
   type K2FrllBrowserRequest,
   type K2FrllNavigationRoute,
 } from './k2_playwright_network';
+import { createK2TrustedSourceTokenSupplier } from './k2_vercel_header';
 import { signInK2BrowserActor } from './browser_actor_switch';
 import {
   assertK2CreatedLanguageProfileReadback,
@@ -1849,9 +1850,25 @@ function createK2HostedFrllUi(
   todayDiagnostic?: ReturnType<typeof createK2FrllTodayDiagnostic>,
 ): K2HostedFrllUi {
   const goto = async (page: Page, path: string) => {
-    const response = await page.goto(new URL(path, vercelOrigin).href, { waitUntil: 'domcontentloaded' });
+    const routeId = path === '/dictionary' ? 'dictionary' : path === '/today' ? 'today' : 'other';
+    let response: Awaited<ReturnType<Page['goto']>>;
+    try {
+      response = await page.goto(new URL(path, vercelOrigin).href, { waitUntil: 'domcontentloaded' });
+    } catch {
+      throw new Error(
+        `K2 hosted acceptance FRLL browser page did not load (route=${routeId}; status=no_response).`,
+      );
+    }
     if (!response || response.status() !== 200) {
-      throw new Error('K2 hosted acceptance FRLL browser page did not load.');
+      const status = response?.status();
+      const statusClass = status === undefined ? 'no_response'
+        : status >= 200 && status < 300 ? '2xx'
+          : status >= 300 && status < 400 ? '3xx'
+            : status >= 400 && status < 500 ? '4xx'
+              : status >= 500 && status < 600 ? '5xx' : 'other';
+      throw new Error(
+        `K2 hosted acceptance FRLL browser page did not load (route=${routeId}; status=${statusClass}).`,
+      );
     }
   };
   const waitForAnswerResponse = (page: Page) => page.waitForResponse(response => {
@@ -2197,6 +2214,12 @@ export async function runK2HostedWave(
     if (reverifiedBrowserOrigin !== vercelOrigin) {
       throw new Error('K2 hosted acceptance canonical browser origin changed; browser flow was stopped.');
     }
+    const browserTokenSource = frllWave
+      ? createK2TrustedSourceTokenSupplier(
+        browserOidc,
+        () => createGithubTrustedSourceToken(config),
+      )
+      : browserOidc;
     let activeBrowserHandle: K2WaveActorHandle | null = null;
     const signInAs = async (handle: K2WaveActorHandle): Promise<void> => {
       if (activeBrowserHandle === handle) return;
@@ -2275,7 +2298,7 @@ export async function runK2HostedWave(
     await installK2BrowserRequestGuard(browserContext, {
       vercelOrigin,
       supabaseUrl: config.supabaseUrl,
-    }, browserOidc, frllWave ? route => forwardK2FrllBrowserRequest(
+    }, browserTokenSource, frllWave ? route => forwardK2FrllBrowserRequest(
       route,
       { vercelOrigin, githubSha: config.githubSha },
       browserFrllSessions,

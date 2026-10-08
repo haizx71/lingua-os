@@ -11,7 +11,10 @@ import {
   handleK2BrowserRoute,
   type K2FrllDiagnosticEvent,
 } from './k2_playwright_network';
-import { K2_VERCEL_TRUSTED_SOURCE_HEADER } from './k2_vercel_header';
+import {
+  createK2TrustedSourceTokenSupplier,
+  K2_VERCEL_TRUSTED_SOURCE_HEADER,
+} from './k2_vercel_header';
 
 const config = {
   vercelOrigin: 'https://lingua-os-deployment.vercel.app',
@@ -19,6 +22,12 @@ const config = {
   githubSha: 'a'.repeat(40),
 };
 const token = 'oidc-token-placeholder';
+
+function syntheticOidcToken(expiresAtMs: number): string {
+  const payload = Buffer.from(JSON.stringify({ exp: expiresAtMs / 1000 }))
+    .toString('base64url');
+  return `header.${payload}.signature`;
+}
 
 function fakeRoute(
   url: string,
@@ -301,6 +310,88 @@ describe('K2 Playwright deployment request guard', () => {
     expect(auth.fetchRequest.mock.calls[0][0]?.headers?.[K2_VERCEL_TRUSTED_SOURCE_HEADER]).toBeUndefined();
     expect(auth.abort).not.toHaveBeenCalled();
     expect(auth.fulfill).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes an expiring token in one flight and only for the attested Vercel origin', async () => {
+    let now = 1_800_000_000_000;
+    const staleToken = syntheticOidcToken(now + 120_500);
+    const freshToken = syntheticOidcToken(now + 300_000);
+    let releaseRefresh!: (value: string) => void;
+    const refresh = vi.fn(() => new Promise<string>(resolve => { releaseRefresh = resolve; }));
+    const getToken = vi.fn(createK2TrustedSourceTokenSupplier(staleToken, refresh, () => now));
+    expect(await getToken()).toBe(staleToken);
+    now += 90_501;
+
+    const first = fakeRoute(`${config.vercelOrigin}/dictionary`);
+    const second = fakeRoute(`${config.vercelOrigin}/auth`);
+    const firstPending = handleK2BrowserRoute(first.route, config, getToken);
+    const secondPending = handleK2BrowserRoute(second.route, config, getToken);
+    expect(refresh).toHaveBeenCalledOnce();
+    releaseRefresh(freshToken);
+    await Promise.all([firstPending, secondPending]);
+
+    for (const route of [first, second]) {
+      expect(route.fetchRequest.mock.calls[0]?.[0]?.headers?.[K2_VERCEL_TRUSTED_SOURCE_HEADER])
+        .toBe(freshToken);
+      expect(route.fetchRequest.mock.calls[0]?.[0]?.maxRedirects).toBe(0);
+      expect(route.fulfill).toHaveBeenCalledOnce();
+    }
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(getToken).toHaveBeenCalledTimes(3);
+
+    const auth = fakeRoute(`${config.supabaseUrl}/auth/v1/token`, {
+      [K2_VERCEL_TRUSTED_SOURCE_HEADER]: freshToken,
+    });
+    await handleK2BrowserRoute(auth.route, config, getToken);
+    expect(auth.fetchRequest.mock.calls[0]?.[0]?.headers?.[K2_VERCEL_TRUSTED_SOURCE_HEADER]).toBeUndefined();
+    expect(getToken).toHaveBeenCalledTimes(3);
+
+    const directApi = fakeRoute(`${config.vercelOrigin}/api/v1/me`, {
+      authorization: 'Bearer actor-session-marker',
+    });
+    const forwardApi = vi.fn(async (route: typeof directApi.route) => { await route.abort(); });
+    await handleK2BrowserRoute(directApi.route, config, getToken, forwardApi);
+    expect(forwardApi).toHaveBeenCalledOnce();
+    expect(directApi.abort).toHaveBeenCalledOnce();
+    expect(directApi.fetchRequest).not.toHaveBeenCalled();
+    expect(getToken).toHaveBeenCalledTimes(3);
+
+    const disallowed = fakeRoute('https://not-attested.invalid/');
+    await handleK2BrowserRoute(disallowed.route, config, getToken);
+    expect(disallowed.abort).toHaveBeenCalledOnce();
+    expect(getToken).toHaveBeenCalledTimes(3);
+  });
+
+  it('fails closed on malformed, expired, failed, and too-near-expiry tokens', async () => {
+    const now = 1_800_000_000_000;
+    expect(() => createK2TrustedSourceTokenSupplier(
+      'not-a-jwt', async () => syntheticOidcToken(now + 300_000), () => now,
+    )).toThrow('K2 hosted acceptance trusted-source token expiry was invalid.');
+
+    const expired = syntheticOidcToken(now + 1_000);
+    const providerError = createK2TrustedSourceTokenSupplier(
+      expired, async () => { throw new Error('private provider detail'); }, () => now,
+    );
+    const providerFailedRoute = fakeRoute(`${config.vercelOrigin}/dictionary`);
+    await handleK2BrowserRoute(providerFailedRoute.route, config, providerError);
+    expect(providerFailedRoute.abort).toHaveBeenCalledOnce();
+    expect(providerFailedRoute.fetchRequest).not.toHaveBeenCalled();
+
+    const malformedReplacement = createK2TrustedSourceTokenSupplier(
+      expired, async () => 'malformed.jwt.token', () => now,
+    );
+    const malformedRoute = fakeRoute(`${config.vercelOrigin}/dictionary`);
+    await handleK2BrowserRoute(malformedRoute.route, config, malformedReplacement);
+    expect(malformedRoute.abort).toHaveBeenCalledOnce();
+    expect(malformedRoute.fetchRequest).not.toHaveBeenCalled();
+
+    const tooNearExpiry = createK2TrustedSourceTokenSupplier(
+      expired, async () => syntheticOidcToken(now + 10_000), () => now,
+    );
+    const near = fakeRoute(`${config.vercelOrigin}/dictionary`);
+    await handleK2BrowserRoute(near.route, config, tooNearExpiry);
+    expect(near.abort).toHaveBeenCalledOnce();
+    expect(near.fetchRequest).not.toHaveBeenCalled();
   });
 
   it('does not follow a real cross-origin redirect or send the OIDC token to its target', async () => {
