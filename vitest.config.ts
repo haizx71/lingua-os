@@ -9,7 +9,16 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/frontend/setup.ts'],
     testTimeout: 15000,
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/acceptance/*.spec.ts'],
+    // The protected acceptance workflow owns the required live FRLL phase gate.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'tests/acceptance/*.spec.ts',
+      'tests/acceptance/phase_b.test.ts',
+      'tests/acceptance/phase_c.test.ts',
+      'tests/acceptance/phase_d.test.ts',
+      'tests/acceptance/phase_e.test.ts',
+    ],
   },
   resolve: {
     alias: {

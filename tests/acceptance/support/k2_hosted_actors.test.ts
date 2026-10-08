@@ -393,6 +393,9 @@ describe('K2 hosted actor lifecycle boundaries', () => {
     const priorWaveEnv = { ...recoveryEnv, K2_ACCEPTANCE_WAVE: 'K2-08' };
     delete priorWaveEnv.K2_GITHUB_TOKEN;
     expect(validateK2HostedEnvironment(priorWaveEnv, 'cleanup-current').githubToken).toBe('');
+    const frllWaveEnv = { ...recoveryEnv, K2_ACCEPTANCE_WAVE: 'K2-10' };
+    delete frllWaveEnv.K2_GITHUB_TOKEN;
+    expect(validateK2HostedEnvironment(frllWaveEnv, 'cleanup-current').githubToken).toBe('');
     expect(() => validateK2HostedEnvironment({
       ...recoveryEnv,
       ACTIONS_ID_TOKEN_REQUEST_URL: '',
