@@ -2,7 +2,10 @@ import type { BrowserContext, Route } from '@playwright/test';
 import { isDeepStrictEqual } from 'node:util';
 import { createHash } from 'node:crypto';
 import type { K2HostedConfig } from './k2_hosted_actors';
-import { headersForK2ProtectedOrigin } from './k2_vercel_header';
+import {
+  headersForK2ProtectedOrigin,
+  type K2TrustedSourceTokenSupplier,
+} from './k2_vercel_header';
 import { validateContract } from './contract_validation';
 
 export type K2FrllActorSession = Readonly<{ accessToken: string; userId: string; profileId: string }>;
@@ -569,7 +572,7 @@ export async function forwardK2FrllBrowserRequest(
 export async function handleK2BrowserRoute(
   route: Route,
   config: Pick<K2HostedConfig, 'supabaseUrl'> & { readonly vercelOrigin: string },
-  trustedSourceToken: string,
+  trustedSourceToken: string | K2TrustedSourceTokenSupplier,
   frllApiRequest?: (route: Route) => Promise<void>,
 ): Promise<void> {
   let requestUrl: URL;
@@ -585,13 +588,20 @@ export async function handleK2BrowserRoute(
       await route.abort();
       return;
     }
-    const headers = headersForK2ProtectedOrigin(
-      requestUrl.href,
-      route.request().headers(),
-      config.vercelOrigin,
-      trustedSourceToken,
-    );
-    await fulfillWithoutRedirect(route, headers);
+    try {
+      const token = typeof trustedSourceToken === 'string'
+        ? trustedSourceToken
+        : await trustedSourceToken();
+      const headers = headersForK2ProtectedOrigin(
+        requestUrl.href,
+        route.request().headers(),
+        config.vercelOrigin,
+        token,
+      );
+      await fulfillWithoutRedirect(route, headers);
+    } catch {
+      await route.abort();
+    }
     return;
   }
 
@@ -600,7 +610,7 @@ export async function handleK2BrowserRoute(
       requestUrl.href,
       route.request().headers(),
       config.vercelOrigin,
-      trustedSourceToken,
+      typeof trustedSourceToken === 'string' ? trustedSourceToken : '',
     );
     await fulfillWithoutRedirect(route, headers);
     return;
@@ -629,7 +639,7 @@ async function fulfillWithoutRedirect(route: Route, headers: Record<string, stri
 export function installK2BrowserRequestGuard(
   context: BrowserContext,
   config: Pick<K2HostedConfig, 'supabaseUrl'> & { readonly vercelOrigin: string },
-  trustedSourceToken: string,
+  trustedSourceToken: string | K2TrustedSourceTokenSupplier,
   frllApiRequest?: (route: Route) => Promise<void>,
 ): Promise<void> {
   return context.route('**/*', route => handleK2BrowserRoute(route, config, trustedSourceToken, frllApiRequest)).then(() => undefined);
