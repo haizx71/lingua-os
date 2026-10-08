@@ -1442,16 +1442,14 @@ def _frll_snapshot_memory(value: Any) -> dict[str, Any]:
     step = value.get("step")
     state_version = value.get("stateVersion")
     if (
-        state not in {"new", "learning", "review", "relearning"}
+        state not in {"learning", "review", "relearning"}
         or not isinstance(params_version, str)
         or not 1 <= len(params_version) <= 64
-        or type(step) is not int
-        or step < 0
         or type(state_version) is not int
         or state_version < 2
     ):
         raise ProbeError
-    return {
+    result = {
         "state": state,
         "dueAt": _frll_timestamp(value.get("dueAt")),
         "lastReviewedAt": _frll_timestamp(value.get("lastReviewAt")),
@@ -1461,6 +1459,19 @@ def _frll_snapshot_memory(value: Any) -> dict[str, Any]:
         "stateVersion": state_version,
         "paramsVersion": params_version,
     }
+    if (
+        result["dueAt"] is None
+        or result["lastReviewedAt"] is None
+        or result["difficulty"] is None
+        or result["stability"] is None
+    ):
+        raise ProbeError
+    if state == "review":
+        if step is not None:
+            raise ProbeError
+    elif type(step) is not int or step < 0:
+        raise ProbeError
+    return result
 
 
 def _frll_snapshot_competence(value: Any) -> dict[str, dict[str, Any]]:
@@ -1587,7 +1598,8 @@ def _frll_semantic_proof(
 
     memory_rows = connection.execute(
         """SELECT memory.state, memory.state_version, memory.due_at, memory.last_review_at,
-                  memory.difficulty::text, memory.stability::text, memory.params_version
+                  memory.difficulty::text, memory.stability::text,
+                  memory.params_version, memory.step
            FROM public.fsrs_states AS memory
            JOIN public.review_items AS item ON item.id = memory.review_item_id AND item.user_id = memory.user_id
            WHERE item.user_id = %s AND item.concept_id = %s""",
@@ -1601,18 +1613,49 @@ def _frll_semantic_proof(
             type(memory_row[1]) is not int or memory_row[1] < 1 or
             not isinstance(memory_row[6], str) or not 1 <= len(memory_row[6]) <= 64):
             raise ProbeError
+        state = memory_row[0]
+        due_at = _frll_timestamp(memory_row[2])
+        last_review_at = _frll_timestamp(memory_row[3])
+        difficulty = _frll_decimal(memory_row[4])
+        stability = _frll_decimal(memory_row[5])
+        step = memory_row[7]
+        if due_at is None:
+            raise ProbeError
+        if state == "new":
+            if (
+                last_review_at is not None
+                or difficulty is not None
+                or stability is not None
+                or step is not None
+            ):
+                raise ProbeError
+        elif state == "review":
+            if (
+                last_review_at is None
+                or difficulty is None
+                or stability is None
+                or step is not None
+            ):
+                raise ProbeError
+        elif (
+            last_review_at is None
+            or difficulty is None
+            or stability is None
+            or type(step) is not int
+            or step < 0
+        ):
+            raise ProbeError
         memory = {
-            "rowCount": 1, "state": memory_row[0], "stateVersion": memory_row[1],
-            "dueAt": _frll_timestamp(memory_row[2]), "lastReviewedAt": _frll_timestamp(memory_row[3]),
-            "difficulty": _frll_decimal(memory_row[4]), "stability": _frll_decimal(memory_row[5]),
+            "rowCount": 1, "state": state, "stateVersion": memory_row[1],
+            "dueAt": due_at, "lastReviewedAt": last_review_at,
+            "difficulty": difficulty, "stability": stability, "step": step,
             "paramsVersion": memory_row[6],
         }
-        if memory["dueAt"] is None or memory["difficulty"] is None or memory["stability"] is None:
-            raise ProbeError
     else:
         memory = {
             "rowCount": 0, "state": None, "stateVersion": None, "dueAt": None,
-            "lastReviewedAt": None, "difficulty": None, "stability": None, "paramsVersion": None,
+            "lastReviewedAt": None, "difficulty": None, "stability": None, "step": None,
+            "paramsVersion": None,
         }
 
     review_rows = connection.execute(

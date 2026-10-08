@@ -35,7 +35,7 @@ function emptySemanticProof(): K2HostedFrllSemanticProof {
     },
     memory: {
       rowCount: 0, state: null, stateVersion: null, dueAt: null, lastReviewedAt: null,
-      difficulty: null, stability: null, paramsVersion: null,
+      difficulty: null, stability: null, step: null, paramsVersion: null,
     },
     review: {
       eventRows: 0, reviewLearningEventRows: 0, idempotencyKeyMatched: false, rating: null,
@@ -65,7 +65,7 @@ function savedSemanticProof(): K2HostedFrllSemanticProof {
     },
     memory: {
       rowCount: 1, state: 'new', stateVersion: 1, dueAt: '2026-10-08T01:00:00Z', lastReviewedAt: null,
-      difficulty: '5.00', stability: '1.00', paramsVersion: 'fsrs-1',
+      difficulty: null, stability: null, step: null, paramsVersion: 'fsrs-1',
     },
     projection: {
       headRows: 1, nextIngestionSequence: 2, methodVersion: 'competence-1', stateVersion: 2,
@@ -81,7 +81,7 @@ function savedSemanticProof(): K2HostedFrllSemanticProof {
 function reviewedSemanticProof(): K2HostedFrllSemanticProof {
   const saved = savedSemanticProof();
   const lastReviewedAt = '2026-10-08T00:05:00Z';
-  const dueAt = '2026-10-09T00:05:00Z';
+  const dueAt = '2026-10-08T00:15:00Z';
   const dimensions = {
     recognition: { score: '0.50', confidence: '0', evidenceCount: 0, updatedAt: null },
     listening: { score: '0.50', confidence: '0', evidenceCount: 0, updatedAt: null },
@@ -103,16 +103,16 @@ function reviewedSemanticProof(): K2HostedFrllSemanticProof {
       production: { score: '0.70', confidence: '0.60', evidenceCount: 1, lastEvidenceAt: lastReviewedAt },
     },
     memory: {
-      rowCount: 1, state: 'review', stateVersion: 2, dueAt, lastReviewedAt,
-      difficulty: '4.50', stability: '2.00', paramsVersion: 'fsrs-1',
+      rowCount: 1, state: 'learning', stateVersion: 2, dueAt, lastReviewedAt,
+      difficulty: '4.50', stability: '2.00', step: 1, paramsVersion: 'fsrs-1',
     },
     review: {
       eventRows: 1, reviewLearningEventRows: 1, idempotencyKeyMatched: true,
       rating: 'good', responseTimeMs: 1000, correct: true,
       exerciseMode: 'self_recall', evidenceMode: 'production',
       resultMemory: {
-        state: 'review', dueAt, lastReviewedAt, difficulty: '4.50', stability: '2.00',
-        step: 0, stateVersion: 2, paramsVersion: 'fsrs-1',
+        state: 'learning', dueAt, lastReviewedAt, difficulty: '4.50', stability: '2.00',
+        step: 1, stateVersion: 2, paramsVersion: 'fsrs-1',
       },
       resultCompetence: dimensions,
     },
@@ -213,6 +213,37 @@ describe('K2-10 frozen FRLL/R1 assertions', () => {
       ...reviewedSemanticProof(),
       review: { ...reviewedSemanticProof().review, idempotencyKeyMatched: false },
     }, true)).toThrow('Review did not persist one atomic');
+  });
+
+  it('accepts the real first-good learning step and rejects invalid post-review FSRS shapes', () => {
+    const reviewed = reviewedSemanticProof();
+    expect(reviewed.memory.state).toBe('learning');
+    expect(reviewed.memory.step).toBe(1);
+    expect(() => assertReviewedState(reviewed)).not.toThrow();
+
+    const newState: K2HostedFrllSemanticProof = {
+      ...reviewed,
+      memory: { ...reviewed.memory, state: 'new', lastReviewedAt: null, difficulty: null, stability: null, step: null },
+      review: {
+        ...reviewed.review,
+        resultMemory: reviewed.review.resultMemory
+          ? { ...reviewed.review.resultMemory, state: 'learning', step: 1 }
+          : null,
+      },
+    };
+    expect(() => assertReviewedState(newState)).toThrow('Review did not persist one atomic');
+
+    const mismatchedStep: K2HostedFrllSemanticProof = {
+      ...reviewed,
+      memory: { ...reviewed.memory, step: 0 },
+    };
+    expect(() => assertReviewedState(mismatchedStep)).toThrow('FRLL persisted memory step');
+
+    const illegalNullStep: K2HostedFrllSemanticProof = {
+      ...reviewed,
+      memory: { ...reviewed.memory, step: null },
+    };
+    expect(() => assertReviewedState(illegalNullStep)).toThrow('Review did not persist one atomic');
   });
 
   it('allows only the complete semantic Review transition and documented Today deltas', () => {

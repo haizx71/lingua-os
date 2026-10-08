@@ -120,12 +120,13 @@ export type K2HostedFrllSemanticProof = Readonly<{
   }>;
   memory: Readonly<{
     rowCount: number;
-    state: string | null;
+    state: 'new' | 'learning' | 'review' | 'relearning' | null;
     stateVersion: number | null;
     dueAt: string | null;
     lastReviewedAt: string | null;
     difficulty: string | null;
     stability: string | null;
+    step: number | null;
     paramsVersion: string | null;
   }>;
   review: Readonly<{
@@ -138,12 +139,12 @@ export type K2HostedFrllSemanticProof = Readonly<{
     exerciseMode: 'self_recall' | 'multiple_choice' | 'typing' | 'cloze' | 'listening' | null;
     evidenceMode: 'recognition' | 'listening' | 'cloze' | 'production' | null;
     resultMemory: Readonly<{
-      state: string;
+      state: 'learning' | 'review' | 'relearning';
       dueAt: string;
       lastReviewedAt: string;
       difficulty: string;
       stability: string;
-      step: number;
+      step: number | null;
       stateVersion: number;
       paramsVersion: string;
     }> | null;
@@ -285,16 +286,26 @@ export function parseK2HostedFrllSemanticProof(value: unknown): K2HostedFrllSema
         concept.hasLearningIntent, concept.hasProjectableEvidence].some(item =>
         (concept.rowCount === 0) !== (item === null))) throw new Error(message);
   const memory = exactRecord(root.memory,
-    ['rowCount', 'state', 'stateVersion', 'dueAt', 'lastReviewedAt', 'difficulty', 'stability', 'paramsVersion'], message);
+    ['rowCount', 'state', 'stateVersion', 'dueAt', 'lastReviewedAt', 'difficulty', 'stability', 'step', 'paramsVersion'], message);
   const memoryStates = new Set(['new', 'learning', 'review', 'relearning']);
   if (!isSafeCount(memory.rowCount) || memory.rowCount > 1 ||
       !(memory.state === null || (typeof memory.state === 'string' && memoryStates.has(memory.state))) ||
       !(isSafeCount(memory.stateVersion) || memory.stateVersion === null) ||
       !isSafeTimestamp(memory.dueAt) || !isSafeTimestamp(memory.lastReviewedAt) ||
       !isSafeDecimal(memory.difficulty) || !isSafeDecimal(memory.stability) ||
-      !(memory.paramsVersion === null || (typeof memory.paramsVersion === 'string' && memory.paramsVersion.length <= 64)) ||
-      [memory.state, memory.stateVersion, memory.dueAt, memory.difficulty, memory.stability, memory.paramsVersion].some(item =>
+      !(isSafeCount(memory.step) || memory.step === null) ||
+      !(memory.paramsVersion === null || (typeof memory.paramsVersion === 'string' && memory.paramsVersion.length >= 1 && memory.paramsVersion.length <= 64)) ||
+      [memory.state, memory.stateVersion, memory.dueAt, memory.paramsVersion].some(item =>
         (memory.rowCount === 0) !== (item === null))) throw new Error(message);
+  const currentMemoryShapeValid = memory.rowCount === 0
+    ? memory.lastReviewedAt === null && memory.difficulty === null && memory.stability === null && memory.step === null
+    : memory.state === 'new'
+      ? memory.lastReviewedAt === null && memory.difficulty === null && memory.stability === null && memory.step === null
+      : memory.state === 'review'
+        ? memory.lastReviewedAt !== null && memory.difficulty !== null && memory.stability !== null && memory.step === null
+        : (memory.state === 'learning' || memory.state === 'relearning') &&
+          memory.lastReviewedAt !== null && memory.difficulty !== null && memory.stability !== null && isSafeCount(memory.step);
+  if (!currentMemoryShapeValid) throw new Error(message);
   const review = exactRecord(root.review, [
     'eventRows', 'reviewLearningEventRows', 'idempotencyKeyMatched', 'rating', 'responseTimeMs',
     'correct', 'exerciseMode', 'evidenceMode', 'resultMemory', 'resultCompetence',
@@ -317,11 +328,13 @@ export function parseK2HostedFrllSemanticProof(value: unknown): K2HostedFrllSema
   if (review.resultMemory !== null) {
     const resultMemory = exactRecord(review.resultMemory,
       ['state', 'dueAt', 'lastReviewedAt', 'difficulty', 'stability', 'step', 'stateVersion', 'paramsVersion'], message);
-    if (typeof resultMemory.state !== 'string' || !memoryStates.has(resultMemory.state) ||
+    if (typeof resultMemory.state !== 'string' || !['learning', 'review', 'relearning'].includes(resultMemory.state) ||
         !isSafeTimestamp(resultMemory.dueAt, false) || !isSafeTimestamp(resultMemory.lastReviewedAt, false) ||
         !isSafeDecimal(resultMemory.difficulty, false) || !isSafeDecimal(resultMemory.stability, false) ||
-        !isSafeCount(resultMemory.step) || !isSafeCount(resultMemory.stateVersion) || resultMemory.stateVersion < 2 ||
-        typeof resultMemory.paramsVersion !== 'string' || resultMemory.paramsVersion.length > 64) throw new Error(message);
+        !(isSafeCount(resultMemory.step) || resultMemory.step === null) ||
+        (resultMemory.state === 'review' ? resultMemory.step !== null : !isSafeCount(resultMemory.step)) ||
+        !isSafeCount(resultMemory.stateVersion) || resultMemory.stateVersion < 2 ||
+        typeof resultMemory.paramsVersion !== 'string' || resultMemory.paramsVersion.length < 1 || resultMemory.paramsVersion.length > 64) throw new Error(message);
   }
   let resultCompetence: K2HostedFrllSemanticProof['review']['resultCompetence'] = null;
   if (review.resultCompetence !== null) {
