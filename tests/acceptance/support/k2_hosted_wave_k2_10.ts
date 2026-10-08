@@ -154,6 +154,8 @@ export function assertSavedState(proof: K2HostedFrllSemanticProof): void {
     proof.save.saveLearningEventRows === 1 && proof.save.reviewItemRows === 1 &&
     proof.save.fsrsStateRows === 1 && proof.concept.rowCount === 1 &&
     proof.concept.hasLearningIntent === true && proof.concept.hasProjectableEvidence === false &&
+    proof.concept.mastery === null && proof.concept.confidence !== null &&
+    proof.concept.exposureCount === 0 && proof.concept.lastSeenAt === null &&
     proof.memory.rowCount === 1 && proof.memory.stateVersion === 1 &&
     proof.memory.state === 'new' && proof.memory.dueAt !== null &&
     proof.memory.lastReviewedAt === null && proof.memory.difficulty === null &&
@@ -161,6 +163,50 @@ export function assertSavedState(proof: K2HostedFrllSemanticProof): void {
     proof.review.eventRows === 0,
     'K2 hosted acceptance FRLL Save did not create exactly one intent and primary Memory lineage.',
   );
+  assertProjectionNumber(proof.concept.confidence, 0, 'FRLL fresh Save concept confidence');
+}
+
+// Review receipts retain the FSRS float; fsrs_states stores it at the column's fixed scale.
+function fsrsColumnValue(value: unknown, label: string, columnType: string): bigint {
+  if (typeof value !== 'string' || value.length > 64) {
+    throw new Error(`${label}: differs from persisted ${columnType} authority.`);
+  }
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:[Ee]([+-]?\d+))?$/.exec(value);
+  if (!match) throw new Error(`${label}: differs from persisted ${columnType} authority.`);
+  const exponent = match[4] === undefined ? 0 : Number(match[4]);
+  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 64) {
+    throw new Error(`${label}: differs from persisted ${columnType} authority.`);
+  }
+  const fraction = match[3] ?? '';
+  const digits = BigInt(`${match[2]}${fraction}`);
+  const shift = 4 - fraction.length + exponent;
+  let scaled: bigint;
+  if (shift >= 0) {
+    if (shift > 64) throw new Error(`${label}: differs from persisted ${columnType} authority.`);
+    scaled = digits * 10n ** BigInt(shift);
+  } else {
+    const divisor = 10n ** BigInt(-shift);
+    const whole = digits / divisor;
+    const remainder = digits % divisor;
+    scaled = whole + (remainder * 2n >= divisor ? 1n : 0n);
+  }
+  return match[1] === '-' ? -scaled : scaled;
+}
+
+function assertFsrsNumericStorage(
+  receipt: unknown,
+  persisted: unknown,
+  label: string,
+  columnType: string,
+  minimum: bigint,
+  maximum: bigint,
+): void {
+  const receiptValue = fsrsColumnValue(receipt, label, columnType);
+  const persistedValue = fsrsColumnValue(persisted, label, columnType);
+  if (receiptValue < minimum || receiptValue > maximum ||
+      persistedValue < minimum || persistedValue > maximum || receiptValue !== persistedValue) {
+    throw new Error(`${label}: differs from persisted ${columnType} authority.`);
+  }
 }
 
 export function assertReviewedState(
@@ -196,8 +242,14 @@ export function assertReviewedState(
   assertExact(resultMemory.stateVersion, proof.memory.stateVersion, 'FRLL persisted memory version');
   assertTimestamp(resultMemory.dueAt, proof.memory.dueAt, 'FRLL persisted memory dueAt');
   assertTimestamp(resultMemory.lastReviewedAt, proof.memory.lastReviewedAt, 'FRLL persisted memory lastReviewedAt');
-  assertProjectionNumber(resultMemory.difficulty, proof.memory.difficulty, 'FRLL persisted memory difficulty');
-  assertProjectionNumber(resultMemory.stability, proof.memory.stability, 'FRLL persisted memory stability');
+  assertFsrsNumericStorage(
+    resultMemory.difficulty, proof.memory.difficulty, 'FRLL persisted memory difficulty', 'numeric(7,4)',
+    10_000n, 100_000n,
+  );
+  assertFsrsNumericStorage(
+    resultMemory.stability, proof.memory.stability, 'FRLL persisted memory stability', 'numeric(12,4)',
+    1n, 999_999_999_999n,
+  );
   assertExact(resultMemory.step, proof.memory.step, 'FRLL persisted memory step');
   assertExact(resultMemory.paramsVersion, proof.memory.paramsVersion, 'FRLL persisted memory parameters');
 

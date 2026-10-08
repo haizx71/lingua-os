@@ -56,8 +56,8 @@ function savedSemanticProof(): K2HostedFrllSemanticProof {
     save: { savedMembershipRows: 1, saveIntentRows: 1, saveLearningEventRows: 1, reviewItemRows: 1, fsrsStateRows: 1 },
     concept: {
       ...proof.concept,
-      rowCount: 1, status: 'learning', mastery: '0.10', confidence: '0.20', exposureCount: 1,
-      lastSeenAt: '2026-10-08T00:00:00Z', stateVersion: 2,
+      rowCount: 1, status: 'learning', mastery: null, confidence: '0', exposureCount: 0,
+      lastSeenAt: null, stateVersion: 2,
       hasLearningIntent: true, hasProjectableEvidence: false,
       recognition: { score: '0.50', confidence: '0', evidenceCount: 0, lastEvidenceAt: null },
       listening: { score: '0.50', confidence: '0', evidenceCount: 0, lastEvidenceAt: null },
@@ -204,6 +204,10 @@ describe('K2-10 frozen FRLL/R1 assertions', () => {
       save: { ...savedSemanticProof().save, saveIntentRows: 0 },
     })).toThrow('Save did not create exactly one intent');
     expect(() => assertSavedState(savedSemanticProof())).not.toThrow();
+    expect(() => assertSavedState({
+      ...savedSemanticProof(),
+      concept: { ...savedSemanticProof().concept, mastery: '0' },
+    })).toThrow('Save did not create exactly one intent');
   });
 
   it('requires committed review, Memory version advance, competence projection, and exact receipt proof', () => {
@@ -244,6 +248,82 @@ describe('K2-10 frozen FRLL/R1 assertions', () => {
       memory: { ...reviewed.memory, step: null },
     };
     expect(() => assertReviewedState(illegalNullStep)).toThrow('Review did not persist one atomic');
+  });
+
+  it('compares review receipts at the persisted FSRS numeric scale without accepting adjacent values', () => {
+    const reviewed = reviewedSemanticProof();
+    const roundedReceipt: K2HostedFrllSemanticProof = {
+      ...reviewed,
+      memory: { ...reviewed.memory, difficulty: '5.1235', stability: '2.0000' },
+      review: {
+        ...reviewed.review,
+        resultMemory: reviewed.review.resultMemory
+          ? { ...reviewed.review.resultMemory, difficulty: '5.1234567', stability: '2.00000001' }
+          : null,
+      },
+    };
+    expect(() => assertReviewedState(roundedReceipt)).not.toThrow();
+
+    const roundedHalf: K2HostedFrllSemanticProof = {
+      ...roundedReceipt,
+      memory: { ...roundedReceipt.memory, difficulty: '5.1235' },
+      review: {
+        ...roundedReceipt.review,
+        resultMemory: roundedReceipt.review.resultMemory
+          ? { ...roundedReceipt.review.resultMemory, difficulty: '5.12345' }
+          : null,
+      },
+    };
+    expect(() => assertReviewedState(roundedHalf)).not.toThrow();
+
+    const adjacentStoredValue: K2HostedFrllSemanticProof = {
+      ...roundedReceipt,
+      memory: { ...roundedReceipt.memory, difficulty: '5.1234' },
+    };
+    expect(() => assertReviewedState(adjacentStoredValue)).toThrow(
+      'FRLL persisted memory difficulty: differs from persisted numeric(7,4) authority.',
+    );
+
+    const outOfRangeReceipt: K2HostedFrllSemanticProof = {
+      ...roundedReceipt,
+      review: {
+        ...roundedReceipt.review,
+        resultMemory: roundedReceipt.review.resultMemory
+          ? { ...roundedReceipt.review.resultMemory, difficulty: '10.0001' }
+          : null,
+      },
+    };
+    expect(() => assertReviewedState(outOfRangeReceipt)).toThrow(
+      'FRLL persisted memory difficulty: differs from persisted numeric(7,4) authority.',
+    );
+
+    const outOfRangeDifficulty: K2HostedFrllSemanticProof = {
+      ...roundedReceipt,
+      memory: { ...roundedReceipt.memory, difficulty: '10.0001' },
+      review: {
+        ...roundedReceipt.review,
+        resultMemory: roundedReceipt.review.resultMemory
+          ? { ...roundedReceipt.review.resultMemory, difficulty: '10.0001' }
+          : null,
+      },
+    };
+    expect(() => assertReviewedState(outOfRangeDifficulty)).toThrow(
+      'FRLL persisted memory difficulty: differs from persisted numeric(7,4) authority.',
+    );
+
+    const outOfRangeStability: K2HostedFrllSemanticProof = {
+      ...roundedReceipt,
+      memory: { ...roundedReceipt.memory, stability: '100000000.0000' },
+      review: {
+        ...roundedReceipt.review,
+        resultMemory: roundedReceipt.review.resultMemory
+          ? { ...roundedReceipt.review.resultMemory, stability: '100000000.0000' }
+          : null,
+      },
+    };
+    expect(() => assertReviewedState(outOfRangeStability)).toThrow(
+      'FRLL persisted memory stability: differs from persisted numeric(12,4) authority.',
+    );
   });
 
   it('allows only the complete semantic Review transition and documented Today deltas', () => {
