@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { BrowserContext, Page } from '@playwright/test';
 import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
   assertK210FreshProfileBootstrapSnapshot,
@@ -16,6 +17,7 @@ import {
   projectK2WaveApiPayload,
   requestK2HostedApi,
   runK2ProtectedAuthUiSignIn,
+  signInInitialK210Actor,
   verifyK2FixtureZeroRowHead,
   type K2ProtectedAuthUiInteractions,
   type K2ProtectedAuthUiResponse,
@@ -1354,6 +1356,72 @@ function apiResponse(
     },
   });
 }
+
+describe('signInInitialK210Actor', () => {
+  const controllerToken = 'header.payload.signature';
+
+  it('binds the verified actor in a short-lived same-context page and leaves the product page blank', async () => {
+    const primaryPage = { url: vi.fn(() => 'about:blank') } as unknown as Page;
+    const controllerPage = { close: vi.fn(async () => {}) } as unknown as Page;
+    const browserContext = {
+      newPage: vi.fn(async () => controllerPage),
+    } as unknown as BrowserContext;
+    const signInController = vi.fn(async (page: Page) => {
+      expect(page).toBe(controllerPage);
+      return controllerToken;
+    });
+
+    const result = await signInInitialK210Actor(
+      primaryPage, browserContext, actor,
+      'https://supabase.example.invalid', 'publishable-marker', 'https://vercel.example.invalid',
+      signInController,
+    );
+
+    expect(result).toBe(controllerToken);
+    expect(browserContext.newPage).toHaveBeenCalledOnce();
+    expect(signInController).toHaveBeenCalledOnce();
+    expect(controllerPage.close).toHaveBeenCalledOnce();
+    expect(primaryPage.url).toHaveBeenCalledTimes(2);
+    expect(primaryPage.url()).toBe('about:blank');
+  });
+
+  it('fails closed and closes the controller when sign-in fails', async () => {
+    const primaryPage = { url: vi.fn(() => 'about:blank') } as unknown as Page;
+    const controllerPage = { close: vi.fn(async () => {}) } as unknown as Page;
+    const browserContext = {
+      newPage: vi.fn(async () => controllerPage),
+    } as unknown as BrowserContext;
+    const signInController = vi.fn(async () => {
+      throw new Error(`private=${actor.email};${actor.password};fake-session-marker`);
+    });
+
+    const error = await rejectedError(signInInitialK210Actor(
+      primaryPage, browserContext, actor,
+      'https://supabase.example.invalid', 'publishable-marker', 'https://vercel.example.invalid',
+      signInController,
+    ));
+    const report = `${error.message}\n${error.stack ?? ''}`;
+
+    expect(error.message).toContain('sensitive details were suppressed');
+    expect(error).not.toHaveProperty('cause');
+    expect(controllerPage.close).toHaveBeenCalledOnce();
+    for (const marker of privateMarkers) expect(report).not.toContain(marker);
+  });
+
+  it('rejects a product page that was navigated before K2-10 sign-in', async () => {
+    const primaryPage = { url: vi.fn(() => 'https://vercel.example.invalid/today') } as unknown as Page;
+    const browserContext = { newPage: vi.fn() } as unknown as BrowserContext;
+    const signInController = vi.fn(async () => controllerToken);
+
+    await expect(signInInitialK210Actor(
+      primaryPage, browserContext, actor,
+      'https://supabase.example.invalid', 'publishable-marker', 'https://vercel.example.invalid',
+      signInController,
+    )).rejects.toThrow('sensitive details were suppressed');
+    expect(browserContext.newPage).not.toHaveBeenCalled();
+    expect(signInController).not.toHaveBeenCalled();
+  });
+});
 
 describe('runK2ProtectedAuthUiSignIn', () => {
   it('preserves the normal sign-in identity check and destination wait', async () => {

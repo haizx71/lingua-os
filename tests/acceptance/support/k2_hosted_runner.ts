@@ -58,7 +58,7 @@ import {
   type K2FrllBrowserRequest,
   type K2FrllNavigationRoute,
 } from './k2_playwright_network';
-import { readInitialK2BrowserActorAccessToken, signInK2BrowserActor } from './browser_actor_switch';
+import { signInK2BrowserActor } from './browser_actor_switch';
 import {
   assertK2CreatedLanguageProfileReadback,
   parseK2LanguageProfileList,
@@ -1792,6 +1792,58 @@ async function verifyAuthUiSignIn(page: Page, actor: K2HostedActor, vercelOrigin
   });
 }
 
+const K2_K210_INITIAL_SIGN_IN_FAILURE =
+  'K2 hosted acceptance K2-10 isolated browser sign-in failed; sensitive details were suppressed.';
+
+/** Signs in K2-10 through a short-lived same-context controller without navigating the product page. */
+export async function signInInitialK210Actor(
+  primaryPage: Page,
+  browserContext: BrowserContext,
+  actor: Pick<K2HostedActor, 'id' | 'email' | 'password'>,
+  supabaseUrl: string,
+  publishableKey: string,
+  vercelOrigin: string,
+  signInController: typeof signInK2BrowserActor = signInK2BrowserActor,
+): Promise<string> {
+  try {
+    if (primaryPage.url() !== 'about:blank') throw new Error('unexpected initial page');
+  } catch {
+    throw new Error(K2_K210_INITIAL_SIGN_IN_FAILURE);
+  }
+
+  let controllerPage: Page;
+  try {
+    controllerPage = await browserContext.newPage();
+  } catch {
+    throw new Error(K2_K210_INITIAL_SIGN_IN_FAILURE);
+  }
+
+  let accessToken: string | undefined;
+  let failed = false;
+  try {
+    accessToken = await signInController(
+      controllerPage, actor, supabaseUrl, publishableKey, vercelOrigin,
+    );
+  } catch {
+    failed = true;
+  }
+  try {
+    await controllerPage.close();
+  } catch {
+    failed = true;
+  }
+  try {
+    if (primaryPage.url() !== 'about:blank') failed = true;
+  } catch {
+    failed = true;
+  }
+
+  if (failed || typeof accessToken !== 'string' || accessToken.length === 0) {
+    throw new Error(K2_K210_INITIAL_SIGN_IN_FAILURE);
+  }
+  return accessToken;
+}
+
 function createK2HostedFrllUi(
   vercelOrigin: string,
   todayDiagnostic?: ReturnType<typeof createK2FrllTodayDiagnostic>,
@@ -2156,14 +2208,19 @@ export async function runK2HostedWave(
       if (!actor || index < 0) throw new Error('K2 hosted acceptance actor handle was invalid.');
       const binding = frllAuthBindingBarrier?.begin();
       try {
-        await verifyAuthUiSignIn(page, actor, vercelOrigin, config);
-        if (frllWave) {
+        let browserToken: string | undefined;
+        if (plugin.waveId === 'K2-10') {
           if (!binding) throw new Error('K2 hosted acceptance K2-10 Auth binding guard was unavailable.');
-          const tokenPage = await browserContext.newPage();
-          frllPages.push(tokenPage);
-          const browserToken = await readInitialK2BrowserActorAccessToken(
-            tokenPage, actor.id, config.supabaseUrl, config.publishableKey, vercelOrigin,
+          browserToken = await signInInitialK210Actor(
+            page, browserContext, actor, config.supabaseUrl, config.publishableKey, vercelOrigin,
           );
+        } else {
+          await verifyAuthUiSignIn(page, actor, vercelOrigin, config);
+        }
+        if (frllWave) {
+          if (!binding || !browserToken) {
+            throw new Error('K2 hosted acceptance K2-10 initial actor binding was incomplete.');
+          }
           const profileId = profileIds[index];
           if (!profileId) throw new Error('K2 hosted acceptance K2-10 actor profile binding was incomplete.');
           browserFrllSessions.set(browserToken, {

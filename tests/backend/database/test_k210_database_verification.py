@@ -12,7 +12,7 @@ import subprocess
 import uuid
 from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +26,7 @@ from lingua_api.memory.domain import (
     ReviewSubmission,
 )
 from lingua_api.review.service import ReviewApplication
+from lingua_api.today.service import TodayApplication
 from psycopg import sql
 
 from database.migrate import migrate_up
@@ -314,6 +315,136 @@ def test_starter_and_grammar_import_replay_and_word_sense_collision_preserve_sta
         == learner_before_collision_attempt
         == learner_before
     )
+
+
+def test_k210_first_today_read_must_follow_save_to_select_the_review_target(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    database_url = isolated_migrated_postgres_url
+    seed_path = ROOT / "database" / "seeds" / "first_real_learning_loop.sql"
+    concept_id = uuid.UUID("7f110000-0000-4000-8000-000000000004")
+    actor_ids = (uuid.uuid4(), uuid.uuid4())
+    profile_ids: list[uuid.UUID] = []
+    with psycopg.connect(database_url) as connection:
+        connection.execute(seed_path.read_text(encoding="utf-8"))
+        for actor_id in actor_ids:
+            connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (actor_id,))
+            connection.execute("INSERT INTO public.users (id) VALUES (%s)", (actor_id,))
+            connection.execute(
+                """
+                INSERT INTO public.learner_profiles (user_id, time_zone)
+                VALUES (%s, 'Asia/Ho_Chi_Minh')
+                """,
+                (actor_id,),
+            )
+            profile = connection.execute(
+                """
+                INSERT INTO public.user_languages
+                    (user_id, language_code, interface_language_code, native_language_code,
+                     goal, daily_minutes)
+                VALUES (%s, 'en', 'vi', 'vi', 'communication', 15)
+                RETURNING id
+                """,
+                (actor_id,),
+            ).fetchone()
+            assert profile is not None
+            profile_ids.append(uuid.UUID(str(profile[0])))
+        database_now = connection.execute("SELECT clock_timestamp()").fetchone()
+        assert database_now is not None and isinstance(database_now[0], datetime)
+        connection.commit()
+
+    class FixedClock:
+        def __init__(self, now: datetime) -> None:
+            self._now = now
+
+        def now(self) -> datetime:
+            return self._now
+
+    # Make both real FSRS lineages due before Today reads them; do not edit
+    # scheduler state directly in SQL.
+    save_clock = FixedClock(database_now[0].astimezone(UTC) - timedelta(days=1))
+    library = LibraryApplication(
+        database_url,
+        cursor_secret=b"k210-first-today-ordering-test-cursor-secret",
+        clock=save_clock,
+    )
+    today = TodayApplication(database_url)
+    early_actor = AuthenticatedActor(actor_ids[0])
+    save_first_actor = AuthenticatedActor(actor_ids[1])
+
+    early_plan = today.get_plan(
+        actor=early_actor, language_profile_id=profile_ids[0], requested_date=None
+    )
+    assert not any(activity.activity_type == "review" for activity in early_plan.activities)
+    library.save_concept(actor=early_actor, concept_id=concept_id)
+    saved_review = _review_item_for(database_url, actor_ids[0], concept_id)
+    assert saved_review is not None
+
+    replayed_early_plan = today.get_plan(
+        actor=early_actor, language_profile_id=profile_ids[0], requested_date=None
+    )
+    assert replayed_early_plan.id == early_plan.id
+    assert not any(
+        activity.activity_type == "review" for activity in replayed_early_plan.activities
+    )
+    with psycopg.connect(database_url) as connection:
+        assert connection.execute(
+            "SELECT count(*) FROM today_activity_review_items WHERE user_id = %s",
+            (actor_ids[0],),
+        ).fetchone() == (0,)
+
+    library.save_concept(actor=save_first_actor, concept_id=concept_id)
+    saved_first_review = _review_item_for(database_url, actor_ids[1], concept_id)
+    assert saved_first_review is not None
+    first_today_plan = today.get_plan(
+        actor=save_first_actor, language_profile_id=profile_ids[1], requested_date=None
+    )
+    review_activities = [
+        activity for activity in first_today_plan.activities if activity.activity_type == "review"
+    ]
+    assert len(review_activities) == 1
+    review_activity = review_activities[0]
+    assert review_activity.target_count == 1
+    assert "FSRS_DUE" in review_activity.reason_codes
+    assert review_activity.review_item_id == saved_first_review
+    with psycopg.connect(database_url) as connection:
+        mappings = connection.execute(
+            """
+            SELECT mapping.activity_id, mapping.review_item_id
+            FROM public.today_activity_review_items AS mapping
+            JOIN public.today_plan_activities AS activity
+              ON activity.id = mapping.activity_id AND activity.user_id = mapping.user_id
+            WHERE activity.plan_id = %s AND mapping.user_id = %s
+            ORDER BY mapping.position
+            """,
+            (first_today_plan.id, actor_ids[1]),
+        ).fetchall()
+        plan_count = connection.execute(
+            """
+            SELECT count(*) FROM public.today_plans
+            WHERE user_id = %s AND user_language_id = %s AND plan_date = %s
+            """,
+            (actor_ids[1], profile_ids[1], first_today_plan.plan_date),
+        ).fetchone()
+    assert mappings == [(review_activity.id, saved_first_review)]
+    assert plan_count == (1,)
+
+    replayed_save_first_plan = today.get_plan(
+        actor=save_first_actor, language_profile_id=profile_ids[1], requested_date=None
+    )
+    assert replayed_save_first_plan.id == first_today_plan.id
+    assert replayed_save_first_plan.activities == first_today_plan.activities
+
+
+def _review_item_for(
+    database_url: str, actor_id: uuid.UUID, concept_id: uuid.UUID
+) -> uuid.UUID | None:
+    with psycopg.connect(database_url) as connection:
+        row = connection.execute(
+            "SELECT id FROM public.review_items WHERE user_id = %s AND concept_id = %s",
+            (actor_id, concept_id),
+        ).fetchone()
+    return None if row is None else uuid.UUID(str(row[0]))
 
 
 def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
