@@ -14,6 +14,24 @@ export type K2FrllBrowserRequest = Readonly<{
   readonly body?: Buffer;
 }>;
 export type K2FrllDirectRequest = (request: K2FrllBrowserRequest) => Promise<Response>;
+export type K2FrllDiagnosticRoute = 'me' | 'languages' | 'today' | 'review_answer' | 'other';
+export type K2FrllDiagnosticDecision =
+  | 'started' | 'origin_rejected' | 'bearer_missing' | 'actor_unbound' | 'unsupported_route'
+  | 'request_rejected' | 'upstream_unavailable' | 'redirect_rejected' | 'source_sha_mismatch'
+  | 'contract_invalid' | 'actor_mismatch' | 'profile_mismatch' | 'fulfilled'
+  | 'upstream_status' | 'response_dropped' | 'exception';
+export type K2FrllDiagnosticStatus = 'none' | '2xx' | '3xx' | '4xx' | '5xx' | 'other';
+export type K2FrllDiagnosticMatch = 'unchecked' | 'matched' | 'mismatched';
+export type K2FrllDiagnosticPresence = 'unchecked' | 'present' | 'missing';
+export type K2FrllDiagnosticEvent = Readonly<{
+  route: K2FrllDiagnosticRoute;
+  decision: K2FrllDiagnosticDecision;
+  status: K2FrllDiagnosticStatus;
+  contract: 'unchecked' | 'valid' | 'invalid';
+  binding: K2FrllDiagnosticMatch;
+  reviewTarget: K2FrllDiagnosticPresence;
+}>;
+export type K2FrllDiagnosticObserver = (event: K2FrllDiagnosticEvent) => void;
 export type K2FrllReplayProof = Readonly<{
   responseLossCommitted: boolean;
   exactRequestReplay: boolean;
@@ -60,6 +78,136 @@ export function createK2FrllAuthBindingBarrier(timeoutMs = 15_000): K2FrllAuthBi
       const pending = active;
       if (!pending) return false;
       return pending.promise;
+    },
+  };
+}
+
+export type K2FrllNavigationRoute = 'none' | 'today' | 'auth' | 'onboarding' | 'other';
+export type K2FrllHeadingState = 'not_checked' | 'visible' | 'wait_failed' | 'navigation_failed';
+
+const K2_FRLL_DIAGNOSTIC_ROUTES = new Set<K2FrllDiagnosticRoute>([
+  'me', 'languages', 'today', 'review_answer', 'other',
+]);
+const K2_FRLL_DIAGNOSTIC_DECISIONS = new Set<K2FrllDiagnosticDecision>([
+  'started', 'origin_rejected', 'bearer_missing', 'actor_unbound', 'unsupported_route', 'request_rejected',
+  'upstream_unavailable', 'redirect_rejected', 'source_sha_mismatch', 'contract_invalid',
+  'actor_mismatch', 'profile_mismatch', 'fulfilled', 'upstream_status', 'response_dropped', 'exception',
+]);
+const K2_FRLL_DIAGNOSTIC_STATUSES = new Set<K2FrllDiagnosticStatus>([
+  'none', '2xx', '3xx', '4xx', '5xx', 'other',
+]);
+const K2_FRLL_DIAGNOSTIC_MATCHES = new Set<K2FrllDiagnosticMatch>([
+  'unchecked', 'matched', 'mismatched',
+]);
+const K2_FRLL_DIAGNOSTIC_PRESENCE = new Set<K2FrllDiagnosticPresence>([
+  'unchecked', 'present', 'missing',
+]);
+
+export function k2FrllDiagnosticStatus(status: number | null): K2FrllDiagnosticStatus {
+  if (status === null) return 'none';
+  if (status >= 200 && status < 300) return '2xx';
+  if (status >= 300 && status < 400) return '3xx';
+  if (status >= 400 && status < 500) return '4xx';
+  if (status >= 500 && status < 600) return '5xx';
+  return 'other';
+}
+
+export function createK2FrllTodayDiagnostic() {
+  type ApiSnapshot = { started: number; outcomes: number; pending: number; event?: K2FrllDiagnosticEvent };
+  let active = false;
+  let activePage: object | undefined;
+  let navigation: Readonly<{
+    route: K2FrllNavigationRoute;
+    status: K2FrllDiagnosticStatus;
+    originBound: boolean;
+  }> = { route: 'none', status: 'none', originBound: false };
+  let heading: K2FrllHeadingState = 'not_checked';
+  let api: Record<'me' | 'languages' | 'today', ApiSnapshot> = {
+    me: { started: 0, outcomes: 0, pending: 0 },
+    languages: { started: 0, outcomes: 0, pending: 0 },
+    today: { started: 0, outcomes: 0, pending: 0 },
+  };
+  let firstFailure: K2FrllDiagnosticEvent | undefined;
+
+  return {
+    begin(page: object): void {
+      active = true;
+      activePage = page;
+      navigation = { route: 'none', status: 'none', originBound: false };
+      heading = 'not_checked';
+      api = {
+        me: { started: 0, outcomes: 0, pending: 0 },
+        languages: { started: 0, outcomes: 0, pending: 0 },
+        today: { started: 0, outcomes: 0, pending: 0 },
+      };
+      firstFailure = undefined;
+    },
+    recordApi(page: object, event: K2FrllDiagnosticEvent): void {
+      if (!active || page !== activePage || !K2_FRLL_DIAGNOSTIC_ROUTES.has(event.route) ||
+          !K2_FRLL_DIAGNOSTIC_DECISIONS.has(event.decision) ||
+          !K2_FRLL_DIAGNOSTIC_STATUSES.has(event.status) ||
+          !['unchecked', 'valid', 'invalid'].includes(event.contract) ||
+          !K2_FRLL_DIAGNOSTIC_MATCHES.has(event.binding) ||
+          !K2_FRLL_DIAGNOSTIC_PRESENCE.has(event.reviewTarget)) return;
+      if (event.route === 'me' || event.route === 'languages' || event.route === 'today') {
+        const previous = api[event.route];
+        const started = event.decision === 'started';
+        api[event.route] = {
+          started: Math.min(previous.started + (started ? 1 : 0), 99),
+          outcomes: Math.min(previous.outcomes + (started ? 0 : 1), 99),
+          pending: Math.max(0, Math.min(99, previous.pending + (started ? 1 : -1))),
+          event: Object.freeze({
+            route: event.route,
+            decision: event.decision,
+            status: event.status,
+            contract: event.contract,
+            binding: event.binding,
+            reviewTarget: event.reviewTarget,
+          }),
+        };
+      }
+      if (!firstFailure && event.decision !== 'started' && (event.decision !== 'fulfilled' || event.status !== '2xx' ||
+          event.contract === 'invalid' || event.binding === 'mismatched' ||
+          event.reviewTarget === 'missing')) {
+        firstFailure = Object.freeze({
+          route: event.route,
+          decision: event.decision,
+          status: event.status,
+          contract: event.contract,
+          binding: event.binding,
+          reviewTarget: event.reviewTarget,
+        });
+      }
+    },
+    recordNavigation(page: object, route: K2FrllNavigationRoute, status: K2FrllDiagnosticStatus, originBound: boolean): void {
+      if (!active || page !== activePage || !['none', 'today', 'auth', 'onboarding', 'other'].includes(route) ||
+          !K2_FRLL_DIAGNOSTIC_STATUSES.has(status) || typeof originBound !== 'boolean') return;
+      navigation = Object.freeze({ route, status, originBound });
+    },
+    recordHeading(page: object, value: K2FrllHeadingState): void {
+      if (active && page === activePage && ['not_checked', 'visible', 'wait_failed', 'navigation_failed'].includes(value)) heading = value;
+    },
+    end(page: object): void {
+      if (page === activePage) active = false;
+    },
+    summary(page: object): string {
+      if (page !== activePage) return 'nav_route=none nav_status=none nav_origin_bound=false heading=not_checked me_calls=0 me_status=none me_decision=none me_contract=unchecked me_bound=unchecked me_target=unchecked languages_calls=0 languages_status=none languages_decision=none languages_contract=unchecked languages_bound=unchecked languages_target=unchecked today_calls=0 today_status=none today_decision=none today_contract=unchecked today_bound=unchecked today_target=unchecked first_failure=none';
+      const describeApi = (key: 'me' | 'languages' | 'today') => {
+        const item = api[key];
+        const event = item.event;
+        return `${key}_started=${item.started} ${key}_outcomes=${item.outcomes} ${key}_pending=${item.pending} ` +
+          `${key}_status=${event?.status ?? 'none'} ` +
+          `${key}_decision=${event?.decision ?? 'none'} ${key}_contract=${event?.contract ?? 'unchecked'} ` +
+          `${key}_bound=${event?.binding ?? 'unchecked'} ${key}_target=${event?.reviewTarget ?? 'unchecked'}`;
+      };
+      const failure = firstFailure
+        ? `${firstFailure.route}.${firstFailure.decision}.${firstFailure.status}.` +
+          `${firstFailure.contract}.${firstFailure.binding}.${firstFailure.reviewTarget}`
+        : 'none';
+      return `nav_route=${navigation.route} nav_status=${navigation.status} ` +
+        `nav_origin_bound=${navigation.originBound} heading=${heading} ` +
+        `${describeApi('me')} ${describeApi('languages')} ${describeApi('today')} ` +
+        `first_failure=${failure}`;
     },
   };
 }
@@ -168,6 +316,37 @@ const K2_FRLL_ANCHOR_ID = '7f110000-0000-4000-8000-000000000004';
 const REVIEW_ITEM_PATH = /^\/v1\/review\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/answer$/i;
 const UUID_HEADER = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function diagnosticRoute(url: URL, method: string): K2FrllDiagnosticRoute {
+  if (url.pathname === '/api/v1/me' && method === 'GET') return 'me';
+  if (url.pathname === '/api/v1/me/languages' && method === 'GET') return 'languages';
+  if (url.pathname === '/api/v1/today' && method === 'GET') return 'today';
+  if (/^\/api\/v1\/review\/[0-9a-f-]+\/answer$/i.test(url.pathname) && method === 'POST') {
+    return 'review_answer';
+  }
+  return 'other';
+}
+
+function notifyDiagnostic(observer: K2FrllDiagnosticObserver | undefined, event: K2FrllDiagnosticEvent): void {
+  if (!observer) return;
+  try {
+    observer(Object.freeze({ ...event }));
+  } catch {
+    // Diagnostics must never affect guarded browser request behavior.
+  }
+}
+
+function hasTodayReviewTarget(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const plan = value as { activities?: unknown };
+  if (!Array.isArray(plan.activities)) return false;
+  return plan.activities.some(activity => {
+    if (!activity || typeof activity !== 'object' || Array.isArray(activity)) return false;
+    const item = activity as { activityType?: unknown; reasonCodes?: unknown; targetCount?: unknown; reviewItemId?: unknown };
+    return item.activityType === 'review' && typeof item.reviewItemId === 'string' && UUID_HEADER.test(item.reviewItemId) &&
+      item.targetCount === 1 && Array.isArray(item.reasonCodes) && item.reasonCodes.includes('FSRS_DUE');
+  });
+}
+
 function onlyQueryKeys(url: URL, required: readonly string[], optional: readonly string[] = []): boolean {
   const keys = [...url.searchParams.keys()];
   return required.every(key => url.searchParams.getAll(key).length === 1) &&
@@ -256,15 +435,32 @@ export async function forwardK2FrllBrowserRequest(
   directRequest: K2FrllDirectRequest,
   replayController?: K2FrllReplayController,
   authBindingBarrier?: K2FrllAuthBindingBarrier,
+  diagnosticObserver?: K2FrllDiagnosticObserver,
 ): Promise<void> {
+  let routeKind: K2FrllDiagnosticRoute = 'other';
+  let status: K2FrllDiagnosticStatus = 'none';
+  let contract: K2FrllDiagnosticEvent['contract'] = 'unchecked';
+  let binding: K2FrllDiagnosticMatch = 'unchecked';
+  let reviewTarget: K2FrllDiagnosticPresence = 'unchecked';
+  let terminalDiagnosticReported = false;
+  const report = (decision: K2FrllDiagnosticDecision) => {
+    if (decision !== 'started') {
+      if (terminalDiagnosticReported) return;
+      terminalDiagnosticReported = true;
+    }
+    notifyDiagnostic(diagnosticObserver, { route: routeKind, decision, status, contract, binding, reviewTarget });
+  };
   try {
     const request = route.request();
     const url = new URL(request.url());
-    if (url.origin !== config.vercelOrigin) { await route.abort(); return; }
+    const method = request.method().toUpperCase();
+    routeKind = diagnosticRoute(url, method);
+    report('started');
+    if (url.origin !== config.vercelOrigin) { report('origin_rejected'); await route.abort(); return; }
     const incoming = request.headers();
     const authorization = incoming.authorization;
     if (!authorization?.startsWith('Bearer ') || authorization.slice(7).length === 0) {
-      await route.abort();
+      report('bearer_missing'); await route.abort();
       return;
     }
     const accessToken = authorization.slice(7);
@@ -272,17 +468,16 @@ export async function forwardK2FrllBrowserRequest(
     if (!actor && authBindingBarrier && await authBindingBarrier.waitForBinding()) {
       actor = sessions.get(accessToken);
     }
-    if (!actor || authorization !== `Bearer ${actor.accessToken}`) { await route.abort(); return; }
+    if (!actor || authorization !== `Bearer ${actor.accessToken}`) { report('actor_unbound'); await route.abort(); return; }
 
-    const method = request.method().toUpperCase();
     const upstreamRoute = resolveFrllApiRoute(url, method, actor.profileId);
-    if (!upstreamRoute) { await route.abort(); return; }
+    if (!upstreamRoute) { report('unsupported_route'); await route.abort(); return; }
     const body = request.postDataBuffer() ?? undefined;
     if ((method === 'POST' && !validAnswerBody(body, incoming)) ||
         (method === 'PUT' && body && body.length > 0) ||
         ((method === 'GET' || method === 'HEAD') && body && body.length > 0) ||
         (method !== 'POST' && incoming['idempotency-key'] !== undefined)) {
-      await route.abort();
+      report('request_rejected'); await route.abort();
       return;
     }
 
@@ -294,14 +489,21 @@ export async function forwardK2FrllBrowserRequest(
       if (incoming[name] !== undefined) headers[name] = incoming[name];
     }
     if (method === 'POST' && !UUID_HEADER.test(headers['idempotency-key'] ?? '')) {
-      await route.abort();
+      report('request_rejected'); await route.abort();
       return;
     }
-    const response = await directRequest({ actor, method, route: upstreamRoute, headers, ...(body ? { body } : {}) });
-    if (response.status >= 300 && response.status < 400 ||
-        response.headers.get('x-lingua-source-sha') !== config.githubSha) {
-      await route.abort();
-      return;
+    let response: Response;
+    try {
+      response = await directRequest({ actor, method, route: upstreamRoute, headers, ...(body ? { body } : {}) });
+    } catch {
+      report('upstream_unavailable'); await route.abort(); return;
+    }
+    status = k2FrllDiagnosticStatus(response.status);
+    if (response.status >= 300 && response.status < 400) {
+      report('redirect_rejected'); await route.abort(); return;
+    }
+    if (response.headers.get('x-lingua-source-sha') !== config.githubSha) {
+      report('source_sha_mismatch'); await route.abort(); return;
     }
     const safeHeaders: Record<string, string> = {};
     for (const name of ['content-type', 'cache-control', 'etag', 'retry-after', 'x-lingua-source-sha', 'x-lingua-upstream-etag']) {
@@ -311,28 +513,47 @@ export async function forwardK2FrllBrowserRequest(
     const responseBody = Buffer.from(await response.arrayBuffer());
     if (response.status >= 200 && response.status < 300) {
       const path = upstreamRoute.split('?', 1)[0];
-      if (path === '/v1/me') {
-        const data = validateContract('MeResponse', JSON.parse(responseBody.toString('utf8'))).data;
-        if (data.id !== actor.userId) { await route.abort(); return; }
-      } else if (path === '/v1/me/languages') {
-        const data = validateContract('LanguageProfilesResponse', JSON.parse(responseBody.toString('utf8'))).data;
-        if (data.length !== 1 || data[0]?.id !== actor.profileId) { await route.abort(); return; }
-      } else if (path === '/v1/today') {
-        const data = validateContract('TodayPlanResponse', JSON.parse(responseBody.toString('utf8'))).data;
-        if (data.languageProfileId !== actor.profileId) { await route.abort(); return; }
-      } else if (path === '/v1/brain/summary') {
-        const data = validateContract('BrainSummaryResponse', JSON.parse(responseBody.toString('utf8'))).data;
-        if (data.languageProfileId !== actor.profileId) { await route.abort(); return; }
+      let bindingFailure: 'actor_mismatch' | 'profile_mismatch' | undefined;
+      try {
+        if (path === '/v1/me') {
+          const data = validateContract('MeResponse', JSON.parse(responseBody.toString('utf8'))).data;
+          contract = 'valid';
+          binding = data.id === actor.userId ? 'matched' : 'mismatched';
+          if (binding === 'mismatched') bindingFailure = 'actor_mismatch';
+        } else if (path === '/v1/me/languages') {
+          const data = validateContract('LanguageProfilesResponse', JSON.parse(responseBody.toString('utf8'))).data;
+          contract = 'valid';
+          binding = data.length === 1 && data[0]?.id === actor.profileId ? 'matched' : 'mismatched';
+          if (binding === 'mismatched') bindingFailure = 'profile_mismatch';
+        } else if (path === '/v1/today') {
+          const data = validateContract('TodayPlanResponse', JSON.parse(responseBody.toString('utf8'))).data;
+          contract = 'valid';
+          binding = data.languageProfileId === actor.profileId ? 'matched' : 'mismatched';
+          reviewTarget = hasTodayReviewTarget(data) ? 'present' : 'missing';
+          if (binding === 'mismatched') bindingFailure = 'profile_mismatch';
+        } else if (path === '/v1/brain/summary') {
+          const data = validateContract('BrainSummaryResponse', JSON.parse(responseBody.toString('utf8'))).data;
+          contract = 'valid';
+          binding = data.languageProfileId === actor.profileId ? 'matched' : 'mismatched';
+          if (binding === 'mismatched') bindingFailure = 'profile_mismatch';
+        }
+      } catch {
+        contract = 'invalid';
+        report('contract_invalid'); await route.abort(); return;
       }
+      if (bindingFailure) { report(bindingFailure); await route.abort(); return; }
     }
     const decision = replayController?.observe(actor, method, upstreamRoute, headers, body, response.status, responseBody);
     if (decision === 'drop') {
+      report('response_dropped');
       await route.abort('failed');
       return;
     }
     await route.fulfill({ status: response.status, headers: safeHeaders, body: responseBody });
+    report(response.status >= 200 && response.status < 300 ? 'fulfilled' : 'upstream_status');
   } catch {
     // No provider exception, headers, URL, body, or actor identity is attached to the test.
+    report('exception');
     try { await route.abort(); } catch { /* the route may already be resolved */ }
   }
 }

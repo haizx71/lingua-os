@@ -45,15 +45,18 @@ import {
   k2RetainedTableNames,
 } from './k2_hosted_probe_client';
 import {
+  createK2FrllTodayDiagnostic,
   createK2FrllAuthBindingBarrier,
   createK2FrllReplayController,
   installK2BrowserRequestGuard,
   forwardK2FrllBrowserRequest,
+  k2FrllDiagnosticStatus,
   type K2FrllConflictProof,
   type K2FrllReplayProof,
   type K2FrllActorSession,
   type K2FrllAuthBindingBarrier,
   type K2FrllBrowserRequest,
+  type K2FrllNavigationRoute,
 } from './k2_playwright_network';
 import { readInitialK2BrowserActorAccessToken, signInK2BrowserActor } from './browser_actor_switch';
 import {
@@ -1789,7 +1792,10 @@ async function verifyAuthUiSignIn(page: Page, actor: K2HostedActor, vercelOrigin
   });
 }
 
-function createK2HostedFrllUi(vercelOrigin: string): K2HostedFrllUi {
+function createK2HostedFrllUi(
+  vercelOrigin: string,
+  todayDiagnostic?: ReturnType<typeof createK2FrllTodayDiagnostic>,
+): K2HostedFrllUi {
   const goto = async (page: Page, path: string) => {
     const response = await page.goto(new URL(path, vercelOrigin).href, { waitUntil: 'domcontentloaded' });
     if (!response || response.status() !== 200) {
@@ -1818,9 +1824,42 @@ function createK2HostedFrllUi(vercelOrigin: string): K2HostedFrllUi {
         .waitFor({ state: 'visible', timeout: 30_000 });
     },
     async openToday(page) {
-      await goto(page, '/today');
-      await page.locator('h3', { hasText: 'Ôn tập đến hạn' })
-        .waitFor({ state: 'visible', timeout: 30_000 });
+      todayDiagnostic?.begin(page);
+      let phase: 'navigation' | 'heading' = 'navigation';
+      try {
+        const response = await page.goto(new URL('/today', vercelOrigin).href, { waitUntil: 'domcontentloaded' });
+        if (response) {
+          let routeClass: K2FrllNavigationRoute = 'other';
+          let originBound = false;
+          try {
+            const finalUrl = new URL(response.url());
+            originBound = finalUrl.origin === vercelOrigin;
+            routeClass = finalUrl.pathname === '/today' ? 'today'
+              : finalUrl.pathname === '/auth' ? 'auth'
+                : finalUrl.pathname === '/onboarding' ? 'onboarding' : 'other';
+          } catch {
+            routeClass = 'other';
+          }
+          todayDiagnostic?.recordNavigation(page, routeClass, k2FrllDiagnosticStatus(response.status()), originBound);
+        } else {
+          todayDiagnostic?.recordNavigation(page, 'none', 'none', false);
+        }
+        if (!response || response.status() !== 200) {
+          throw new Error('K2 hosted acceptance FRLL browser page did not load.');
+        }
+        phase = 'heading';
+        await page.locator('h3', { hasText: 'Ôn tập đến hạn' })
+          .waitFor({ state: 'visible', timeout: 30_000 });
+        todayDiagnostic?.recordHeading(page, 'visible');
+      } catch {
+        todayDiagnostic?.recordHeading(page, phase === 'heading' ? 'wait_failed' : 'navigation_failed');
+        const details = todayDiagnostic?.summary(page);
+        throw new Error(details
+          ? `K2 hosted acceptance FRLL Today UI did not become visible; ${details}.`
+          : 'K2 hosted acceptance FRLL Today UI did not become visible.');
+      } finally {
+        todayDiagnostic?.end(page);
+      }
     },
     async openPassiveToday(page) {
       await goto(page, '/today');
@@ -1930,6 +1969,7 @@ export async function runK2HostedWave(
   let freshIdentityCleanupPassed = true;
   let retainedComparisonPassed = false;
   const frllWave = plugin.waveId === 'K2-10';
+  const frllTodayDiagnostic = frllWave ? createK2FrllTodayDiagnostic() : undefined;
   const frllReplayController = frllWave ? createK2FrllReplayController() : null;
   const frllAuthBindingBarrier: K2FrllAuthBindingBarrier | undefined = frllWave
     ? createK2FrllAuthBindingBarrier(15_000)
@@ -2185,6 +2225,10 @@ export async function runK2HostedWave(
       directFrllRequest,
       frllReplayController ?? undefined,
       frllAuthBindingBarrier,
+      event => {
+        const requestPage = route.request().frame().page();
+        frllTodayDiagnostic?.recordApi(requestPage, event);
+      },
     ) : undefined);
     checkpoint('browser_request_guard', 'pass');
     checkpoint('browser_sign_in', 'start');
@@ -2246,7 +2290,7 @@ export async function runK2HostedWave(
     if (!primaryApi || !observerApi) throw new Error('K2 hosted acceptance actor API binding was incomplete.');
     let frllHarness: K2HostedFrllHarness | undefined;
     if (frllWave) {
-      const frllUi = createK2HostedFrllUi(vercelOrigin);
+      const frllUi = createK2HostedFrllUi(vercelOrigin, frllTodayDiagnostic);
       const requireFrllSession = (handle: K2WaveActorHandle) => {
         const session = sessionByHandle.get(handle);
         const profileId = profileIdByHandle[handle];
