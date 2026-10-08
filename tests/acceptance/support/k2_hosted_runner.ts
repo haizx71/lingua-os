@@ -41,6 +41,7 @@ import {
   type K2HostedCandidateBaseProof,
   type K2HostedFrllSemanticProof,
   type K2RetainedSnapshot,
+  type K2RetainedTableName,
   k2RetainedTableNames,
 } from './k2_hosted_probe_client';
 import {
@@ -1147,6 +1148,22 @@ export function requireK2ActorSnapshotRows(
   }
 }
 
+const K2_10_FRESH_PROFILE_BOOTSTRAP_ROWS: Readonly<Partial<Record<K2RetainedTableName, number>>> = {
+  users: 1,
+  learner_profiles: 1,
+  profile_mutation_results: 1,
+  user_languages: 1,
+};
+
+export function assertK210FreshProfileBootstrapSnapshot(snapshot: K2RetainedSnapshot): void {
+  const expectedTotalRows = 4;
+  if (snapshot.totalRows !== expectedTotalRows || k2RetainedTableNames().some(table =>
+    snapshot.tables[table].rows !== (K2_10_FRESH_PROFILE_BOOTSTRAP_ROWS[table] ?? 0),
+  )) {
+    throw new Error('K2 hosted acceptance K2-10 fresh profile bootstrap snapshot was unexpected.');
+  }
+}
+
 async function actorSnapshot(config: K2HostedConfig, actorId: string): Promise<K2RetainedSnapshot> {
   const result = await runK2HostedProbe('actor_snapshot', config.readonlyDatabaseUrl, actorId);
   if (!('tables' in result)) throw new Error('K2 hosted acceptance actor snapshot was invalid.');
@@ -2070,12 +2087,7 @@ export async function runK2HostedWave(
         checkpoint(profileBootstrapPhases[index], 'pass');
         checkpoint(postbootstrapPhases[index], 'start');
         const bootstrapped = await actorSnapshot(config, actors[index].id);
-        if (bootstrapped.totalRows !== 3 || tableNames.some(table => {
-          const expected = ['users', 'learner_profiles', 'user_languages'].includes(table) ? 1 : 0;
-          return bootstrapped.tables[table].rows !== expected;
-        })) {
-          throw new Error('K2 hosted acceptance K2-10 fresh profile bootstrap changed an unexpected learner table.');
-        }
+        assertK210FreshProfileBootstrapSnapshot(bootstrapped);
         checkpoint(postbootstrapPhases[index], 'pass');
       }
     }

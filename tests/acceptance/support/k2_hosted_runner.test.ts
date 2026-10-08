@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
+  assertK210FreshProfileBootstrapSnapshot,
   createLearnerProfile,
   cleanupK209FixtureAfterActorProofs,
   cleanupK209FixtureAfterCurrentRun,
@@ -999,6 +1000,63 @@ describe('K2-09 current-run fixture recovery', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('K2-10 fresh profile bootstrap snapshot', () => {
+  function snapshot(
+    rowOverrides: Partial<Record<k2HostedProbeClient.K2RetainedTableName, number>> = {},
+  ): k2HostedProbeClient.K2RetainedSnapshot {
+    const tables = Object.fromEntries(k2HostedProbeClient.k2RetainedTableNames().map(table => [
+      table,
+      { rows: rowOverrides[table] ?? 0, sha256: '0'.repeat(64) },
+    ])) as k2HostedProbeClient.K2RetainedSnapshot['tables'];
+    return {
+      tables,
+      totalRows: Object.values(tables).reduce((total, table) => total + table.rows, 0),
+    };
+  }
+
+  it('accepts the exact fresh onboarding rows including the profile-create receipt', () => {
+    const afterBootstrap = snapshot({
+      users: 1,
+      learner_profiles: 1,
+      user_languages: 1,
+      profile_mutation_results: 1,
+    });
+
+    expect(() => assertK210FreshProfileBootstrapSnapshot(afterBootstrap)).not.toThrow();
+  });
+
+  it('rejects an aggregate count that does not match the exact bootstrap rows', () => {
+    const exactRows = snapshot({
+      users: 1,
+      learner_profiles: 1,
+      user_languages: 1,
+      profile_mutation_results: 1,
+    });
+
+    expect(() => assertK210FreshProfileBootstrapSnapshot({ ...exactRows, totalRows: 3 }))
+      .toThrow('K2 hosted acceptance K2-10 fresh profile bootstrap snapshot was unexpected.');
+  });
+
+  it.each([
+    ['missing the profile-create receipt', {
+      users: 1, learner_profiles: 1, user_languages: 1,
+    }],
+    ['replacing the profile-create receipt with a review row', {
+      users: 1, learner_profiles: 1, user_languages: 1, review_items: 1,
+    }],
+    ['duplicating the profile-create receipt', {
+      users: 1, learner_profiles: 1, user_languages: 1, profile_mutation_results: 2,
+    }],
+    ['writing an unexpected review row', {
+      users: 1, learner_profiles: 1, user_languages: 1,
+      profile_mutation_results: 1, review_items: 1,
+    }],
+  ] as const)('rejects a fresh bootstrap that is %s', (_case, rows) => {
+    expect(() => assertK210FreshProfileBootstrapSnapshot(snapshot(rows)))
+      .toThrow('K2 hosted acceptance K2-10 fresh profile bootstrap snapshot was unexpected.');
   });
 });
 
