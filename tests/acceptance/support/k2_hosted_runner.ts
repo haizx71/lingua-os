@@ -45,6 +45,7 @@ import {
   k2RetainedTableNames,
 } from './k2_hosted_probe_client';
 import {
+  createK2FrllHeldBrainResponseGate,
   createK2FrllTodayDiagnostic,
   createK2FrllAuthBindingBarrier,
   createK2FrllReplayController,
@@ -52,6 +53,7 @@ import {
   forwardK2FrllBrowserRequest,
   k2FrllDiagnosticStatus,
   type K2FrllConflictProof,
+  type K2FrllHeldBrainResponseGate,
   type K2FrllReplayProof,
   type K2FrllActorSession,
   type K2FrllAuthBindingBarrier,
@@ -2045,13 +2047,7 @@ export async function runK2HostedWave(
     : undefined;
   const browserFrllSessions = new Map<string, K2FrllActorSession>();
   const frllPages: Page[] = [];
-  let frllHeldBrainGate: Readonly<{
-    actorToken: string;
-    resolveReceived(): void;
-    received: Promise<void>;
-    release(): void;
-    released: Promise<void>;
-  }> | null = null;
+  let frllHeldBrainGate: K2FrllHeldBrainResponseGate | null = null;
   const frllCleanup: { releaseHeldBrain?: () => void } = {};
   const checkpoint = (phase: K2HostedPhase, event: K2HostedCheckpointEvent) =>
     markK2HostedCheckpoint(testInfo, phase, event);
@@ -2286,13 +2282,9 @@ export async function runK2HostedWave(
         throw new Error('K2 hosted acceptance direct Render request failed; provider details were suppressed.');
       }
       const gate = frllHeldBrainGate;
-      if (gate && request.method === 'GET' &&
-          request.route === `/v1/brain/concepts/${WAVE_CANONICAL_CONCEPT_ID}` &&
-          request.actor.accessToken === gate.actorToken && response.status === 200 &&
-          response.headers.get('x-lingua-source-sha') === config.githubSha) {
-        gate.resolveReceived();
-        await gate.released;
-      }
+      // request.actor is resolved from the original Bearer in the verified session map,
+      // so an in-flight Actor A response stays Actor A after the UI switches to B.
+      if (gate?.tryHold(request, response)) await gate.waitUntilReleased();
       return response;
     };
     await installK2BrowserRequestGuard(browserContext, {
@@ -2412,12 +2404,12 @@ export async function runK2HostedWave(
       };
       const holdNextBrainResponse = (handle: K2WaveActorHandle): void => {
         if (frllHeldBrainGate) throw new Error('K2 hosted acceptance delayed response proof was already armed.');
-        const { session } = requireFrllSession(handle);
-        let resolveReceived: () => void = () => undefined;
-        let release: () => void = () => undefined;
-        const received = new Promise<void>(resolve => { resolveReceived = resolve; });
-        const released = new Promise<void>(resolve => { release = resolve; });
-        frllHeldBrainGate = { actorToken: session.accessToken, resolveReceived, received, release, released };
+        const { session, profileId } = requireFrllSession(handle);
+        frllHeldBrainGate = createK2FrllHeldBrainResponseGate(
+          { userId: session.userId, profileId },
+          `/v1/brain/concepts/${WAVE_CANONICAL_CONCEPT_ID}`,
+          config.githubSha,
+        );
         frllCleanup.releaseHeldBrain = () => {
           const gate = frllHeldBrainGate;
           if (!gate) return;

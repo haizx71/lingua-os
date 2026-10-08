@@ -17,6 +17,12 @@ export type K2FrllBrowserRequest = Readonly<{
   readonly body?: Buffer;
 }>;
 export type K2FrllDirectRequest = (request: K2FrllBrowserRequest) => Promise<Response>;
+export type K2FrllHeldBrainResponseGate = Readonly<{
+  readonly received: Promise<void>;
+  tryHold(request: K2FrllBrowserRequest, response: Pick<Response, 'status' | 'headers'>): boolean;
+  waitUntilReleased(): Promise<void>;
+  release(): void;
+}>;
 export type K2FrllDiagnosticRoute = 'me' | 'languages' | 'today' | 'review_answer' | 'other';
 export type K2FrllDiagnosticDecision =
   | 'started' | 'origin_rejected' | 'bearer_missing' | 'actor_unbound' | 'unsupported_route'
@@ -42,6 +48,42 @@ export type K2FrllReplayProof = Readonly<{
   idempotencyKeySha256: string | null;
 }>;
 export type K2FrllConflictProof = Readonly<{ status: number; errorCode: string | null }>;
+
+/** Holds one response only when its verified originating session matches the armed actor. */
+export function createK2FrllHeldBrainResponseGate(
+  expectedActor: Pick<K2FrllActorSession, 'userId' | 'profileId'>,
+  expectedRoute: string,
+  expectedSha: string,
+): K2FrllHeldBrainResponseGate {
+  const { userId, profileId } = expectedActor;
+  let claimed = false;
+  let released = false;
+  let resolveReceived: () => void = () => undefined;
+  let resolveReleased: () => void = () => undefined;
+  const received = new Promise<void>(resolve => { resolveReceived = resolve; });
+  const releasedPromise = new Promise<void>(resolve => { resolveReleased = resolve; });
+  return {
+    received,
+    tryHold(request, response) {
+      if (claimed || released || request.method !== 'GET' || request.route !== expectedRoute ||
+          request.actor.userId !== userId || request.actor.profileId !== profileId ||
+          response.status !== 200 || response.headers.get('x-lingua-source-sha') !== expectedSha) {
+        return false;
+      }
+      claimed = true;
+      resolveReceived();
+      return true;
+    },
+    waitUntilReleased() {
+      return releasedPromise;
+    },
+    release() {
+      if (released) return;
+      released = true;
+      resolveReleased();
+    },
+  };
+}
 
 export interface K2FrllAuthBindingBarrier {
   begin(): Readonly<{ complete(): boolean; release(): void }>;

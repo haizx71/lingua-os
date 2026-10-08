@@ -6,6 +6,7 @@ import { useReviewSession } from '../../../apps/web/src/features/review/useRevie
 import {
   createK2FrllTodayDiagnostic,
   createK2FrllAuthBindingBarrier,
+  createK2FrllHeldBrainResponseGate,
   createK2FrllReplayController,
   forwardK2FrllBrowserRequest,
   handleK2BrowserRoute,
@@ -444,6 +445,85 @@ describe('K2 Playwright deployment request guard', () => {
     await handleK2BrowserRoute(proxy.route, config, token);
     expect(proxy.abort).toHaveBeenCalledOnce();
     expect(proxy.fetchRequest).not.toHaveBeenCalled();
+  });
+
+  it('holds the verified originating actor response across distinct JWTs while Actor B remains unblocked', async () => {
+    const programmaticA = {
+      accessToken: 'programmatic-actor-a-jwt',
+      userId: '00000000-0000-4000-8000-000000000101',
+      profileId: '00000000-0000-4000-8000-000000000001',
+    };
+    const browserA = { ...programmaticA, accessToken: 'browser-actor-a-jwt' };
+    const browserB = {
+      accessToken: 'browser-actor-b-jwt',
+      userId: '00000000-0000-4000-8000-000000000102',
+      profileId: '00000000-0000-4000-8000-000000000002',
+    };
+    expect(browserA.accessToken === programmaticA.accessToken).toBe(false);
+    const sessions = new Map([
+      [programmaticA.accessToken, programmaticA],
+      [browserA.accessToken, browserA],
+      [browserB.accessToken, browserB],
+    ]);
+    const targetRoute = '/v1/brain/concepts/7f110000-0000-4000-8000-000000000004';
+    const gate = createK2FrllHeldBrainResponseGate(
+      { userId: programmaticA.userId, profileId: programmaticA.profileId },
+      targetRoute,
+      config.githubSha,
+    );
+    const response = (status = 200, sourceSha = config.githubSha) => new Response('{"data":{}}', {
+      status,
+      headers: { 'x-lingua-source-sha': sourceSha },
+    });
+    const decisions: boolean[] = [];
+    const direct = vi.fn(async request => {
+      const upstream = response();
+      const hold = gate.tryHold(request, upstream);
+      decisions.push(hold);
+      if (hold) await gate.waitUntilReleased();
+      return upstream;
+    });
+    const brainARequest = {
+      actor: browserA,
+      method: 'GET',
+      route: targetRoute,
+      headers: { Authorization: `Bearer ${browserA.accessToken}` },
+    };
+    expect(gate.tryHold({ ...brainARequest, route: '/v1/brain/summary' }, response())).toBe(false);
+    expect(gate.tryHold(brainARequest, response(404))).toBe(false);
+    expect(gate.tryHold(brainARequest, response(200, 'different-source-sha'))).toBe(false);
+
+    const bBefore = fakeRoute(`${config.vercelOrigin}/api${targetRoute}`, {
+      authorization: `Bearer ${browserB.accessToken}`,
+    });
+    await forwardK2FrllBrowserRequest(bBefore.route, config, sessions, direct);
+    expect(bBefore.fulfill).toHaveBeenCalledOnce();
+    expect(decisions).toEqual([false]);
+
+    const aRoute = fakeRoute(`${config.vercelOrigin}/api${targetRoute}`, {
+      authorization: `Bearer ${browserA.accessToken}`,
+    });
+    let aCompleted = false;
+    const aPending = forwardK2FrllBrowserRequest(aRoute.route, config, sessions, direct).then(() => {
+      aCompleted = true;
+    });
+    await gate.received;
+    expect(decisions).toEqual([false, true]);
+    expect(aCompleted).toBe(false);
+    expect(aRoute.fulfill).not.toHaveBeenCalled();
+
+    const bAfter = fakeRoute(`${config.vercelOrigin}/api${targetRoute}`, {
+      authorization: `Bearer ${browserB.accessToken}`,
+    });
+    await forwardK2FrllBrowserRequest(bAfter.route, config, sessions, direct);
+    expect(bAfter.fulfill).toHaveBeenCalledOnce();
+    expect(decisions).toEqual([false, true, false]);
+    expect(aCompleted).toBe(false);
+
+    gate.release();
+    await aPending;
+    expect(aCompleted).toBe(true);
+    expect(aRoute.fulfill).toHaveBeenCalledOnce();
   });
 
   it('forwards only a factory-matched originating JWT and strips protected deployment headers', async () => {
