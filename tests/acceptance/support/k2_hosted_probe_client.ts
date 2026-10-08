@@ -282,7 +282,8 @@ export function parseK2HostedFrllSemanticProof(value: unknown): K2HostedFrllSema
       !(isSafeCount(concept.stateVersion) || concept.stateVersion === null) ||
       !(typeof concept.hasLearningIntent === 'boolean' || concept.hasLearningIntent === null) ||
       !(typeof concept.hasProjectableEvidence === 'boolean' || concept.hasProjectableEvidence === null) ||
-      [concept.status, concept.mastery, concept.confidence, concept.exposureCount, concept.stateVersion,
+      (concept.rowCount === 0 && concept.mastery !== null) ||
+      [concept.status, concept.confidence, concept.exposureCount, concept.stateVersion,
         concept.hasLearningIntent, concept.hasProjectableEvidence].some(item =>
         (concept.rowCount === 0) !== (item === null))) throw new Error(message);
   const memory = exactRecord(root.memory,

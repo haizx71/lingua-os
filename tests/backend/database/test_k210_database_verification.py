@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
+import os
+import re
+import shutil
+import subprocess
 import uuid
 from collections import Counter
 from dataclasses import dataclass
@@ -352,19 +357,22 @@ def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
         clock=clock,
     ).save_concept(actor=actor, concept_id=uuid.UUID("7f110000-0000-4000-8000-000000000004"))
 
-    def read_proof() -> dict[str, Any]:
+    def read_proof(idempotency_key_sha256: str | None = None) -> dict[str, Any]:
         with psycopg.connect(database_url) as connection, connection.transaction():
             connection.execute("SET TRANSACTION READ ONLY")
             return k2_hosted_probe._frll_semantic_proof(
                 connection,
                 actor_id,
                 profile_id,
-                None,
+                idempotency_key_sha256,
             )
 
     saved = read_proof()
     assert saved["save"]["reviewItemRows"] == 1
     assert saved["save"]["fsrsStateRows"] == 1
+    assert saved["concept"]["mastery"] is None
+    assert saved["concept"]["exposureCount"] == 0
+    assert saved["concept"]["lastSeenAt"] is None
     assert saved["memory"] == {
         "rowCount": 1,
         "state": "new",
@@ -385,6 +393,7 @@ def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
         assert review_item is not None
         review_item_id = uuid.UUID(str(review_item[0]))
 
+    idempotency_key = uuid.uuid4()
     ReviewApplication(
         database_url,
         cursor_secret=b"k210-frll-review-test-cursor-secret",
@@ -394,7 +403,7 @@ def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
         review_item_id=review_item_id,
         exercise_mode=ReviewExerciseMode.SELF_RECALL,
         submission=ReviewSubmission(
-            idempotency_key=uuid.uuid4(),
+            idempotency_key=idempotency_key,
             rating=ReviewRating.GOOD,
             response_time_ms=820,
             correct=True,
@@ -403,10 +412,11 @@ def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
         ),
     )
 
-    reviewed = read_proof()
+    reviewed = read_proof(hashlib.sha256(str(idempotency_key).encode("utf-8")).hexdigest())
     assert reviewed["review"]["eventRows"] == 1
     assert reviewed["review"]["exerciseMode"] == "self_recall"
     assert reviewed["review"]["evidenceMode"] == "production"
+    assert reviewed["review"]["idempotencyKeyMatched"] is True
     result_memory = reviewed["review"]["resultMemory"]
     assert result_memory is not None
     assert result_memory["state"] == "learning"
@@ -417,3 +427,82 @@ def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
         assert result_memory["step"] is None
     else:
         assert type(result_memory["step"]) is int and result_memory["step"] >= 0
+
+    node_executable = shutil.which("node")
+    vitest_cli = ROOT / "node_modules" / "vitest" / "vitest.mjs"
+    assert node_executable is not None and vitest_cli.is_file(), (
+        "Node 22 and locked Vitest are required for the FRLL proof gate"
+    )
+    child_environment = {
+        name: os.environ[name]
+        for name in ("PATH", "SystemRoot", "WINDIR", "PATHEXT", "TEMP", "TMP")
+        if name in os.environ
+    }
+    child_environment["K2_FRLL_PG_PROOF_ROUNDTRIP"] = "1"
+    proof_payload = json.dumps(
+        {"saved": saved, "reviewed": reviewed}, separators=(",", ":"), allow_nan=False
+    )
+    try:
+        typescript_check = subprocess.run(
+            [
+                node_executable,
+                str(vitest_cli),
+                "run",
+                "tests/acceptance/support/k2_hosted_probe_client.test.ts",
+                "--pool=threads",
+                "--maxWorkers=1",
+                "--minWorkers=1",
+                "--testNamePattern=round-trips actual DB FRLL proof through parser and wave checks",
+            ],
+            cwd=ROOT,
+            env=child_environment,
+            input=proof_payload,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            check=False,
+            timeout=45,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise AssertionError(
+            "The TypeScript PostgreSQL FRLL proof roundtrip did not complete."
+        ) from None
+    saved_status_match = re.search(
+        r"K2_FRLL_ROUNDTRIP_PASS savedStatus="
+        r"(unseen|discovered|learning|familiar|active|mastered|weak|forgotten)",
+        typescript_check.stdout,
+    )
+    if typescript_check.returncode != 0 or saved_status_match is None:
+        output = f"{typescript_check.stdout}\n{typescript_check.stderr}"
+        safe_diagnostics = (
+            "PostgreSQL FRLL proof roundtrip input was invalid.",
+            "K2 hosted acceptance FRLL semantic proof was invalid.",
+            "K2 hosted acceptance FRLL Save did not create exactly one intent "
+            "and primary Memory lineage.",
+            "FRLL fresh Save concept confidence: differs from persisted numeric(10,8) authority.",
+            "K2 hosted acceptance FRLL Review did not persist one atomic Memory "
+            "and competence transition.",
+            "FRLL Review memory receipt was missing.",
+            "FRLL Review competence receipt was missing.",
+            "FRLL persisted memory difficulty: differs from persisted numeric(7,4) authority.",
+            "FRLL persisted memory stability: differs from persisted numeric(12,4) authority.",
+            "FRLL persisted memory version: differs from persisted authority.",
+            "FRLL persisted memory dueAt: differs from persisted authority.",
+            "FRLL persisted memory lastReviewedAt: differs from persisted authority.",
+            "FRLL persisted memory step: differs from persisted authority.",
+            "FRLL persisted memory parameters: differs from persisted authority.",
+            "FRLL persisted production score: differs from persisted numeric(10,8) authority.",
+            "FRLL persisted production confidence: differs from persisted numeric(10,8) authority.",
+            "FRLL persisted production evidenceCount: differs from persisted authority.",
+            "FRLL persisted production timestamp: differs from persisted authority.",
+        )
+        diagnostic = next((message for message in safe_diagnostics if message in output), None)
+        if diagnostic is None:
+            diagnostic = (
+                "bridge test did not start"
+                if "round-trips actual DB FRLL proof" not in output
+                else "bridge test ran without its fixed pass marker"
+            )
+        raise AssertionError(f"The TypeScript hosted FRLL parser/wave proof failed: {diagnostic}")
+    print(f"Sanitized PostgreSQL Save status: {saved_status_match.group(1)}")

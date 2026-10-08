@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   assertK2RetainedStateUnchanged,
@@ -15,6 +16,7 @@ import {
   parseK2RetainedSnapshot,
   type K2RetainedSnapshot,
 } from './k2_hosted_probe_client';
+import { assertReviewedState, assertSavedState } from './k2_hosted_wave_k2_10';
 
 type MutableK2RetainedSnapshot = {
   totalRows: number;
@@ -174,6 +176,59 @@ describe('K2 read-only probe client', () => {
       memory: { ...proof.memory, state: 'review', rowCount: 0 },
     })).toThrow('FRLL semantic proof was invalid');
   });
+
+  it('preserves nullable mastery for a present concept row and rejects invalid null semantics', () => {
+    const proof = emptyFrllSemanticProof();
+    const saved = {
+      ...proof,
+      identity: { userRows: 1, learnerProfileRows: 1, languageProfileRows: 1, profileBound: true },
+      concept: {
+        ...proof.concept,
+        rowCount: 1,
+        status: 'learning',
+        mastery: null,
+        confidence: '0',
+        exposureCount: 0,
+        lastSeenAt: null,
+        stateVersion: 2,
+        hasLearningIntent: true,
+        hasProjectableEvidence: false,
+        recognition: { score: '0.5', confidence: '0', evidenceCount: 0, lastEvidenceAt: null },
+        listening: { score: '0.5', confidence: '0', evidenceCount: 0, lastEvidenceAt: null },
+        production: { score: '0.5', confidence: '0', evidenceCount: 0, lastEvidenceAt: null },
+      },
+    };
+    expect(parseK2HostedFrllSemanticProof(saved).concept.mastery).toBeNull();
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...saved,
+      concept: { ...saved.concept, mastery: 0.5 },
+    })).toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...proof,
+      concept: { ...proof.concept, mastery: '0.5' },
+    })).toThrow('FRLL semantic proof was invalid');
+  });
+
+  it.runIf(process.env.K2_FRLL_PG_PROOF_ROUNDTRIP === '1')(
+    'round-trips actual DB FRLL proof through parser and wave checks',
+    () => {
+      let payload: unknown;
+      try {
+        payload = JSON.parse(readFileSync(0, 'utf8')) as unknown;
+      } catch {
+        throw new Error('PostgreSQL FRLL proof roundtrip input was invalid.');
+      }
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new Error('PostgreSQL FRLL proof roundtrip input was invalid.');
+      }
+      const proofs = payload as Record<string, unknown>;
+      const saved = parseK2HostedFrllSemanticProof(proofs.saved);
+      const reviewed = parseK2HostedFrllSemanticProof(proofs.reviewed);
+      assertSavedState(saved);
+      assertReviewedState(reviewed, true);
+      process.stdout.write(`K2_FRLL_ROUNDTRIP_PASS savedStatus=${saved.concept.status}\n`);
+    },
+  );
 
   it('keeps persisted exercise mode separate from its evidence mode and rejects enum confusion', () => {
     const proof = emptyFrllSemanticProof();
