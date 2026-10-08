@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { BrowserContext, Page } from '@playwright/test';
+import type { BrowserContext, Page, Response as PlaywrightResponse } from '@playwright/test';
 import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
   assertK210FreshProfileBootstrapSnapshot,
+  assertK2PassiveTodayUiMatchesPlan,
   createLearnerProfile,
   cleanupK209FixtureAfterActorProofs,
   cleanupK209FixtureAfterCurrentRun,
@@ -11,6 +12,7 @@ import {
   k2HostedWaveCheckpoint,
   markK2HostedCheckpoint,
   markK2HostedFinalizerComplete,
+  isK2PassiveTodayApiResponse,
   createK2OpaqueIdProjector,
   exactK208FixtureStateReadback,
   normalizeK2WaveRequest,
@@ -38,6 +40,10 @@ import {
 import * as k2HostedProbeClient from './k2_hosted_probe_client';
 import type { TestInfo } from '@playwright/test';
 import { assertK2HostedDueOnlyPlanReplay } from './k2_hosted_wave_k2_08_due_only';
+import {
+  mockTodayPlanResponse,
+} from '../../../packages/types/src/api/mock-fixtures';
+import type { TodayActivityDto, TodayPlanDto } from '../../../packages/types/src/api/dtos';
 
 const actor = {
   id: 'fake-actor-id-marker',
@@ -80,6 +86,148 @@ async function rejectedError(operation: Promise<unknown>): Promise<Error> {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe('K2 passive Today plan and UI parity', () => {
+  const vercelOrigin = 'https://app.example.invalid';
+  const profileId = '00000000-0000-4000-8000-000000000021';
+
+  function apiResponse(payload: unknown, status = 200): Pick<PlaywrightResponse, 'status' | 'json'> {
+    return { status: () => status, json: async () => payload };
+  }
+
+  function pageWithWait(waitFor = vi.fn(async () => {})) {
+    const locator = { waitFor };
+    return {
+      page: {
+        getByRole: vi.fn(() => locator),
+        getByText: vi.fn(() => locator),
+      } as unknown as Pick<Page, 'getByRole' | 'getByText'>,
+      waitFor,
+    };
+  }
+
+  function todayPayload(
+    activities: readonly TodayActivityDto[],
+    languageProfileId = profileId,
+    status: TodayPlanDto['status'] = 'active',
+  ) {
+    return {
+      data: { ...mockTodayPlanResponse.data, languageProfileId, status, activities },
+      meta: mockTodayPlanResponse.meta,
+    };
+  }
+
+  it('accepts a contract-valid empty plan only with its empty-state UI', async () => {
+    const page = pageWithWait();
+    const payload = todayPayload([], profileId, 'completed');
+
+    const plan = await assertK2PassiveTodayUiMatchesPlan(page.page, apiResponse(payload), profileId);
+
+    expect(plan.activities).toEqual([]);
+    expect(page.page.getByRole).toHaveBeenCalledWith('heading', {
+      name: 'Không có bài học nào cần ôn hôm nay', exact: true,
+    });
+    expect(page.page.getByText).not.toHaveBeenCalled();
+    expect(page.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 30_000 });
+  });
+
+  it('accepts a no-review content plan only when the UI shows the returned activities', async () => {
+    const page = pageWithWait();
+    const activities = mockTodayPlanResponse.data.activities.filter(activity =>
+      activity.activityType === 'read' || activity.activityType === 'listen' ||
+      activity.activityType === 'learn');
+    const payload = todayPayload(activities);
+
+    const plan = await assertK2PassiveTodayUiMatchesPlan(page.page, apiResponse(payload), profileId);
+
+    expect(plan.activities).toHaveLength(3);
+    expect(page.page.getByText).toHaveBeenCalledWith(
+      'LINGUA OS đã chọn 3 hoạt động tối ưu nhất cho bạn.', { exact: true },
+    );
+    expect(page.page.getByRole).toHaveBeenCalledTimes(3);
+    for (const activity of activities) {
+      expect(page.page.getByRole).toHaveBeenCalledWith('heading', {
+        name: activity.title, exact: true,
+      });
+    }
+  });
+
+  it('rejects a plan bound to another profile before checking UI', async () => {
+    const page = pageWithWait();
+    const foreignProfileId = '00000000-0000-4000-8000-000000000022';
+
+    await expect(assertK2PassiveTodayUiMatchesPlan(
+      page.page, apiResponse(todayPayload([], foreignProfileId, 'completed')), profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Today profile binding did not match.');
+
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+    expect(page.page.getByText).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid DTO and any Review activity in the passive plan', async () => {
+    const invalidPage = pageWithWait();
+    await expect(assertK2PassiveTodayUiMatchesPlan(
+      invalidPage.page, apiResponse({ data: { id: 'invalid' }, meta: mockTodayPlanResponse.meta }), profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Today DTO failed contract validation.');
+    expect(invalidPage.page.getByRole).not.toHaveBeenCalled();
+
+    const reviewPage = pageWithWait();
+    const reviewActivity = mockTodayPlanResponse.data.activities.find(activity =>
+      activity.activityType === 'review');
+    if (!reviewActivity) throw new Error('Today fixture has no Review activity.');
+    await expect(assertK2PassiveTodayUiMatchesPlan(
+      reviewPage.page,
+      apiResponse(todayPayload([reviewActivity])),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Today plan included a review activity.');
+    expect(reviewPage.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('redacts a failed UI match instead of exposing page content', async () => {
+    const page = pageWithWait(vi.fn(async () => {
+      throw new Error('PRIVATE_ACTIVITY_TITLE PRIVATE_PROFILE_MARKER');
+    }));
+    const readActivity = mockTodayPlanResponse.data.activities.find(activity =>
+      activity.activityType === 'read');
+    if (!readActivity) throw new Error('Today fixture has no content activity.');
+
+    let failure: unknown;
+    try {
+      await assertK2PassiveTodayUiMatchesPlan(
+        page.page,
+        apiResponse(todayPayload([readActivity])),
+        profileId,
+      );
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message)
+      .toBe('K2 hosted acceptance passive Today UI did not match its validated plan.');
+    expect(String(failure)).not.toContain('PRIVATE_ACTIVITY_TITLE');
+    expect(String(failure)).not.toContain('PRIVATE_PROFILE_MARKER');
+  });
+
+  it('accepts only same-origin GET responses for the Today API path', () => {
+    const response = (url: string, method: string): Pick<PlaywrightResponse, 'url' | 'request'> => ({
+      url: () => url,
+      request: () => ({ method: () => method }) as never,
+    });
+
+    expect(isK2PassiveTodayApiResponse(
+      response(`${vercelOrigin}/api/v1/today`, 'GET'), vercelOrigin,
+    )).toBe(true);
+    expect(isK2PassiveTodayApiResponse(
+      response('https://other.example.invalid/api/v1/today', 'GET'), vercelOrigin,
+    )).toBe(false);
+    expect(isK2PassiveTodayApiResponse(
+      response(`${vercelOrigin}/api/v1/other`, 'GET'), vercelOrigin,
+    )).toBe(false);
+    expect(isK2PassiveTodayApiResponse(
+      response(`${vercelOrigin}/api/v1/today`, 'POST'), vercelOrigin,
+    )).toBe(false);
+  });
 });
 
 describe('K2 hosted phase diagnostics', () => {

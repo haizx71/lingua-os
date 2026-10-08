@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { BrowserContext, Page, TestInfo } from '@playwright/test';
+import type { BrowserContext, Page, Response as PlaywrightResponse, TestInfo } from '@playwright/test';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { components } from '../../../packages/types/src/generated/openapi';
 import {
   assertNoK2ActorsRemain,
   K2_HOSTED_STAGING_SUPABASE_REF,
@@ -332,7 +333,7 @@ export interface K2HostedFrllUi {
   searchAnchor(page: Page): Promise<void>;
   saveAnchor(page: Page): Promise<void>;
   openToday(page: Page): Promise<void>;
-  openPassiveToday(page: Page): Promise<void>;
+  openPassiveToday(page: Page, expectedProfileId: string): Promise<void>;
   openReview(page: Page): Promise<void>;
   submitGood(page: Page): Promise<import('@playwright/test').Response>;
   submitGoodAndWaitForRetry(page: Page): Promise<void>;
@@ -1847,6 +1848,73 @@ export async function signInInitialK210Actor(
   return accessToken;
 }
 
+const K2_PASSIVE_TODAY_CONTENT_TYPES = new Set(['read', 'listen', 'learn']);
+const K2_PASSIVE_TODAY_EMPTY_TITLE = 'Không có bài học nào cần ôn hôm nay';
+
+/** Accept only the normal same-origin Today API response made by the active page. */
+export function isK2PassiveTodayApiResponse(
+  response: Pick<PlaywrightResponse, 'url' | 'request'>,
+  vercelOrigin: string,
+): boolean {
+  try {
+    const url = new URL(response.url());
+    return url.origin === vercelOrigin && url.pathname === '/api/v1/today' &&
+      response.request().method() === 'GET';
+  } catch {
+    return false;
+  }
+}
+
+/** Validate the page's actual Today response and require its matching supported UI branch. */
+export async function assertK2PassiveTodayUiMatchesPlan(
+  page: Pick<Page, 'getByRole' | 'getByText'>,
+  response: Pick<PlaywrightResponse, 'status' | 'json'>,
+  expectedProfileId: string,
+): Promise<components['schemas']['TodayPlan']> {
+  if (response.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Today response was not HTTP 200.');
+  }
+
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new Error('K2 hosted acceptance passive Today response body was invalid.');
+  }
+
+  let plan: components['schemas']['TodayPlan'];
+  try {
+    plan = validateContract('TodayPlanResponse', raw).data;
+  } catch {
+    throw new Error('K2 hosted acceptance passive Today DTO failed contract validation.');
+  }
+  if (plan.languageProfileId !== expectedProfileId) {
+    throw new Error('K2 hosted acceptance passive Today profile binding did not match.');
+  }
+  if (plan.activities.some(activity => !K2_PASSIVE_TODAY_CONTENT_TYPES.has(activity.activityType))) {
+    throw new Error('K2 hosted acceptance passive Today plan included a review activity.');
+  }
+
+  try {
+    if (plan.activities.length === 0) {
+      await page.getByRole('heading', { name: K2_PASSIVE_TODAY_EMPTY_TITLE, exact: true })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    } else {
+      await page.getByText(
+        `LINGUA OS đã chọn ${plan.activities.length} hoạt động tối ưu nhất cho bạn.`,
+        { exact: true },
+      ).waitFor({ state: 'visible', timeout: 30_000 });
+      for (const activity of plan.activities) {
+        await page.getByRole('heading', { name: activity.title, exact: true })
+          .waitFor({ state: 'visible', timeout: 30_000 });
+      }
+    }
+  } catch {
+    throw new Error('K2 hosted acceptance passive Today UI did not match its validated plan.');
+  }
+  return plan;
+}
+
 function createK2HostedFrllUi(
   vercelOrigin: string,
   todayDiagnostic?: ReturnType<typeof createK2FrllTodayDiagnostic>,
@@ -1932,10 +2000,21 @@ function createK2HostedFrllUi(
         todayDiagnostic?.end(page);
       }
     },
-    async openPassiveToday(page) {
-      await goto(page, '/today');
-      await page.getByRole('heading', { name: 'Không có bài học nào cần ôn hôm nay' })
-        .waitFor({ state: 'visible', timeout: 30_000 });
+    async openPassiveToday(page, expectedProfileId) {
+      const responsePromise = page.waitForResponse(
+        response => isK2PassiveTodayApiResponse(response, vercelOrigin),
+        { timeout: 30_000 },
+      ).then(response => response, () => null);
+      try {
+        await goto(page, '/today');
+      } catch {
+        throw new Error('K2 hosted acceptance passive Today page navigation failed.');
+      }
+      const response = await responsePromise;
+      if (!response) {
+        throw new Error('K2 hosted acceptance passive Today response was not observed.');
+      }
+      await assertK2PassiveTodayUiMatchesPlan(page, response, expectedProfileId);
     },
     async openReview(page) {
       await goto(page, '/review');
