@@ -41,7 +41,7 @@ function emptyFrllSemanticProof() {
     },
     memory: {
       rowCount: 0, state: null, stateVersion: null, dueAt: null, lastReviewedAt: null,
-      difficulty: null, stability: null, paramsVersion: null,
+      difficulty: null, stability: null, step: null, paramsVersion: null,
     },
     review: {
       eventRows: 0, reviewLearningEventRows: 0, idempotencyKeyMatched: false, rating: null,
@@ -190,7 +190,7 @@ describe('K2 read-only probe client', () => {
         evidenceMode: 'production',
         resultMemory: {
           state: 'review', dueAt: '2026-10-08T00:00:00Z', lastReviewedAt: '2026-10-08T00:00:00Z',
-          difficulty: '5.0', stability: '2.1', step: 0, stateVersion: 2, paramsVersion: 'fsrs-1',
+          difficulty: '5.0', stability: '2.1', step: null, stateVersion: 2, paramsVersion: 'fsrs-1',
         },
         resultCompetence: Object.fromEntries(['recognition', 'listening', 'production'].map(dimension => [dimension, {
           score: '0.5', confidence: '0.25', evidenceCount: 1, updatedAt: '2026-10-08T00:00:00Z',
@@ -208,6 +208,72 @@ describe('K2 read-only probe client', () => {
       ...reviewed,
       review: { ...reviewed.review, evidenceMode: 'self_recall' },
     })).toThrow('FRLL semantic proof was invalid');
+  });
+
+  it('validates persisted FSRS state and nullable step against the database shape constraint', () => {
+    const proof = emptyFrllSemanticProof();
+    const timestamp = '2026-10-08T00:00:00Z';
+    const persisted = (state: string, step: number | null, fresh = false) => ({
+      ...proof,
+      memory: {
+        rowCount: 1,
+        state,
+        stateVersion: fresh ? 1 : 2,
+        dueAt: timestamp,
+        lastReviewedAt: fresh ? null : timestamp,
+        difficulty: fresh ? null : '5.0',
+        stability: fresh ? null : '2.1',
+        step,
+        paramsVersion: 'fsrs-1',
+      },
+    });
+    for (const [state, step, fresh] of [
+      ['new', null, true],
+      ['learning', 0, false],
+      ['relearning', 1, false],
+      ['review', null, false],
+    ] as const) {
+      expect(parseK2HostedFrllSemanticProof(persisted(state, step, fresh)).memory.state).toBe(state);
+    }
+    expect(() => parseK2HostedFrllSemanticProof(persisted('new', 0, true)))
+      .toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof(persisted('learning', null)))
+      .toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof(persisted('review', 0)))
+      .toThrow('FRLL semantic proof was invalid');
+  });
+
+  it('requires completed review snapshots to use a reviewed FSRS state shape', () => {
+    const proof = emptyFrllSemanticProof();
+    const timestamp = '2026-10-08T00:00:00Z';
+    const reviewedWith = (state: string, step: number | null) => ({
+      ...proof,
+      review: {
+        ...proof.review,
+        eventRows: 1,
+        reviewLearningEventRows: 1,
+        rating: 'good',
+        responseTimeMs: 1200,
+        correct: true,
+        exerciseMode: 'self_recall' as const,
+        evidenceMode: 'production' as const,
+        resultMemory: {
+          state, dueAt: timestamp, lastReviewedAt: timestamp,
+          difficulty: '5.0', stability: '2.1', step, stateVersion: 2, paramsVersion: 'fsrs-1',
+        },
+        resultCompetence: Object.fromEntries(['recognition', 'listening', 'production'].map(dimension => [dimension, {
+          score: '0.5', confidence: '0.25', evidenceCount: 1, updatedAt: timestamp,
+        }])),
+      },
+    });
+    expect(parseK2HostedFrllSemanticProof(reviewedWith('learning', 0)).review.eventRows).toBe(1);
+    expect(parseK2HostedFrllSemanticProof(reviewedWith('review', null)).review.eventRows).toBe(1);
+    expect(() => parseK2HostedFrllSemanticProof(reviewedWith('new', null)))
+      .toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof(reviewedWith('review', 0)))
+      .toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof(reviewedWith('learning', null)))
+      .toThrow('FRLL semantic proof was invalid');
   });
 
   it('passes only a fresh actor/profile and hash to the fixed FRLL semantic probe', () => {

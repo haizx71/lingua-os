@@ -7,14 +7,24 @@ import importlib.util
 import uuid
 from collections import Counter
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import psycopg
 import pytest
+from lingua_api.library.service import LibraryApplication
+from lingua_api.memory.domain import (
+    AuthenticatedActor,
+    ReviewExerciseMode,
+    ReviewRating,
+    ReviewSubmission,
+)
+from lingua_api.review.service import ReviewApplication
 from psycopg import sql
 
 from database.migrate import migrate_up
+from tests.acceptance.support import k2_hosted_probe
 from tests.acceptance.support.k2_hosted_probe import EXPECTED_LEARNER_TABLES
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -299,3 +309,111 @@ def test_starter_and_grammar_import_replay_and_word_sense_collision_preserve_sta
         == learner_before_collision_attempt
         == learner_before
     )
+
+
+def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
+    isolated_migrated_postgres_url: str,
+) -> None:
+    database_url = isolated_migrated_postgres_url
+    actor_id = uuid.uuid4()
+    fixed_at = datetime(2026, 10, 8, 0, 0, tzinfo=UTC)
+
+    class FixedClock:
+        def now(self) -> datetime:
+            return fixed_at
+
+    with psycopg.connect(database_url) as connection:
+        seed_path = ROOT / "database" / "seeds" / "first_real_learning_loop.sql"
+        connection.execute(seed_path.read_text(encoding="utf-8"))
+        connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (actor_id,))
+        connection.execute("INSERT INTO public.users (id) VALUES (%s)", (actor_id,))
+        connection.execute(
+            "INSERT INTO public.learner_profiles (user_id, time_zone) VALUES (%s, 'Etc/UTC')",
+            (actor_id,),
+        )
+        profile = connection.execute(
+            """
+            INSERT INTO public.user_languages
+                (user_id, language_code, interface_language_code, native_language_code,
+                 goal, daily_minutes)
+            VALUES (%s, 'en', 'vi', 'vi', 'communication', 15)
+            RETURNING id
+            """,
+            (actor_id,),
+        ).fetchone()
+        assert profile is not None
+        profile_id = uuid.UUID(str(profile[0]))
+
+    actor = AuthenticatedActor(actor_id)
+    clock = FixedClock()
+    LibraryApplication(
+        database_url,
+        cursor_secret=b"k210-frll-probe-test-cursor-secret",
+        clock=clock,
+    ).save_concept(actor=actor, concept_id=uuid.UUID("7f110000-0000-4000-8000-000000000004"))
+
+    def read_proof() -> dict[str, Any]:
+        with psycopg.connect(database_url) as connection, connection.transaction():
+            connection.execute("SET TRANSACTION READ ONLY")
+            return k2_hosted_probe._frll_semantic_proof(
+                connection,
+                actor_id,
+                profile_id,
+                None,
+            )
+
+    saved = read_proof()
+    assert saved["save"]["reviewItemRows"] == 1
+    assert saved["save"]["fsrsStateRows"] == 1
+    assert saved["memory"] == {
+        "rowCount": 1,
+        "state": "new",
+        "stateVersion": 1,
+        "dueAt": "2026-10-08T00:00:00+00:00",
+        "lastReviewedAt": None,
+        "difficulty": None,
+        "stability": None,
+        "step": None,
+        "paramsVersion": saved["memory"]["paramsVersion"],
+    }
+
+    with psycopg.connect(database_url) as connection:
+        review_item = connection.execute(
+            "SELECT id FROM public.review_items WHERE user_id = %s AND concept_id = %s",
+            (actor_id, uuid.UUID("7f110000-0000-4000-8000-000000000004")),
+        ).fetchone()
+        assert review_item is not None
+        review_item_id = uuid.UUID(str(review_item[0]))
+
+    ReviewApplication(
+        database_url,
+        cursor_secret=b"k210-frll-review-test-cursor-secret",
+        clock=clock,
+    ).answer(
+        actor=actor,
+        review_item_id=review_item_id,
+        exercise_mode=ReviewExerciseMode.SELF_RECALL,
+        submission=ReviewSubmission(
+            idempotency_key=uuid.uuid4(),
+            rating=ReviewRating.GOOD,
+            response_time_ms=820,
+            correct=True,
+            response_text=None,
+            selected_option_id=None,
+        ),
+    )
+
+    reviewed = read_proof()
+    assert reviewed["review"]["eventRows"] == 1
+    assert reviewed["review"]["exerciseMode"] == "self_recall"
+    assert reviewed["review"]["evidenceMode"] == "production"
+    result_memory = reviewed["review"]["resultMemory"]
+    assert result_memory is not None
+    assert result_memory["state"] == "learning"
+    assert result_memory["step"] == 1
+    assert reviewed["memory"]["state"] == result_memory["state"]
+    assert reviewed["memory"]["step"] == result_memory["step"]
+    if result_memory["state"] == "review":
+        assert result_memory["step"] is None
+    else:
+        assert type(result_memory["step"]) is int and result_memory["step"] >= 0

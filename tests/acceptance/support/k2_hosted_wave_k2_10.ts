@@ -155,7 +155,10 @@ export function assertSavedState(proof: K2HostedFrllSemanticProof): void {
     proof.save.fsrsStateRows === 1 && proof.concept.rowCount === 1 &&
     proof.concept.hasLearningIntent === true && proof.concept.hasProjectableEvidence === false &&
     proof.memory.rowCount === 1 && proof.memory.stateVersion === 1 &&
-    proof.memory.state === 'new' && proof.memory.dueAt !== null && proof.review.eventRows === 0,
+    proof.memory.state === 'new' && proof.memory.dueAt !== null &&
+    proof.memory.lastReviewedAt === null && proof.memory.difficulty === null &&
+    proof.memory.stability === null && proof.memory.step === null &&
+    proof.review.eventRows === 0,
     'K2 hosted acceptance FRLL Save did not create exactly one intent and primary Memory lineage.',
   );
 }
@@ -164,6 +167,10 @@ export function assertReviewedState(
   proof: K2HostedFrllSemanticProof,
   requireKeyMatch = false,
 ): void {
+  const validPostReviewStep = proof.memory.state === 'review'
+    ? proof.memory.step === null
+    : (proof.memory.state === 'learning' || proof.memory.state === 'relearning') &&
+      proof.memory.step !== null && Number.isSafeInteger(proof.memory.step) && proof.memory.step >= 0;
   requireCondition(
     proof.identity.userRows === 1 && proof.identity.learnerProfileRows === 1 &&
     proof.identity.languageProfileRows === 1 && proof.identity.profileBound &&
@@ -172,8 +179,9 @@ export function assertReviewedState(
     proof.save.fsrsStateRows === 1 && proof.concept.rowCount === 1 &&
     proof.concept.hasLearningIntent === true && proof.concept.hasProjectableEvidence === true &&
     proof.concept.production.evidenceCount === 1 && proof.memory.rowCount === 1 &&
-    proof.memory.stateVersion === 2 && proof.memory.state === 'review' &&
+    proof.memory.stateVersion === 2 && validPostReviewStep &&
     proof.memory.dueAt !== null && proof.memory.lastReviewedAt !== null &&
+    proof.memory.difficulty !== null && proof.memory.stability !== null && proof.memory.paramsVersion !== null &&
     proof.review.eventRows === 1 && proof.review.reviewLearningEventRows === 1 &&
     (!requireKeyMatch || proof.review.idempotencyKeyMatched) &&
     proof.review.resultMemory !== null && proof.review.resultCompetence !== null &&
@@ -190,6 +198,7 @@ export function assertReviewedState(
   assertTimestamp(resultMemory.lastReviewedAt, proof.memory.lastReviewedAt, 'FRLL persisted memory lastReviewedAt');
   assertProjectionNumber(resultMemory.difficulty, proof.memory.difficulty, 'FRLL persisted memory difficulty');
   assertProjectionNumber(resultMemory.stability, proof.memory.stability, 'FRLL persisted memory stability');
+  assertExact(resultMemory.step, proof.memory.step, 'FRLL persisted memory step');
   assertExact(resultMemory.paramsVersion, proof.memory.paramsVersion, 'FRLL persisted memory parameters');
 
   const resultCompetence = proof.review.resultCompetence;

@@ -290,7 +290,7 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
     updated_at = "2026-10-08T00:00:00Z"
     memory_snapshot = {
         "state": "review", "dueAt": updated_at, "lastReviewAt": updated_at,
-        "difficulty": "5.2", "stability": "2.1", "step": 0,
+        "difficulty": "5.2", "stability": "2.1", "step": None,
         "stateVersion": 2, "paramsVersion": "fsrs-6.0.0",
     }
     competence_snapshot = {
@@ -302,10 +302,21 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
     }
 
     class FrllConnection:
-        def __init__(self, exercise_mode: str = "self_recall", evidence_mode: str = "production") -> None:
+        def __init__(
+            self,
+            exercise_mode: str = "self_recall",
+            evidence_mode: str = "production",
+            *,
+            memory_row: tuple[Any, ...] | None = None,
+            review_rows: list[tuple[Any, ...]] | None = None,
+        ) -> None:
             self.exercise_mode = exercise_mode
             self.evidence_mode = evidence_mode
             self.calls: list[tuple[str, Any]] = []
+            self.memory_row = memory_row or (
+                "review", 2, updated_at, updated_at, "5.2", "2.1", "fsrs-6.0.0", None,
+            )
+            self.review_rows = review_rows
 
         def execute(self, query: Any, params: Any = None) -> Result:
             statement = str(query)
@@ -322,10 +333,10 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
                     "0.5", "0.25", 1, updated_at,
                 )])
             if "FROM public.fsrs_states AS memory" in statement:
-                return Result(rows=[(
-                    "review", 2, updated_at, updated_at, "5.2", "2.1", "fsrs-6.0.0",
-                )])
+                return Result(rows=[self.memory_row])
             if "FROM public.review_events AS event" in statement:
+                if self.review_rows is not None:
+                    return Result(rows=self.review_rows)
                 return Result(rows=[(
                     raw_key, "good", 1200, True, self.exercise_mode, self.evidence_mode,
                     memory_snapshot, competence_snapshot, 1,
@@ -352,6 +363,8 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
     assert output["review"]["exerciseMode"] == "self_recall"
     assert output["review"]["evidenceMode"] == "production"
     assert output["memory"]["stateVersion"] == 2
+    assert output["memory"]["step"] is None
+    assert any("memory.step" in statement for statement, _ in connection.calls)
     assert output["projection"]["skillRows"] == 3
     assert all(statement.lstrip().startswith("SELECT") for statement, _ in connection.calls)
     serialized = json.dumps(output, sort_keys=True)
@@ -364,6 +377,108 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
     mismatched_enum_connection = FrllConnection("production", "self_recall")
     with pytest.raises(probe.ProbeError):
         probe._frll_semantic_proof(mismatched_enum_connection, actor_id, profile_id, digest)
+
+    fresh_connection = FrllConnection(
+        memory_row=("new", 1, updated_at, None, None, None, "fsrs-6.0.0", None),
+        review_rows=[],
+    )
+    fresh = probe._frll_semantic_proof(fresh_connection, actor_id, profile_id, None)
+    assert fresh["memory"] == {
+        "rowCount": 1, "state": "new", "stateVersion": 1, "dueAt": updated_at,
+        "lastReviewedAt": None, "difficulty": None, "stability": None, "step": None,
+        "paramsVersion": "fsrs-6.0.0",
+    }
+    assert fresh["review"]["eventRows"] == 0
+
+
+@pytest.mark.parametrize(
+    "memory_row",
+    [
+        ("new", 1, "2026-10-08T00:00:00Z", None, "5.2", None, "fsrs-6.0.0", None),
+        (
+            "learning",
+            2,
+            "2026-10-08T00:00:00Z",
+            "2026-10-08T00:00:00Z",
+            "5.2",
+            "2.1",
+            "fsrs-6.0.0",
+            None,
+        ),
+        (
+            "relearning",
+            2,
+            "2026-10-08T00:00:00Z",
+            "2026-10-08T00:00:00Z",
+            "5.2",
+            "2.1",
+            "fsrs-6.0.0",
+            -1,
+        ),
+        (
+            "review",
+            2,
+            "2026-10-08T00:00:00Z",
+            "2026-10-08T00:00:00Z",
+            "5.2",
+            "2.1",
+            "fsrs-6.0.0",
+            0,
+        ),
+    ],
+)
+def test_frll_semantic_probe_rejects_fsrs_rows_that_break_state_shape(
+    memory_row: tuple[Any, ...],
+) -> None:
+    actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    profile_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+
+    class InvalidMemoryConnection:
+        def execute(self, query: Any, params: Any = None) -> Result:
+            statement = str(query)
+            if "FROM public.users WHERE id = %s" in statement:
+                return Result(row=(1, 1, 1, 1))
+            if "FROM public.user_saved_concepts" in statement:
+                return Result(row=(1, 1, 1, 1, 1))
+            if "FROM public.user_concept_states" in statement:
+                return Result()
+            if "FROM public.fsrs_states AS memory" in statement:
+                return Result(rows=[memory_row])
+            raise AssertionError("invalid FSRS shape should fail before later proof queries")
+
+    with pytest.raises(probe.ProbeError):
+        probe._frll_semantic_proof(InvalidMemoryConnection(), actor_id, profile_id, None)
+
+
+@pytest.mark.parametrize(
+    ("state", "step"),
+    [("learning", 0), ("relearning", 1), ("review", None)],
+)
+def test_frll_review_snapshot_uses_state_specific_step_shape(state: str, step: int | None) -> None:
+    timestamp = "2026-10-08T00:00:00Z"
+    snapshot = probe._frll_snapshot_memory({
+        "state": state, "dueAt": timestamp, "lastReviewAt": timestamp,
+        "difficulty": "5.2", "stability": "2.1", "step": step,
+        "stateVersion": 2, "paramsVersion": "fsrs-6.0.0",
+    })
+    assert snapshot["state"] == state
+    assert snapshot["step"] == step
+
+
+@pytest.mark.parametrize(
+    ("state", "step"),
+    [("new", None), ("review", 0), ("learning", None)],
+)
+def test_frll_review_snapshot_rejects_invalid_state_step_shape(
+    state: str, step: int | None
+) -> None:
+    timestamp = "2026-10-08T00:00:00Z"
+    with pytest.raises(probe.ProbeError):
+        probe._frll_snapshot_memory({
+            "state": state, "dueAt": timestamp, "lastReviewAt": timestamp,
+            "difficulty": "5.2", "stability": "2.1", "step": step,
+            "stateVersion": 2, "paramsVersion": "fsrs-6.0.0",
+        })
 
 
 def test_frll_probe_rejects_raw_key_and_malformed_digest_before_database_access(
