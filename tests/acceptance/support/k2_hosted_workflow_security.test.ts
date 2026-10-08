@@ -133,6 +133,8 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_runner.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_10.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/browser_actor_switch.test.ts');
     expect(harnessTests).toContain('tests/frontend/k2-vercel-attestation.test.ts');
     expect(stepNamed(securityGate, 'Typecheck hosted acceptance harness').run)
       .toBe('pnpm exec tsc --noEmit -p tsconfig.k2-harness.json');
@@ -144,6 +146,9 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.test.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_10.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_10.test.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/browser_actor_switch.test.ts');
     expect(stepNamed(todayPostgres, 'Verify Today policy and persistence against PostgreSQL').run)
       .toContain('tests/backend/database/test_today_api.py');
     expect(readFileSync(resolve(process.cwd(), 'tests/backend/database/test_today_api.py'), 'utf8'))
@@ -159,7 +164,7 @@ describe('K2 hosted workflow credential boundary', () => {
     const dispatchInputs = asMap(asMap(secretWorkflow.on, 'secret workflow triggers').workflow_dispatch,
       'workflow_dispatch trigger').inputs;
     const waveInput = asMap(asMap(dispatchInputs, 'workflow_dispatch inputs').wave, 'wave selector input');
-    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY', 'K2-08', 'K2-09']);
+    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY', 'K2-08', 'K2-09', 'K2-10']);
     expect(guard).toContain("github.event_name == 'workflow_dispatch'");
     expect(guard).toContain("github.repository == 'haizx71/lingua-os'");
     expect(guard).toContain("github.ref == 'refs/heads/master'");
@@ -171,6 +176,7 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(guard).toContain("inputs.wave == 'K2-08-DUE-ONLY'");
     expect(guard).toContain("inputs.wave == 'K2-08'");
     expect(guard).toContain("inputs.wave == 'K2-09'");
+    expect(guard).toContain("inputs.wave == 'K2-10'");
     const preflight = stepNamed(acceptance, 'Verify run SHA and selected wave before staging secrets');
     const acceptanceStep = stepNamed(acceptance, 'Run protected selected K2 hosted subcase');
     expect(stepsFor(acceptance).indexOf(preflight)).toBeLessThan(stepsFor(acceptance).indexOf(acceptanceStep));
@@ -181,6 +187,7 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(preflight.run).toContain("'K2-08-DUE-ONLY'");
     expect(preflight.run).toContain("'K2-08'");
     expect(preflight.run).toContain("'K2-09'");
+    expect(preflight.run).toContain("'K2-10'");
     expect(JSON.stringify(preflight)).not.toContain('secrets.');
     expect(acceptanceStep.run).toContain('--grep "hosted lifecycle"');
     expect(asMap(acceptanceStep.env, 'selected hosted subcase environment').K2_ACCEPTANCE_WAVE)

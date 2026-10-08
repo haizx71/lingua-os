@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import json
 from types import SimpleNamespace
 from typing import Any
 from uuid import UUID
@@ -278,6 +280,109 @@ def test_migration_probe_fails_if_supabase_ledger_is_not_at_reader_migration() -
 
     with pytest.raises(probe.ProbeError):
         probe._migration_head(OlderMigrationConnection())
+
+
+def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key() -> None:
+    actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    profile_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    review_id = UUID("550e8400-e29b-41d4-a716-446655440002")
+    raw_key = "550e8400-e29b-41d4-a716-446655440003"
+    updated_at = "2026-10-08T00:00:00Z"
+    memory_snapshot = {
+        "state": "review", "dueAt": updated_at, "lastReviewAt": updated_at,
+        "difficulty": "5.2", "stability": "2.1", "step": 0,
+        "stateVersion": 2, "paramsVersion": "fsrs-6.0.0",
+    }
+    competence_snapshot = {
+        dimension: {
+            "score": "0.5", "confidence": "0.25", "evidenceCount": 1,
+            "updatedAt": updated_at,
+        }
+        for dimension in ("recognition", "listening", "production")
+    }
+
+    class FrllConnection:
+        def __init__(self, exercise_mode: str = "self_recall", evidence_mode: str = "production") -> None:
+            self.exercise_mode = exercise_mode
+            self.evidence_mode = evidence_mode
+            self.calls: list[tuple[str, Any]] = []
+
+        def execute(self, query: Any, params: Any = None) -> Result:
+            statement = str(query)
+            self.calls.append((statement, params))
+            if "FROM public.users WHERE id = %s" in statement:
+                return Result(row=(1, 1, 1, 1))
+            if "FROM public.user_saved_concepts" in statement:
+                return Result(row=(1, 1, 1, 1, 1))
+            if "FROM public.user_concept_states" in statement:
+                return Result(rows=[(
+                    "active", "0.5", "0.25", 1, updated_at, 2, True, True,
+                    "0.5", "0.25", 1, updated_at,
+                    "0.5", "0.25", 1, updated_at,
+                    "0.5", "0.25", 1, updated_at,
+                )])
+            if "FROM public.fsrs_states AS memory" in statement:
+                return Result(rows=[(
+                    "review", 2, updated_at, updated_at, "5.2", "2.1", "fsrs-6.0.0",
+                )])
+            if "FROM public.review_events AS event" in statement:
+                return Result(rows=[(
+                    raw_key, "good", 1200, True, self.exercise_mode, self.evidence_mode,
+                    memory_snapshot, competence_snapshot, 1,
+                )])
+            if "FROM public.user_language_projection_heads" in statement:
+                return Result(rows=[(2, "frll-v1", 1)])
+            if "FROM public.user_skill_states" in statement:
+                return Result(rows=[
+                    (skill, "0.5", "0.25", 1, 1, updated_at, "frll-v1")
+                    for skill in ("recognition", "listening", "production")
+                ])
+            raise AssertionError("unexpected FRLL probe query")
+
+    connection = FrllConnection()
+    digest = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+    output = probe._frll_semantic_proof(connection, actor_id, profile_id, digest)
+
+    assert output["identity"] == {
+        "userRows": 1, "learnerProfileRows": 1, "languageProfileRows": 1,
+        "profileBound": True,
+    }
+    assert output["review"]["idempotencyKeyMatched"] is True
+    assert output["review"]["eventRows"] == 1
+    assert output["review"]["exerciseMode"] == "self_recall"
+    assert output["review"]["evidenceMode"] == "production"
+    assert output["memory"]["stateVersion"] == 2
+    assert output["projection"]["skillRows"] == 3
+    assert all(statement.lstrip().startswith("SELECT") for statement, _ in connection.calls)
+    serialized = json.dumps(output, sort_keys=True)
+    assert str(actor_id) not in serialized
+    assert str(profile_id) not in serialized
+    assert str(review_id) not in serialized
+    assert raw_key not in serialized
+    assert digest not in serialized
+
+    mismatched_enum_connection = FrllConnection("production", "self_recall")
+    with pytest.raises(probe.ProbeError):
+        probe._frll_semantic_proof(mismatched_enum_connection, actor_id, profile_id, digest)
+
+
+def test_frll_probe_rejects_raw_key_and_malformed_digest_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("K2_ACCEPTANCE_PROBE_ACTION", "frll_anchor_semantic_proof")
+    monkeypatch.setenv("K2_ACCEPTANCE_ACTOR_ID", "550e8400-e29b-41d4-a716-446655440000")
+    monkeypatch.setenv("K2_ACCEPTANCE_PROFILE_ID", "550e8400-e29b-41d4-a716-446655440001")
+    monkeypatch.setenv("K2_ACCEPTANCE_IDEMPOTENCY_KEY", "do-not-accept")
+    monkeypatch.setattr(probe, "_connection", lambda: pytest.fail("database must not be opened"))
+
+    assert probe.main() == 2
+    assert capsys.readouterr().err == "K2 hosted acceptance read-only probe failed closed.\n"
+
+    monkeypatch.delenv("K2_ACCEPTANCE_IDEMPOTENCY_KEY")
+    monkeypatch.setenv("K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256", "not-a-digest")
+    assert probe.main() == 2
+    assert capsys.readouterr().err == "K2 hosted acceptance read-only probe failed closed.\n"
 
 
 def test_migration_probe_requires_supabase_0019_before_the_reader_migration() -> None:

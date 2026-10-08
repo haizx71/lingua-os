@@ -9,6 +9,7 @@ import {
   parseK2HostedTodayReviewTargets,
   parseK2HostedCandidateBaseProof,
   parseK2HostedDueCandidateOverlap,
+  parseK2HostedFrllSemanticProof,
   parseK2HostedFixtureCapability,
   parseK2HostedCatalogPreflight,
   parseK2RetainedSnapshot,
@@ -27,6 +28,31 @@ const emptyActorSnapshot = (): MutableK2RetainedSnapshot => ({
     sha256: '0'.repeat(64),
   }])) as MutableK2RetainedSnapshot['tables'],
 });
+
+function emptyFrllSemanticProof() {
+  const dimension = { score: null, confidence: null, evidenceCount: null, lastEvidenceAt: null };
+  return {
+    identity: { userRows: 0, learnerProfileRows: 0, languageProfileRows: 0, profileBound: false },
+    save: { savedMembershipRows: 0, saveIntentRows: 0, saveLearningEventRows: 0, reviewItemRows: 0, fsrsStateRows: 0 },
+    concept: {
+      rowCount: 0, status: null, mastery: null, confidence: null, exposureCount: null, lastSeenAt: null,
+      stateVersion: null, hasLearningIntent: null, hasProjectableEvidence: null,
+      recognition: dimension, listening: dimension, production: dimension,
+    },
+    memory: {
+      rowCount: 0, state: null, stateVersion: null, dueAt: null, lastReviewedAt: null,
+      difficulty: null, stability: null, paramsVersion: null,
+    },
+    review: {
+      eventRows: 0, reviewLearningEventRows: 0, idempotencyKeyMatched: false, rating: null,
+      responseTimeMs: null, correct: null, exerciseMode: null, evidenceMode: null,
+      resultMemory: null, resultCompetence: null,
+    },
+    projection: {
+      headRows: 0, nextIngestionSequence: null, methodVersion: null, stateVersion: null, skillRows: 0, skills: [],
+    },
+  };
+}
 
 describe('K2 read-only probe client', () => {
   it('requires every pinned public learner table and visible retained rows', () => {
@@ -128,6 +154,95 @@ describe('K2 read-only probe client', () => {
       'PGSSLROOTCERT',
       ...(process.platform === 'win32' && systemEnv.SystemRoot ? ['SystemRoot'] : []),
     ].sort());
+  });
+
+  it('parses the fixed-anchor FRLL proof without exposing row identities and rejects shape drift', () => {
+    const proof = emptyFrllSemanticProof();
+    expect(parseK2HostedFrllSemanticProof(proof)).toMatchObject({
+      identity: { profileBound: false },
+      review: { eventRows: 0, resultMemory: null },
+      projection: { skillRows: 0 },
+    });
+    expect(() => parseK2HostedFrllSemanticProof({ ...proof, actorId: 'private-actor-marker' }))
+      .toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...proof,
+      identity: { ...proof.identity, profileBound: true },
+    })).toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...proof,
+      memory: { ...proof.memory, state: 'review', rowCount: 0 },
+    })).toThrow('FRLL semantic proof was invalid');
+  });
+
+  it('keeps persisted exercise mode separate from its evidence mode and rejects enum confusion', () => {
+    const proof = emptyFrllSemanticProof();
+    const reviewed = {
+      ...proof,
+      review: {
+        ...proof.review,
+        eventRows: 1,
+        reviewLearningEventRows: 1,
+        rating: 'good',
+        responseTimeMs: 1200,
+        correct: true,
+        exerciseMode: 'self_recall',
+        evidenceMode: 'production',
+        resultMemory: {
+          state: 'review', dueAt: '2026-10-08T00:00:00Z', lastReviewedAt: '2026-10-08T00:00:00Z',
+          difficulty: '5.0', stability: '2.1', step: 0, stateVersion: 2, paramsVersion: 'fsrs-1',
+        },
+        resultCompetence: Object.fromEntries(['recognition', 'listening', 'production'].map(dimension => [dimension, {
+          score: '0.5', confidence: '0.25', evidenceCount: 1, updatedAt: '2026-10-08T00:00:00Z',
+        }])),
+      },
+    };
+    expect(parseK2HostedFrllSemanticProof(reviewed).review).toMatchObject({
+      exerciseMode: 'self_recall', evidenceMode: 'production',
+    });
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...reviewed,
+      review: { ...reviewed.review, exerciseMode: 'production' },
+    })).toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...reviewed,
+      review: { ...reviewed.review, evidenceMode: 'self_recall' },
+    })).toThrow('FRLL semantic proof was invalid');
+  });
+
+  it('passes only a fresh actor/profile and hash to the fixed FRLL semantic probe', () => {
+    const systemEnv: NodeJS.ProcessEnv = {
+      PATH: 'runner-path',
+      PGSSLROOTCERT: '/runner/supabase-root.crt',
+      SUPABASE_SECRET_KEY: 'must-not-inherit',
+      K2_ACCEPTANCE_IDEMPOTENCY_KEY: 'must-not-inherit',
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'must-not-inherit',
+    };
+    const env = buildK2ProbeChildEnvironment(
+      'frll_anchor_semantic_proof',
+      'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require',
+      '00000000-0000-4000-8000-000000000001',
+      systemEnv,
+      '00000000-0000-4000-8000-000000000002',
+      undefined,
+      'a'.repeat(64),
+    );
+    expect(env.K2_ACCEPTANCE_PROBE_ACTION).toBe('frll_anchor_semantic_proof');
+    expect(env.K2_ACCEPTANCE_ACTOR_ID).toBe('00000000-0000-4000-8000-000000000001');
+    expect(env.K2_ACCEPTANCE_PROFILE_ID).toBe('00000000-0000-4000-8000-000000000002');
+    expect(env.K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256).toBe('a'.repeat(64));
+    expect(env.K2_ACCEPTANCE_IDEMPOTENCY_KEY).toBeUndefined();
+    expect(env.SUPABASE_SECRET_KEY).toBeUndefined();
+    expect(env.ACTIONS_ID_TOKEN_REQUEST_TOKEN).toBeUndefined();
+    expect(() => buildK2ProbeChildEnvironment(
+      'frll_anchor_semantic_proof',
+      'read-only-url',
+      '00000000-0000-4000-8000-000000000001',
+      systemEnv,
+      '00000000-0000-4000-8000-000000000002',
+      undefined,
+      'raw-idempotency-key',
+    )).toThrow('SHA-256 key digest');
   });
 
   it('passes only exact fresh actor/profile bindings to the candidate probe child', () => {

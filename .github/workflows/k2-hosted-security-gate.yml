@@ -56,6 +56,8 @@ jobs:
           tests/acceptance/support/k2_hosted_wave_k2_08_due_only.test.ts
           tests/acceptance/support/k2_hosted_wave_k2_08.test.ts
           tests/acceptance/support/k2_hosted_wave_k2_09.test.ts
+          tests/acceptance/support/k2_hosted_wave_k2_10.test.ts
+          tests/acceptance/support/browser_actor_switch.test.ts
           tests/acceptance/support/k2_playwright_network.test.ts
           tests/acceptance/support/k2_hosted_workflow_security.test.ts
           tests/frontend/k2-vercel-attestation.test.ts
