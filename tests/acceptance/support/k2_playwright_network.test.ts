@@ -1,5 +1,8 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createServer } from 'node:http';
+import { HttpApiClient, mockApiResponses } from '@lingua/types';
+import { useReviewSession } from '../../../apps/web/src/features/review/useReviewSession';
 import {
   createK2FrllTodayDiagnostic,
   createK2FrllAuthBindingBarrier,
@@ -414,7 +417,7 @@ describe('K2 Playwright deployment request guard', () => {
     expect(fulfilled.headers['x-vercel-id']).toBeUndefined();
   });
 
-  it('accepts only the fixed self-recall answer body and contract-bounded response time', async () => {
+  it('accepts the normal self-recall body and optional explicit correct:true only', async () => {
     const actor = { accessToken: 'actor-a-jwt', userId: '00000000-0000-4000-8000-000000000101', profileId: '00000000-0000-4000-8000-000000000001' };
     const sessions = new Map([[actor.accessToken, actor]]);
     const routePath = `${config.vercelOrigin}/api/v1/review/00000000-0000-4000-8000-000000000010/answer`;
@@ -422,15 +425,29 @@ describe('K2 Playwright deployment request guard', () => {
     const direct = vi.fn(async () => new Response('{"data":{}}', {
       headers: { 'x-lingua-source-sha': config.githubSha },
     }));
-    const base = { correct: true, exerciseMode: 'self_recall', rating: 'good', responseTimeMs: 1200 };
+    const base = { exerciseMode: 'self_recall', rating: 'good', responseTimeMs: 1200 };
+    const validBodies = [base, { ...base, correct: true }];
+    for (const body of validBodies) {
+      const route = fakeRoute(routePath, {
+        authorization: `Bearer ${actor.accessToken}`,
+        'idempotency-key': idempotencyKey,
+        'content-type': 'application/json',
+      }, undefined, undefined, 'POST', Buffer.from(JSON.stringify(body)));
+      await forwardK2FrllBrowserRequest(route.route, config, sessions, direct);
+      expect(route.fulfill).toHaveBeenCalledOnce();
+      expect(route.abort).not.toHaveBeenCalled();
+    }
     const invalidBodies = [
       { ...base, exerciseMode: 'typing' },
       { ...base, responseText: 'must not pass through' },
       { ...base, correct: false },
+      { ...base, correct: null },
       { ...base, correct: 'true' },
+      { ...base, extra: true },
+      { ...base, rating: ['good'] },
+      { rating: 'good', responseTimeMs: 1200 },
       { ...base, responseTimeMs: 3_600_001 },
       { ...base, responseTimeMs: Number.MAX_SAFE_INTEGER + 1 },
-      { rating: 'good', exerciseMode: 'self_recall', responseTimeMs: 1200 },
     ];
 
     for (const body of invalidBodies) {
@@ -448,10 +465,94 @@ describe('K2 Playwright deployment request guard', () => {
       authorization: `Bearer ${actor.accessToken}`,
       'idempotency-key': idempotencyKey,
       'content-type': 'application/json',
-    }, undefined, undefined, 'POST', Buffer.from(JSON.stringify({ ...base, responseTimeMs: 3_600_000 })));
+    }, undefined, undefined, 'POST', Buffer.from(JSON.stringify({ ...base, correct: true, responseTimeMs: 3_600_000 })));
     await forwardK2FrllBrowserRequest(contractMaximum.route, config, sessions, direct);
     expect(contractMaximum.fulfill).toHaveBeenCalledOnce();
-    expect(direct).toHaveBeenCalledOnce();
+    expect(direct).toHaveBeenCalledTimes(validBodies.length + 1);
+
+    for (const invalidKey of [undefined, 'not-a-uuid']) {
+      const route = fakeRoute(routePath, {
+        authorization: `Bearer ${actor.accessToken}`,
+        ...(invalidKey ? { 'idempotency-key': invalidKey } : {}),
+        'content-type': 'application/json',
+      }, undefined, undefined, 'POST', Buffer.from(JSON.stringify(base)));
+      await forwardK2FrllBrowserRequest(route.route, config, sessions, direct);
+      expect(route.abort).toHaveBeenCalledOnce();
+      expect(route.fulfill).not.toHaveBeenCalled();
+    }
+  });
+
+  it('forwards the real self-recall hook and HttpApiClient wire body through the same K2 request guard', async () => {
+    const actor = {
+      accessToken: 'hook-client-actor-token',
+      userId: '00000000-0000-4000-8000-000000000101',
+      profileId: '00000000-0000-4000-8000-000000000001',
+    };
+    const sessions = new Map([[actor.accessToken, actor]]);
+    const reviewItemId = mockApiResponses.reviewQueue.data[0].reviewItemId;
+    const queuePayload = {
+      ...mockApiResponses.reviewQueue,
+      meta: { ...mockApiResponses.reviewQueue.meta, nextCursor: null, hasMore: false, pageSize: 3 },
+    };
+    let capturedWireBody: string | undefined;
+    let capturedForwardedBody: Buffer | undefined;
+    let forwardedCount = 0;
+    let rejectedCount = 0;
+    const answerPayload = {
+      ...mockApiResponses.reviewAnswer,
+      data: { ...mockApiResponses.reviewAnswer.data, reviewItemId },
+    };
+    const answerResponse = () => new Response(JSON.stringify(answerPayload), {
+      headers: { 'content-type': 'application/json', 'x-lingua-source-sha': config.githubSha },
+    });
+    const client = new HttpApiClient({
+      baseUrl: `${config.vercelOrigin}/api`,
+      authTokenProvider: async () => actor.accessToken,
+      fetchFn: async (input, init) => {
+        const url = new URL(String(input));
+        const method = String(init?.method ?? 'GET').toUpperCase();
+        if (method === 'GET' && url.pathname === '/api/v1/review/queue') {
+          return new Response(JSON.stringify(queuePayload), {
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (method !== 'POST' || !url.pathname.endsWith(`/v1/review/${reviewItemId}/answer`)) {
+          throw new Error('Unexpected local test request');
+        }
+        capturedWireBody = String(init?.body ?? '');
+        const headers = Object.fromEntries(new Headers(init?.headers).entries());
+        const route = fakeRoute(url.href, headers, undefined, undefined, method,
+          Buffer.from(capturedWireBody));
+        await forwardK2FrllBrowserRequest(route.route, config, sessions, async forwarded => {
+          forwardedCount++;
+          capturedForwardedBody = forwarded.body;
+          return answerResponse();
+        });
+        if (route.abort.mock.calls.length > 0) {
+          rejectedCount++;
+          return new Response('{"error":{"code":"INTERNAL_ERROR"}}', { status: 500 });
+        }
+        return answerResponse();
+      },
+    });
+    const { result } = renderHook(() => useReviewSession({
+      apiClient: client,
+      query: { languageProfileId: actor.profileId },
+    }));
+
+    await waitFor(() => expect(result.current.queue.length).toBeGreaterThan(0));
+    expect(result.current.currentCard?.id).toBe(reviewItemId);
+    await act(async () => { await result.current.submitRating('good'); });
+
+    expect(result.current.actionError).toBeNull();
+    expect(rejectedCount).toBe(0);
+    expect(forwardedCount).toBe(1);
+    expect(capturedWireBody).toBeDefined();
+    expect(capturedForwardedBody?.toString('utf8')).toBe(capturedWireBody);
+    const wireBody = JSON.parse(capturedWireBody!) as Record<string, unknown>;
+    expect(Object.keys(wireBody).sort()).toEqual(['exerciseMode', 'rating', 'responseTimeMs']);
+    expect(wireBody).toMatchObject({ exerciseMode: 'self_recall', rating: 'good' });
+    expect(wireBody.responseTimeMs).toEqual(expect.any(Number));
   });
 
   it('keeps an in-flight Actor A bearer bound to A after the page has switched to B', async () => {

@@ -411,10 +411,13 @@ function validAnswerBody(body: Buffer | undefined, headers: Readonly<Record<stri
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const request = value as Record<string, unknown>;
     const keys = Object.keys(request).sort();
-    const required = ['correct', 'exerciseMode', 'rating', 'responseTimeMs'];
-    if (keys.length !== required.length || keys.some((key, index) => key !== required[index]) ||
-        request.correct !== true || request.exerciseMode !== 'self_recall' ||
-        !['again', 'hard', 'good', 'easy'].includes(String(request.rating)) ||
+    const required = ['exerciseMode', 'rating', 'responseTimeMs'];
+    const allowed = ['correct', ...required];
+    const expectedKeys = Object.hasOwn(request, 'correct') ? allowed : required;
+    if (keys.length !== expectedKeys.length || keys.some((key, index) => key !== expectedKeys[index]) ||
+        (Object.hasOwn(request, 'correct') && request.correct !== true) ||
+        request.exerciseMode !== 'self_recall' ||
+        typeof request.rating !== 'string' || !['again', 'hard', 'good', 'easy'].includes(request.rating) ||
         typeof request.responseTimeMs !== 'number' || !Number.isSafeInteger(request.responseTimeMs) ||
         request.responseTimeMs < 0 || request.responseTimeMs > 3_600_000) return false;
     return true;
