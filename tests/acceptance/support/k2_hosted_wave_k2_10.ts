@@ -623,10 +623,20 @@ export const k2HostedWaveK210: K2HostedWavePlugin = {
     const pageD = await frll.createPage();
     await frll.switchToActor(actorD, pageD);
     const passiveBaseline = await context.actorSnapshot(actorD);
+    const actorDProfiles = contractData<readonly components['schemas']['LanguageProfile'][]>(
+      'LanguageProfilesResponse', (await frll.request(actorD, '/v1/me/languages')).payload,
+    );
+    if (actorDProfiles.length !== 1 || actorDProfiles[0]?.status !== 'active') {
+      fail('K2 hosted acceptance passive Actor D active profile was invalid.');
+    }
+    const passiveReviewTargets = await context.actorTodayReviewTargets(actorD);
+    requireCondition(passiveReviewTargets.targetCount === 0 &&
+      passiveReviewTargets.reviewActivityCount === 0 && passiveReviewTargets.reviewItemIds.length === 0,
+    'K2 hosted acceptance passive Actor D unexpectedly had Review targets.');
     await frll.ui.searchAnchor(pageD);
     assertExact(await context.actorSnapshot(actorD), passiveBaseline,
       'FRLL passive Actor D Dictionary zero-write');
-    await frll.ui.openPassiveToday(pageD);
+    await frll.ui.openPassiveToday(pageD, actorDProfiles[0].id);
     const afterPassiveToday = await context.actorSnapshot(actorD);
     assertTodayCoordinationOnly(passiveBaseline, afterPassiveToday);
     await frll.ui.openBrain(pageD);
