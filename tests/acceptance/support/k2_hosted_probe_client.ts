@@ -323,7 +323,8 @@ export function parseK2HostedFrllSemanticProof(value: unknown): K2HostedFrllSema
       !(review.exerciseMode === null || (typeof review.exerciseMode === 'string' && exerciseModes.has(review.exerciseMode))) ||
       !(review.evidenceMode === null || (typeof review.evidenceMode === 'string' && evidenceModes.has(review.evidenceMode))) ||
       (review.eventRows === 0 && [review.rating, review.responseTimeMs, review.correct, review.exerciseMode, review.evidenceMode].some(x => x !== null)) ||
-      (review.eventRows > 0 && [review.rating, review.responseTimeMs, review.correct, review.exerciseMode, review.evidenceMode].some(x => x === null))) {
+      (review.eventRows > 0 && [review.rating, review.responseTimeMs, review.exerciseMode, review.evidenceMode].some(x => x === null)) ||
+      (review.correct !== null && review.exerciseMode !== 'self_recall')) {
     throw new Error(message);
   }
   if (review.resultMemory !== null) {

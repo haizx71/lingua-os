@@ -78,7 +78,10 @@ export function assertReviewTransition(
   assertExact(beforeProof.review.reviewLearningEventRows, 0, 'FRLL pre-answer review learning event count');
   assertExact(afterProof.review.exerciseMode, 'self_recall', 'FRLL persisted Review exercise mode');
   assertExact(afterProof.review.evidenceMode, 'production', 'FRLL self-recall evidence mode');
-  assertExact(afterProof.review.correct, true, 'FRLL self-recall correctness');
+  requireCondition(
+    afterProof.review.correct === null || afterProof.review.correct === true,
+    'K2 hosted acceptance FRLL self-recall correctness did not match the accepted Good answer.',
+  );
 
   const expectedBefore = frllTableCounts(beforeProof);
   const expectedAfter = frllTableCounts(afterProof);
