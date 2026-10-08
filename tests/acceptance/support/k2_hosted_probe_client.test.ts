@@ -240,7 +240,7 @@ describe('K2 read-only probe client', () => {
         reviewLearningEventRows: 1,
         rating: 'good',
         responseTimeMs: 1200,
-        correct: true,
+        correct: null,
         exerciseMode: 'self_recall',
         evidenceMode: 'production',
         resultMemory: {
@@ -255,6 +255,22 @@ describe('K2 read-only probe client', () => {
     expect(parseK2HostedFrllSemanticProof(reviewed).review).toMatchObject({
       exerciseMode: 'self_recall', evidenceMode: 'production',
     });
+    expect(parseK2HostedFrllSemanticProof({
+      ...reviewed,
+      review: { ...reviewed.review, correct: true },
+    }).review.correct).toBe(true);
+    expect(parseK2HostedFrllSemanticProof({
+      ...reviewed,
+      review: { ...reviewed.review, correct: false },
+    }).review.correct).toBe(false);
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...reviewed,
+      review: { ...reviewed.review, correct: 'true' },
+    })).toThrow('FRLL semantic proof was invalid');
+    expect(() => parseK2HostedFrllSemanticProof({
+      ...reviewed,
+      review: { ...reviewed.review, correct: true, exerciseMode: 'typing' },
+    })).toThrow('FRLL semantic proof was invalid');
     expect(() => parseK2HostedFrllSemanticProof({
       ...reviewed,
       review: { ...reviewed.review, exerciseMode: 'production' },
@@ -309,7 +325,7 @@ describe('K2 read-only probe client', () => {
         reviewLearningEventRows: 1,
         rating: 'good',
         responseTimeMs: 1200,
-        correct: true,
+        correct: null,
         exerciseMode: 'self_recall' as const,
         evidenceMode: 'production' as const,
         resultMemory: {

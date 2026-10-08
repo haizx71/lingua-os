@@ -108,7 +108,7 @@ function reviewedSemanticProof(): K2HostedFrllSemanticProof {
     },
     review: {
       eventRows: 1, reviewLearningEventRows: 1, idempotencyKeyMatched: true,
-      rating: 'good', responseTimeMs: 1000, correct: true,
+      rating: 'good', responseTimeMs: 1000, correct: null,
       exerciseMode: 'self_recall', evidenceMode: 'production',
       resultMemory: {
         state: 'learning', dueAt, lastReviewedAt, difficulty: '4.50', stability: '2.00',
@@ -329,6 +329,17 @@ describe('K2-10 frozen FRLL/R1 assertions', () => {
   it('allows only the complete semantic Review transition and documented Today deltas', () => {
     const { before, after } = reviewTransitionSnapshots();
     expect(() => assertReviewTransition(before, after, savedSemanticProof(), reviewedSemanticProof(), true)).not.toThrow();
+    const compatibleTrue: K2HostedFrllSemanticProof = {
+      ...reviewedSemanticProof(),
+      review: { ...reviewedSemanticProof().review, correct: true },
+    };
+    expect(() => assertReviewTransition(before, after, savedSemanticProof(), compatibleTrue, true)).not.toThrow();
+    const invalidFalse: K2HostedFrllSemanticProof = {
+      ...reviewedSemanticProof(),
+      review: { ...reviewedSemanticProof().review, correct: false },
+    };
+    expect(() => assertReviewTransition(before, after, savedSemanticProof(), invalidFalse, true))
+      .toThrow('FRLL self-recall correctness');
   });
 
   it('rejects any unrelated retained learner-table mutation during Review', () => {

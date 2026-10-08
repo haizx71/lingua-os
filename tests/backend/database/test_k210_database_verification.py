@@ -537,7 +537,7 @@ def test_frll_probe_accepts_real_saved_and_reviewed_fsrs_shapes(
             idempotency_key=idempotency_key,
             rating=ReviewRating.GOOD,
             response_time_ms=820,
-            correct=True,
+            correct=None,
             response_text=None,
             selected_option_id=None,
         ),

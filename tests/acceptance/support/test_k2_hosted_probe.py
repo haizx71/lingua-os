@@ -307,11 +307,13 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
             exercise_mode: str = "self_recall",
             evidence_mode: str = "production",
             *,
+            correct: Any = None,
             memory_row: tuple[Any, ...] | None = None,
             review_rows: list[tuple[Any, ...]] | None = None,
         ) -> None:
             self.exercise_mode = exercise_mode
             self.evidence_mode = evidence_mode
+            self.correct = correct
             self.calls: list[tuple[str, Any]] = []
             self.memory_row = memory_row or (
                 "review", 2, updated_at, updated_at, "5.2", "2.1", "fsrs-6.0.0", None,
@@ -338,7 +340,7 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
                 if self.review_rows is not None:
                     return Result(rows=self.review_rows)
                 return Result(rows=[(
-                    raw_key, "good", 1200, True, self.exercise_mode, self.evidence_mode,
+                    raw_key, "good", 1200, self.correct, self.exercise_mode, self.evidence_mode,
                     memory_snapshot, competence_snapshot, 1,
                 )])
             if "FROM public.user_language_projection_heads" in statement:
@@ -362,6 +364,7 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
     assert output["review"]["eventRows"] == 1
     assert output["review"]["exerciseMode"] == "self_recall"
     assert output["review"]["evidenceMode"] == "production"
+    assert output["review"]["correct"] is None
     assert output["memory"]["stateVersion"] == 2
     assert output["memory"]["step"] is None
     assert any("memory.step" in statement for statement, _ in connection.calls)
@@ -377,6 +380,31 @@ def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key()
     mismatched_enum_connection = FrllConnection("production", "self_recall")
     with pytest.raises(probe.ProbeError):
         probe._frll_semantic_proof(mismatched_enum_connection, actor_id, profile_id, digest)
+
+    compatibility_connection = FrllConnection(correct=True)
+    compatibility = probe._frll_semantic_proof(
+        compatibility_connection, actor_id, profile_id, digest,
+    )
+    assert compatibility["review"]["correct"] is True
+
+    invalid_correct_connection = FrllConnection(
+        review_rows=[(
+            raw_key, "good", 1200, "true", "self_recall", "production",
+            memory_snapshot, competence_snapshot, 1,
+        )],
+    )
+    with pytest.raises(probe.ProbeError):
+        probe._frll_semantic_proof(invalid_correct_connection, actor_id, profile_id, digest)
+
+    mismatched_correct_connection = FrllConnection(
+        exercise_mode="typing",
+        review_rows=[(
+            raw_key, "good", 1200, True, "typing", "production",
+            memory_snapshot, competence_snapshot, 1,
+        )],
+    )
+    with pytest.raises(probe.ProbeError):
+        probe._frll_semantic_proof(mismatched_correct_connection, actor_id, profile_id, digest)
 
     fresh_connection = FrllConnection(
         memory_row=("new", 1, updated_at, None, None, None, "fsrs-6.0.0", None),

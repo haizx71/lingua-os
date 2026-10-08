@@ -1679,8 +1679,11 @@ def _frll_semantic_proof(
          memory_snapshot, competence_snapshot, learning_count) = review_rows[-1]
         if (rating not in {"again", "hard", "good", "easy"} or
             type(response_time_ms) is not int or response_time_ms < 0 or
-            type(correct) is not bool or
-            exercise_mode not in {"self_recall", "multiple_choice", "typing", "cloze", "listening"} or
+            (correct is not None and type(correct) is not bool) or
+            exercise_mode not in {
+                "self_recall", "multiple_choice", "typing", "cloze", "listening",
+            } or
+            (correct is not None and exercise_mode != "self_recall") or
             evidence_mode not in {"recognition", "listening", "cloze", "production"} or
             type(learning_count) is not int or not 0 <= learning_count <= 10 or
             not isinstance(event_key, str)):
