@@ -1,0 +1,61 @@
+name: Pilot Onboarding Regression
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/pilot-onboarding-regression.yml'
+      - 'apps/web/src/features/auth/**'
+      - 'apps/web/src/features/onboarding/**'
+      - 'apps/web/src/features/today/**'
+      - 'apps/web/src/lib/api/**'
+      - 'packages/types/src/adapters/**'
+      - 'packages/types/src/api/**'
+      - 'packages/types/src/readiness.ts'
+      - 'packages/types/src/client.ts'
+      - 'packages/types/src/errors.ts'
+      - 'tests/frontend/AppRouteBoundary.test.tsx'
+      - 'tests/frontend/http-client.test.ts'
+      - 'tests/frontend/pilot-onboarding-timezone.test.tsx'
+      - 'tests/frontend/readiness.test.ts'
+      - 'tests/frontend/setup.ts'
+      - 'tests/frontend/task011-today-live.test.tsx'
+      - 'tests/frontend/task017-live-onboarding.test.tsx'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'vitest.config.*'
+
+permissions:
+  contents: read
+
+jobs:
+  onboarding-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked JavaScript dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Run pilot onboarding and readiness regressions
+        run: >-
+          pnpm exec vitest run
+          tests/frontend/task017-live-onboarding.test.tsx
+          tests/frontend/pilot-onboarding-timezone.test.tsx
+          tests/frontend/readiness.test.ts
+          tests/frontend/AppRouteBoundary.test.tsx
+          tests/frontend/task011-today-live.test.tsx
+          tests/frontend/http-client.test.ts
+          --maxWorkers=1

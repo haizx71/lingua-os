@@ -78,7 +78,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     const api = new HttpApiClient({ authTokenProvider: async () => session.access_token, fetchFn });
     const navigate = vi.fn();
     const view = render(<AuthProvider customClient={supabaseClient(session)}><LiveOnboardingFlow apiClient={api} navigate={navigate} /></AuthProvider>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận múi giờ' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tiếp tục thiết lập' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Khôi phục hồ sơ tiếng Anh' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Bỏ qua đánh giá' }));
     expect(navigate).toHaveBeenCalledWith('/today');
@@ -187,7 +187,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     expect(screen.queryByText(/Đăng nhập thành công/i)).not.toBeInTheDocument();
   });
 
-  it('bootstraps /me, confirms timezone, creates vi-to-en profile, and skips to today without assessment', async () => {
+  it('bootstraps /me, saves the detected timezone from the profile setup CTA, and skips to today without assessment', async () => {
     const api = apiForOnboarding();
     const navigate = vi.fn();
     render(
@@ -196,13 +196,19 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Xác nhận múi giờ/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Xác nhận múi giờ/i }));
+    await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
+    expect(screen.queryByRole('textbox', { name: 'Múi giờ' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('detected-timezone')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
     fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
     await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+    expect(api.updateMe).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({ timeZone: expect.any(String) }),
+      headers: { 'If-Match': '"profile-revision-1"' },
+    }));
+    expect(api.updateMe.mock.invocationCallOrder[0]).toBeLessThan(api.createMyLanguageProfile.mock.invocationCallOrder[0]);
     fireEvent.click(screen.getByRole('button', { name: /Bỏ qua đánh giá/i }));
     expect(navigate).toHaveBeenCalledWith('/today');
     expect(api.startStartingLevelAssessment).not.toHaveBeenCalled();
@@ -220,8 +226,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
         <LiveOnboardingFlow apiClient={api} navigate={navigate} />
       </AuthProvider>
     );
-    await waitFor(() => expect(screen.getByText(/Xác nhận múi giờ/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Xác nhận múi giờ/i }));
+    await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
@@ -903,6 +908,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
 
     const api = apiForOnboarding();
     let currentActor = 'user-a';
+    const createSpy = vi.mocked(api.createMyLanguageProfile);
 
     vi.spyOn(api, 'updateMe').mockImplementation(async () => {
       if (currentActor === 'user-a') {
@@ -928,13 +934,12 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    // User A boots to PROFILE_REQUIRED
-    const confirmBtnA = await screen.findByRole('button', { name: 'Xác nhận múi giờ' });
-    expect(confirmBtnA).toBeInTheDocument();
-
-    // User A clicks submit -> updateMe mutation A starts, busy becomes true
-    fireEvent.click(confirmBtnA);
-    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+    // User A boots directly to language setup; its ordinary CTA starts the timezone PATCH.
+    await screen.findByText(/Chọn mục tiêu học tập/i);
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' }));
+    expect(screen.getByRole('button', { name: 'Đang tạo...' })).toBeDisabled();
 
     // While mutation A is in flight, active actor switches to User B
     currentActor = 'user-b';
@@ -942,26 +947,28 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       mockAuth.emit('SIGNED_IN', sessionB);
     });
 
-    // User B boots to PROFILE_REQUIRED
-    const confirmBtnB = await screen.findByRole('button', { name: 'Xác nhận múi giờ' });
-    expect(confirmBtnB).toBeEnabled();
-
-    // User B clicks submit -> updateMe mutation B starts, busy becomes true
-    fireEvent.click(confirmBtnB);
-    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+    // User B boots directly to language setup and starts an independent setup operation.
+    await screen.findByText(/Chọn mục tiêu học tập/i);
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' }));
+    expect(screen.getByRole('button', { name: 'Đang tạo...' })).toBeDisabled();
+    expect(createSpy).not.toHaveBeenCalled();
 
     // Now Actor A's stale mutation finally settles
     resolveMutationA!(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
     await new Promise((r) => setTimeout(r, 30));
 
     // CRITICAL (DEF-03-R1): Actor B must STILL be busy! Actor A's finally block must NOT have cleared busy
-    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Đang tạo...' })).toBeDisabled();
+    expect(createSpy).not.toHaveBeenCalled();
 
     // Now Actor B's mutation settles
     resolveMutationB!(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
     await waitFor(() => {
-      expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument();
     });
+    expect(createSpy).toHaveBeenCalledTimes(1);
   });
 
   it('TEST-ACTOR-LIFECYCLE-02: stale Actor A mutation error does not commit error banner or mutate Actor B state', async () => {
@@ -998,9 +1005,11 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    const confirmBtnA = await screen.findByRole('button', { name: 'Xác nhận múi giờ' });
-    fireEvent.click(confirmBtnA);
-    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+    await screen.findByText(/Chọn mục tiêu học tập/i);
+    fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' }));
+    expect(screen.getByRole('button', { name: 'Đang tạo...' })).toBeDisabled();
 
     // Switch to Actor B
     currentActor = 'user-b';
@@ -1008,9 +1017,9 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       mockAuth.emit('SIGNED_IN', sessionB);
     });
 
-    // Actor B boots to PROFILE_REQUIRED
+    // Actor B boots to language setup without starting a write.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' })).toBeEnabled();
     });
 
     // Now Actor A's stale mutation fails with a server error
@@ -1020,7 +1029,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     // Assert: No error banner on Actor B's UI
     expect(screen.queryByText(/Chưa thể tiếp tục/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Hồ sơ vừa thay đổi/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' })).toBeEnabled();
   });
 
   it('TEST-ACTOR-LIFECYCLE-03: stale Actor A mutation success does not commit Actor A profile or advance Actor B stage', async () => {
@@ -1064,7 +1073,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
 
     expect(screen.getByRole('button', { name: 'Đang tạo...' })).toBeDisabled();
 
-    // Now switch to Actor B; for Actor B, getMe has timeZone: null, so Actor B needs PROFILE_REQUIRED
+    // Now switch to Actor B; the detected timezone will be saved only after the setup CTA.
     vi.spyOn(api, 'getMe').mockImplementation(async () => {
       return me({ timeZone: null });
     });
@@ -1072,9 +1081,9 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       mockAuth.emit('SIGNED_IN', sessionB);
     });
 
-    // Actor B boots to PROFILE_REQUIRED
+    // Actor B boots to language setup.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeInTheDocument();
+      expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
     });
 
     // Now Actor A's stale creation resolves HTTP 200 with an estimated profile
@@ -1088,8 +1097,8 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     });
     await new Promise((r) => setTimeout(r, 50));
 
-    // Assert: Actor B is STILL on PROFILE_REQUIRED! Not jumped to READY_FOR_TODAY or ASSESSMENT_CHOICE
-    expect(screen.getByRole('button', { name: 'Xác nhận múi giờ' })).toBeInTheDocument();
+    // Actor B stays on language setup; the stale profile result cannot advance its stage.
+    expect(screen.getByText(/Chọn mục tiêu học tập/i)).toBeInTheDocument();
     expect(screen.queryByText(/Chào mừng bạn trở lại/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Bắt đầu đánh giá/i })).not.toBeInTheDocument();
   });
