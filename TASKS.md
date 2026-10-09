@@ -2,12 +2,12 @@
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
-## Current Knowledge V2 delivery gate — 2026-10-08
+## Current Knowledge V2 delivery gate — 2026-10-09
 
 - **TASK-K2-08: DONE.** Full hosted acceptance, finalization, and fresh retained comparison remain PASS; see `reviews/K2-08-auth-cleanup-boundary-review.md`.
 - **TASK-K2-09: DONE — full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS.** PR #45 merged at `cd062c750257a8656ba691eaf57723bc13e6012d`; exact-head Security and all six Knowledge Audit jobs passed, as did Vercel Preview. Render health and Vercel Production attest the merged SHA. Migration `0021` was applied and verified earlier; it was not reapplied for this run.
 - **K2-09 final hosted run `37685182215`: PASS.** Main job `113011062961`, recovery job `113016493879`, and overall workflow succeeded. The fresh baseline, normal actor Save/Review/answer and replay, wave, actor and fresh-identity cleanup, Auth/27-table before-and-after checks, fixture closure, fresh retained comparison, and finalizer completed in order. Independent GPT-6 Luna / Max final review passed with no HIGH/BLOCKER. Earlier run `37681286589` remains a historical failure and is superseded; its recovery failure is not the successful run’s proof. Full timing, phase/artifact hashes, and metadata-only post-check are in `reviews/K2-09-hosted-fixture-source-migration-gate-review.md`.
-- **TASK-K2-10: DOING — verification seal only.** Complete the bounded verification/documentation seal after K2-09 acceptance. No new schema feature or migration is in scope.
+- **TASK-K2-10: DONE.** Full owner-dispatched runs `37863647590` and `37866643904` both passed at SHA `754821ec4c6c0c13ed1a14c526e0856c3a3aabc3`; final read-only gates and independent evidence review passed. No new schema feature or migration is in scope; see `reviews/K2-10-verification-seal.md`.
 
 ## Historical Knowledge V2 delivery gate — 2026-10-02
 

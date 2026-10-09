@@ -1,14 +1,14 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-09 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-10 DOING verification seal only, with no schema feature work
+Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-09 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-10 DONE
 
-## Current Knowledge V2 checkpoint — 2026-10-08
+## Current Knowledge V2 checkpoint — 2026-10-09
 
 - **K2-08 remains DONE.** Full hosted acceptance, cleanup, fresh 27-table retained comparison, and independent final review remain PASS as recorded in the historical checkpoint below and `reviews/K2-08-auth-cleanup-boundary-review.md`.
 - **K2-09 DONE: full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS.** PR #45 merged at `cd062c750257a8656ba691eaf57723bc13e6012d`; its head passed all Security and Knowledge Audit jobs and Vercel Preview. Render is live/healthy and Vercel Production succeeded at the merged SHA. Migration `0021` was already applied and verified; it was not reapplied. Full run `37685182215` on merged master passed with successful main job `113011062961`, recovery job `113016493879`, and overall workflow status SUCCESS. The fresh baseline and actor/fresh identity/wave/replay/cleanup/finalizer sequence passed; the current-run 27-table retained comparison passed. Independent GPT-6 Luna / Max final review verified workflow jobs, phase artifact hashes, and source assertions with no HIGH/BLOCKER. See the source/migration review for exact evidence and hashes.
 - **Earlier hosted attempt `37681286589`: historical FAIL before actor creation.** It stopped at fixture inspect with HTTP 503, and its recovery job also failed. This is superseded by the successful later run; no evidence from that failure is presented as the successful run’s cleanup or retained comparison.
-- **K2-10 DOING: verification seal only.** Complete the bounded verification/documentation seal after K2-09 PASS. No new schema feature or migration is in scope. The documentation worker is GPT-6 Luna / Medium; implementation and independent reviewers are GPT-6 Luna / Max; Commander is operator. See `reviews/K2-09-hosted-fixture-source-migration-gate-review.md`.
+- **K2-10: DONE.** Two consecutive full owner-dispatched runs `37863647590` and `37866643904` passed on master SHA `754821ec4c6c0c13ed1a14c526e0856c3a3aabc3`; all final read-only gates and the independent evidence review passed. No schema feature or migration is in scope. See `reviews/K2-10-verification-seal.md` for the evidence ledger.
 
 ## Historical Knowledge V2 checkpoint — 2026-10-02
 
