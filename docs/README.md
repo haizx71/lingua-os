@@ -53,6 +53,12 @@ Knowledge V2 material lives under `knowledge-v2/`. Active K2 execution plans are
 
 - `SUPERPOWERS_POLICY.md` — optional engineering-process guidance and its authority limits
 
+## Real learner pilot and V2 freeze
+
+- `../PILOT_FINDINGS.md` — de-identified, evidence-led learner observations; no verified observations at kickoff
+- `../PILOT_HARDENING.md` — separate nonblocking follow-ups and current evidence limits
+- `../plans/REAL-LEARNER-PILOT-V2-FREEZE.md` — bounded 7–14 day observation plan, safety boundaries, triage, and day 7/day 14 decisions
+
 ## Historical evidence
 
 One-off audits, acceptance evidence, checkpoint reports and implementation reviews belong under `../reviews/`, not in the active documentation root.

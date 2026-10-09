@@ -9,6 +9,10 @@ Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 - **K2-09 final hosted run `37685182215`: PASS.** Main job `113011062961`, recovery job `113016493879`, and overall workflow succeeded. The fresh baseline, normal actor Save/Review/answer and replay, wave, actor and fresh-identity cleanup, Auth/27-table before-and-after checks, fixture closure, fresh retained comparison, and finalizer completed in order. Independent GPT-6 Luna / Max final review passed with no HIGH/BLOCKER. Earlier run `37681286589` remains a historical failure and is superseded; its recovery failure is not the successful run’s proof. Full timing, phase/artifact hashes, and metadata-only post-check are in `reviews/K2-09-hosted-fixture-source-migration-gate-review.md`.
 - **TASK-K2-10: DONE.** Full owner-dispatched runs `37863647590` and `37866643904` both passed at SHA `754821ec4c6c0c13ed1a14c526e0856c3a3aabc3`; final read-only gates and independent evidence review passed. No new schema feature or migration is in scope; see `reviews/K2-10-verification-seal.md`.
 
+## Real learner pilot — active from 2026-10-09
+
+- **PILOT-V2-FREEZE: DOING.** Observe for 7–14 days with a daily bounded read-only evidence review. Day 7 review: 2026-10-16; day 14 review: 2026-10-23. PILOT-001 remains an owner-reported P2 timezone-step friction. Its source fix is verified by an isolated React + HttpApiClient mocked-actor regression (99/99 tests across six files); promotion requires a normal, independently reviewed, exact-head CI-gated merge; live learner outcome remains UNKNOWN. Keep K2-06–K2-10 frozen; PILOT-001 is a separate owner-authorized P2 frontend onboarding exception within TASK-017 and does not reopen or alter accepted K2 work or evidence. Reopen K2 only for a reproducible real defect, not P2 friction. General runtime changes remain limited to reproducible P0/P1 defects; the sole specific P2 exception is the bounded PILOT-001 onboarding request, with separate Max review, exact-head CI/Preview, and serialized promotion. Hosted disposable-actor verification is only required when the changed risk/surface warrants it and is authorized after review; if hosted actors are created, Auth deletion, zero residue across 27 learner tables, and retained comparison are mandatory. See `plans/REAL-LEARNER-PILOT-V2-FREEZE.md`, `PILOT_FINDINGS.md`, and `PILOT_HARDENING.md`.
+
 ## Historical Knowledge V2 delivery gate — 2026-10-02
 
 - **TASK-K2-08: DONE — full hosted acceptance and independent final review PASS.** PR #41 head `43d3500fe4437009a3b13b6ec275e0fc54fb6d41` (four-file diff SHA256 `73e9e560da73015f9523e95466cada4b07f0e868c6e14846cc431d1ef87d5c64`) passed exact-head Security Gate `36940358882`, Vercel Preview, independent GPT-6 Luna / Max review with no HIGH/BLOCKER, normal merge, Render health, and Vercel Production. Master is `dc3fab04f56abdcfbdfd164991fc248a2665098c`. Hosted workflow `36940909998`, hosted job `110631923274`, and cleanup job `110637771202` succeeded. The fresh baseline, wave, actor cleanup, fresh-identity cleanup, finalizer, and current-run 27-table retained comparison all passed. Terminal proof: zero of the four selected disposable Auth records and zero rows owned by those actors across 27 learner tables. Current snapshot: 83 rows / 72,325 bytes, stable after cleanup. Historical run `36932709277` remains failed; its separate cleanup-window proof is not treated as this run’s baseline. See `reviews/K2-08-auth-cleanup-boundary-review.md`.
@@ -735,9 +739,11 @@ newly proven acceptance defect; do not refactor it for style. The next planning
 milestone is `MVP Pilot Readiness`; no implementation is authorized by this
 entry.
 
-## MVP Pilot Readiness (planning milestone)
+This describes the plan at the FRLL checkpoint; the active bounded pilot below supersedes it.
 
-Status: PLANNED — discovery and acceptance planning only; implementation not started.
+## MVP Pilot Readiness (historical planning milestone; superseded)
+
+Status: SUPERSEDED by the bounded real learner pilot in `plans/REAL-LEARNER-PILOT-V2-FREEZE.md`. This historical planning entry is retained; it does not mean its pre-pilot hardening checklist passed.
 Owner: BACKEND / FRONTEND within existing ownership boundaries.
 Dependencies: FRLL accepted; TASK-017 and TASK-017A complete.
 
