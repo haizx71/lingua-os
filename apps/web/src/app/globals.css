@@ -1,8 +1,8 @@
+@import '../../../../packages/ui/src/tokens/theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import '../../../../packages/ui/src/tokens/theme.css';
 
 *,
 *::before,
@@ -24,12 +24,9 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(69, 191, 174, 0.065), transparent 25rem),
-    radial-gradient(circle at 90% 12%, rgba(66, 103, 217, 0.055), transparent 26rem),
-    var(--canvas);
+  background: var(--canvas);
   color: var(--text-primary);
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-be-vietnam-pro), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -73,18 +70,26 @@ a {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent-teal) 24%, transparent);
+  background: color-mix(in srgb, var(--action-primary) 18%, transparent);
 }
 
 :focus-visible {
-  outline-color: var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.reader-copy {
+  font-family: var(--font-noto-serif), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.018em;
+  line-height: 1.68;
 }
 
 .lingua-card {
   min-width: 0;
   border: 1px solid var(--border-subtle);
   background: var(--surface);
-  border-radius: var(--radius-xl);
+  border-radius: 1.25rem;
   box-shadow: var(--shadow-card);
 }
 
@@ -133,8 +138,8 @@ a {
   }
 
   .lingua-card {
-    border-radius: 22px;
-    box-shadow: 0 8px 24px rgba(35, 48, 75, 0.07);
+    border-radius: 20px;
+    box-shadow: var(--shadow-card);
   }
 
   .lingua-card-interactive:hover {

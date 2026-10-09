@@ -25,9 +25,9 @@ export function MobileBottomNav({ currentPath }: MobileBottomNavProps = {}) {
   return (
     <nav
       aria-label="Điều hướng chính di động"
-      className="fixed inset-x-0 bottom-0 z-50 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),0.55rem)] md:hidden"
     >
-      <div className="mx-auto flex h-[68px] max-w-md items-center gap-1 rounded-[24px] border border-[var(--border-subtle)] bg-white/95 px-1.5 shadow-[0_14px_40px_rgba(33,45,78,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/88">
+      <div className="mx-auto flex h-[66px] max-w-md items-center gap-1 rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)]/95 px-1.5 shadow-[0_8px_28px_rgba(38,34,91,0.14)] backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--surface)]/90">
         {primaryNavItems.map((item) => {
           const Icon = iconMap[item.iconName] || Home;
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
@@ -37,17 +37,17 @@ export function MobileBottomNav({ currentPath }: MobileBottomNavProps = {}) {
               key={item.href}
               href={item.href}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative flex h-[58px] min-w-0 flex-1 flex-col items-center justify-center rounded-[18px] px-1 text-[10px] font-semibold transition-[background-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+              className={`relative flex h-[56px] min-w-0 flex-1 flex-col items-center justify-center rounded-[17px] px-1 text-[10px] font-semibold transition-[background-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                 isActive
                   ? 'bg-[var(--surface-blue)] text-[var(--action-primary)]'
                   : 'text-[var(--text-secondary)] active:scale-[0.97]'
               }`}
             >
               <span className={`mb-1 flex h-7 w-7 items-center justify-center rounded-xl transition-colors ${isActive ? 'bg-white text-[var(--action-primary)] shadow-sm' : ''}`}>
-                <Icon className={`h-[18px] w-[18px] ${isActive ? 'stroke-[2.4px]' : 'stroke-[1.8px]'}`} />
+                <Icon className={`h-[18px] w-[18px] ${isActive ? 'stroke-[2.35px]' : 'stroke-[1.8px]'}`} />
               </span>
               <span className="max-w-full truncate leading-none">{item.labelVi}</span>
-              {isActive && <span className="absolute -bottom-0.5 h-1 w-5 rounded-full bg-[var(--accent-teal)]" />}
+              {isActive && <span className="absolute -bottom-0.5 h-1 w-5 rounded-full bg-[var(--action-primary)]" aria-hidden="true" />}
             </Link>
           );
         })}

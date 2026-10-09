@@ -1,5 +1,9 @@
 # LINGUA OS — Project Status
 
+## Owner-approved full web presentation — 2026-10-09
+
+**DOING, source frozen and local verification PASS.** The owner approved Reader option 3 and explicitly requested applying it to the entire existing app. This presentation exception is bounded by [the full web plan](plans/PILOT-FULL-WEB-DESIGN.md); Knowledge V2, migration `0021`, Auth/RLS, domain hooks and learner-state semantics remain frozen. Frontend regression passed 633/633 tests, additional Reader resume assertions passed 12/12, and workspace typecheck/generated contracts, lint, production build and browser design QA passed. Separate Luna Max final review PASS; exact-head CI/Preview remain required before promotion. Profile/Progress defaults show honest unavailable states, and Reader reveals only supplied translation; missing published translations remain PILOT-003. No live completion is claimed.
+
 Version: 4.0 starter
 Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-09 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-10 DONE; real learner pilot kickoff 2026-10-09 (two owner-reported P2 signals; PILOT-002 mechanism reproduced and bounded source implementation locally verified; live production cause unknown)
 

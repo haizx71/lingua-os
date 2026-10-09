@@ -8,12 +8,11 @@ import { renderWithProviders } from '../harness/test-render';
 import { assertProgressbarA11y, assertTouchTargetSize } from '../harness/a11y-helpers';
 
 describe('Tier 1: Feature 06 - Smart Review (FSRS Algorithm & Ratings)', () => {
-  it('test_smart_review_renders_header_with_due_count_badge', () => {
+  it('test_smart_review_renders_header_without_a_fabricated_due_count', () => {
     renderWithProviders(<ReviewPage />);
 
-    expect(screen.getByText('Smart Review (FSRS)')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Hàng đợi ôn tập/i })).toBeInTheDocument();
-    expect(screen.getByText('23 từ đến hạn')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Thẻ đến lượt' })).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ còn lại/)).not.toBeInTheDocument();
   });
 
   it('test_smart_review_renders_session_progress_bar', () => {
@@ -21,7 +20,7 @@ describe('Tier 1: Feature 06 - Smart Review (FSRS Algorithm & Ratings)', () => {
 
     const progressbar = screen.getByRole('progressbar');
     assertProgressbarA11y(progressbar, 0, 100);
-    expect(screen.getByText(/0 \/ 23 thẻ/i)).toBeInTheDocument();
+    expect(progressbar).toHaveAccessibleName('Tiến độ buổi ôn: 0 / 3 thẻ');
   });
 
   it('test_smart_review_renders_flashcard_prompt_and_pronunciation_audio_button', () => {
@@ -50,11 +49,14 @@ describe('Tier 1: Feature 06 - Smart Review (FSRS Algorithm & Ratings)', () => {
   });
 
   it('test_smart_review_renders_fsrs_due_concept_status_chip', () => {
-    renderWithProviders(<ReviewPage />);
+    const dueCard = { ...defaultReviewQueue[0], isDue: true, status: 'learning' as const };
+    renderWithProviders(<ReviewSession initialQueue={[dueCard]} />);
 
     const dueChip = screen.getByRole('status');
     expect(dueChip).toBeInTheDocument();
-    expect(dueChip.textContent).toContain('appointment');
+    expect(dueChip).toHaveTextContent('Đến hạn ôn');
+    expect(dueChip).not.toHaveTextContent('appointment');
+    expect(dueCard.status).toBe('learning');
   });
 
   it('test_smart_review_renders_typing_prompt_without_leaking_the_target', () => {

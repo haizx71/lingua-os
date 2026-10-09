@@ -1,66 +1,66 @@
 /**
  * LINGUA OS v2 semantic theme tokens.
- * Warm, calm learning surfaces with a restrained blue/teal accent system.
+ * Calm lavender learning surfaces with indigo actions and preserved semantic states.
  */
 
 :root {
   /* Canvas & Surface */
-  --canvas: #F7F5EF;
+  --canvas: #F6F5FC;
   --surface: #FFFFFF;
-  --surface-subtle: #F4F2EC;
+  --surface-subtle: #F6F5FA;
   --surface-elevated: #FFFFFF;
-  --surface-warm: #FFF9EE;
+  --surface-warm: #F7F5FF;
   --surface-mint: #EFFAF7;
-  --surface-blue: #EEF5FF;
-  --surface-lilac: #F5F1FF;
+  --surface-blue: #F0EEFF;
+  --surface-lilac: #F0EEFF;
   --surface-peach: #FFF2EA;
 
   /* Text */
-  --text-primary: #17213A;
-  --text-secondary: #5D667A;
-  --text-muted: #8D95A6;
+  --text-primary: #1B1A35;
+  --text-secondary: #5E5D77;
+  --text-muted: #66657D;
   --text-on-accent: #FFFFFF;
 
   /* Borders */
-  --border-subtle: #E9E6DE;
-  --border-default: #DDD9D0;
-  --border-strong: #CAC4B9;
+  --border-subtle: #E8E6F1;
+  --border-default: #DCD9EA;
+  --border-strong: #C7C3DD;
 
   /* Actions */
-  --action-primary: #4267D9;
-  --action-primary-hover: #3556C0;
+  --action-primary: #5B50DF;
+  --action-primary-hover: #4D43C6;
   --action-primary-text: #FFFFFF;
-  --action-secondary: #EEF2FF;
-  --action-secondary-hover: #E3E9FF;
-  --action-secondary-text: #273B78;
+  --action-secondary: #EFEDFF;
+  --action-secondary-hover: #E4E0FF;
+  --action-secondary-text: #433B91;
   --accent-teal: #45BFAE;
   --accent-teal-strong: #249887;
   --accent-teal-soft: #E8F8F4;
-  --accent-purple: #8A73D6;
+  --accent-purple: #7969CF;
   --accent-yellow: #F4C45E;
   --accent-pink: #EB8EA2;
 
   /* Focus */
-  --focus-ring: #5B7BE2;
+  --focus-ring: #6559EA;
 
   /* Status */
-  --status-success: #2C9A78;
+  --status-success: #176B55;
   --status-success-bg: #ECF8F3;
   --status-success-border: #BDE7D6;
-  --status-warning: #B97916;
+  --status-warning: #79500C;
   --status-warning-bg: #FFF7E5;
   --status-warning-border: #F3D99D;
-  --status-danger: #D55169;
+  --status-danger: #B12B43;
   --status-danger-bg: #FFF0F2;
   --status-danger-border: #F3C6CF;
-  --status-info: #3979C7;
+  --status-info: #245B9C;
   --status-info-bg: #EDF5FF;
   --status-info-border: #C8DDF6;
 
   /* Elevation */
-  --shadow-card: 0 10px 30px rgba(38, 45, 67, 0.055), 0 1px 2px rgba(38, 45, 67, 0.04);
-  --shadow-card-hover: 0 16px 38px rgba(38, 45, 67, 0.09), 0 2px 6px rgba(38, 45, 67, 0.05);
-  --shadow-floating: 0 20px 60px rgba(38, 45, 67, 0.12);
+  --shadow-card: 0 8px 24px rgba(40, 36, 91, 0.045), 0 1px 2px rgba(40, 36, 91, 0.035);
+  --shadow-card-hover: 0 12px 30px rgba(40, 36, 91, 0.075), 0 2px 5px rgba(40, 36, 91, 0.04);
+  --shadow-floating: 0 20px 56px rgba(32, 28, 83, 0.16);
 
   /* Radii */
   --radius-sm: 0.5rem;
@@ -122,7 +122,7 @@
 
   --text-primary: #F5F3ED;
   --text-secondary: #B4B9C7;
-  --text-muted: #7E879A;
+  --text-muted: #8992A5;
   --text-on-accent: #FFFFFF;
 
   --border-subtle: #2A3041;

@@ -346,7 +346,7 @@ describe('TASK-007: Review Live Frontend Integration', () => {
 
       expect(await screen.findByRole('heading', { name: 'appointment' })).toBeInTheDocument();
       expect(listReviewQueue).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('2 từ đến hạn')).toBeInTheDocument();
+      expect(screen.getByText('2 còn lại')).toBeInTheDocument();
       expect(screen.getByText('Thẻ 1 / 2')).toBeInTheDocument();
     });
 
@@ -946,13 +946,13 @@ describe('TASK-007: Review Live Frontend Integration', () => {
       );
 
       await findReviewCard('appointment');
-      expect(screen.getByText('2 từ đến hạn')).toBeInTheDocument();
+      expect(screen.getByText('2 còn lại')).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: /Tốt \(Good\)/i }));
 
       // Server returned remainingDueCount = 77 and custom feedback
       expect(await screen.findByText('Server Authoritative Feedback: Rep 3')).toBeInTheDocument();
-      expect(screen.getByText('77 từ đến hạn')).toBeInTheDocument();
+      expect(screen.getByText('77 còn lại')).toBeInTheDocument();
     });
   });
 

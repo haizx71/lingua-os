@@ -210,7 +210,8 @@ describe('P1 live Brain route and presentation boundary', () => {
     render(<BrainPage apiClient={api} languageProfileId={profileA} />);
 
     expect(await screen.findByText('server-only')).toBeInTheDocument();
-    const masteredCard = screen.getByText('Đã vững (Mastered)').closest('div');
+    const statusSummary = screen.getByRole('region', { name: 'Trạng thái khái niệm' });
+    const masteredCard = within(statusSummary).getByText('Đã vững').closest('div');
     expect(masteredCard).not.toBeNull();
     expect(within(masteredCard as HTMLElement).getByText('1')).toBeInTheDocument();
     expect(screen.getByText('server-only')).toBeInTheDocument();

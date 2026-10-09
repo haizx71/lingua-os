@@ -194,18 +194,19 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       await renderToday();
 
       // Header target duration from server plan (30 phút, NOT default 25)
-      expect(await screen.findByText('30 phút')).toBeInTheDocument();
-      expect(screen.getByText(/Kế hoạch hôm nay/i)).toBeInTheDocument();
-      expect(screen.getByRole('heading', { level: 1, name: /Chào buổi sáng/i })).toBeInTheDocument();
-      expect(screen.getByText(/LINGUA OS đã chọn 3 hoạt động tối ưu nhất/i)).toBeInTheDocument();
+      expect(await screen.findByText('30', { exact: true })).toBeInTheDocument();
+      expect(screen.getByText('Kế hoạch hôm nay', { exact: true })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Kế hoạch của bạn' })).toBeInTheDocument();
+      expect(screen.getByText('Xem hoạt động được lên lịch và chọn điều muốn bắt đầu.')).toBeInTheDocument();
 
       // Progress bar reflects server plan completed / target minutes (10 / 30 phút = 33%)
-      expect(screen.getAllByText(/Tiến độ học hôm nay: 10 \/ 30 phút/i).length).toBeGreaterThan(0);
-      expect(screen.getByText(/1 \/ 3 hoàn thành/i)).toBeInTheDocument();
+      expect(screen.getByRole('progressbar')).toHaveAccessibleName('Tiến độ hôm nay: 10 / 30 phút');
+      expect(screen.getByText('1 / 3')).toBeInTheDocument();
 
       // Server activities rendered
       expect(screen.getByText('Bài đọc khoa học vũ trụ')).toBeInTheDocument();
-      expect(screen.getByText('Ôn tập 15 từ vựng FSRS')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 2, name: 'Ôn tập 15 từ vựng FSRS' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'Ôn tập 15 từ vựng FSRS' })).toBeInTheDocument();
       expect(screen.getByText('Luyện nghe phản xạ audio')).toBeInTheDocument();
 
       // Completed activity displays success badge and completed button label
@@ -214,7 +215,7 @@ describe('TASK-011: Today Live Frontend Integration', () => {
 
       // Pending review activity displays FSRS badge and pending button label
       expect(screen.getByText('15 từ đến hạn')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Bắt đầu' })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'Bắt đầu ôn tập' })).toHaveLength(2);
     });
 
     it('TEST-011-02: Adapter preserves plan ID, item IDs and item order exactly', () => {
@@ -381,7 +382,7 @@ describe('TASK-011: Today Live Frontend Integration', () => {
 
       // Actor B renders B's plan
       expect(await screen.findByText('Kế hoạch riêng của Actor B')).toBeInTheDocument();
-      expect(screen.getByText('45 phút')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar')).toHaveAccessibleName('Tiến độ hôm nay: 10 / 45 phút');
 
       // Now Actor A's delayed promise resolves
       await act(async () => {
@@ -919,7 +920,7 @@ describe('TASK-011: Today Live Frontend Integration', () => {
 
       // Button enters busy/disabled state immediately
       expect(completeBtn).toBeDisabled();
-      expect(completeBtn.textContent).toContain('Đang hoàn thành...');
+      expect(completeBtn.textContent).toContain('Đang lưu...');
 
       // Second rapid click is ignored
       fireEvent.click(completeBtn);
@@ -975,8 +976,8 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       expect(
         await screen.findByRole('button', { name: 'Ôn lại' })
       ).toBeInTheDocument();
-      expect(screen.getAllByText(/Tiến độ học hôm nay: 22 \/ 30 phút/i).length).toBeGreaterThan(0);
-      expect(screen.getByText('2 / 3 hoàn thành')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar')).toHaveAccessibleName('Tiến độ hôm nay: 22 / 30 phút');
+      expect(screen.getByText('2 / 3')).toBeInTheDocument();
       expect(screen.getByText(/Đã hoàn thành hoạt động: Ôn tập 15 từ vựng FSRS/i)).toBeInTheDocument();
     });
 
@@ -1000,11 +1001,11 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       ).toBeInTheDocument();
 
       // Activity remains pending, NOT completed!
-      expect(screen.getByRole('button', { name: 'Bắt đầu' })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'Bắt đầu ôn tập' }).length).toBeGreaterThan(0);
       expect(
         screen.getByRole('button', { name: 'Hoàn thành hoạt động Ôn tập 15 từ vựng FSRS' })
       ).toBeInTheDocument();
-      expect(screen.getByText('1 / 3 hoàn thành')).toBeInTheDocument();
+      expect(screen.getByText('1 / 3')).toBeInTheDocument();
     });
 
     it('TEST-011-COMP-05: Actor A stale completion response cannot affect Actor B', async () => {
@@ -1088,7 +1089,7 @@ describe('TASK-011: Today Live Frontend Integration', () => {
       expect(callCount).toBe(1);
 
       // Plan is in completed state
-      expect(screen.getByText('2 / 3 hoàn thành')).toBeInTheDocument();
+      expect(screen.getByText('2 / 3')).toBeInTheDocument();
     });
   });
 });

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, InlineAlert, LoadingState } from '@lingua/ui';
+import { Badge, Button, Card, EmptyState, InlineAlert, LoadingState } from '@lingua/ui';
 import { mapApiErrorToUi, type ApiClient } from '@lingua/types';
 import { getApiClient } from '../../lib/api/client';
 import { listAdminContent, type AdminContentViewModel } from './adapters';
@@ -22,28 +22,38 @@ export function AdminDashboard({ apiClient = getApiClient() }: { apiClient?: Api
   if (error) return <InlineAlert variant="danger" title="Không thể mở khu vực quản trị">{error}</InlineAlert>;
   if (!items) return <LoadingState message="Đang tải nội dung quản trị..." count={2} />;
 
+  const statusLabel = (status: string) => ({
+    draft: 'Bản nháp',
+    reviewed: 'Đã kiểm tra',
+    published: 'Đã phát hành',
+    retired: 'Đã ngừng phát hành',
+  }[status] ?? 'Trạng thái khác');
+
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">Owner Admin</p>
-          <h1 className="mt-1 text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">Nội dung LINGUA OS</h1>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Soạn và xuất bản bài đọc tiếng Anh do LINGUA OS sở hữu.</p>
+          <p className="lingua-kicker text-[var(--action-primary)]">Quản trị nội dung</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Bài đọc</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Soạn, rà soát và quản lý nội dung đã xuất bản.</p>
         </div>
         <Link href="/admin/content/new"><Button>Nội dung mới</Button></Link>
       </header>
       {items.length === 0 ? (
-        <EmptyState title="Chưa có nội dung" description="Tạo micro-article đầu tiên để bắt đầu." />
+          <EmptyState title="Chưa có nội dung" description="Tạo bài đọc đầu tiên để bắt đầu." />
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <Card key={item.id} className="p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold text-[var(--text-primary)]">{item.title}</h2>
-                  <p className="text-sm text-[var(--text-secondary)]">{item.level} · {item.status} · {item.sentences.length} câu</p>
+            <Card key={item.id} className="min-w-0 p-4 sm:p-5">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <h2 className="break-words font-bold text-[var(--text-primary)]">{item.title}</h2>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">{item.level} · {item.sentences.length} câu</p>
                 </div>
-                <Link className="text-sm font-medium text-[var(--action-primary)]" href={`/admin/content/${item.id}`}>Mở</Link>
+                <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
+                  <Badge variant={item.status === 'published' ? 'success' : item.status === 'reviewed' ? 'primary' : 'neutral'} size="sm">{statusLabel(item.status)}</Badge>
+                  <Link className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" href={`/admin/content/${item.id}`}>Mở bài</Link>
+                </div>
               </div>
             </Card>
           ))}

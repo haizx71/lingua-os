@@ -66,14 +66,13 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
       <header className="min-w-0">
-        <div className="lingua-kicker text-[var(--action-primary)]">Lexical Engine</div>
-        <h1 className="mt-2 text-[28px] font-black leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-4xl">Từ điển & Tra cứu</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-[15px]">Tra cứu nghĩa, phát âm IPA, ví dụ thực tế và trạng thái của từ trong Language Brain.</p>
+        <div className="lingua-kicker text-[var(--action-primary)]">Tra cứu</div>
+        <h1 className="mt-2 text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Từ điển</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Tìm nghĩa, cách phát âm, ví dụ và trạng thái học đã ghi nhận.</p>
       </header>
 
-      <section className="relative overflow-hidden rounded-[26px] border border-[var(--border-subtle)] bg-gradient-to-br from-white via-white to-[var(--accent-teal-soft)] p-3 shadow-[var(--shadow-card)] sm:p-5">
-        <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-[var(--surface-blue)] blur-2xl" />
-        <div className="relative">
+      <section className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-[var(--shadow-card)] sm:p-5" aria-label="Tìm từ">
+        <div>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
@@ -82,7 +81,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
               value={discovery.searchQuery}
               onChange={(e) => discovery.setSearchQuery(e.target.value)}
               aria-label="Nhập từ vựng, cụm từ tiếng Anh..."
-              className="min-h-[52px] w-full min-w-0 rounded-[18px] border border-[var(--border-default)] bg-white pl-12 pr-11 text-base font-medium text-[var(--text-primary)] shadow-sm outline-none transition-shadow placeholder:font-normal placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+              className="min-h-[52px] w-full min-w-0 rounded-[14px] border border-[var(--border-default)] bg-[var(--surface-subtle)] pl-12 pr-11 text-base font-medium text-[var(--text-primary)] outline-none transition-shadow placeholder:font-normal placeholder:text-[var(--text-muted)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--focus-ring)]"
             />
             {discovery.searchQuery && <button type="button" onClick={discovery.clearSearch} className="absolute right-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" aria-label="Xóa từ khóa tìm kiếm"><X className="h-4 w-4" /></button>}
           </div>
@@ -99,7 +98,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
         <div className="grid min-w-0 grid-cols-1 gap-4">
           {visibleLemmaGroups.map((group) => (
             group.senses.length === 0 ? null : (
-            <Card key={group.lexemeId} padding="lg" className="min-w-0 overflow-hidden rounded-[26px]">
+            <Card key={group.lexemeId} padding="lg" className="min-w-0 overflow-hidden">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <h2 className="break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{group.lemma}</h2>
@@ -114,7 +113,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                 {group.senses.map((sense) => (
                   <section key={sense.senseId} className="rounded-2xl bg-[var(--surface-subtle)] p-4">
                     <div className="flex flex-col gap-1">
-                      <p className="font-bold leading-6 text-[var(--text-primary)]">{sense.translatedDefinition ?? sense.definition}</p>
+                      <p className="font-semibold leading-6 text-[var(--text-primary)]">{sense.translatedDefinition ?? sense.definition}</p>
                       {sense.translatedDefinition && <p className="text-xs leading-5 text-[var(--text-muted)]">{sense.definition}</p>}
                     </div>
                     {sense.concepts.length > 0 ? (
@@ -145,7 +144,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                                   ))}
                                   {detail.examples.map((example, index) => (
                                     <div key={`${example.text}-${index}`} className="text-xs leading-5 text-[var(--text-secondary)]">
-                                      <p>“{example.text}”</p>
+                              <p className="reader-copy">“{example.text}”</p>
                                       {example.translation && <p>→ {example.translation}</p>}
                                     </div>
                                   ))}
@@ -199,7 +198,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
       )}
 
       {!discovery.isSearching && discovery.lemmaGroups === null && (
-        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3">
           {discovery.results.map((concept) => (
             <Card key={concept.id} padding="lg" className="min-w-0 overflow-hidden rounded-[26px]">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

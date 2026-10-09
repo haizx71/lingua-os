@@ -135,7 +135,7 @@ function TimeZoneSetupField({
           id="time-zone"
           value={timeZone}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3"
+          className="min-h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-subtle)] px-3 py-3 text-[var(--text-primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
         >
           <option value="">Chọn múi giờ</option>
           {timeZone && !options.includes(timeZone) && <option value={timeZone}>{timeZone}</option>}
@@ -146,7 +146,7 @@ function TimeZoneSetupField({
           id="time-zone"
           value={timeZone}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3"
+          className="min-h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-subtle)] px-3 py-3 text-[var(--text-primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
           autoComplete="off"
         />
       )}
@@ -701,21 +701,22 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   const showBlockingError = error !== null && (stage === 'BOOTSTRAPPING_PROFILE' || stage === 'RESTORING_SESSION');
   if (authState !== 'authenticated') return <InlineAlert variant="info" title="Cần đăng nhập">Hãy đăng nhập để bắt đầu thiết lập lộ trình.</InlineAlert>;
   if (showBlockingError) {
-    return <div className="space-y-4 max-w-xl mx-auto"><InlineAlert variant="danger" title="Chưa thể tiếp tục">{error}</InlineAlert><Button variant="outline" onClick={() => void loadBootstrap()}>Tải lại</Button></div>;
+    return <div className="mx-auto w-full max-w-xl space-y-4"><InlineAlert variant="danger" title="Chưa thể tiếp tục">{error}</InlineAlert><Button variant="outline" onClick={() => void loadBootstrap()}>Tải lại</Button></div>;
   }
   if (stage === 'RESTORING_SESSION' || stage === 'BOOTSTRAPPING_PROFILE') return <LoadingState message="Đang khôi phục phiên và nạp hồ sơ học tập..." count={3} />;
   if (stage === 'PROFILE_REQUIRED') {
     return (
-      <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">
+      <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6">
         <header>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Hoàn tất hồ sơ người học</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Múi giờ giúp hệ thống xác định đúng ngày học của bạn.</p>
+          <p className="lingua-kicker text-[var(--action-primary)]">Thiết lập</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Hoàn tất hồ sơ</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Múi giờ giúp xác định đúng ngày học của bạn.</p>
         </header>
         {error && <InlineAlert variant="danger" title="Chưa thể tiếp tục">{error}</InlineAlert>}
         <form className="space-y-4" onSubmit={updateProfile}>
           <div className="space-y-2">
             <label htmlFor="display-name" className="text-sm font-medium">Tên hiển thị (tùy chọn)</label>
-            <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" />
+            <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="min-h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-subtle)] px-3 py-3 text-[var(--text-primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]" />
           </div>
           <TimeZoneSetupField
             timeZone={timeZone}
@@ -734,10 +735,11 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     if (pausedLanguageProfile) {
       const canResume = Boolean(pausedLanguageProfile.etag);
       return (
-        <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">
+        <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Hồ sơ tiếng Anh đang tạm dừng</h1>
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p className="lingua-kicker text-[var(--action-primary)]">Thiết lập</p>
+            <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Hồ sơ đang tạm dừng</h1>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
               Hồ sơ học tập của bạn đang tạm dừng. Hãy tiếp tục lộ trình học để mở lại không gian học tập.
             </p>
           </header>
@@ -754,13 +756,14 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     }
     if (archivedLanguageProfile) {
       const canReactivate = Boolean(archivedLanguageProfile.etag);
-      return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5"><header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Hồ sơ tiếng Anh đã lưu trữ</h1><p className="text-sm text-[var(--text-secondary)]">Hồ sơ cũ vẫn giữ lịch sử học tập. Không tạo hồ sơ thứ hai; hãy khôi phục đúng hồ sơ này khi phiên bản đồng bộ đã sẵn sàng.</p></header>{error && <InlineAlert variant="danger" title="Chưa thể khôi phục">{error}</InlineAlert>}<Button variant="primary" onClick={() => void reactivateArchivedProfile()} disabled={busy || !canReactivate}>{busy ? 'Đang khôi phục...' : canReactivate ? 'Khôi phục hồ sơ tiếng Anh' : 'Chưa có phiên bản để khôi phục'}</Button></Card>;
+      return <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6"><header><p className="lingua-kicker text-[var(--action-primary)]">Thiết lập</p><h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Hồ sơ đã lưu trữ</h1><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Hồ sơ cũ vẫn giữ lịch sử học tập. Hãy khôi phục hồ sơ này khi đồng bộ sẵn sàng.</p></header>{error && <InlineAlert variant="danger" title="Chưa thể khôi phục">{error}</InlineAlert>}<Button variant="primary" onClick={() => void reactivateArchivedProfile()} disabled={busy || !canReactivate}>{busy ? 'Đang khôi phục...' : canReactivate ? 'Khôi phục hồ sơ tiếng Anh' : 'Chưa có phiên bản để khôi phục'}</Button></Card>;
     }
     return (
-      <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">
+      <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6">
         <header>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Thiết lập hồ sơ tiếng Anh</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Bạn học tiếng Anh với hỗ trợ tiếng Việt.</p>
+          <p className="lingua-kicker text-[var(--action-primary)]">Thiết lập</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Lộ trình tiếng Anh</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Bạn học tiếng Anh với hỗ trợ tiếng Việt.</p>
         </header>
         {error && <InlineAlert variant="danger" title="Chưa thể tạo hồ sơ">{error}</InlineAlert>}
         <form className="space-y-5" onSubmit={createLanguageProfile}>
@@ -768,7 +771,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
             <>
               <div className="space-y-2">
                 <label htmlFor="display-name" className="text-sm font-medium">Tên hiển thị (tùy chọn)</label>
-                <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" />
+                <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="min-h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-subtle)] px-3 py-3 text-[var(--text-primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]" />
               </div>
               <TimeZoneSetupField
                 timeZone={timeZone}
@@ -782,7 +785,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
             <legend className="text-sm font-medium mb-2">Chọn mục tiêu học tập</legend>
             <div className="grid grid-cols-2 gap-2">
               {learningGoals.map((item) => (
-                <button key={item.value} type="button" aria-pressed={goal === item.value} onClick={() => setGoal(item.value)} className={`rounded-xl border px-3 py-3 text-sm ${goal === item.value ? 'border-[var(--action-primary)] bg-[var(--status-info-bg)]' : 'border-[var(--border-subtle)]'}`}>
+                <button key={item.value} type="button" aria-pressed={goal === item.value} onClick={() => setGoal(item.value)} className={`min-h-12 rounded-xl border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${goal === item.value ? 'border-[var(--action-primary)] bg-[var(--surface-blue)] text-[var(--action-primary)]' : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)]'}`}>
                   {item.label}
                 </button>
               ))}
@@ -792,7 +795,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
             <legend className="text-sm font-medium mb-2">Thời lượng mỗi ngày</legend>
             <div className="flex flex-wrap gap-2">
               {dailyMinuteChoices.map((minutes) => (
-                <button key={minutes} type="button" aria-pressed={dailyMinutes === minutes} onClick={() => setDailyMinutes(minutes)} className={`rounded-xl border px-3 py-3 text-sm ${dailyMinutes === minutes ? 'border-[var(--action-primary)] bg-[var(--status-info-bg)]' : 'border-[var(--border-subtle)]'}`}>
+                <button key={minutes} type="button" aria-pressed={dailyMinutes === minutes} onClick={() => setDailyMinutes(minutes)} className={`min-h-12 rounded-xl border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${dailyMinutes === minutes ? 'border-[var(--action-primary)] bg-[var(--surface-blue)] text-[var(--action-primary)]' : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)]'}`}>
                   {minutes} phút
                 </button>
               ))}
@@ -803,21 +806,22 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       </Card>
     );
   }
-  if (stage === 'ASSESSMENT_CHOICE') return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Đánh giá trình độ khởi điểm</h1><p className="text-sm text-[var(--text-secondary)]">Bài đánh giá là tùy chọn. Bạn có thể bắt đầu hoặc tiếp tục mà không bị gán mức A0 khi bỏ qua.</p></header><div className="flex flex-wrap gap-3"><Button variant="primary" onClick={() => void startAssessment()} disabled={busy}>{busy ? 'Đang chuẩn bị...' : 'Bắt đầu đánh giá'}</Button><Button variant="outline" onClick={goToday}>Bỏ qua đánh giá</Button></div></Card>;
+  if (stage === 'ASSESSMENT_CHOICE') return <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><p className="lingua-kicker text-[var(--action-primary)]">Đánh giá</p><h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Ước lượng trình độ</h1><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Bài đánh giá là tùy chọn. Bạn có thể bắt đầu hoặc bỏ qua mà không bị gán mức A0.</p></header><div className="flex flex-wrap gap-3"><Button variant="primary" onClick={() => void startAssessment()} disabled={busy}>{busy ? 'Đang chuẩn bị...' : 'Bắt đầu đánh giá'}</Button><Button variant="outline" onClick={goToday}>Bỏ qua đánh giá</Button></div></Card>;
   if (stage === 'ASSESSMENT_IN_PROGRESS' && assessment?.currentItem) {
     const item = assessment.currentItem;
     return (
-      <Card variant="elevated" padding="lg" className="max-w-2xl mx-auto space-y-5">
+      <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-2xl space-y-6">
         {error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}
         <header>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Đánh giá trình độ khởi điểm</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Câu hỏi hiện tại do máy chủ quyết định.</p>
+          <p className="lingua-kicker text-[var(--action-primary)]">Đánh giá</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)]">Ước lượng trình độ</h1>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">Câu hỏi tiếp theo trong bài đánh giá.</p>
         </header>
 
         {item.textSnippet && (
           <div
             data-testid="assessment-text-snippet"
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-4 text-sm leading-relaxed text-[var(--text-secondary)] italic whitespace-pre-wrap"
+              className="reader-copy rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-4 text-sm text-[var(--text-secondary)] whitespace-pre-wrap"
           >
             {item.textSnippet}
           </div>
@@ -835,7 +839,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
               type="button"
               onClick={() => void submitAnswer(option.id)}
               disabled={busy}
-              className="rounded-xl border border-[var(--border-subtle)] px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+              className="min-h-12 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3 text-left transition-colors hover:bg-[var(--surface-lilac)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
             >
               {option.text}
             </button>
@@ -851,7 +855,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   }
   if (stage === 'ASSESSMENT_COMPLETE') {
     const estimate = assessment?.result;
-    return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Starting Level Estimate</h1><p className="text-sm text-[var(--text-secondary)]">Đây là ước lượng để cá nhân hóa lộ trình, không phải chứng chỉ.</p></header>{estimate ? <div className="rounded-xl bg-[var(--surface-subtle)] p-4"><p className="text-2xl font-bold">{estimate.level.code}</p><p>Độ tin cậy: {estimate.confidenceBand}</p><p className="text-sm text-[var(--text-secondary)]">{estimate.evidenceCount} bằng chứng</p></div> : <p className="text-sm text-[var(--text-secondary)]">Chưa có ước lượng vì bài đánh giá đã bỏ qua hoặc bị dừng.</p>}<Button variant="primary" onClick={goToday}>Tiếp tục tới Today</Button></Card>;
+    return <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><p className="lingua-kicker text-[var(--action-primary)]">Đánh giá</p><h1 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">Ước lượng trình độ</h1><p className="mt-2 text-sm text-[var(--text-secondary)]">Đây là ước lượng để cá nhân hóa lộ trình, không phải chứng chỉ.</p></header>{estimate ? <div className="rounded-xl bg-[var(--surface-subtle)] p-4"><p className="text-2xl font-bold">{estimate.level.code}</p><p>Độ tin cậy: {estimate.confidenceBand}</p><p className="text-sm text-[var(--text-secondary)]">{estimate.evidenceCount} bằng chứng</p></div> : <p className="text-sm text-[var(--text-secondary)]">Chưa có ước lượng vì bài đánh giá đã bỏ qua hoặc bị dừng.</p>}<Button variant="primary" onClick={goToday}>Tiếp tục tới Hôm nay</Button></Card>;
   }
-  return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<h1 className="text-2xl font-bold text-[var(--text-primary)]">Sẵn sàng bắt đầu</h1><p className="text-sm text-[var(--text-secondary)]">Hồ sơ học tập đã sẵn sàng.</p><Button variant="primary" onClick={goToday}>Tới Today</Button></Card>;
+  return <Card variant="elevated" padding="lg" className="mx-auto w-full max-w-xl space-y-6">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<h1 className="text-2xl font-bold text-[var(--text-primary)]">Sẵn sàng bắt đầu</h1><p className="text-sm text-[var(--text-secondary)]">Hồ sơ học tập đã sẵn sàng.</p><Button variant="primary" onClick={goToday}>Tới Hôm nay</Button></Card>;
 }

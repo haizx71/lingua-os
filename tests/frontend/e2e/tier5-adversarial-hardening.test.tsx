@@ -17,6 +17,7 @@ import { renderWithProviders } from '../harness/test-render';
 import { MockApiService } from '../harness/mock-api-service';
 import { defaultReviewQueue } from '@/fixtures/reviewFixture';
 import { defaultReaderPassage } from '@/fixtures/readerFixture';
+import { defaultProgressSummary } from '@/fixtures/progressFixture';
 import { MockApiClient } from '@lingua/types';
 import { AppShell } from '@/components/navigation/AppShell';
 
@@ -332,6 +333,7 @@ describe('Tier 5 Suite 3: State Machine Invariants & Multi-Route Concurrency', (
     // Inspector dialog opens
     const dialog = screen.getByRole('dialog', { name: 'Chi tiết từ vựng' });
     expect(dialog).toBeInTheDocument();
+    expect(saveConcept).not.toHaveBeenCalled();
     expect(screen.getByText(defaultReaderPassage.sentences[0].tokens.find(
       (token) => token.raw === 'appointment'
     )?.translationVi ?? '')).toBeInTheDocument();
@@ -351,7 +353,7 @@ describe('Tier 5 Suite 3: State Machine Invariants & Multi-Route Concurrency', (
       expect(saveConcept).toHaveBeenCalledTimes(1);
       expect(handleSaveWord).toHaveBeenCalledTimes(1);
       expect(
-        screen.getByText(/Đã lưu "available" vào Language Brain/i)
+        screen.getByText(/Đã lưu “available” để học/i)
       ).toBeInTheDocument();
     });
 
@@ -392,7 +394,7 @@ describe('Tier 5 Suite 3: State Machine Invariants & Multi-Route Concurrency', (
     );
 
     expect(
-      screen.getByText(/Đã lưu tùy chọn cục bộ/i)
+      screen.getByText(/Giao diện đã được lưu trên thiết bị/i)
     ).toBeInTheDocument();
   });
 
@@ -461,7 +463,7 @@ describe('Tier 5 Suite 4: Network Fault Injections & Recovery Resilience', () =>
     const retryBtn = screen.getByRole('button', { name: /Thử lại/i });
     fireEvent.click(retryBtn);
 
-    expect(await screen.findByText(/Chào buổi sáng|Đang chuẩn bị kế hoạch/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kế hoạch của bạn' })).toBeInTheDocument();
   });
 
   it('test_review_session_error_injection_and_retry_recovery', async () => {
@@ -558,19 +560,13 @@ describe('Tier 5 Suite 5: Deep Accessibility, Touch Targets & Non-Color Invarian
     expect(screen.getByText('Phát âm toàn câu')).toBeInTheDocument();
   });
 
-  it('test_progress_analytics_time_window_switching_a11y', () => {
-    renderWithProviders(<ProgressAnalytics />);
+  it('test_progress_analytics_accessibly_exposes_only_supplied_seven_day_data', () => {
+    renderWithProviders(<ProgressAnalytics initialData={defaultProgressSummary} />);
 
-    const btn7d = screen.getByRole('button', { name: '7 ngày qua' });
-    const btn30d = screen.getByRole('button', { name: '30 ngày qua' });
-
-    expect(btn7d).toBeInTheDocument();
-    expect(btn30d).toBeInTheDocument();
-
-    fireEvent.click(btn30d);
-    expect(btn30d).toHaveClass('font-semibold');
-
-    fireEvent.click(btn7d);
-    expect(btn7d).toHaveClass('font-semibold');
+    const activity = screen.getByRole('list', { name: 'Thời gian học theo ngày' });
+    expect(activity).toBeInTheDocument();
+    expect(screen.getByText('7 ngày gần nhất')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '30 ngày qua' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('img').length).toBe(defaultProgressSummary.history7d.length);
   });
 });

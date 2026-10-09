@@ -1,19 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Button, Card, InlineAlert, Input } from '@lingua/ui';
 import {
   ArrowRight,
   BookOpen,
-  Brain,
   CheckCircle2,
-  Flame,
-  Headphones,
   LockKeyhole,
   Mail,
-  MessageSquareText,
-  Sparkles,
-  Target,
+  RotateCcw,
+  Bookmark,
 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
@@ -23,49 +20,13 @@ export interface AuthEntryProps {
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
-const skillPreview = [
-  { label: 'Vocabulary', value: 72, tone: '#2aa995' },
-  { label: 'Reading', value: 64, tone: '#5378e8' },
-  { label: 'Listening', value: 58, tone: '#d8a945' },
-  { label: 'Speaking', value: 46, tone: '#b878df' },
-];
-
 function BrandMark() {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#15366f] text-sm font-black text-white shadow-[0_10px_24px_rgba(21,54,111,0.18)]">
-        L
-        <Sparkles className="absolute -right-1 -top-1 h-3.5 w-3.5 text-[#54c5b3]" />
-      </span>
+      <Image src="/assets/lingua-mark.png" alt="" width={42} height={42} priority className="h-10 w-10 shrink-0 rounded-full" />
       <div className="min-w-0">
-        <div className="truncate text-[17px] font-black tracking-[-0.035em] text-[#18243d]">LINGUA OS</div>
-        <div className="mt-0.5 hidden text-[10px] font-semibold tracking-[0.08em] text-[#8b928f] sm:block">YOUR LANGUAGE BRAIN</div>
-      </div>
-    </div>
-  );
-}
-
-function ProgressRing() {
-  return (
-    <div className="relative flex h-[168px] w-[168px] shrink-0 items-center justify-center">
-      <svg viewBox="0 0 168 168" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
-        <circle cx="84" cy="84" r="68" fill="none" stroke="#edf0ea" strokeWidth="13" />
-        <circle
-          cx="84"
-          cy="84"
-          r="68"
-          fill="none"
-          stroke="#39ad9a"
-          strokeWidth="13"
-          strokeLinecap="round"
-          strokeDasharray="427"
-          strokeDashoffset="116"
-        />
-      </svg>
-      <div className="relative text-center">
-        <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#929991]">Level</div>
-        <div className="mt-1 text-[46px] font-black leading-none tracking-[-0.06em] text-[#18243d]">B1</div>
-        <div className="mt-2 text-xs font-bold text-[#49a998]">73% ready</div>
+        <div className="truncate text-[16px] font-extrabold tracking-[-0.025em] text-[var(--text-primary)]">LINGUA OS</div>
+        <div className="mt-0.5 hidden text-[11px] font-medium text-[var(--text-muted)] sm:block">Học theo nhịp của bạn</div>
       </div>
     </div>
   );
@@ -74,78 +35,26 @@ function ProgressRing() {
 function ProductPreview() {
   return (
     <section
-      className="relative hidden min-w-0 overflow-hidden rounded-[34px] border border-[#dde5df] bg-[#e7f0eb] p-6 lg:flex lg:min-h-[690px] lg:flex-col xl:p-8"
-      aria-label="LINGUA OS product preview"
+      className="relative hidden min-w-0 flex-col justify-between overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] p-7 lg:flex lg:min-h-[640px] xl:p-9"
+      aria-label="Cách học với LINGUA OS"
     >
-      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#c9e7de] opacity-70 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[#f1dfbd] opacity-65 blur-3xl" />
-
-      <div className="relative z-10 flex items-center justify-between gap-4 px-1 pb-5">
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#76827c]">Learning preview</div>
-          <h2 className="mt-1 text-[28px] font-black tracking-[-0.045em] text-[#18243d]">Your progress, in one place.</h2>
-        </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[#2c9c8b] shadow-[0_10px_30px_rgba(54,94,77,0.1)]">
-          <Brain className="h-5 w-5" />
-        </div>
+      <div className="relative z-10">
+        <p className="lingua-kicker text-[var(--action-primary)]">Cùng bạn học mỗi ngày</p>
+        <h2 className="mt-3 max-w-md text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)]">Một câu chuyện. Một bước tiến nhỏ.</h2>
+        <p className="mt-3 max-w-md text-sm leading-6 text-[var(--text-secondary)]">Đọc nội dung phù hợp, mở từ cần tìm hiểu và tự chọn điều muốn lưu để ôn lại.</p>
       </div>
-
-      <div className="relative z-10 rounded-[30px] border border-white/80 bg-white/95 p-6 shadow-[0_24px_60px_rgba(58,86,73,0.12)] xl:p-7">
-        <div className="grid min-w-0 items-center gap-7 xl:grid-cols-[190px_minmax(0,1fr)]">
-          <div className="flex justify-center">
-            <ProgressRing />
-          </div>
-
-          <div className="min-w-0">
-            <div className="mb-4 flex min-w-0 items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold text-[#18243d]">Language Brain</p>
-                <p className="mt-1 text-xs leading-5 text-[#747d78]">A balanced view of the skills you are building.</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-[#e7f7f3] px-3 py-1 text-[11px] font-extrabold text-[#238c7b]">Growing</span>
-            </div>
-
-            <div className="space-y-4">
-              {skillPreview.map((skill) => (
-                <div key={skill.label} className="min-w-0">
-                  <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
-                    <span className="min-w-0 truncate font-bold text-[#3f4b52]">{skill.label}</span>
-                    <span className="shrink-0 font-extrabold text-[#6e7773]">{skill.value}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[#eef1ed]">
-                    <div className="h-full rounded-full" style={{ width: `${skill.value}%`, backgroundColor: skill.tone }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-10 mt-5 grid min-w-0 grid-cols-3 gap-3">
-        {[
-          { label: 'Read', icon: BookOpen, surface: '#fff5df', color: '#b37625' },
-          { label: 'Review', icon: Target, surface: '#e8f5f2', color: '#248f7f' },
-          { label: 'Brain', icon: Brain, surface: '#edf0ff', color: '#526ed1' },
-        ].map(({ label, icon: Icon, surface, color }) => (
-          <div key={label} className="min-w-0 rounded-[22px] border border-white/80 bg-white/85 p-4 shadow-[0_12px_30px_rgba(58,86,73,0.08)]">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: surface, color }}>
-              <Icon className="h-5 w-5" />
-            </div>
-            <p className="mt-3 truncate text-sm font-extrabold text-[#243047]">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative z-10 mt-5 rounded-[26px] border border-white/80 bg-[#17345d] p-5 text-white shadow-[0_18px_45px_rgba(27,52,87,0.18)]">
-        <div className="flex min-w-0 items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#a9d9ce]">Featured reading</div>
-            <p className="mt-2 truncate text-base font-extrabold">An Unexpected Morning</p>
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#d7e0eb]">A short story chosen to stretch reading fluency without breaking momentum.</p>
-          </div>
-          <BookOpen className="mt-1 h-5 w-5 shrink-0 text-[#7dd5c5]" />
-        </div>
+      <Image
+        src="/assets/reader-tea-book.png"
+        alt="Tách trà và quyển sách minh họa cho trải nghiệm đọc"
+        width={1492}
+        height={1054}
+        priority
+        className="relative z-10 mx-auto my-3 w-full max-w-[520px] object-contain"
+      />
+      <div className="relative z-10 grid grid-cols-3 gap-2 border-t border-[var(--border-subtle)] pt-5">
+        <div className="min-w-0 rounded-2xl bg-[var(--surface)] p-3"><BookOpen className="h-4 w-4 text-[var(--action-primary)]" /><p className="mt-2 text-xs font-semibold text-[var(--text-primary)]">Đọc ngữ cảnh</p></div>
+        <div className="min-w-0 rounded-2xl bg-[var(--surface)] p-3"><RotateCcw className="h-4 w-4 text-[var(--accent-purple)]" /><p className="mt-2 text-xs font-semibold text-[var(--text-primary)]">Ôn tập chủ động</p></div>
+        <div className="min-w-0 rounded-2xl bg-[var(--surface)] p-3"><Bookmark className="h-4 w-4 text-[var(--status-success)]" /><p className="mt-2 text-xs font-semibold text-[var(--text-primary)]">Kho cá nhân</p></div>
       </div>
     </section>
   );
@@ -258,53 +167,47 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
   }
 
   const heading = mode === 'signin'
-    ? 'Welcome back'
+    ? 'Chào mừng trở lại'
     : mode === 'signup'
-      ? 'Create your account'
-      : 'Reset your password';
+      ? 'Tạo tài khoản'
+      : 'Đặt lại mật khẩu';
   const description = mode === 'forgot'
     ? 'Nhập email để nhận liên kết đặt lại mật khẩu.'
     : mode === 'signup'
-      ? 'Start with a few minutes a day. LINGUA OS will adapt as you learn.'
-      : 'Continue from exactly where your learning left off.';
+      ? 'Tạo tài khoản để bắt đầu xây dựng nhịp học phù hợp với bạn.'
+      : 'Đăng nhập để tiếp tục hành trình học của bạn.';
 
   return (
-    <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#f5f6f1] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-      <div className="pointer-events-none absolute left-[-120px] top-[80px] h-[340px] w-[340px] rounded-full bg-[#f4e8cc] opacity-55 blur-3xl" />
-      <div className="pointer-events-none absolute right-[10%] top-[-140px] h-[380px] w-[380px] rounded-full bg-[#d9eee8] opacity-55 blur-3xl" />
-
-      <div className="relative z-10 mx-auto w-full max-w-[1240px]">
+    <main className="min-h-[100dvh] w-full overflow-x-hidden bg-[var(--canvas)] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+      <div className="mx-auto w-full max-w-[1120px]">
         <div className="mb-5 flex min-w-0 items-center justify-between gap-3 sm:mb-6">
           <BrandMark />
           {mode !== 'forgot' && (
             <button
               type="button"
               onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
-              className="min-h-11 shrink-0 rounded-full border border-[#cad1cb] bg-white/85 px-5 text-sm font-extrabold text-[#183154] shadow-sm transition-colors hover:border-[#8ebcaf] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d] focus-visible:ring-offset-2"
+              className="min-h-11 shrink-0 rounded-full border border-[var(--border-default)] bg-[var(--surface)] px-5 text-sm font-bold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             >
               {mode === 'signin' ? 'Đăng ký' : 'Đăng nhập'}
             </button>
           )}
         </div>
 
-        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:gap-7">
-          <section className="min-w-0 rounded-[30px] border border-[#e3e6df] bg-white/95 p-5 shadow-[0_24px_70px_rgba(40,54,47,0.08)] sm:p-8 lg:flex lg:min-h-[690px] lg:items-center lg:p-10 xl:p-12">
+        <div className="grid min-w-0 items-stretch gap-5 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] xl:gap-7">
+          <section className="min-w-0 rounded-[26px] border border-[var(--border-subtle)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-8 lg:flex lg:min-h-[620px] lg:items-center lg:p-10">
             <div className="mx-auto w-full min-w-0 max-w-[430px]">
-              <div className="mb-8">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#eef6f2] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#468b7f]">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Adaptive language learning
-                </div>
-                <h1 className="text-[34px] font-black leading-[1.02] tracking-[-0.052em] text-[#18243d] sm:text-[42px]">{heading}</h1>
-                <p className="mt-3 max-w-[38ch] text-sm leading-6 text-[#69736e] sm:text-[15px]">{description}</p>
+              <div className="mb-7">
+                <div className="mb-3 text-xs font-semibold text-[var(--action-primary)]">Tài khoản học tập</div>
+                <h1 className="text-[32px] font-bold leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-[38px]">{heading}</h1>
+                <p className="mt-3 max-w-[38ch] text-sm leading-6 text-[var(--text-secondary)] sm:text-[15px]">{description}</p>
 
                 {mode === 'signin' && (
-                  <p className="mt-4 text-sm text-[#69736e]">
+                  <p className="mt-4 text-sm text-[var(--text-secondary)]">
                     Chưa có tài khoản?{' '}
                     <button
                       type="button"
                       aria-label="Chưa có tài khoản? Đăng ký"
-                      className="font-extrabold text-[#1f7468] underline decoration-[#a9cec5] underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                      className="font-bold text-[var(--action-primary)] underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                       onClick={() => switchMode('signup')}
                     >
                       Đăng ký
@@ -332,14 +235,14 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   label="Email"
                   aria-label="Email"
                   autoComplete="email"
-                  placeholder="name@example.com"
+                  placeholder="ten@email.com"
                   required
                   fullWidth
                   inputSize="lg"
                   leftIcon={<Mail className="h-5 w-5" />}
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="h-[54px] !rounded-2xl !border-[#d6dcd6] !bg-[#fbfcfa] !pl-12 text-base shadow-none focus:!bg-white"
+                  className="h-[54px] !rounded-xl !border-[var(--border-default)] !bg-[var(--surface-subtle)] !pl-12 text-base shadow-none focus:!bg-[var(--surface)]"
                 />
 
                 {mode !== 'forgot' && (
@@ -358,7 +261,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                     leftIcon={<LockKeyhole className="h-5 w-5" />}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="h-[54px] !rounded-2xl !border-[#d6dcd6] !bg-[#fbfcfa] !pl-12 text-base shadow-none focus:!bg-white"
+                    className="h-[54px] !rounded-xl !border-[var(--border-default)] !bg-[var(--surface-subtle)] !pl-12 text-base shadow-none focus:!bg-[var(--surface)]"
                   />
                 )}
 
@@ -367,16 +270,16 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                     id="auth-confirm-password"
                     name="confirm-password"
                     type="password"
-                    label="Confirm password"
+                    label="Xác nhận mật khẩu"
                     autoComplete="new-password"
                     minLength={8}
-                    placeholder="Confirm password"
+                    placeholder="Nhập lại mật khẩu"
                     fullWidth
                     inputSize="lg"
                     leftIcon={<LockKeyhole className="h-5 w-5" />}
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
-                    className="h-[54px] !rounded-2xl !border-[#d6dcd6] !bg-[#fbfcfa] !pl-12 text-base shadow-none focus:!bg-white"
+                    className="h-[54px] !rounded-xl !border-[var(--border-default)] !bg-[var(--surface-subtle)] !pl-12 text-base shadow-none focus:!bg-[var(--surface)]"
                   />
                 )}
 
@@ -384,7 +287,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
                   type="submit"
                   variant="primary"
                   size="lg"
-                  className="min-h-[54px] w-full rounded-2xl bg-[#17345d] text-base font-extrabold shadow-[0_12px_28px_rgba(23,52,93,0.16)] hover:bg-[#10294c]"
+                  className="min-h-[54px] w-full rounded-xl text-base font-bold shadow-none"
                   rightIcon={!submitting ? <ArrowRight className="h-4 w-4" /> : undefined}
                   disabled={submitting || authState === 'loading'}
                 >
@@ -395,10 +298,10 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               {mode === 'signin' && (
                 <button
                   type="button"
-                  className="mx-auto mt-4 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#4c5b58] transition-colors hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                  className="mx-auto mt-4 flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                   onClick={() => switchMode('forgot')}
                 >
-                  Forgot password?
+                  Quên mật khẩu?
                 </button>
               )}
 
@@ -419,7 +322,7 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               {mode === 'signup' && (
                 <button
                   type="button"
-                  className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#40524f] hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                  className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                   onClick={() => switchMode('signin')}
                 >
                   Đã có tài khoản? Đăng nhập
@@ -428,39 +331,22 @@ export function AuthEntry({ onAuthenticated }: AuthEntryProps) {
               {mode === 'forgot' && (
                 <button
                   type="button"
-                  className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-[#40524f] hover:text-[#1f7468] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f9f8d]"
+                  className="mx-auto mt-5 flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                   onClick={() => switchMode('signin')}
                 >
                   Quay lại đăng nhập
                 </button>
               )}
 
-              <div className="mt-8 grid grid-cols-3 gap-2 border-t border-[#edf0eb] pt-5 text-center">
-                <div className="min-w-0">
-                  <Flame className="mx-auto h-4 w-4 text-[#d88b45]" />
-                  <p className="mt-1 truncate text-[10px] font-bold text-[#7a827e]">Daily rhythm</p>
-                </div>
-                <div className="min-w-0">
-                  <Brain className="mx-auto h-4 w-4 text-[#35a18f]" />
-                  <p className="mt-1 truncate text-[10px] font-bold text-[#7a827e]">Adaptive path</p>
-                </div>
-                <div className="min-w-0">
-                  <Headphones className="mx-auto h-4 w-4 text-[#627de0]" />
-                  <p className="mt-1 truncate text-[10px] font-bold text-[#7a827e]">Real practice</p>
-                </div>
-              </div>
             </div>
           </section>
 
           <ProductPreview />
         </div>
 
-        <footer className="mt-5 flex min-w-0 flex-col gap-2 px-1 text-xs text-[#7a827e] sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-2">
-            <MessageSquareText className="h-4 w-4 shrink-0 text-[#3da894]" />
-            <span className="min-w-0">Learn a little every day. Let the system handle the path.</span>
-          </div>
-          <span className="shrink-0 font-semibold text-[#929995]">LINGUA OS</span>
+        <footer className="mt-5 flex min-w-0 flex-col gap-2 px-1 text-xs text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
+          <span className="min-w-0">Dữ liệu tài khoản được xử lý theo thiết lập bảo mật của bạn.</span>
+          <span className="shrink-0 font-semibold text-[var(--text-secondary)]">LINGUA OS</span>
         </footer>
       </div>
     </main>

@@ -184,7 +184,7 @@ describe('TASK-READ-001 Reader live integration', () => {
     installHappyPath(api, content);
     await renderLive(api);
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Live Reader Story' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Live Reader Story' })).toBeInTheDocument();
     const segments = screen.getAllByTestId('reader-segment');
     expect(segments.map((node) => node.getAttribute('data-segment-id'))).toEqual([
       IDS.segment1,
@@ -313,11 +313,12 @@ describe('TASK-READ-001 Reader live integration', () => {
     const api = new MockApiClient();
     installHappyPath(api, makeContent('Resume Story', true));
     const first = await renderLive(api);
-    expect(await screen.findByText('Tiếp tục từ đoạn 2')).toBeInTheDocument();
-    expect(screen.getByText('Tiến độ 50%')).toBeInTheDocument();
+    expect(await screen.findByRole('progressbar')).toHaveAccessibleName('Tiến độ bài đọc: 50%');
+    expect(screen.getByText('Đoạn 2 / 2')).toBeInTheDocument();
     first.unmount();
     await renderLive(api);
-    expect(await screen.findByText('Tiếp tục từ đoạn 2')).toBeInTheDocument();
+    expect(await screen.findByRole('progressbar')).toHaveAccessibleName('Tiến độ bài đọc: 50%');
+    expect(screen.getByText('Đoạn 2 / 2')).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
   });
 

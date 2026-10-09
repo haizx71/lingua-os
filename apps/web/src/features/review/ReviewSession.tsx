@@ -267,8 +267,8 @@ export function ReviewSession({
 
   if (!currentCard) return null;
 
-  const displayDueCount = remainingDueCount !== null ? remainingDueCount : 23;
-  const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : 23;
+  const displayDueCount = remainingDueCount;
+  const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : queue.length;
   const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
   const hiddenAnswerMode = currentCard.exerciseMode === 'typing'
     || currentCard.exerciseMode === 'cloze'
@@ -284,20 +284,14 @@ export function ReviewSession({
   };
 
   return (
-    <div aria-busy={isSubmitting} className={`mx-auto w-full max-w-3xl space-y-5 sm:space-y-6 ${focusMode ? 'py-3' : ''}`}>
-      <header className="relative overflow-hidden rounded-[28px] border border-[#dfe7f4] bg-gradient-to-br from-[var(--surface-blue)] via-white to-[var(--surface-lilac)] p-5 shadow-[var(--shadow-card)] sm:p-6">
-        <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/70" />
-        <div className="relative flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="lingua-kicker text-[var(--action-primary)]">Smart Review (FSRS)</span>
-              <Sparkles className="h-3.5 w-3.5 text-[var(--accent-teal)]" />
-            </div>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-[var(--text-primary)]">Hàng đợi ôn tập</h1>
-            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Tập trung vào một khái niệm mỗi lần; lịch ôn vẫn do FSRS quyết định.</p>
+    <div aria-busy={isSubmitting} className={`mx-auto w-full max-w-3xl space-y-3 sm:space-y-5 ${focusMode ? 'py-3' : ''}`}>
+      <header className="flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-4 py-3 sm:px-5">
+          <div className="min-w-0">
+            <div className="lingua-kicker text-[var(--action-primary)]">Ôn tập</div>
+            <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-2xl">Thẻ đến lượt</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Badge variant="warning" size="md">{displayDueCount} từ đến hạn</Badge>
+            {displayDueCount !== null && <Badge variant="warning" size="md">{displayDueCount} còn lại</Badge>}
             <Button
               variant="ghost"
               size="icon"
@@ -308,12 +302,11 @@ export function ReviewSession({
               {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </div>
-        </div>
       </header>
 
-      <Card variant="subtle" padding="sm" className="rounded-2xl bg-white/75">
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2">
         <Progress value={progressValue} max={100} label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`} showValueText size="sm" />
-      </Card>
+      </div>
 
       {recoveryAlert}
 
@@ -323,7 +316,7 @@ export function ReviewSession({
 
       <div ref={sessionCardRef}>
         <Card padding="none" className="relative overflow-hidden border-[var(--border-subtle)] shadow-[var(--shadow-card-hover)]">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-warm)]/55 px-5 py-4 sm:px-7">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4 sm:px-7">
             <div className="flex items-center gap-2">
               <Badge variant="neutral" size="sm">Thẻ {currentIndex + 1} / {queue.length}</Badge>
               <Badge variant="neutral" size="sm">{exerciseLabels[currentCard.exerciseMode]}</Badge>
@@ -331,16 +324,16 @@ export function ReviewSession({
             <ConceptChip
               status={currentCard.status}
               isDue={currentCard.isDue}
-              term={hiddenAnswerMode && !isAnswerRevealed ? 'Từ cần nhớ' : currentCard.term}
+              showStatusLabel
               size="sm"
             />
           </div>
 
           <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
-            <span className="lingua-kicker text-[var(--accent-teal-strong)]">
+            <span className="lingua-kicker text-[var(--action-primary)]">
               {currentCard.pos ? 'Từ vựng tiếng Anh' : 'Khái niệm tiếng Anh'}
             </span>
-            <h2 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[var(--text-primary)] sm:text-5xl">
+            <h2 className="mt-3 text-3xl font-black tracking-[-0.045em] text-[var(--text-primary)] sm:text-5xl">
               {hiddenAnswerMode && !isAnswerRevealed ? 'Từ cần nhớ' : currentCard.term}
             </h2>
             {!hiddenAnswerMode && (currentCard.ipa || currentCard.pos) && (
@@ -370,7 +363,7 @@ export function ReviewSession({
 
             {(currentCard.exerciseMode === 'cloze' || currentCard.exerciseMode === 'self_recall')
               && currentCard.contextSentence && (
-                <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/70 px-5 py-4 text-sm italic leading-6 text-[var(--text-secondary)]">
+                <div className="reader-copy mx-auto mt-6 max-w-xl rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-5 py-4 text-sm text-[var(--text-secondary)]">
                   “{currentCard.contextSentence}”
                   {isAnswerRevealed && currentCard.contextTranslationVi && (
                     <p className="mt-2 not-italic text-[var(--text-muted)]">
@@ -411,8 +404,8 @@ export function ReviewSession({
             )}
           </div>
 
-          <div className="border-t border-[var(--border-subtle)] bg-white px-5 py-5 sm:px-7">
-            <p className="mb-3 text-center text-xs text-[var(--text-secondary)]">Đánh giá mức độ ghi nhớ để FSRS tối ưu lịch ôn:</p>
+          <div className="border-t border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-5 sm:px-7">
+            <p className="mb-3 text-center text-xs text-[var(--text-secondary)]">Chọn mức độ ghi nhớ để cập nhật lịch ôn:</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]" onClick={() => void submitRating('again', needsTextResponse ? responseText : undefined)}>Quên (Again)</Button>
               <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]" onClick={() => void submitRating('hard', needsTextResponse ? responseText : undefined)}>Khó (Hard)</Button>

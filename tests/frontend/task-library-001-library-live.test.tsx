@@ -276,7 +276,7 @@ describe('TASK-LIBRARY-001 Library live integration', () => {
       vi.spyOn(api, 'answerReviewItem'), vi.spyOn(api, 'completeTodayActivity'),
     ];
     await renderLive(api);
-    fireEvent.click(await screen.findByRole('tab', { name: /Khái niệm/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Khái niệm/ }));
     const conceptRow = screen.getByTestId('library-item');
     expect(within(conceptRow).getByText('appointment')).toBeInTheDocument();
     forbidden.forEach((spy) => expect(spy).not.toHaveBeenCalled());

@@ -46,6 +46,27 @@ import {
 } from '@lingua/ui/tokens/component';
 import { usePrefersReducedMotion } from '@lingua/ui/hooks/usePrefersReducedMotion';
 import enumsContract from '../../contracts/enums.json';
+import { getContrastRatio } from './harness/a11y-helpers';
+
+function readCssColor(block: string, token: string): string {
+  const value = block.match(new RegExp(`--${token}:\\s*([^;]+);`))?.[1]?.trim();
+  if (!value) throw new Error(`Missing CSS color token: ${token}`);
+  return value;
+}
+
+function flattenCssColor(value: string, background: string): string {
+  if (value.startsWith('#')) return value;
+  const rgba = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,?\s*([\d.]+)?\s*\)/i);
+  if (!rgba) throw new Error(`Unsupported CSS color token: ${value}`);
+  const base = background.slice(1);
+  const alpha = rgba[4] === undefined ? 1 : Number(rgba[4]);
+  const channels = [0, 2, 4].map((offset, index) => {
+    const foregroundChannel = Number(rgba[index + 1]);
+    const backgroundChannel = Number.parseInt(base.slice(offset, offset + 2), 16);
+    return Math.round(foregroundChannel * alpha + backgroundChannel * (1 - alpha));
+  });
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+}
 
 describe('Design Tokens Specification (Unit Tests)', () => {
   // =========================================================================
@@ -155,6 +176,41 @@ describe('Design Tokens Specification (Unit Tests)', () => {
       expect(semanticColors.light.statusSuccess).toBe(primitivePalette.emerald[600]);
       expect(semanticColors.light.statusWarning).toBe(primitivePalette.amber[600]);
       expect(semanticColors.light.statusDanger).toBe(primitivePalette.rose[600]);
+    });
+
+    it('keeps theme-muted and semantic status text at WCAG AA contrast on their surfaces', () => {
+      const themeCssPath = path.resolve(__dirname, '../../packages/ui/src/tokens/theme.css');
+      const css = fs.readFileSync(themeCssPath, 'utf-8');
+      const light = css.match(/:root\s*\{([\s\S]*?)\}/)?.[1];
+      const dark = css.match(/\.dark\s*\{([\s\S]*?)\}/)?.[1];
+      expect(light).toBeTruthy();
+      expect(dark).toBeTruthy();
+      if (!light || !dark) throw new Error('Theme light/dark token blocks are missing.');
+
+      const lightMuted = readCssColor(light, 'text-muted');
+      for (const surfaceToken of ['surface', 'canvas', 'surface-subtle', 'surface-lilac']) {
+        expect(getContrastRatio(lightMuted, readCssColor(light, surfaceToken)), `light muted on ${surfaceToken}`).toBeGreaterThanOrEqual(4.5);
+      }
+
+      const lightStatusTokens = ['success', 'warning', 'danger', 'info'] as const;
+      for (const status of lightStatusTokens) {
+        expect(
+          getContrastRatio(readCssColor(light, `status-${status}`), readCssColor(light, `status-${status}-bg`)),
+          `light ${status} status text on its background`
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+
+      const darkSurface = readCssColor(dark, 'surface');
+      const darkMuted = readCssColor(dark, 'text-muted');
+      for (const surfaceToken of ['surface', 'canvas', 'surface-subtle', 'surface-lilac']) {
+        expect(getContrastRatio(darkMuted, readCssColor(dark, surfaceToken)), `dark muted on ${surfaceToken}`).toBeGreaterThanOrEqual(4.5);
+      }
+
+      for (const status of lightStatusTokens) {
+        const foreground = readCssColor(dark, `status-${status}`);
+        const background = flattenCssColor(readCssColor(dark, `status-${status}-bg`), darkSurface);
+        expect(getContrastRatio(foreground, background), `dark ${status} status text on its composited background`).toBeGreaterThanOrEqual(4.5);
+      }
     });
 
     it('maps all 8 contract concept statuses from contracts/enums.json with icons and Vietnamese labels', () => {

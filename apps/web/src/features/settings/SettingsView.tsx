@@ -79,7 +79,7 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
   const handleSave = () => {
     const updated: UserSettingsData = { dailyTargetMinutes: dailyMinutes, newWordsBudgetPerDay: newWordsBudget, theme, reducedMotion, audioAutoplay };
     onSaveSettings?.(updated);
-    setSavedNotification('Đã lưu tùy chọn cục bộ trên thiết bị này.');
+    setSavedNotification('Giao diện đã được lưu trên thiết bị. Các tùy chọn còn lại hiện chỉ áp dụng trong phiên này.');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => { setSavedNotification(null); saveTimerRef.current = null; }, 3000);
   };
@@ -106,24 +106,27 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
       <header className="min-w-0">
-        <h1 className="text-[28px] font-black leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-4xl">Cài đặt hệ thống</h1>
+        <p className="lingua-kicker text-[var(--action-primary)]">Tài khoản</p>
+        <h1 className="mt-2 text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Cài đặt</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-[15px]">Tùy chỉnh trải nghiệm học và quản lý tài khoản của bạn.</p>
-        <span className="sr-only">Preferences &amp; Account</span>
       </header>
 
       {savedNotification && <InlineAlert variant="success" title="Đã lưu">{savedNotification}</InlineAlert>}
+      <InlineAlert variant="info" title="Lưu tùy chọn">
+        Giao diện được lưu trên thiết bị này. Mục tiêu học, ngân sách từ mới, giảm chuyển động và tự phát âm chưa được lưu lâu dài.
+      </InlineAlert>
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-start">
         <div className="min-w-0 space-y-4">
           <AccountSecurityCard />
-          <Card padding="lg" className="min-w-0 rounded-[26px] bg-[var(--surface-warm)]">
-            <h2 className="text-lg font-black tracking-[-0.02em] text-[var(--text-primary)]">Mục tiêu học tập hàng ngày</h2>
+          <Card padding="lg" className="min-w-0 bg-[var(--surface-lilac)]">
+            <h2 className="text-lg font-bold tracking-[-0.02em] text-[var(--text-primary)]">Mục tiêu học mỗi ngày</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Điều chỉnh nhịp học để phù hợp với thời gian và sức học của bạn.</p>
           </Card>
         </div>
 
         <div className="min-w-0 space-y-4">
-          <Card padding="lg" className="min-w-0 rounded-[26px]">
+          <Card padding="lg" className="min-w-0">
             <div className="flex min-w-0 flex-col gap-5">
               <section className="min-w-0 border-b border-[var(--border-subtle)] pb-5">
                 <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -149,8 +152,8 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
             </div>
           </Card>
 
-          <Card padding="lg" className="min-w-0 rounded-[26px]">
-            <h3 className="text-lg font-black tracking-[-0.02em] text-[var(--text-primary)]">Giao diện & Trợ năng</h3>
+          <Card padding="lg" className="min-w-0">
+            <h3 className="text-lg font-bold tracking-[-0.02em] text-[var(--text-primary)]">Giao diện & trợ năng</h3>
 
             <div className="mt-5 space-y-1">
               <div className="border-b border-[var(--border-subtle)] py-4">
@@ -176,7 +179,7 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
             </div>
           </Card>
 
-          <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[0_12px_34px_rgba(33,45,78,0.16)] md:static md:flex md:justify-end md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+          <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-card)] md:static md:flex md:justify-end md:border-0 md:bg-transparent md:p-0 md:shadow-none">
             <Button className="w-full md:w-auto" variant="primary" size="md" leftIcon={<Save className="h-4 w-4" />} onClick={handleSave}>Lưu cài đặt</Button>
           </div>
         </div>

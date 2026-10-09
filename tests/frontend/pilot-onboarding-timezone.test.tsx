@@ -93,7 +93,7 @@ describe('pilot onboarding timezone setup', () => {
 
     clickCreateProfile();
 
-    await screen.findByText(/Đánh giá trình độ khởi điểm/i);
+    await screen.findByText(/Ước lượng trình độ/i);
     expect(fetchFn.mock.calls.map(([url, init]) => [String(url), init?.method ?? 'GET'])).toEqual([
       ['/v1/me', 'GET'],
       ['/v1/me/languages', 'GET'],
@@ -120,7 +120,7 @@ describe('pilot onboarding timezone setup', () => {
     await screen.findByText(/Chọn mục tiêu học tập/i);
     expect(screen.queryByTestId('detected-timezone')).not.toBeInTheDocument();
     clickCreateProfile();
-    await screen.findByText(/Đánh giá trình độ khởi điểm/i);
+    await screen.findByText(/Ước lượng trình độ/i);
 
     expect(fetchFn.mock.calls.map(([url, init]) => [String(url), init?.method ?? 'GET'])).toEqual([
       ['/v1/me', 'GET'],
@@ -159,7 +159,7 @@ describe('pilot onboarding timezone setup', () => {
     fireEvent.change(screen.getByLabelText('Tên hiển thị (tùy chọn)'), { target: { value: 'Minh An' } });
     clickCreateProfile();
 
-    await screen.findByText(/Đánh giá trình độ khởi điểm/i);
+    await screen.findByText(/Ước lượng trình độ/i);
     expect(JSON.parse(String(fetchFn.mock.calls[2]?.[1]?.body))).toEqual({ timeZone: detectedZone, displayName: 'Minh An' });
   });
 
@@ -212,7 +212,7 @@ describe('pilot onboarding timezone setup', () => {
 
     // A new explicit setup click uses the refetched stored zone and performs only language creation.
     fireEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ tiếng Anh' }));
-    await screen.findByText(/Đánh giá trình độ khởi điểm/i);
+    await screen.findByText(/Ước lượng trình độ/i);
     expect(fetchFn.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(1);
     expect(fetchFn.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
     expect(detectedZone).toBeTruthy();

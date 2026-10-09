@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -89,13 +90,13 @@ export function MobileTopBar({ currentPath }: MobileTopBarProps = {}) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--canvas)]/92 px-3 pt-[max(env(safe-area-inset-top),0.35rem)] backdrop-blur-xl md:hidden">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--canvas)]/96 px-4 pt-[max(env(safe-area-inset-top),0.35rem)] backdrop-blur-xl md:hidden">
+        <div className="mx-auto flex h-[58px] max-w-3xl items-center justify-between gap-3">
           <Link href="/today" className="flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--action-primary)] text-sm font-black text-white shadow-sm">L</span>
+            <Image src="/assets/lingua-mark.png" alt="" width={38} height={38} priority className="h-[38px] w-[38px] shrink-0 rounded-full" />
             <span className="min-w-0">
-              <span className="block truncate text-[11px] font-black tracking-[0.08em] text-[var(--text-primary)]">LINGUA OS</span>
-              <span className="block truncate text-[10px] font-medium text-[var(--text-muted)]">{currentItem?.labelVi ?? 'Học tập'}</span>
+              <span className="block truncate text-[12px] font-extrabold tracking-[0.025em] text-[var(--text-primary)]">LINGUA OS</span>
+              <span className="block truncate text-[11px] font-medium text-[var(--text-secondary)]">{currentItem?.labelVi ?? 'Học tập'}</span>
             </span>
           </Link>
 
@@ -106,7 +107,7 @@ export function MobileTopBar({ currentPath }: MobileTopBarProps = {}) {
             aria-haspopup="dialog"
             aria-controls="mobile-navigation-drawer"
             onClick={() => setOpen(true)}
-            className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-white px-3 text-[var(--text-primary)] shadow-sm transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface)] px-3 text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           >
             <Menu className="h-5 w-5" />
             <span className="text-xs font-extrabold">Menu</span>
@@ -127,7 +128,7 @@ export function MobileTopBar({ currentPath }: MobileTopBarProps = {}) {
             role="dialog"
             aria-modal="true"
             aria-label="Menu LINGUA OS"
-            className="absolute inset-y-0 right-0 flex w-[min(92vw,360px)] max-w-full flex-col overflow-hidden rounded-l-[30px] border-l border-[var(--border-subtle)] bg-white shadow-[0_0_60px_rgba(28,39,67,0.22)]"
+            className="absolute inset-y-0 right-0 flex w-[min(92vw,360px)] max-w-full flex-col overflow-hidden rounded-l-[26px] border-l border-[var(--border-subtle)] bg-[var(--surface)] shadow-[0_0_50px_rgba(32,28,83,0.2)]"
           >
             <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pb-4 pt-[max(env(safe-area-inset-top),1rem)]">
               <div className="min-w-0">
@@ -138,7 +139,7 @@ export function MobileTopBar({ currentPath }: MobileTopBarProps = {}) {
                 type="button"
                 aria-label="Đóng menu"
                 onClick={() => setOpen(false)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-subtle)] text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-subtle)] text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               >
                 <X className="h-5 w-5" />
               </button>

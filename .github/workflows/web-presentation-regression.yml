@@ -1,0 +1,45 @@
+name: Web Presentation Regression
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'apps/web/**'
+      - 'packages/ui/**'
+      - 'packages/types/**'
+      - 'tests/frontend/**'
+      - '.github/workflows/web-presentation-regression.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'vitest.config.*'
+      - 'eslint.config.*'
+
+permissions:
+  contents: read
+
+jobs:
+  web-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify contracts and types
+        run: pnpm typecheck
+      - name: Check code quality
+        run: pnpm lint
+      - name: Run complete frontend regression suite
+        run: pnpm exec vitest run tests/frontend --maxWorkers=1
+      - name: Build production web bundle without hosted credentials
+        run: pnpm --filter @lingua/web build
