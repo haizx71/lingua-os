@@ -42,6 +42,26 @@ const learningGoals: readonly { value: LearningGoal; label: string }[] = [
 ];
 const dailyMinuteChoices = [10, 20, 25, 30, 45] as const;
 
+function detectBrowserTimeZone(): string {
+  try {
+    const candidate = typeof Intl === 'undefined' ? '' : Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return isValidIanaTimeZone(candidate) ? candidate.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+function supportedTimeZones(): string[] {
+  try {
+    const intlWithTimeZoneValues = Intl as typeof Intl & {
+      supportedValuesOf?: (key: 'timeZone') => string[];
+    };
+    return intlWithTimeZoneValues.supportedValuesOf?.('timeZone') ?? [];
+  } catch {
+    return [];
+  }
+}
+
 function makeActionKey(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
   throw new Error('Trình duyệt không hỗ trợ mã idempotency an toàn.');
@@ -84,6 +104,57 @@ function forgetAssessmentId(userId?: string | null): void {
   } catch {
     // A storage restriction must not prevent the server-owned assessment flow.
   }
+}
+
+function TimeZoneSetupField({
+  timeZone,
+  detectedAutomatically,
+  onChange,
+  onRetryDetection,
+}: {
+  readonly timeZone: string;
+  readonly detectedAutomatically: boolean;
+  readonly onChange: (value: string) => void;
+  readonly onRetryDetection: () => void;
+}) {
+  const options = useMemo(supportedTimeZones, []);
+
+  if (detectedAutomatically) {
+    return (
+      <p role="status" className="text-sm text-[var(--text-secondary)]" data-testid="detected-timezone">
+        Múi giờ thiết bị được nhận diện tự động: <strong>{timeZone}</strong>
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor="time-zone" className="text-sm font-medium">Múi giờ</label>
+      {options.length > 0 ? (
+        <select
+          id="time-zone"
+          value={timeZone}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3"
+        >
+          <option value="">Chọn múi giờ</option>
+          {timeZone && !options.includes(timeZone) && <option value={timeZone}>{timeZone}</option>}
+          {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      ) : (
+        <input
+          id="time-zone"
+          value={timeZone}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3"
+          autoComplete="off"
+        />
+      )}
+      <Button type="button" variant="outline" onClick={onRetryDetection}>
+        Thử nhận diện lại
+      </Button>
+    </div>
+  );
 }
 
 function AssessmentAudioPlayer({ src }: { readonly src: string }) {
@@ -176,6 +247,8 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   const [archivedLanguageProfile, setArchivedLanguageProfile] = useState<OnboardingLanguageProfileViewModel | null>(null);
   const [pausedLanguageProfile, setPausedLanguageProfile] = useState<OnboardingLanguageProfileViewModel | null>(null);
   const [timeZone, setTimeZone] = useState('');
+  const [timeZoneNeedsPersistence, setTimeZoneNeedsPersistence] = useState(false);
+  const [timeZoneDetectedAutomatically, setTimeZoneDetectedAutomatically] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [goal, setGoal] = useState<LearningGoal | null>(null);
   const [dailyMinutes, setDailyMinutes] = useState<number | null>(null);
@@ -185,6 +258,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   const languageProfileCreateKey = useRef<string | null>(null);
   const assessmentStartKey = useRef<string | null>(null);
   const assessmentAnswerKeys = useRef(new Map<string, string>());
+  const profileSetupMutationInFlight = useRef(false);
 
   const beginActorOperation = () => {
     const epoch = getActorEpoch ? getActorEpoch() : 0;
@@ -217,13 +291,15 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const paused = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'paused') ?? null;
       const archived = profiles.find((item) => item.nativeLanguageCode === 'vi' && item.targetLanguageCode === 'en' && item.status === 'archived') ?? null;
       setDisplayName(profile.displayName ?? '');
-      setTimeZone(profile.timeZone ?? '');
+      const hasValidStoredTimeZone = isValidIanaTimeZone(meResponse.data.timeZone);
+      const detectedTimeZone = hasValidStoredTimeZone ? '' : detectBrowserTimeZone();
+      setTimeZone(hasValidStoredTimeZone ? (meResponse.data.timeZone ?? '') : detectedTimeZone);
+      setTimeZoneNeedsPersistence(!hasValidStoredTimeZone);
+      setTimeZoneDetectedAutomatically(!hasValidStoredTimeZone && Boolean(detectedTimeZone));
       setLanguageProfile(usable);
       setPausedLanguageProfile(paused);
       setArchivedLanguageProfile(archived);
-      if (!isValidIanaTimeZone(meResponse.data.timeZone)) {
-        const suggested = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
-        setTimeZone(suggested);
+      if (!hasValidStoredTimeZone && (usable || paused || archived)) {
         setStage('PROFILE_REQUIRED');
       } else if (paused) {
         setStage('LANGUAGE_PROFILE_REQUIRED');
@@ -279,13 +355,20 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     languageProfileCreateKey.current = null;
     assessmentStartKey.current = null;
     assessmentAnswerKeys.current.clear();
+    profileSetupMutationInFlight.current = false;
     if (authState === 'authenticated') {
       setLanguageProfile(null);
       setPausedLanguageProfile(null);
       setArchivedLanguageProfile(null);
       setAssessment(null);
+      setDisplayName('');
+      setTimeZone('');
+      setGoal(null);
+      setDailyMinutes(null);
       setError(null);
       setBusy(false);
+      setTimeZoneNeedsPersistence(false);
+      setTimeZoneDetectedAutomatically(false);
       void loadBootstrap();
     } else if (authState === 'unauthenticated') {
       setStage('RESTORING_SESSION');
@@ -293,31 +376,66 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       setPausedLanguageProfile(null);
       setArchivedLanguageProfile(null);
       setAssessment(null);
+      setDisplayName('');
+      setTimeZone('');
+      setGoal(null);
+      setDailyMinutes(null);
       setError(null);
       setBusy(false);
+      setTimeZoneNeedsPersistence(false);
+      setTimeZoneDetectedAutomatically(false);
     }
   }, [authState, userId]);
 
-  const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const op = beginActorOperation();
+  const persistTimeZoneIfNeeded = async (op: ReturnType<typeof beginActorOperation>): Promise<boolean> => {
+    if (!timeZoneNeedsPersistence) return true;
     const normalizedTimeZone = timeZone.trim();
-    if (!normalizedTimeZone) {
-      setError('Hãy chọn và xác nhận múi giờ để tiếp tục.');
-      return;
+    if (!isValidIanaTimeZone(normalizedTimeZone)) {
+      setError('Không nhận diện được múi giờ thiết bị. Hãy chọn múi giờ của bạn rồi thử lại.');
+      return false;
     }
     const etag = etagFor(api, 'me');
     if (!etag) {
       setError('Phiên hồ sơ đã cũ. Hãy tải lại để nhận phiên bản mới trước khi lưu.');
+      return false;
+    }
+    const response = await api.updateMe({
+      body: { timeZone: normalizedTimeZone, ...(displayName.trim() ? { displayName: displayName.trim() } : {}) },
+      headers: { 'If-Match': etag },
+    });
+    if (!op.isCurrent()) return false;
+    if (!isValidIanaTimeZone(response.data.timeZone)) {
+      setError('Máy chủ chưa xác nhận được múi giờ hợp lệ. Hãy tải lại hồ sơ rồi thử lại.');
+      return false;
+    }
+    setTimeZone(response.data.timeZone ?? '');
+    setDisplayName(response.data.displayName ?? '');
+    setTimeZoneNeedsPersistence(false);
+    setTimeZoneDetectedAutomatically(false);
+    return true;
+  };
+
+  const retryTimeZoneDetection = () => {
+    const detected = detectBrowserTimeZone();
+    if (!detected) {
+      setTimeZoneDetectedAutomatically(false);
+      setError('Không thể nhận diện múi giờ trên thiết bị này. Hãy chọn múi giờ thủ công để tiếp tục.');
       return;
     }
+    setTimeZone(detected);
+    setTimeZoneDetectedAutomatically(true);
+    setError(null);
+  };
+
+  const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (busy || profileSetupMutationInFlight.current) return;
+    profileSetupMutationInFlight.current = true;
+    const op = beginActorOperation();
     setBusy(true);
     setError(null);
     try {
-      const response = await api.updateMe({
-        body: { timeZone: normalizedTimeZone, ...(displayName.trim() ? { displayName: displayName.trim() } : {}) },
-        headers: { 'If-Match': etag },
-      });
+      if (!(await persistTimeZoneIfNeeded(op))) return;
       if (!op.isCurrent()) return;
       const languages = await api.listMyLanguageProfiles();
       if (!op.isCurrent()) return;
@@ -347,20 +465,26 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     } finally {
       if (op.isCurrent()) {
         setBusy(false);
+        profileSetupMutationInFlight.current = false;
       }
     }
   };
 
   const createLanguageProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (busy || profileSetupMutationInFlight.current) return;
     const op = beginActorOperation();
     if (!goal || dailyMinutes === null) {
       setError('Hãy chọn mục tiêu và thời lượng học trước khi tạo hồ sơ.');
       return;
     }
+    profileSetupMutationInFlight.current = true;
     setBusy(true);
     setError(null);
+    const timezoneWasPendingAtStart = timeZoneNeedsPersistence;
     try {
+      if (!(await persistTimeZoneIfNeeded(op))) return;
+      if (!op.isCurrent()) return;
       const response = await api.createMyLanguageProfile({
         body: { nativeLanguageCode: 'vi', targetLanguageCode: 'en', goal, dailyMinutes },
         headers: { 'Idempotency-Key': languageProfileCreateKey.current ?? (languageProfileCreateKey.current = makeActionKey()) },
@@ -373,6 +497,14 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     } catch (cause) {
       if (!op.isCurrent() || isLinguaActorAbortedError(cause)) return;
       const mapped = mapApiErrorToUi(cause);
+      if (mapped.code === 'PRECONDITION_FAILED' && timezoneWasPendingAtStart) {
+        const refreshed = await loadBootstrap();
+        if (!op.isCurrent()) return;
+        setError(refreshed
+          ? 'Hồ sơ vừa thay đổi. Đã tải dữ liệu mới; hãy kiểm tra lại rồi tiếp tục thiết lập.'
+          : 'Hồ sơ vừa thay đổi. Hãy tải lại để nhận dữ liệu mới trước khi tiếp tục.');
+        return;
+      }
       if (mapped.code === 'CONFLICT') {
         try {
           const languages = await api.listMyLanguageProfiles();
@@ -409,6 +541,7 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
     } finally {
       if (op.isCurrent()) {
         setBusy(false);
+        profileSetupMutationInFlight.current = false;
       }
     }
   };
@@ -572,7 +705,30 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
   }
   if (stage === 'RESTORING_SESSION' || stage === 'BOOTSTRAPPING_PROFILE') return <LoadingState message="Đang khôi phục phiên và nạp hồ sơ học tập..." count={3} />;
   if (stage === 'PROFILE_REQUIRED') {
-    return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5"><header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Xác nhận hồ sơ người học</h1><p className="text-sm text-[var(--text-secondary)]">Múi giờ giúp hệ thống xác định đúng ngày học của bạn.</p></header>{error && <InlineAlert variant="danger" title="Hồ sơ vừa thay đổi">{error}</InlineAlert>}<form className="space-y-4" onSubmit={updateProfile}><div className="space-y-2"><label htmlFor="display-name" className="text-sm font-medium">Tên hiển thị (tùy chọn)</label><input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" /></div><div className="space-y-2"><label htmlFor="time-zone" className="text-sm font-medium">Múi giờ</label><input id="time-zone" required value={timeZone} onChange={(event) => setTimeZone(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" /></div><Button type="submit" variant="primary" disabled={busy}>{busy ? 'Đang lưu...' : 'Xác nhận múi giờ'}</Button></form></Card>;
+    return (
+      <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">
+        <header>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Hoàn tất hồ sơ người học</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Múi giờ giúp hệ thống xác định đúng ngày học của bạn.</p>
+        </header>
+        {error && <InlineAlert variant="danger" title="Chưa thể tiếp tục">{error}</InlineAlert>}
+        <form className="space-y-4" onSubmit={updateProfile}>
+          <div className="space-y-2">
+            <label htmlFor="display-name" className="text-sm font-medium">Tên hiển thị (tùy chọn)</label>
+            <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" />
+          </div>
+          <TimeZoneSetupField
+            timeZone={timeZone}
+            detectedAutomatically={timeZoneDetectedAutomatically}
+            onChange={setTimeZone}
+            onRetryDetection={retryTimeZoneDetection}
+          />
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? 'Đang lưu...' : timeZoneDetectedAutomatically ? 'Tiếp tục thiết lập' : 'Lưu múi giờ và tiếp tục'}
+          </Button>
+        </form>
+      </Card>
+    );
   }
   if (stage === 'LANGUAGE_PROFILE_REQUIRED') {
     if (pausedLanguageProfile) {
@@ -600,7 +756,52 @@ export function LiveOnboardingFlow({ apiClient, navigate }: LiveOnboardingFlowPr
       const canReactivate = Boolean(archivedLanguageProfile.etag);
       return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5"><header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Hồ sơ tiếng Anh đã lưu trữ</h1><p className="text-sm text-[var(--text-secondary)]">Hồ sơ cũ vẫn giữ lịch sử học tập. Không tạo hồ sơ thứ hai; hãy khôi phục đúng hồ sơ này khi phiên bản đồng bộ đã sẵn sàng.</p></header>{error && <InlineAlert variant="danger" title="Chưa thể khôi phục">{error}</InlineAlert>}<Button variant="primary" onClick={() => void reactivateArchivedProfile()} disabled={busy || !canReactivate}>{busy ? 'Đang khôi phục...' : canReactivate ? 'Khôi phục hồ sơ tiếng Anh' : 'Chưa có phiên bản để khôi phục'}</Button></Card>;
     }
-    return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5"><header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Thiết lập hồ sơ tiếng Anh</h1><p className="text-sm text-[var(--text-secondary)]">Bạn học tiếng Anh với hỗ trợ tiếng Việt.</p></header>{error && <InlineAlert variant="danger" title="Chưa thể tạo hồ sơ">{error}</InlineAlert>}<form className="space-y-5" onSubmit={createLanguageProfile}><fieldset><legend className="text-sm font-medium mb-2">Chọn mục tiêu học tập</legend><div className="grid grid-cols-2 gap-2">{learningGoals.map((item) => <button key={item.value} type="button" aria-pressed={goal === item.value} onClick={() => setGoal(item.value)} className={`rounded-xl border px-3 py-3 text-sm ${goal === item.value ? 'border-[var(--action-primary)] bg-[var(--status-info-bg)]' : 'border-[var(--border-subtle)]'}`}>{item.label}</button>)}</div></fieldset><fieldset><legend className="text-sm font-medium mb-2">Thời lượng mỗi ngày</legend><div className="flex flex-wrap gap-2">{dailyMinuteChoices.map((minutes) => <button key={minutes} type="button" aria-pressed={dailyMinutes === minutes} onClick={() => setDailyMinutes(minutes)} className={`rounded-xl border px-3 py-3 text-sm ${dailyMinutes === minutes ? 'border-[var(--action-primary)] bg-[var(--status-info-bg)]' : 'border-[var(--border-subtle)]'}`}>{minutes} phút</button>)}</div></fieldset><Button type="submit" variant="primary" disabled={busy}>{busy ? 'Đang tạo...' : 'Tạo hồ sơ tiếng Anh'}</Button></form></Card>;
+    return (
+      <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">
+        <header>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Thiết lập hồ sơ tiếng Anh</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Bạn học tiếng Anh với hỗ trợ tiếng Việt.</p>
+        </header>
+        {error && <InlineAlert variant="danger" title="Chưa thể tạo hồ sơ">{error}</InlineAlert>}
+        <form className="space-y-5" onSubmit={createLanguageProfile}>
+          {timeZoneNeedsPersistence && (
+            <>
+              <div className="space-y-2">
+                <label htmlFor="display-name" className="text-sm font-medium">Tên hiển thị (tùy chọn)</label>
+                <input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-xl border border-[var(--border-subtle)] px-3 py-3" />
+              </div>
+              <TimeZoneSetupField
+                timeZone={timeZone}
+                detectedAutomatically={timeZoneDetectedAutomatically}
+                onChange={setTimeZone}
+                onRetryDetection={retryTimeZoneDetection}
+              />
+            </>
+          )}
+          <fieldset>
+            <legend className="text-sm font-medium mb-2">Chọn mục tiêu học tập</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {learningGoals.map((item) => (
+                <button key={item.value} type="button" aria-pressed={goal === item.value} onClick={() => setGoal(item.value)} className={`rounded-xl border px-3 py-3 text-sm ${goal === item.value ? 'border-[var(--action-primary)] bg-[var(--status-info-bg)]' : 'border-[var(--border-subtle)]'}`}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend className="text-sm font-medium mb-2">Thời lượng mỗi ngày</legend>
+            <div className="flex flex-wrap gap-2">
+              {dailyMinuteChoices.map((minutes) => (
+                <button key={minutes} type="button" aria-pressed={dailyMinutes === minutes} onClick={() => setDailyMinutes(minutes)} className={`rounded-xl border px-3 py-3 text-sm ${dailyMinutes === minutes ? 'border-[var(--action-primary)] bg-[var(--status-info-bg)]' : 'border-[var(--border-subtle)]'}`}>
+                  {minutes} phút
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Đang tạo...' : 'Tạo hồ sơ tiếng Anh'}</Button>
+        </form>
+      </Card>
+    );
   }
   if (stage === 'ASSESSMENT_CHOICE') return <Card variant="elevated" padding="lg" className="max-w-xl mx-auto space-y-5">{error && <InlineAlert variant="danger" title="Cần kiểm tra lại">{error}</InlineAlert>}<header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Đánh giá trình độ khởi điểm</h1><p className="text-sm text-[var(--text-secondary)]">Bài đánh giá là tùy chọn. Bạn có thể bắt đầu hoặc tiếp tục mà không bị gán mức A0 khi bỏ qua.</p></header><div className="flex flex-wrap gap-3"><Button variant="primary" onClick={() => void startAssessment()} disabled={busy}>{busy ? 'Đang chuẩn bị...' : 'Bắt đầu đánh giá'}</Button><Button variant="outline" onClick={goToday}>Bỏ qua đánh giá</Button></div></Card>;
   if (stage === 'ASSESSMENT_IN_PROGRESS' && assessment?.currentItem) {
