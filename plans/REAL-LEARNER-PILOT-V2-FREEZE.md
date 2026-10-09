@@ -39,7 +39,7 @@ P2 items normally remain observations during the pilot. The sole current excepti
 
 ### Explicit owner-authorized P2 exception — PILOT-001
 
-The owner specifically requests removing the timezone selection/confirmation step from fresh signup. Source review confirms the browser `Intl` timezone is suggested and pre-fills the required text field when detection succeeds, but the user must still submit the separate confirmation. A bounded frontend change may use a valid browser `Intl.DateTimeFormat().resolvedOptions().timeZone` value automatically, without a geolocation permission prompt, and preserve the backend profile as persistence authority. Keep the finding OPEN until reproduced with an isolated local UI/mock-actor regression and independently verified; no runtime fix is claimed here. This authorization is limited to PILOT-001 and does not authorize other P2 fixes.
+The owner specifically requests removing the timezone selection/confirmation step from fresh signup. Source review confirms the browser `Intl` timezone is suggested and pre-fills the required text field when detection succeeds, but the user must still submit the separate confirmation. The source fix is verified by an isolated React + HttpApiClient mocked-actor regression (99/99 tests across six frontend files); this is local/source verification only and does not verify a live learner outcome. Promotion requires a normal, independently reviewed, exact-head CI-gated merge. Live learner outcome remains UNKNOWN. This authorization is limited to PILOT-001 and does not authorize other P2 fixes.
 
 The normal runtime gate still applies: isolated regression, bounded GPT-6 Luna / Max implementation, separate GPT-6 Luna / Max review with no HIGH/BLOCKER, exact-head CI/Preview, and root-serialized promotion. Hosted actor verification is required only when the changed risk or surface requires it and is explicitly authorized after review. If hosted actors are created, full Auth deletion, zero residue across all 27 learner tables, and retained-state comparison are mandatory. Actorless health/source checks do not prove the full hosted learner journey. Do not automate the real learner account or write to real learner data.
 
@@ -59,7 +59,7 @@ If observations are insufficient, record **UNKNOWN — hold recommendation for r
 
 ## Deliverables and references
 
-- [Findings log](../PILOT_FINDINGS.md): short, evidence-led, de-identified pilot observations; currently none verified.
+- [Findings log](../PILOT_FINDINGS.md): short, evidence-led, de-identified pilot observations; PILOT-001 source regression verified, while live journey and learning outcomes remain UNKNOWN.
 - [Separate hardening follow-ups](../PILOT_HARDENING.md): four nonblocking items with the current K2-10 evidence limits.
 - [Current status](../STATUS.md) and [task board](../TASKS.md): kickoff and review dates.
 - [K2-10 verification seal](../reviews/K2-10-verification-seal.md): frozen acceptance evidence and hardening caveats.
