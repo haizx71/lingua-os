@@ -32,6 +32,7 @@ const EXPECTED_TABLES = [
   'user_skill_states',
   'users',
 ] as const;
+export type K2RetainedTableName = (typeof EXPECTED_TABLES)[number];
 
 export type K2ProbeAction =
   | 'retained_snapshot'
@@ -42,6 +43,7 @@ export type K2ProbeAction =
   | 'actor_ownership_graph'
   | 'actor_absent'
   | 'anchor_material'
+  | 'frll_anchor_semantic_proof'
   | 'k208_fixture_privilege_preflight'
   | 'k208_catalog_preflight'
   | 'k208_candidate_base'
@@ -82,6 +84,94 @@ export type K2HostedTodayReviewTargets = Readonly<{
   targetCount: number;
   reviewItemIds: readonly string[];
 }>;
+export type K2FrllDimensionProof = Readonly<{
+  score: string | null;
+  confidence: string | null;
+  evidenceCount: number | null;
+  lastEvidenceAt: string | null;
+}>;
+export type K2HostedFrllSemanticProof = Readonly<{
+  identity: Readonly<{
+    userRows: number;
+    learnerProfileRows: number;
+    languageProfileRows: number;
+    profileBound: boolean;
+  }>;
+  save: Readonly<{
+    savedMembershipRows: number;
+    saveIntentRows: number;
+    saveLearningEventRows: number;
+    reviewItemRows: number;
+    fsrsStateRows: number;
+  }>;
+  concept: Readonly<{
+    rowCount: number;
+    status: string | null;
+    mastery: string | null;
+    confidence: string | null;
+    exposureCount: number | null;
+    lastSeenAt: string | null;
+    stateVersion: number | null;
+    hasLearningIntent: boolean | null;
+    hasProjectableEvidence: boolean | null;
+    recognition: K2FrllDimensionProof;
+    listening: K2FrllDimensionProof;
+    production: K2FrllDimensionProof;
+  }>;
+  memory: Readonly<{
+    rowCount: number;
+    state: 'new' | 'learning' | 'review' | 'relearning' | null;
+    stateVersion: number | null;
+    dueAt: string | null;
+    lastReviewedAt: string | null;
+    difficulty: string | null;
+    stability: string | null;
+    step: number | null;
+    paramsVersion: string | null;
+  }>;
+  review: Readonly<{
+    eventRows: number;
+    reviewLearningEventRows: number;
+    idempotencyKeyMatched: boolean;
+    rating: string | null;
+    responseTimeMs: number | null;
+    correct: boolean | null;
+    exerciseMode: 'self_recall' | 'multiple_choice' | 'typing' | 'cloze' | 'listening' | null;
+    evidenceMode: 'recognition' | 'listening' | 'cloze' | 'production' | null;
+    resultMemory: Readonly<{
+      state: 'learning' | 'review' | 'relearning';
+      dueAt: string;
+      lastReviewedAt: string;
+      difficulty: string;
+      stability: string;
+      step: number | null;
+      stateVersion: number;
+      paramsVersion: string;
+    }> | null;
+    resultCompetence: Readonly<Record<'recognition' | 'listening' | 'production', Readonly<{
+      score: string;
+      confidence: string;
+      evidenceCount: number;
+      updatedAt: string | null;
+    }>>> | null;
+  }>;
+  projection: Readonly<{
+    headRows: number;
+    nextIngestionSequence: number | null;
+    methodVersion: string | null;
+    stateVersion: number | null;
+    skillRows: number;
+    skills: readonly Readonly<{
+      skill: 'recognition' | 'listening' | 'production';
+      score: string;
+      confidence: string;
+      evidenceCount: number;
+      stateVersion: number;
+      lastEvidenceAt: string | null;
+      methodVersion: string;
+    }>[];
+  }>;
+}>;
 export type K2ActorOwnershipGraph = Readonly<{
   ownershipGraphValid: true;
   ownedTableCount: 27;
@@ -112,6 +202,7 @@ export type K2HostedProbeResult =
   | K2HostedAnchorMaterial
   | K2HostedActorLineageProof
   | K2HostedTodayReviewTargets
+  | K2HostedFrllSemanticProof
   | K2ActorOwnershipGraph
   | K2HostedCandidateBaseProof
   | Readonly<{ overlapCount: number }>
@@ -138,6 +229,196 @@ function isSafeCount(value: unknown): value is number {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SAFE_DECIMAL_RE = /^-?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?$/;
+
+function exactRecord(value: unknown, keys: readonly string[], message: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...keys].sort())) {
+    throw new Error(message);
+  }
+  return value as Record<string, unknown>;
+}
+
+function isSafeDecimal(value: unknown, nullable = true): value is string | null {
+  return (nullable && value === null) || (typeof value === 'string' && value.length <= 64 && SAFE_DECIMAL_RE.test(value));
+}
+
+function isSafeTimestamp(value: unknown, nullable = true): value is string | null {
+  return (nullable && value === null) || (typeof value === 'string' && value.length <= 64 &&
+    /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|\+00:00)$/.test(value));
+}
+
+function parseFrllDimension(value: unknown, message: string): K2FrllDimensionProof {
+  const row = exactRecord(value, ['score', 'confidence', 'evidenceCount', 'lastEvidenceAt'], message);
+  if (!isSafeDecimal(row.score) || !isSafeDecimal(row.confidence) ||
+      !(isSafeCount(row.evidenceCount) || row.evidenceCount === null) ||
+      !isSafeTimestamp(row.lastEvidenceAt)) throw new Error(message);
+  return row as unknown as K2FrllDimensionProof;
+}
+
+export function parseK2HostedFrllSemanticProof(value: unknown): K2HostedFrllSemanticProof {
+  const message = 'K2 hosted acceptance FRLL semantic proof was invalid.';
+  const root = exactRecord(value,
+    ['identity', 'save', 'concept', 'memory', 'review', 'projection'], message);
+  const identity = exactRecord(root.identity, ['userRows', 'learnerProfileRows', 'languageProfileRows', 'profileBound'], message);
+  if (!isSafeCount(identity.userRows) || identity.userRows > 1 ||
+      !isSafeCount(identity.learnerProfileRows) || identity.learnerProfileRows > 1 ||
+      !isSafeCount(identity.languageProfileRows) || identity.languageProfileRows > 20 ||
+      typeof identity.profileBound !== 'boolean' ||
+      identity.profileBound !== (identity.languageProfileRows === 1)) throw new Error(message);
+  const save = exactRecord(root.save,
+    ['savedMembershipRows', 'saveIntentRows', 'saveLearningEventRows', 'reviewItemRows', 'fsrsStateRows'], message);
+  if (Object.values(save).some(value => !isSafeCount(value) || value > 100)) throw new Error(message);
+  const concept = exactRecord(root.concept, [
+    'rowCount', 'status', 'mastery', 'confidence', 'exposureCount', 'lastSeenAt', 'stateVersion',
+    'hasLearningIntent', 'hasProjectableEvidence', 'recognition', 'listening', 'production',
+  ], message);
+  const conceptStatuses = new Set(['unseen', 'discovered', 'learning', 'familiar', 'active', 'mastered', 'weak', 'forgotten']);
+  if (!isSafeCount(concept.rowCount) || concept.rowCount > 1 ||
+      !(concept.status === null || (typeof concept.status === 'string' && conceptStatuses.has(concept.status))) ||
+      !isSafeDecimal(concept.mastery) || !isSafeDecimal(concept.confidence) ||
+      !(isSafeCount(concept.exposureCount) || concept.exposureCount === null) ||
+      !isSafeTimestamp(concept.lastSeenAt) ||
+      !(isSafeCount(concept.stateVersion) || concept.stateVersion === null) ||
+      !(typeof concept.hasLearningIntent === 'boolean' || concept.hasLearningIntent === null) ||
+      !(typeof concept.hasProjectableEvidence === 'boolean' || concept.hasProjectableEvidence === null) ||
+      (concept.rowCount === 0 && concept.mastery !== null) ||
+      [concept.status, concept.confidence, concept.exposureCount, concept.stateVersion,
+        concept.hasLearningIntent, concept.hasProjectableEvidence].some(item =>
+        (concept.rowCount === 0) !== (item === null))) throw new Error(message);
+  const memory = exactRecord(root.memory,
+    ['rowCount', 'state', 'stateVersion', 'dueAt', 'lastReviewedAt', 'difficulty', 'stability', 'step', 'paramsVersion'], message);
+  const memoryStates = new Set(['new', 'learning', 'review', 'relearning']);
+  if (!isSafeCount(memory.rowCount) || memory.rowCount > 1 ||
+      !(memory.state === null || (typeof memory.state === 'string' && memoryStates.has(memory.state))) ||
+      !(isSafeCount(memory.stateVersion) || memory.stateVersion === null) ||
+      !isSafeTimestamp(memory.dueAt) || !isSafeTimestamp(memory.lastReviewedAt) ||
+      !isSafeDecimal(memory.difficulty) || !isSafeDecimal(memory.stability) ||
+      !(isSafeCount(memory.step) || memory.step === null) ||
+      !(memory.paramsVersion === null || (typeof memory.paramsVersion === 'string' && memory.paramsVersion.length >= 1 && memory.paramsVersion.length <= 64)) ||
+      [memory.state, memory.stateVersion, memory.dueAt, memory.paramsVersion].some(item =>
+        (memory.rowCount === 0) !== (item === null))) throw new Error(message);
+  const currentMemoryShapeValid = memory.rowCount === 0
+    ? memory.lastReviewedAt === null && memory.difficulty === null && memory.stability === null && memory.step === null
+    : memory.state === 'new'
+      ? memory.lastReviewedAt === null && memory.difficulty === null && memory.stability === null && memory.step === null
+      : memory.state === 'review'
+        ? memory.lastReviewedAt !== null && memory.difficulty !== null && memory.stability !== null && memory.step === null
+        : (memory.state === 'learning' || memory.state === 'relearning') &&
+          memory.lastReviewedAt !== null && memory.difficulty !== null && memory.stability !== null && isSafeCount(memory.step);
+  if (!currentMemoryShapeValid) throw new Error(message);
+  const review = exactRecord(root.review, [
+    'eventRows', 'reviewLearningEventRows', 'idempotencyKeyMatched', 'rating', 'responseTimeMs',
+    'correct', 'exerciseMode', 'evidenceMode', 'resultMemory', 'resultCompetence',
+  ], message);
+  const ratings = new Set(['again', 'hard', 'good', 'easy']);
+  const exerciseModes = new Set(['self_recall', 'multiple_choice', 'typing', 'cloze', 'listening']);
+  const evidenceModes = new Set(['recognition', 'listening', 'cloze', 'production']);
+  if (!isSafeCount(review.eventRows) || review.eventRows > 10 ||
+      !isSafeCount(review.reviewLearningEventRows) || review.reviewLearningEventRows > review.eventRows ||
+      typeof review.idempotencyKeyMatched !== 'boolean' ||
+      !(review.rating === null || (typeof review.rating === 'string' && ratings.has(review.rating))) ||
+      !(isSafeCount(review.responseTimeMs) || review.responseTimeMs === null) ||
+      !(typeof review.correct === 'boolean' || review.correct === null) ||
+      !(review.exerciseMode === null || (typeof review.exerciseMode === 'string' && exerciseModes.has(review.exerciseMode))) ||
+      !(review.evidenceMode === null || (typeof review.evidenceMode === 'string' && evidenceModes.has(review.evidenceMode))) ||
+      (review.eventRows === 0 && [review.rating, review.responseTimeMs, review.correct, review.exerciseMode, review.evidenceMode].some(x => x !== null)) ||
+      (review.eventRows > 0 && [review.rating, review.responseTimeMs, review.exerciseMode, review.evidenceMode].some(x => x === null)) ||
+      (review.correct !== null && review.exerciseMode !== 'self_recall')) {
+    throw new Error(message);
+  }
+  if (review.resultMemory !== null) {
+    const resultMemory = exactRecord(review.resultMemory,
+      ['state', 'dueAt', 'lastReviewedAt', 'difficulty', 'stability', 'step', 'stateVersion', 'paramsVersion'], message);
+    if (typeof resultMemory.state !== 'string' || !['learning', 'review', 'relearning'].includes(resultMemory.state) ||
+        !isSafeTimestamp(resultMemory.dueAt, false) || !isSafeTimestamp(resultMemory.lastReviewedAt, false) ||
+        !isSafeDecimal(resultMemory.difficulty, false) || !isSafeDecimal(resultMemory.stability, false) ||
+        !(isSafeCount(resultMemory.step) || resultMemory.step === null) ||
+        (resultMemory.state === 'review' ? resultMemory.step !== null : !isSafeCount(resultMemory.step)) ||
+        !isSafeCount(resultMemory.stateVersion) || resultMemory.stateVersion < 2 ||
+        typeof resultMemory.paramsVersion !== 'string' || resultMemory.paramsVersion.length < 1 || resultMemory.paramsVersion.length > 64) throw new Error(message);
+  }
+  let resultCompetence: K2HostedFrllSemanticProof['review']['resultCompetence'] = null;
+  if (review.resultCompetence !== null) {
+    const result = exactRecord(review.resultCompetence, ['recognition', 'listening', 'production'], message);
+    const dimensions = {} as Record<'recognition' | 'listening' | 'production', {
+      score: string; confidence: string; evidenceCount: number; updatedAt: string | null;
+    }>;
+    for (const dimension of ['recognition', 'listening', 'production'] as const) {
+      const row = exactRecord(result[dimension], ['score', 'confidence', 'evidenceCount', 'updatedAt'], message);
+      if (!isSafeDecimal(row.score, false) || !isSafeDecimal(row.confidence, false) ||
+          !isSafeCount(row.evidenceCount) || !isSafeTimestamp(row.updatedAt)) throw new Error(message);
+      dimensions[dimension] = row as typeof dimensions[typeof dimension];
+    }
+    resultCompetence = dimensions;
+  }
+  if ((review.eventRows === 0) !== (review.resultMemory === null) ||
+      (review.eventRows === 0) !== (review.resultCompetence === null) ||
+      (review.idempotencyKeyMatched && review.eventRows === 0)) throw new Error(message);
+  const projection = exactRecord(root.projection,
+    ['headRows', 'nextIngestionSequence', 'methodVersion', 'stateVersion', 'skillRows', 'skills'], message);
+  if (!isSafeCount(projection.headRows) || projection.headRows > 1 ||
+      !(isSafeCount(projection.nextIngestionSequence) || projection.nextIngestionSequence === null) ||
+      !(projection.methodVersion === null || (typeof projection.methodVersion === 'string' && projection.methodVersion.length <= 64)) ||
+      !(isSafeCount(projection.stateVersion) || projection.stateVersion === null) ||
+      !isSafeCount(projection.skillRows) || projection.skillRows > 3 || !Array.isArray(projection.skills) ||
+      projection.skills.length !== projection.skillRows ||
+      (projection.headRows === 0) !== (projection.nextIngestionSequence === null) ||
+      (projection.headRows === 0) !== (projection.methodVersion === null) ||
+      (projection.headRows === 0) !== (projection.stateVersion === null)) throw new Error(message);
+  const skills = new Set<string>();
+  for (const raw of projection.skills) {
+    const skill = exactRecord(raw,
+      ['skill', 'score', 'confidence', 'evidenceCount', 'stateVersion', 'lastEvidenceAt', 'methodVersion'], message);
+    if (!['recognition', 'listening', 'production'].includes(String(skill.skill)) || skills.has(String(skill.skill)) ||
+        !isSafeDecimal(skill.score, false) || !isSafeDecimal(skill.confidence, false) ||
+        !isSafeCount(skill.evidenceCount) || !isSafeCount(skill.stateVersion) || skill.stateVersion < 1 ||
+        !isSafeTimestamp(skill.lastEvidenceAt) || typeof skill.methodVersion !== 'string' || skill.methodVersion.length > 64) {
+      throw new Error(message);
+    }
+    skills.add(skill.skill as string);
+  }
+  if (skills.size !== projection.skillRows) throw new Error(message);
+  return {
+    identity: identity as unknown as K2HostedFrllSemanticProof['identity'],
+    save: save as unknown as K2HostedFrllSemanticProof['save'],
+    concept: {
+      rowCount: concept.rowCount as number,
+      status: concept.status as string | null,
+      mastery: concept.mastery as string | null,
+      confidence: concept.confidence as string | null,
+      exposureCount: concept.exposureCount as number | null,
+      lastSeenAt: concept.lastSeenAt as string | null,
+      stateVersion: concept.stateVersion as number | null,
+      hasLearningIntent: concept.hasLearningIntent as boolean | null,
+      hasProjectableEvidence: concept.hasProjectableEvidence as boolean | null,
+      recognition: parseFrllDimension(concept.recognition, message),
+      listening: parseFrllDimension(concept.listening, message),
+      production: parseFrllDimension(concept.production, message),
+    },
+    memory: memory as unknown as K2HostedFrllSemanticProof['memory'],
+    review: {
+      eventRows: review.eventRows as number,
+      reviewLearningEventRows: review.reviewLearningEventRows as number,
+      idempotencyKeyMatched: review.idempotencyKeyMatched as boolean,
+      rating: review.rating as string | null,
+      responseTimeMs: review.responseTimeMs as number | null,
+      correct: review.correct as boolean | null,
+      exerciseMode: review.exerciseMode as K2HostedFrllSemanticProof['review']['exerciseMode'],
+      evidenceMode: review.evidenceMode as K2HostedFrllSemanticProof['review']['evidenceMode'],
+      resultMemory: review.resultMemory as K2HostedFrllSemanticProof['review']['resultMemory'],
+      resultCompetence,
+    },
+    projection: {
+      headRows: projection.headRows as number,
+      nextIngestionSequence: projection.nextIngestionSequence as number | null,
+      methodVersion: projection.methodVersion as string | null,
+      stateVersion: projection.stateVersion as number | null,
+      skillRows: projection.skillRows as number,
+      skills: projection.skills as K2HostedFrllSemanticProof['projection']['skills'],
+    },
+  };
+}
 
 export function parseK2HostedCandidateBaseProof(value: unknown): K2HostedCandidateBaseProof {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -414,8 +695,10 @@ export function buildK2ProbeChildEnvironment(
   systemEnv: NodeJS.ProcessEnv = process.env,
   profileId?: string,
   conceptIds?: readonly string[],
+  idempotencyKeySha256?: string,
 ): NodeJS.ProcessEnv {
-  const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap';
+  const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap' ||
+    action === 'frll_anchor_semantic_proof';
   if ((exactActorProfileAction && (!UUID_RE.test(actorId ?? '') || !UUID_RE.test(profileId ?? ''))) ||
       (!exactActorProfileAction && (profileId !== undefined || conceptIds !== undefined))) {
     throw new Error('K2 hosted acceptance candidate probe requires the exact fresh actor and profile binding.');
@@ -428,6 +711,11 @@ export function buildK2ProbeChildEnvironment(
   } else if (conceptIds !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected concept set.');
   }
+  if ((action === 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined &&
+       !/^[a-f0-9]{64}$/.test(idempotencyKeySha256)) ||
+      (action !== 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined)) {
+    throw new Error('K2 hosted acceptance FRLL probe requires only an SHA-256 key digest.');
+  }
   return {
     PATH: systemEnv.PATH,
     ...(systemEnv.PGSSLROOTCERT ? { PGSSLROOTCERT: systemEnv.PGSSLROOTCERT } : {}),
@@ -436,6 +724,7 @@ export function buildK2ProbeChildEnvironment(
     ...(actorId ? { K2_ACCEPTANCE_ACTOR_ID: actorId } : {}),
     ...(profileId ? { K2_ACCEPTANCE_PROFILE_ID: profileId } : {}),
     ...(conceptIds ? { K2_ACCEPTANCE_CONCEPT_IDS: JSON.stringify(conceptIds) } : {}),
+    ...(idempotencyKeySha256 ? { K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256: idempotencyKeySha256 } : {}),
     ...(process.platform === 'win32' && systemEnv.SystemRoot
       ? { SystemRoot: systemEnv.SystemRoot }
       : {}),
@@ -448,6 +737,7 @@ export async function runK2HostedProbe(
   actorId?: string,
   profileId?: string,
   conceptIds?: readonly string[],
+  idempotencyKeySha256?: string,
 ): Promise<K2HostedProbeResult> {
   if (!databaseUrl.trim()) {
     throw new Error('K2 hosted acceptance read-only probe configuration is missing.');
@@ -457,7 +747,8 @@ export async function runK2HostedProbe(
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '')) {
     throw new Error('K2 hosted acceptance actor probe requires a canonical actor identity.');
   }
-  const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap';
+  const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap' ||
+    action === 'frll_anchor_semantic_proof';
   if ((exactActorProfileAction &&
        (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '') ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(profileId ?? ''))) ||
@@ -472,6 +763,11 @@ export async function runK2HostedProbe(
   } else if (conceptIds !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected concept set.');
   }
+  if ((action === 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined &&
+       !/^[a-f0-9]{64}$/.test(idempotencyKeySha256)) ||
+      (action !== 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined)) {
+    throw new Error('K2 hosted acceptance FRLL probe requires only an SHA-256 key digest.');
+  }
   if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' &&
        action !== 'today_review_targets' && !exactActorProfileAction && actorId !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected actor identity.');
@@ -480,7 +776,7 @@ export async function runK2HostedProbe(
   const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
   const probeScript = path.resolve(__dirname, 'k2_hosted_probe.py');
   const childEnv = buildK2ProbeChildEnvironment(
-    action, databaseUrl, actorId, process.env, profileId, conceptIds,
+    action, databaseUrl, actorId, process.env, profileId, conceptIds, idempotencyKeySha256,
   );
 
   let stdout: string;
@@ -504,6 +800,7 @@ export async function runK2HostedProbe(
   if (action === 'actor_lineage') return parseK2HostedActorLineage(value);
   if (action === 'actor_ownership_graph') return parseK2ActorOwnershipGraph(value);
   if (action === 'today_review_targets') return parseK2HostedTodayReviewTargets(value);
+  if (action === 'frll_anchor_semantic_proof') return parseK2HostedFrllSemanticProof(value);
   if (action === 'anchor_material') return parseK2HostedAnchorMaterial(value);
   if (action === 'k208_candidate_base') return parseK2HostedCandidateBaseProof(value);
   if (action === 'k208_due_candidate_overlap') return parseK2HostedDueCandidateOverlap(value);
@@ -529,6 +826,6 @@ export function assertK2RetainedStateUnchanged(
   }
 }
 
-export function k2RetainedTableNames(): readonly string[] {
+export function k2RetainedTableNames(): readonly K2RetainedTableName[] {
   return EXPECTED_TABLES;
 }

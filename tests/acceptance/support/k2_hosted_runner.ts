@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { BrowserContext, Page, TestInfo } from '@playwright/test';
+import type { BrowserContext, Page, Response as PlaywrightResponse, TestInfo } from '@playwright/test';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { components } from '../../../packages/types/src/generated/openapi';
 import {
   assertNoK2ActorsRemain,
   K2_HOSTED_STAGING_SUPABASE_REF,
@@ -39,10 +40,34 @@ import {
   type K2HostedAnchorMaterial,
   type K2HostedTodayReviewTargets,
   type K2HostedCandidateBaseProof,
+  type K2HostedFrllSemanticProof,
   type K2RetainedSnapshot,
+  type K2RetainedTableName,
+  k2RetainedTableNames,
 } from './k2_hosted_probe_client';
-import { installK2BrowserRequestGuard } from './k2_playwright_network';
-import { parseK2LanguageProfileList } from './k2_hosted_acceptance_helpers';
+import {
+  createK2FrllHeldBrainResponseGate,
+  createK2FrllTodayDiagnostic,
+  createK2FrllAuthBindingBarrier,
+  createK2FrllReplayController,
+  installK2BrowserRequestGuard,
+  forwardK2FrllBrowserRequest,
+  k2FrllDiagnosticStatus,
+  type K2FrllConflictProof,
+  type K2FrllHeldBrainResponseGate,
+  type K2FrllReplayProof,
+  type K2FrllActorSession,
+  type K2FrllAuthBindingBarrier,
+  type K2FrllBrowserRequest,
+  type K2FrllNavigationRoute,
+} from './k2_playwright_network';
+import { createK2TrustedSourceTokenSupplier } from './k2_vercel_header';
+import { signInK2BrowserActor } from './browser_actor_switch';
+import {
+  assertK2CreatedLanguageProfileReadback,
+  parseK2LanguageProfileList,
+} from './k2_hosted_acceptance_helpers';
+import { validateContract } from './contract_validation';
 
 export type K2HostedApiResult = {
   readonly response: Response;
@@ -69,6 +94,12 @@ export type K2WaveApiOptions = Readonly<{
   method?: string;
   body?: unknown;
   idempotencyKey?: string;
+}>;
+export type K2FrllApiOptions = Readonly<{
+  method?: string;
+  body?: unknown;
+  idempotencyKey?: string;
+  ifMatch?: string;
 }>;
 export type K2BoundWaveApi = Readonly<{
   request(route: string, options?: K2WaveApiOptions, expectedStatuses?: readonly number[]):
@@ -99,6 +130,7 @@ const WAVE_ACTOR_HANDLES: readonly K2WaveActorHandle[] = [
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const WAVE_CANONICAL_CONCEPT_HANDLE = 'k2-anchor';
 const WAVE_CANONICAL_CONCEPT_ID = '7f110000-0000-4000-8000-000000000004';
+const FRLL_ANCHOR_LEMMA = 'frll-anchor';
 
 const K2_HOSTED_PHASES = [
   'preflight_master_sha',
@@ -125,6 +157,10 @@ const K2_HOSTED_PHASES = [
   'observer_actor_authentication',
   'scenario_c_actor_authentication',
   'scenario_d_actor_authentication',
+  'primary_prebootstrap_snapshot',
+  'observer_prebootstrap_snapshot',
+  'scenario_c_prebootstrap_snapshot',
+  'scenario_d_prebootstrap_snapshot',
   'browser_oidc_token',
   'browser_protected_origin',
   'browser_request_guard',
@@ -133,10 +169,27 @@ const K2_HOSTED_PHASES = [
   'observer_profile_bootstrap',
   'scenario_c_profile_bootstrap',
   'scenario_d_profile_bootstrap',
+  'primary_postbootstrap_snapshot',
+  'observer_postbootstrap_snapshot',
+  'scenario_c_postbootstrap_snapshot',
+  'scenario_d_postbootstrap_snapshot',
   'wave_k2_07',
   'wave_k2_08',
   'wave_k2_08_due_only',
   'wave_k2_09',
+  'wave_k2_10',
+  'fixture_frll_anchor_readback',
+  'fixture_frll_onboarding_readback',
+  'fixture_frll_passive_zero_write',
+  'fixture_frll_save_learn',
+  'fixture_frll_today_projection',
+  'fixture_frll_review_answer',
+  'fixture_frll_response_loss',
+  'fixture_frll_exact_replay',
+  'fixture_frll_changed_payload_conflict',
+  'fixture_frll_brain_persisted_parity',
+  'fixture_frll_actor_b_isolation',
+  'fixture_frll_late_actor_response',
   'fixture_k208_due_only_dictionary_search',
   'fixture_k208_due_only_save_backlog',
   'fixture_k208_due_only_seed_snapshot',
@@ -234,6 +287,7 @@ export interface K2HostedWaveContext {
     scenarioC?: K2BoundWaveApi;
     scenarioD?: K2BoundWaveApi;
   }>;
+  readonly frll?: K2HostedFrllHarness;
   readonly actorSnapshot: (actor: K2WaveActorHandle) => Promise<K2RetainedSnapshot>;
   readonly actorLineage: (actor: K2WaveActorHandle) => Promise<K2HostedActorLineageProof>;
   readonly actorTodayReviewTargets: (actor: K2WaveActorHandle) => Promise<K2HostedTodayReviewTargets>;
@@ -251,8 +305,52 @@ export interface K2HostedWaveContext {
   readonly checkpoint: (phase: K2HostedPhase, event: K2HostedCheckpointEvent) => void;
 }
 
+export interface K2HostedFrllHarness {
+  readonly page: Page;
+  readonly ui: K2HostedFrllUi;
+  createPage(): Promise<Page>;
+  signInAs(actor: K2WaveActorHandle): Promise<void>;
+  switchToActor(actor: K2WaveActorHandle, page: Page): Promise<void>;
+  request(
+    actor: K2WaveActorHandle,
+    route: string,
+    options?: K2FrllApiOptions,
+    expectedStatuses?: readonly number[],
+  ): Promise<K2HostedApiResult>;
+  semanticProof(actor: K2WaveActorHandle, idempotencyKeySha256?: string):
+    Promise<K2HostedFrllSemanticProof>;
+  todayTargetMatches(actor: K2WaveActorHandle, reviewItemId: string): Promise<boolean>;
+  pendingReviewReceipt(page: Page): Promise<boolean>;
+  dropNextAnswerResponse(): void;
+  replayProof(): K2FrllReplayProof;
+  conflictingReviewReplay(): Promise<K2FrllConflictProof>;
+  holdNextBrainResponse(actor: K2WaveActorHandle): void;
+  waitForHeldBrainResponse(): Promise<void>;
+  releaseHeldBrainResponse(): void;
+}
+
+export interface K2HostedFrllUi {
+  searchAnchor(page: Page): Promise<void>;
+  saveAnchor(page: Page): Promise<void>;
+  openToday(page: Page): Promise<void>;
+  openPassiveToday(page: Page, expectedProfileId: string): Promise<void>;
+  openReview(page: Page): Promise<void>;
+  submitGood(page: Page): Promise<import('@playwright/test').Response>;
+  submitGoodAndWaitForRetry(page: Page): Promise<void>;
+  reloadForRetry(page: Page): Promise<void>;
+  retryAnswer(page: Page): Promise<import('@playwright/test').Response>;
+  waitForReviewComplete(page: Page): Promise<void>;
+  openBrain(page: Page): Promise<void>;
+  openPassiveBrain(page: Page, expectedProfileId: string): Promise<void>;
+  selectAnchorInBrain(page: Page): Promise<import('@playwright/test').Response>;
+  waitForBrainAnchor(page: Page): Promise<void>;
+  clickBrainAnchor(page: Page): Promise<void>;
+  waitForEmptyBrain(page: Page): Promise<void>;
+  assertNoBrainDetail(page: Page): Promise<void>;
+}
+
 export interface K2HostedWavePlugin {
-  readonly waveId: 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09';
+  readonly waveId: 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09' | 'K2-10';
   readonly actorCount: 2 | 4;
   run(context: K2HostedWaveContext): Promise<void>;
 }
@@ -262,6 +360,7 @@ export function k2HostedWaveCheckpoint(waveId: K2HostedWavePlugin['waveId']): K2
   if (waveId === 'K2-08-DUE-ONLY') return 'wave_k2_08_due_only';
   if (waveId === 'K2-08') return 'wave_k2_08';
   if (waveId === 'K2-09') return 'wave_k2_09';
+  if (waveId === 'K2-10') return 'wave_k2_10';
   throw new Error('K2 hosted acceptance wave is not implemented.');
 }
 
@@ -313,6 +412,78 @@ export async function requestK2HostedApi(
   }
   try { return { response, payload: await response.json() }; }
   catch { throw new Error('K2 hosted acceptance staging API returned invalid JSON.'); }
+}
+
+function requireK2FrllApiRoute(
+  route: string,
+  options: K2FrllApiOptions,
+  profileId: string,
+): string {
+  let url: URL;
+  try { url = new URL(route, 'https://k2-frll.invalid'); }
+  catch { throw new Error('K2 hosted acceptance FRLL API route was not allowlisted.'); }
+  if (url.origin !== 'https://k2-frll.invalid' || !url.pathname.startsWith('/v1/') || url.hash) {
+    throw new Error('K2 hosted acceptance FRLL API route was not allowlisted.');
+  }
+  const method = options.method ?? 'GET';
+  const queryKeys = [...url.searchParams.keys()];
+  if (new Set(queryKeys).size !== queryKeys.length) {
+    throw new Error('K2 hosted acceptance FRLL API route was not allowlisted.');
+  }
+  const noMutationFields = options.body === undefined && options.idempotencyKey === undefined &&
+    options.ifMatch === undefined;
+  const ownProfileQuery = (allowed: readonly string[]) =>
+    queryKeys.every(key => allowed.includes(key)) &&
+    (url.searchParams.get('languageProfileId') === null ||
+     url.searchParams.get('languageProfileId') === profileId);
+  if ((url.pathname === '/v1/me' || url.pathname === '/v1/me/languages') &&
+      method === 'GET' && url.search === '' && noMutationFields) return `${url.pathname}`;
+  if (url.pathname === '/v1/dictionary/search' && method === 'GET' && noMutationFields &&
+      JSON.stringify([...queryKeys].sort()) === JSON.stringify(['languageCode', 'limit', 'query']) &&
+      url.searchParams.get('query') === 'frll-anchor' &&
+      url.searchParams.get('languageCode') === 'en' && url.searchParams.get('limit') === '100') {
+    return `${url.pathname}?${url.searchParams.toString()}`;
+  }
+  if (url.pathname === `/v1/concepts/${WAVE_CANONICAL_CONCEPT_ID}` && method === 'GET' &&
+      url.search === '' && noMutationFields) return url.pathname;
+  if (url.pathname === `/v1/library/concepts/${WAVE_CANONICAL_CONCEPT_ID}` &&
+      method === 'PUT' && url.search === '' && options.body === undefined &&
+      options.idempotencyKey === undefined && options.ifMatch === undefined) return url.pathname;
+  if (url.pathname === '/v1/library/items' && method === 'GET' && noMutationFields &&
+      url.searchParams.get('itemType') === 'concept' && ownProfileQuery(['itemType', 'cursor']) &&
+      queryKeys.includes('itemType') && [...url.searchParams.keys()].every(key => ['itemType', 'cursor'].includes(key))) {
+    return `${url.pathname}?${url.searchParams.toString()}`;
+  }
+  if ((url.pathname === '/v1/today' || url.pathname === '/v1/review/queue' ||
+       url.pathname === '/v1/brain/summary' || url.pathname === '/v1/brain/concepts') &&
+      method === 'GET' && noMutationFields) {
+    const allowed = url.pathname === '/v1/today' ? ['languageProfileId', 'date']
+      : url.pathname === '/v1/review/queue' ? ['languageProfileId', 'limit', 'cursor']
+        : ['languageProfileId', 'cursor'];
+    if (ownProfileQuery(allowed) && queryKeys.every(key => allowed.includes(key)) &&
+        (url.pathname !== '/v1/review/queue' || url.searchParams.get('limit') === null ||
+         /^(?:[1-9]|[1-9][0-9]|100)$/.test(url.searchParams.get('limit') ?? '')) &&
+        (url.pathname !== '/v1/brain/concepts' || !url.searchParams.has('cursor'))) {
+      return `${url.pathname}${url.search}`;
+    }
+  }
+  if (url.pathname === `/v1/brain/concepts/${WAVE_CANONICAL_CONCEPT_ID}` &&
+      method === 'GET' && url.search === '' && noMutationFields) return url.pathname;
+  if (/^\/v1\/review\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/answer$/i.test(url.pathname) &&
+      method === 'POST' && url.search === '' && options.body !== undefined &&
+      options.idempotencyKey !== undefined && UUID_PATTERN.test(options.idempotencyKey) &&
+      options.ifMatch === undefined && typeof options.body === 'object' && options.body !== null &&
+      !Array.isArray(options.body)) {
+    const body = options.body as Record<string, unknown>;
+    const keys = Object.keys(body).sort();
+    if (keys.join(',') === 'correct,exerciseMode,rating,responseTimeMs' &&
+        body.correct === true && body.exerciseMode === 'self_recall' &&
+        ['again', 'hard', 'good', 'easy'].includes(String(body.rating)) &&
+        Number.isSafeInteger(body.responseTimeMs) && (body.responseTimeMs as number) >= 0) {
+      return url.pathname;
+    }
+  }
+  throw new Error('K2 hosted acceptance FRLL API route was not allowlisted.');
 }
 
 export function createK2OpaqueIdProjector(randomId: () => string = randomUUID): Readonly<{
@@ -985,6 +1156,22 @@ export function requireK2ActorSnapshotRows(
   }
 }
 
+const K2_10_FRESH_PROFILE_BOOTSTRAP_ROWS: Readonly<Partial<Record<K2RetainedTableName, number>>> = {
+  users: 1,
+  learner_profiles: 1,
+  profile_mutation_results: 1,
+  user_languages: 1,
+};
+
+export function assertK210FreshProfileBootstrapSnapshot(snapshot: K2RetainedSnapshot): void {
+  const expectedTotalRows = 4;
+  if (snapshot.totalRows !== expectedTotalRows || k2RetainedTableNames().some(table =>
+    snapshot.tables[table].rows !== (K2_10_FRESH_PROFILE_BOOTSTRAP_ROWS[table] ?? 0),
+  )) {
+    throw new Error('K2 hosted acceptance K2-10 fresh profile bootstrap snapshot was unexpected.');
+  }
+}
+
 async function actorSnapshot(config: K2HostedConfig, actorId: string): Promise<K2RetainedSnapshot> {
   const result = await runK2HostedProbe('actor_snapshot', config.readonlyDatabaseUrl, actorId);
   if (!('tables' in result)) throw new Error('K2 hosted acceptance actor snapshot was invalid.');
@@ -1463,12 +1650,22 @@ function isK209ReceiptState(
     'fixturePresent' in value && value.fixturePresent === (expected === 'ACTIVE');
 }
 
-export async function createLearnerProfile(config: K2HostedConfig, session: K2AuthenticatedActor): Promise<string> {
+export async function createLearnerProfile(
+  config: K2HostedConfig,
+  session: K2AuthenticatedActor,
+  strictFreshContract = false,
+): Promise<string> {
   const meResponse = await requestK2HostedApi(config, session.accessToken, '/v1/me');
-  const me = dataObject(meResponse.payload,
-    'K2 hosted acceptance application identity bootstrap was invalid.');
+  const me = strictFreshContract
+    ? validateContract('MeResponse', meResponse.payload).data as unknown as JsonObject
+    : dataObject(meResponse.payload,
+      'K2 hosted acceptance application identity bootstrap was invalid.');
   if (me.id !== session.userId) {
     throw new Error('K2 hosted acceptance application identity did not match the confirmed Auth actor.');
+  }
+  if (strictFreshContract &&
+      (!Array.isArray(me.languageProfiles) || me.languageProfiles.length !== 0)) {
+    throw new Error('K2 hosted acceptance fresh application identity returned an unexpected language profile.');
   }
   const learnerProfileEtag = meResponse.response.headers.get('etag');
   if (!learnerProfileEtag) {
@@ -1480,11 +1677,17 @@ export async function createLearnerProfile(config: K2HostedConfig, session: K2Au
       ifMatch: learnerProfileEtag,
       body: { timeZone: 'Asia/Ho_Chi_Minh' },
     }, [200]);
-    const updatedMe = dataObject(timezoneResponse.payload,
-      'K2 hosted acceptance timezone update response was invalid.');
+    const updatedMe = strictFreshContract
+      ? validateContract('MeResponse', timezoneResponse.payload).data as unknown as JsonObject
+      : dataObject(timezoneResponse.payload,
+        'K2 hosted acceptance timezone update response was invalid.');
     if (updatedMe.id !== session.userId || updatedMe.timeZone !== 'Asia/Ho_Chi_Minh' ||
         !timezoneResponse.response.headers.get('etag')) {
       throw new Error('K2 hosted acceptance learner timezone was not persisted.');
+    }
+    if (strictFreshContract &&
+        (!Array.isArray(updatedMe.languageProfiles) || updatedMe.languageProfiles.length !== 0)) {
+      throw new Error('K2 hosted acceptance timezone bootstrap returned an unexpected language profile.');
     }
   }
   const existing = parseK2LanguageProfileList(
@@ -1496,6 +1699,18 @@ export async function createLearnerProfile(config: K2HostedConfig, session: K2Au
     idempotencyKey: randomUUID(),
     body: { targetLanguageCode: 'en', nativeLanguageCode: 'vi', goal: 'communication', dailyMinutes: 15 },
   }, [201]);
+  if (strictFreshContract) {
+    const listedAfterCreate = await requestK2HostedApi(config, session.accessToken, '/v1/me/languages');
+    const id = assertK2CreatedLanguageProfileReadback(created.payload, listedAfterCreate.payload);
+    const profile = dataObject(created.payload,
+      'K2 hosted acceptance language profile response was invalid.');
+    if (profile.targetLanguageCode !== 'en' || profile.nativeLanguageCode !== 'vi' ||
+        profile.goal !== 'communication' || profile.dailyMinutes !== 15 ||
+        profile.targetLevel !== null || profile.startingLevelEstimate !== null || profile.status !== 'active') {
+      throw new Error('K2 hosted acceptance fresh language profile DTO did not match the fixed onboarding request.');
+    }
+    return id;
+  }
   const profile = dataObject(created.payload, 'K2 hosted acceptance language profile response was invalid.');
   if (typeof profile.id !== 'string') throw new Error('K2 hosted acceptance language profile response was invalid.');
   return profile.id;
@@ -1582,6 +1797,475 @@ async function verifyAuthUiSignIn(page: Page, actor: K2HostedActor, vercelOrigin
   });
 }
 
+const K2_K210_INITIAL_SIGN_IN_FAILURE =
+  'K2 hosted acceptance K2-10 isolated browser sign-in failed; sensitive details were suppressed.';
+
+/** Signs in K2-10 through a short-lived same-context controller without navigating the product page. */
+export async function signInInitialK210Actor(
+  primaryPage: Page,
+  browserContext: BrowserContext,
+  actor: Pick<K2HostedActor, 'id' | 'email' | 'password'>,
+  supabaseUrl: string,
+  publishableKey: string,
+  vercelOrigin: string,
+  signInController: typeof signInK2BrowserActor = signInK2BrowserActor,
+): Promise<string> {
+  try {
+    if (primaryPage.url() !== 'about:blank') throw new Error('unexpected initial page');
+  } catch {
+    throw new Error(K2_K210_INITIAL_SIGN_IN_FAILURE);
+  }
+
+  let controllerPage: Page;
+  try {
+    controllerPage = await browserContext.newPage();
+  } catch {
+    throw new Error(K2_K210_INITIAL_SIGN_IN_FAILURE);
+  }
+
+  let accessToken: string | undefined;
+  let failed = false;
+  try {
+    accessToken = await signInController(
+      controllerPage, actor, supabaseUrl, publishableKey, vercelOrigin,
+    );
+  } catch {
+    failed = true;
+  }
+  try {
+    await controllerPage.close();
+  } catch {
+    failed = true;
+  }
+  try {
+    if (primaryPage.url() !== 'about:blank') failed = true;
+  } catch {
+    failed = true;
+  }
+
+  if (failed || typeof accessToken !== 'string' || accessToken.length === 0) {
+    throw new Error(K2_K210_INITIAL_SIGN_IN_FAILURE);
+  }
+  return accessToken;
+}
+
+const K2_PASSIVE_TODAY_CONTENT_TYPES = new Set(['read', 'listen', 'learn']);
+const K2_PASSIVE_TODAY_EMPTY_TITLE = 'Không có bài học nào cần ôn hôm nay';
+const K2_PASSIVE_BRAIN_EMPTY_TITLE = 'Chưa có từ vựng trong Brain';
+
+/** Accept only the normal same-origin Today API response made by the active page. */
+export function isK2PassiveTodayApiResponse(
+  response: Pick<PlaywrightResponse, 'url' | 'request'>,
+  vercelOrigin: string,
+): boolean {
+  try {
+    const url = new URL(response.url());
+    return url.origin === vercelOrigin && url.pathname === '/api/v1/today' &&
+      response.request().method() === 'GET';
+  } catch {
+    return false;
+  }
+}
+
+/** Validate the page's actual Today response and require its matching supported UI branch. */
+export async function assertK2PassiveTodayUiMatchesPlan(
+  page: Pick<Page, 'getByRole' | 'getByText'>,
+  response: Pick<PlaywrightResponse, 'status' | 'json'>,
+  expectedProfileId: string,
+): Promise<components['schemas']['TodayPlan']> {
+  if (response.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Today response was not HTTP 200.');
+  }
+
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new Error('K2 hosted acceptance passive Today response body was invalid.');
+  }
+
+  let plan: components['schemas']['TodayPlan'];
+  try {
+    plan = validateContract('TodayPlanResponse', raw).data;
+  } catch {
+    throw new Error('K2 hosted acceptance passive Today DTO failed contract validation.');
+  }
+  if (plan.languageProfileId !== expectedProfileId) {
+    throw new Error('K2 hosted acceptance passive Today profile binding did not match.');
+  }
+  if (plan.activities.some(activity => !K2_PASSIVE_TODAY_CONTENT_TYPES.has(activity.activityType))) {
+    throw new Error('K2 hosted acceptance passive Today plan included a review activity.');
+  }
+
+  try {
+    if (plan.activities.length === 0) {
+      await page.getByRole('heading', { name: K2_PASSIVE_TODAY_EMPTY_TITLE, exact: true })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    } else {
+      await page.getByText(
+        `LINGUA OS đã chọn ${plan.activities.length} hoạt động tối ưu nhất cho bạn.`,
+        { exact: true },
+      ).waitFor({ state: 'visible', timeout: 30_000 });
+      for (const activity of plan.activities) {
+        await page.getByRole('heading', { name: activity.title, exact: true })
+          .waitFor({ state: 'visible', timeout: 30_000 });
+      }
+    }
+  } catch {
+    throw new Error('K2 hosted acceptance passive Today UI did not match its validated plan.');
+  }
+  return plan;
+}
+
+function isK2SameOriginBrainReadResponse(
+  response: Pick<PlaywrightResponse, 'url' | 'request'>,
+  vercelOrigin: string,
+  pathname: '/api/v1/brain/summary' | '/api/v1/brain/concepts',
+): boolean {
+  try {
+    const url = new URL(response.url());
+    return url.origin === vercelOrigin && url.pathname === pathname &&
+      response.request().method() === 'GET';
+  } catch {
+    return false;
+  }
+}
+
+/** Accept only the same-origin, first-page Brain GETs for the expected profile. */
+export function isK2PassiveBrainApiResponse(
+  response: Pick<PlaywrightResponse, 'url' | 'request'>,
+  vercelOrigin: string,
+  expectedProfileId: string,
+): boolean {
+  try {
+    const url = new URL(response.url());
+    if (url.origin !== vercelOrigin || response.request().method() !== 'GET') return false;
+
+    const queryNames = Array.from(url.searchParams.keys());
+    if (url.pathname === '/api/v1/brain/summary') {
+      const profiles = url.searchParams.getAll('languageProfileId');
+      return queryNames.every(name => name === 'languageProfileId') && profiles.length <= 1 &&
+        (profiles.length === 0 || profiles[0] === expectedProfileId);
+    }
+    if (url.pathname === '/api/v1/brain/concepts') {
+      const profiles = url.searchParams.getAll('languageProfileId');
+      return queryNames.length === 1 && queryNames[0] === 'languageProfileId' &&
+        profiles.length === 1 && profiles[0] === expectedProfileId;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+type K2PassiveBrainSummary = components['schemas']['BrainSummary'];
+type K2PassiveBrainConceptList = components['schemas']['BrainConceptListResponse'];
+
+async function readK2PassiveBrainSummary(
+  response: Pick<PlaywrightResponse, 'status' | 'json'>,
+  expectedProfileId: string,
+): Promise<K2PassiveBrainSummary> {
+  if (response.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+  }
+
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain response body was invalid.');
+  }
+
+  let summary: K2PassiveBrainSummary;
+  try {
+    summary = validateContract('BrainSummaryResponse', raw).data;
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain DTO failed contract validation.');
+  }
+  if (summary.languageProfileId !== expectedProfileId) {
+    throw new Error('K2 hosted acceptance passive Brain profile binding did not match.');
+  }
+  return summary;
+}
+
+async function readK2PassiveBrainConceptList(
+  response: Pick<PlaywrightResponse, 'status' | 'json'>,
+): Promise<K2PassiveBrainConceptList> {
+  if (response.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+  }
+
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain response body was invalid.');
+  }
+
+  try {
+    return validateContract('BrainConceptListResponse', raw);
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain DTO failed contract validation.');
+  }
+}
+
+async function assertK2PassiveBrainProjectionMatchesUi(
+  page: Pick<Page, 'getByRole'>,
+  summary: K2PassiveBrainSummary,
+  conceptList: K2PassiveBrainConceptList,
+): Promise<void> {
+  const emptyProjection = summary.statusCounts.total === 0 &&
+    Object.values(summary.statusCounts).every(count => count === 0) &&
+    summary.dueCount === 0 && summary.recentConcepts.length === 0 &&
+    summary.competence.recognition.evidenceCount === 0 &&
+    summary.competence.listening.evidenceCount === 0 &&
+    summary.competence.production.evidenceCount === 0 &&
+    summary.startingLevelEstimate === null &&
+    conceptList.data.length === 0 && !conceptList.meta.hasMore &&
+    conceptList.meta.nextCursor === null;
+  if (!emptyProjection) {
+    throw new Error('K2 hosted acceptance passive Brain projection was not empty.');
+  }
+
+  try {
+    await page.getByRole('heading', { name: K2_PASSIVE_BRAIN_EMPTY_TITLE, exact: true })
+      .waitFor({ state: 'visible', timeout: 30_000 });
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain UI did not match its validated projection.');
+  }
+}
+
+/** Validate both actual Brain responses before accepting the corresponding empty UI branch. */
+export async function assertK2PassiveBrainUiMatchesResponse(
+  page: Pick<Page, 'getByRole'>,
+  summaryResponse: Pick<PlaywrightResponse, 'status' | 'json'>,
+  conceptListResponse: Pick<PlaywrightResponse, 'status' | 'json'>,
+  expectedProfileId: string,
+): Promise<void> {
+  if (summaryResponse.status() !== 200 || conceptListResponse.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+  }
+
+  const summary = await readK2PassiveBrainSummary(summaryResponse, expectedProfileId);
+  const conceptList = await readK2PassiveBrainConceptList(conceptListResponse);
+  await assertK2PassiveBrainProjectionMatchesUi(page, summary, conceptList);
+}
+
+function createK2HostedFrllUi(
+  vercelOrigin: string,
+  todayDiagnostic?: ReturnType<typeof createK2FrllTodayDiagnostic>,
+): K2HostedFrllUi {
+  const goto = async (page: Page, path: string) => {
+    const routeId = path === '/dictionary' ? 'dictionary' : path === '/today' ? 'today' : 'other';
+    let response: Awaited<ReturnType<Page['goto']>>;
+    try {
+      response = await page.goto(new URL(path, vercelOrigin).href, { waitUntil: 'domcontentloaded' });
+    } catch {
+      throw new Error(
+        `K2 hosted acceptance FRLL browser page did not load (route=${routeId}; status=no_response).`,
+      );
+    }
+    if (!response || response.status() !== 200) {
+      const status = response?.status();
+      const statusClass = status === undefined ? 'no_response'
+        : status >= 200 && status < 300 ? '2xx'
+          : status >= 300 && status < 400 ? '3xx'
+            : status >= 400 && status < 500 ? '4xx'
+              : status >= 500 && status < 600 ? '5xx' : 'other';
+      throw new Error(
+        `K2 hosted acceptance FRLL browser page did not load (route=${routeId}; status=${statusClass}).`,
+      );
+    }
+  };
+  const waitForAnswerResponse = (page: Page) => page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.origin === vercelOrigin &&
+      /^\/api\/v1\/review\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/answer$/i.test(url.pathname);
+  }, { timeout: 30_000 });
+  return {
+    async searchAnchor(page) {
+      await goto(page, '/dictionary');
+      const search = page.locator('input[type="search"]');
+      await search.waitFor({ state: 'visible', timeout: 30_000 });
+      await search.fill(FRLL_ANCHOR_LEMMA);
+      await page.locator('h2', { hasText: FRLL_ANCHOR_LEMMA })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async saveAnchor(page) {
+      await page.getByRole('button', {
+        name: `Lưu từ ${FRLL_ANCHOR_LEMMA} để học`, exact: true,
+      }).click();
+      await page.locator(`span[aria-label="Đã lưu từ ${FRLL_ANCHOR_LEMMA} vào kho học"]`)
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async openToday(page) {
+      todayDiagnostic?.begin(page);
+      let phase: 'navigation' | 'heading' = 'navigation';
+      try {
+        const response = await page.goto(new URL('/today', vercelOrigin).href, { waitUntil: 'domcontentloaded' });
+        if (response) {
+          let routeClass: K2FrllNavigationRoute = 'other';
+          let originBound = false;
+          try {
+            const finalUrl = new URL(response.url());
+            originBound = finalUrl.origin === vercelOrigin;
+            routeClass = finalUrl.pathname === '/today' ? 'today'
+              : finalUrl.pathname === '/auth' ? 'auth'
+                : finalUrl.pathname === '/onboarding' ? 'onboarding' : 'other';
+          } catch {
+            routeClass = 'other';
+          }
+          todayDiagnostic?.recordNavigation(page, routeClass, k2FrllDiagnosticStatus(response.status()), originBound);
+        } else {
+          todayDiagnostic?.recordNavigation(page, 'none', 'none', false);
+        }
+        if (!response || response.status() !== 200) {
+          throw new Error('K2 hosted acceptance FRLL browser page did not load.');
+        }
+        phase = 'heading';
+        await page.locator('h3', { hasText: 'Ôn tập đến hạn' })
+          .waitFor({ state: 'visible', timeout: 30_000 });
+        todayDiagnostic?.recordHeading(page, 'visible');
+      } catch {
+        todayDiagnostic?.recordHeading(page, phase === 'heading' ? 'wait_failed' : 'navigation_failed');
+        const details = todayDiagnostic?.summary(page);
+        throw new Error(details
+          ? `K2 hosted acceptance FRLL Today UI did not become visible; ${details}.`
+          : 'K2 hosted acceptance FRLL Today UI did not become visible.');
+      } finally {
+        todayDiagnostic?.end(page);
+      }
+    },
+    async openPassiveToday(page, expectedProfileId) {
+      const responsePromise = page.waitForResponse(
+        response => isK2PassiveTodayApiResponse(response, vercelOrigin),
+        { timeout: 30_000 },
+      ).then(response => response, () => null);
+      try {
+        await goto(page, '/today');
+      } catch {
+        throw new Error('K2 hosted acceptance passive Today page navigation failed.');
+      }
+      const response = await responsePromise;
+      if (!response) {
+        throw new Error('K2 hosted acceptance passive Today response was not observed.');
+      }
+      await assertK2PassiveTodayUiMatchesPlan(page, response, expectedProfileId);
+    },
+    async openPassiveBrain(page, expectedProfileId) {
+      const waitForBrainResponse = (pathname: '/api/v1/brain/summary' | '/api/v1/brain/concepts') =>
+        page.waitForResponse(
+          response => isK2SameOriginBrainReadResponse(response, vercelOrigin, pathname),
+          { timeout: 30_000 },
+        ).then(response => response, () => null);
+      const summaryResponsePromise = waitForBrainResponse('/api/v1/brain/summary');
+      const conceptListResponsePromise = waitForBrainResponse('/api/v1/brain/concepts');
+
+      try {
+        await goto(page, '/brain');
+      } catch {
+        throw new Error('K2 hosted acceptance passive Brain page navigation failed.');
+      }
+
+      const summaryResponse = await summaryResponsePromise;
+      if (!summaryResponse) {
+        throw new Error('K2 hosted acceptance passive Brain summary response was not observed.');
+      }
+      if (!isK2PassiveBrainApiResponse(summaryResponse, vercelOrigin, expectedProfileId)) {
+        throw new Error('K2 hosted acceptance passive Brain request did not match its expected profile.');
+      }
+      const summary = await readK2PassiveBrainSummary(summaryResponse, expectedProfileId);
+
+      const conceptListResponse = await conceptListResponsePromise;
+      if (!conceptListResponse) {
+        throw new Error('K2 hosted acceptance passive Brain concept-list response was not observed.');
+      }
+      if (conceptListResponse.status() !== 200) {
+        throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+      }
+      if (!isK2PassiveBrainApiResponse(conceptListResponse, vercelOrigin, expectedProfileId)) {
+        throw new Error('K2 hosted acceptance passive Brain request did not match its expected profile.');
+      }
+      const conceptList = await readK2PassiveBrainConceptList(conceptListResponse);
+      await assertK2PassiveBrainProjectionMatchesUi(page, summary, conceptList);
+    },
+    async openReview(page) {
+      await goto(page, '/review');
+      await page.getByRole('heading', { name: FRLL_ANCHOR_LEMMA })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+      await page.getByRole('button', { name: 'Hiện đáp án & nghĩa' }).click();
+      await page.getByRole('button', { name: 'Tốt (Good)' })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async submitGood(page) {
+      const response = waitForAnswerResponse(page);
+      await page.getByRole('button', { name: 'Tốt (Good)' }).click();
+      return response;
+    },
+    async submitGoodAndWaitForRetry(page) {
+      await page.getByRole('button', { name: 'Tốt (Good)' }).click();
+      await page.getByText('Lỗi gửi kết quả ôn tập', { exact: false })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+      await page.getByRole('button', { name: 'Thử lại' })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async reloadForRetry(page) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.getByText('Lỗi gửi kết quả ôn tập', { exact: false })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+      await page.getByRole('button', { name: 'Thử lại' })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async retryAnswer(page) {
+      const response = waitForAnswerResponse(page);
+      await page.getByRole('button', { name: 'Thử lại' }).click();
+      return response;
+    },
+    async waitForReviewComplete(page) {
+      await page.getByText('Đã hoàn thành toàn bộ hàng đợi ôn tập!', { exact: true })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async openBrain(page) {
+      await goto(page, '/brain');
+      await page.locator('h1', { hasText: 'Language Brain của bạn' })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async selectAnchorInBrain(page) {
+      const node = page.getByRole('button').filter({ hasText: FRLL_ANCHOR_LEMMA });
+      await node.waitFor({ state: 'visible', timeout: 30_000 });
+      const response = page.waitForResponse(result => {
+        const url = new URL(result.url());
+        return url.origin === vercelOrigin &&
+          url.pathname === `/api/v1/brain/concepts/${WAVE_CANONICAL_CONCEPT_ID}`;
+      }, { timeout: 30_000 });
+      await node.click();
+      const result = await response;
+      if (result.status() !== 200) {
+        throw new Error('K2 hosted acceptance Brain detail request failed.');
+      }
+      await page.getByRole('dialog', { name: 'Chi tiết khái niệm' })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+      return result;
+    },
+    async waitForBrainAnchor(page) {
+      await page.getByRole('button').filter({ hasText: FRLL_ANCHOR_LEMMA })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async clickBrainAnchor(page) {
+      await page.getByRole('button').filter({ hasText: FRLL_ANCHOR_LEMMA }).click();
+    },
+    async waitForEmptyBrain(page) {
+      await page.getByRole('heading', { name: 'Chưa có từ vựng trong Brain' })
+        .waitFor({ state: 'visible', timeout: 30_000 });
+    },
+    async assertNoBrainDetail(page) {
+      await page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 5_000 });
+      await page.getByRole('button').filter({ hasText: FRLL_ANCHOR_LEMMA })
+        .waitFor({ state: 'hidden', timeout: 5_000 });
+    },
+  };
+}
+
 /**
  * Shared harness lifecycle for K2-07 and the bounded K2-08 due-only subcase. Plugins own only their
  * wave fixtures and assertions; target attestation, two disposable actors,
@@ -1607,6 +2291,16 @@ export async function runK2HostedWave(
   let actorCleanupPassed = false;
   let freshIdentityCleanupPassed = true;
   let retainedComparisonPassed = false;
+  const frllWave = plugin.waveId === 'K2-10';
+  const frllTodayDiagnostic = frllWave ? createK2FrllTodayDiagnostic() : undefined;
+  const frllReplayController = frllWave ? createK2FrllReplayController() : null;
+  const frllAuthBindingBarrier: K2FrllAuthBindingBarrier | undefined = frllWave
+    ? createK2FrllAuthBindingBarrier(15_000)
+    : undefined;
+  const browserFrllSessions = new Map<string, K2FrllActorSession>();
+  const frllPages: Page[] = [];
+  let frllHeldBrainGate: K2FrllHeldBrainResponseGate | null = null;
+  const frllCleanup: { releaseHeldBrain?: () => void } = {};
   const checkpoint = (phase: K2HostedPhase, event: K2HostedCheckpointEvent) =>
     markK2HostedCheckpoint(testInfo, phase, event);
 
@@ -1720,6 +2414,41 @@ export async function runK2HostedWave(
       checkpoint(actorAuthPhases[index], 'pass');
     }
 
+    const profileBootstrapPhases = [
+      'primary_profile_bootstrap', 'observer_profile_bootstrap',
+      'scenario_c_profile_bootstrap', 'scenario_d_profile_bootstrap',
+    ] as const;
+    const prebootstrapPhases = [
+      'primary_prebootstrap_snapshot', 'observer_prebootstrap_snapshot',
+      'scenario_c_prebootstrap_snapshot', 'scenario_d_prebootstrap_snapshot',
+    ] as const;
+    const postbootstrapPhases = [
+      'primary_postbootstrap_snapshot', 'observer_postbootstrap_snapshot',
+      'scenario_c_postbootstrap_snapshot', 'scenario_d_postbootstrap_snapshot',
+    ] as const;
+    const profileIds: string[] = [];
+    const actorHandles = WAVE_ACTOR_HANDLES.slice(0, actors.length);
+    if (frllWave) {
+      const tableNames = k2RetainedTableNames();
+      for (let index = 0; index < actors.length; index += 1) {
+        checkpoint(prebootstrapPhases[index], 'start');
+        const fresh = await actorSnapshot(config, actors[index].id);
+        if (fresh.totalRows !== 0 || tableNames.some(table => fresh.tables[table].rows !== 0)) {
+          throw new Error('K2 hosted acceptance K2-10 pre-bootstrap actor snapshot was not zero across 27 tables.');
+        }
+        checkpoint(prebootstrapPhases[index], 'pass');
+      }
+      for (let index = 0; index < actors.length; index += 1) {
+        checkpoint(profileBootstrapPhases[index], 'start');
+        profileIds.push(await createLearnerProfile(config, sessions[index], true));
+        checkpoint(profileBootstrapPhases[index], 'pass');
+        checkpoint(postbootstrapPhases[index], 'start');
+        const bootstrapped = await actorSnapshot(config, actors[index].id);
+        assertK210FreshProfileBootstrapSnapshot(bootstrapped);
+        checkpoint(postbootstrapPhases[index], 'pass');
+      }
+    }
+
     checkpoint('browser_oidc_token', 'start');
     const browserOidc = await createGithubTrustedSourceToken(config);
     checkpoint('browser_oidc_token', 'pass');
@@ -1733,25 +2462,109 @@ export async function runK2HostedWave(
     if (reverifiedBrowserOrigin !== vercelOrigin) {
       throw new Error('K2 hosted acceptance canonical browser origin changed; browser flow was stopped.');
     }
+    const browserTokenSource = frllWave
+      ? createK2TrustedSourceTokenSupplier(
+        browserOidc,
+        () => createGithubTrustedSourceToken(config),
+      )
+      : browserOidc;
+    let activeBrowserHandle: K2WaveActorHandle | null = null;
+    const signInAs = async (handle: K2WaveActorHandle): Promise<void> => {
+      if (activeBrowserHandle === handle) return;
+      if (activeBrowserHandle !== null) {
+        throw new Error('K2 hosted acceptance actor transition requires the approved same-context switch seam.');
+      }
+      const index = actorHandles.indexOf(handle);
+      const actor = actors[index];
+      if (!actor || index < 0) throw new Error('K2 hosted acceptance actor handle was invalid.');
+      const binding = frllAuthBindingBarrier?.begin();
+      try {
+        let browserToken: string | undefined;
+        if (plugin.waveId === 'K2-10') {
+          if (!binding) throw new Error('K2 hosted acceptance K2-10 Auth binding guard was unavailable.');
+          browserToken = await signInInitialK210Actor(
+            page, browserContext, actor, config.supabaseUrl, config.publishableKey, vercelOrigin,
+          );
+        } else {
+          await verifyAuthUiSignIn(page, actor, vercelOrigin, config);
+        }
+        if (frllWave) {
+          if (!binding || !browserToken) {
+            throw new Error('K2 hosted acceptance K2-10 initial actor binding was incomplete.');
+          }
+          const profileId = profileIds[index];
+          if (!profileId) throw new Error('K2 hosted acceptance K2-10 actor profile binding was incomplete.');
+          browserFrllSessions.set(browserToken, {
+            accessToken: browserToken, userId: actor.id, profileId,
+          });
+          if (!binding.complete()) {
+            browserFrllSessions.delete(browserToken);
+            throw new Error('K2 hosted acceptance K2-10 Auth binding exceeded its safety bound.');
+          }
+        }
+        activeBrowserHandle = handle;
+      } finally {
+        binding?.release();
+      }
+    };
     checkpoint('browser_request_guard', 'start');
+    if (frllWave) {
+      sessions.forEach((session, index) => {
+        const profileId = profileIds[index];
+        if (!profileId) throw new Error('K2 hosted acceptance K2-10 actor profile binding was incomplete.');
+        browserFrllSessions.set(session.accessToken, {
+          accessToken: session.accessToken,
+          userId: session.userId,
+          profileId,
+        });
+      });
+    }
+    const directFrllRequest = async (request: K2FrllBrowserRequest): Promise<Response> => {
+      let response: Response;
+      try {
+        response = await fetch(new URL(request.route, config.apiOrigin), {
+          method: request.method,
+          headers: request.headers,
+          ...(request.body ? { body: request.body.toString('utf8') } : {}),
+          signal: AbortSignal.timeout(30_000),
+          redirect: 'manual',
+          credentials: 'omit',
+        });
+      } catch {
+        throw new Error('K2 hosted acceptance direct Render request failed; provider details were suppressed.');
+      }
+      const gate = frllHeldBrainGate;
+      // request.actor is resolved from the original Bearer in the verified session map,
+      // so an in-flight Actor A response stays Actor A after the UI switches to B.
+      if (gate?.tryHold(request, response)) await gate.waitUntilReleased();
+      return response;
+    };
     await installK2BrowserRequestGuard(browserContext, {
       vercelOrigin,
       supabaseUrl: config.supabaseUrl,
-    }, browserOidc);
+    }, browserTokenSource, frllWave ? route => forwardK2FrllBrowserRequest(
+      route,
+      { vercelOrigin, githubSha: config.githubSha },
+      browserFrllSessions,
+      directFrllRequest,
+      frllReplayController ?? undefined,
+      frllAuthBindingBarrier,
+      event => {
+        const requestPage = route.request().frame().page();
+        frllTodayDiagnostic?.recordApi(requestPage, event);
+      },
+    ) : undefined);
     checkpoint('browser_request_guard', 'pass');
     checkpoint('browser_sign_in', 'start');
-    await verifyAuthUiSignIn(page, actors[0], vercelOrigin, config);
+    await signInAs(actorHandles[0]);
     checkpoint('browser_sign_in', 'pass');
 
-    const profileBootstrapPhases = [
-      'primary_profile_bootstrap', 'observer_profile_bootstrap',
-      'scenario_c_profile_bootstrap', 'scenario_d_profile_bootstrap',
-    ] as const;
-    const profileIds: string[] = [];
-    for (let index = 0; index < actors.length; index += 1) {
-      checkpoint(profileBootstrapPhases[index], 'start');
-      profileIds.push(await createLearnerProfile(config, sessions[index]));
-      checkpoint(profileBootstrapPhases[index], 'pass');
+    if (!frllWave) {
+      for (let index = 0; index < actors.length; index += 1) {
+        checkpoint(profileBootstrapPhases[index], 'start');
+        profileIds.push(await createLearnerProfile(config, sessions[index]));
+        checkpoint(profileBootstrapPhases[index], 'pass');
+      }
     }
 
     if (plugin.waveId === 'K2-09') {
@@ -1763,7 +2576,6 @@ export async function runK2HostedWave(
 
     const wavePhase = k2HostedWaveCheckpoint(plugin.waveId);
     checkpoint(wavePhase, 'start');
-    const actorHandles = WAVE_ACTOR_HANDLES.slice(0, actors.length);
     const actorIdByHandle = new Map<K2WaveActorHandle, string>();
     const profileIdByHandle: Partial<Record<K2WaveActorHandle, string>> = {};
     const sessionByHandle = new Map<K2WaveActorHandle, K2AuthenticatedActor>();
@@ -1800,6 +2612,162 @@ export async function runK2HostedWave(
     const primaryApi = apiByHandle.get(primaryHandle);
     const observerApi = apiByHandle.get(observerHandle);
     if (!primaryApi || !observerApi) throw new Error('K2 hosted acceptance actor API binding was incomplete.');
+    let frllHarness: K2HostedFrllHarness | undefined;
+    if (frllWave) {
+      const frllUi = createK2HostedFrllUi(vercelOrigin, frllTodayDiagnostic);
+      const requireFrllSession = (handle: K2WaveActorHandle) => {
+        const session = sessionByHandle.get(handle);
+        const profileId = profileIdByHandle[handle];
+        if (!session || !profileId) {
+          throw new Error('K2 hosted acceptance FRLL actor session binding was incomplete.');
+        }
+        return { session, profileId };
+      };
+      const switchToActor = async (handle: K2WaveActorHandle, targetPage: Page): Promise<void> => {
+        if (!frllWave || !actorHandles.includes(handle)) {
+          throw new Error('K2 hosted acceptance same-context actor switch was not allowlisted.');
+        }
+        if (activeBrowserHandle === handle) return;
+        if (activeBrowserHandle === null) {
+          throw new Error('K2 hosted acceptance same-context actor switch had no originating actor.');
+        }
+        const index = actorHandles.indexOf(handle);
+        const actor = actors[index];
+        if (!actor) throw new Error('K2 hosted acceptance actor handle was invalid.');
+        const binding = frllAuthBindingBarrier?.begin();
+        if (!binding) throw new Error('K2 hosted acceptance K2-10 Auth binding guard was unavailable.');
+        try {
+          const browserToken = await signInK2BrowserActor(
+            targetPage, actor, config.supabaseUrl, config.publishableKey, vercelOrigin,
+          );
+          const profileId = profileIds[index];
+          if (!profileId) throw new Error('K2 hosted acceptance K2-10 actor profile binding was incomplete.');
+          browserFrllSessions.set(browserToken, {
+            accessToken: browserToken, userId: actor.id, profileId,
+          });
+          if (!binding.complete()) {
+            browserFrllSessions.delete(browserToken);
+            throw new Error('K2 hosted acceptance K2-10 Auth binding exceeded its safety bound.');
+          }
+          activeBrowserHandle = handle;
+        } finally {
+          binding.release();
+        }
+      };
+      const holdNextBrainResponse = (handle: K2WaveActorHandle): void => {
+        if (frllHeldBrainGate) throw new Error('K2 hosted acceptance delayed response proof was already armed.');
+        const { session, profileId } = requireFrllSession(handle);
+        frllHeldBrainGate = createK2FrllHeldBrainResponseGate(
+          { userId: session.userId, profileId },
+          `/v1/brain/concepts/${WAVE_CANONICAL_CONCEPT_ID}`,
+          config.githubSha,
+        );
+        frllCleanup.releaseHeldBrain = () => {
+          const gate = frllHeldBrainGate;
+          if (!gate) return;
+          gate.release();
+          frllHeldBrainGate = null;
+          delete frllCleanup.releaseHeldBrain;
+        };
+      };
+      frllHarness = {
+        page,
+        ui: frllUi,
+        async createPage() {
+          const created = await browserContext.newPage();
+          frllPages.push(created);
+          return created;
+        },
+        signInAs,
+        switchToActor,
+        async request(handle, route, options = {}, expectedStatuses = [200]) {
+          const { session, profileId } = requireFrllSession(handle);
+          const safeRoute = requireK2FrllApiRoute(route, options, profileId);
+          if (expectedStatuses.some(status => ![200, 201, 404, 409].includes(status))) {
+            throw new Error('K2 hosted acceptance FRLL expected status was not allowlisted.');
+          }
+          return requestK2HostedApi(config, session.accessToken, safeRoute, options, expectedStatuses);
+        },
+        async semanticProof(handle, idempotencyKeySha256) {
+          const { profileId } = requireFrllSession(handle);
+          const index = actorHandles.indexOf(handle);
+          const actor = actors[index];
+          if (!actor) throw new Error('K2 hosted acceptance FRLL actor handle was invalid.');
+          const proof = await runK2HostedProbe(
+            'frll_anchor_semantic_proof',
+            config.readonlyDatabaseUrl,
+            actor.id,
+            profileId,
+            undefined,
+            idempotencyKeySha256,
+          );
+          if (!('identity' in proof)) throw new Error('K2 hosted acceptance FRLL semantic proof was invalid.');
+          return proof;
+        },
+        async todayTargetMatches(handle, reviewItemId) {
+          if (!UUID_PATTERN.test(reviewItemId)) {
+            throw new Error('K2 hosted acceptance FRLL Today target binding was invalid.');
+          }
+          const index = actorHandles.indexOf(handle);
+          const actor = actors[index];
+          if (!actor) throw new Error('K2 hosted acceptance actor handle was invalid.');
+          const targets = await actorTodayReviewTargets(config, actor.id);
+          return targets.targetCount === targets.reviewItemIds.length &&
+            targets.reviewItemIds.includes(reviewItemId);
+        },
+        async pendingReviewReceipt(receiptPage) {
+          try {
+            return await receiptPage.evaluate(() => {
+              for (const key of Object.keys(sessionStorage)) {
+                if (!key.startsWith('lingua.review.pending.v1:')) continue;
+                try {
+                  const value = JSON.parse(sessionStorage.getItem(key) ?? 'null') as Record<string, unknown> | null;
+                  if (value && typeof value.idempotencyKey === 'string' &&
+                      typeof value.reviewItemId === 'string' && typeof value.rating === 'string' &&
+                      typeof value.responseTimeMs === 'number') return true;
+                } catch { /* Invalid local receipt remains untrusted and is not returned. */ }
+              }
+              return false;
+            });
+          } catch {
+            throw new Error('K2 hosted acceptance FRLL receipt state could not be checked safely.');
+          }
+        },
+        dropNextAnswerResponse() {
+          if (!frllReplayController) throw new Error('K2 hosted acceptance FRLL replay guard was unavailable.');
+          frllReplayController.dropNextAnswerResponse();
+        },
+        replayProof() {
+          if (!frllReplayController) throw new Error('K2 hosted acceptance FRLL replay guard was unavailable.');
+          return frllReplayController.proof();
+        },
+        async conflictingReviewReplay() {
+          if (!frllReplayController) throw new Error('K2 hosted acceptance FRLL replay guard was unavailable.');
+          return frllReplayController.conflictingReplay(directFrllRequest);
+        },
+        holdNextBrainResponse,
+        async waitForHeldBrainResponse() {
+          const gate = frllHeldBrainGate;
+          if (!gate) throw new Error('K2 hosted acceptance delayed response proof was not armed.');
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([
+              gate.received,
+              new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error(
+                  'K2 hosted acceptance delayed response proof timed out.',
+                )), 30_000);
+              }),
+            ]);
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
+        },
+        releaseHeldBrainResponse() {
+          frllCleanup.releaseHeldBrain?.();
+        },
+      };
+    }
     let k208State: Awaited<ReturnType<typeof buildK208CandidateMatrix>> | undefined;
     let k208Bindings: readonly K2K208ActorBinding[] | undefined;
     if (plugin.waveId === 'K2-08') {
@@ -1829,6 +2797,7 @@ export async function runK2HostedWave(
         ...(scenarioDHandle && apiByHandle.get(scenarioDHandle)
           ? { scenarioD: apiByHandle.get(scenarioDHandle)! } : {}),
       },
+      ...(frllHarness ? { frll: frllHarness } : {}),
       actorSnapshot: handle => {
         const actorId = actorIdByHandle.get(handle);
         if (!actorId) throw new Error('K2 hosted acceptance actor snapshot handle was invalid.');
@@ -1894,6 +2863,14 @@ export async function runK2HostedWave(
     });
     checkpoint(wavePhase, 'pass');
   } finally {
+    frllCleanup.releaseHeldBrain?.();
+    for (const cleanupPage of new Set([page, ...browserContext.pages(), ...frllPages])) {
+      try { await cleanupPage.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); }
+      catch { /* The page may not have reached a storage-enabled origin. */ }
+    }
+    for (const extraPage of frllPages) {
+      try { await extraPage.close(); } catch { /* The page may already be closed. */ }
+    }
     checkpoint('finalizer_begin', 'start');
     const expectedK209ActorIds = plugin.waveId === 'K2-09'
       ? k209ExpectedActorAbsenceIds(
@@ -1901,9 +2878,8 @@ export async function runK2HostedWave(
         freshActorIdentities.map(identity => identity.id),
       )
       : [];
-    try { await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); }
-    catch { /* The page may not have reached the protected origin. */ }
     try { await browserContext.clearCookies(); } catch { /* Context may already be closing. */ }
+    browserFrllSessions.clear();
     for (const learner of learnerClients) {
       try { await learner.auth.signOut({ scope: 'global' }); } catch { /* Auth deletion still follows. */ }
     }

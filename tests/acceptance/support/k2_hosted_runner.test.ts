@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { BrowserContext, Page, Response as PlaywrightResponse } from '@playwright/test';
 import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
+  assertK210FreshProfileBootstrapSnapshot,
+  assertK2PassiveBrainUiMatchesResponse,
+  assertK2PassiveTodayUiMatchesPlan,
   createLearnerProfile,
   cleanupK209FixtureAfterActorProofs,
   cleanupK209FixtureAfterCurrentRun,
@@ -9,12 +13,15 @@ import {
   k2HostedWaveCheckpoint,
   markK2HostedCheckpoint,
   markK2HostedFinalizerComplete,
+  isK2PassiveTodayApiResponse,
+  isK2PassiveBrainApiResponse,
   createK2OpaqueIdProjector,
   exactK208FixtureStateReadback,
   normalizeK2WaveRequest,
   projectK2WaveApiPayload,
   requestK2HostedApi,
   runK2ProtectedAuthUiSignIn,
+  signInInitialK210Actor,
   verifyK2FixtureZeroRowHead,
   type K2ProtectedAuthUiInteractions,
   type K2ProtectedAuthUiResponse,
@@ -35,6 +42,18 @@ import {
 import * as k2HostedProbeClient from './k2_hosted_probe_client';
 import type { TestInfo } from '@playwright/test';
 import { assertK2HostedDueOnlyPlanReplay } from './k2_hosted_wave_k2_08_due_only';
+import {
+  mockBrainConceptListResponse,
+  mockBrainSummaryResponse,
+  mockTodayPlanResponse,
+  mockZeroEvidenceCompetence,
+} from '../../../packages/types/src/api/mock-fixtures';
+import type {
+  BrainConceptListResponseDto,
+  BrainSummaryResponseDto,
+  TodayActivityDto,
+  TodayPlanDto,
+} from '../../../packages/types/src/api/dtos';
 
 const actor = {
   id: 'fake-actor-id-marker',
@@ -77,6 +96,403 @@ async function rejectedError(operation: Promise<unknown>): Promise<Error> {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe('K2 passive Today plan and UI parity', () => {
+  const vercelOrigin = 'https://app.example.invalid';
+  const profileId = '00000000-0000-4000-8000-000000000021';
+
+  function apiResponse(payload: unknown, status = 200): Pick<PlaywrightResponse, 'status' | 'json'> {
+    return { status: () => status, json: async () => payload };
+  }
+
+  function pageWithWait(waitFor = vi.fn(async () => {})) {
+    const locator = { waitFor };
+    return {
+      page: {
+        getByRole: vi.fn(() => locator),
+        getByText: vi.fn(() => locator),
+      } as unknown as Pick<Page, 'getByRole' | 'getByText'>,
+      waitFor,
+    };
+  }
+
+  function todayPayload(
+    activities: readonly TodayActivityDto[],
+    languageProfileId = profileId,
+    status: TodayPlanDto['status'] = 'active',
+  ) {
+    return {
+      data: { ...mockTodayPlanResponse.data, languageProfileId, status, activities },
+      meta: mockTodayPlanResponse.meta,
+    };
+  }
+
+  it('accepts a contract-valid empty plan only with its empty-state UI', async () => {
+    const page = pageWithWait();
+    const payload = todayPayload([], profileId, 'completed');
+
+    const plan = await assertK2PassiveTodayUiMatchesPlan(page.page, apiResponse(payload), profileId);
+
+    expect(plan.activities).toEqual([]);
+    expect(page.page.getByRole).toHaveBeenCalledWith('heading', {
+      name: 'Không có bài học nào cần ôn hôm nay', exact: true,
+    });
+    expect(page.page.getByText).not.toHaveBeenCalled();
+    expect(page.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 30_000 });
+  });
+
+  it('accepts a no-review content plan only when the UI shows the returned activities', async () => {
+    const page = pageWithWait();
+    const activities = mockTodayPlanResponse.data.activities.filter(activity =>
+      activity.activityType === 'read' || activity.activityType === 'listen' ||
+      activity.activityType === 'learn');
+    const payload = todayPayload(activities);
+
+    const plan = await assertK2PassiveTodayUiMatchesPlan(page.page, apiResponse(payload), profileId);
+
+    expect(plan.activities).toHaveLength(3);
+    expect(page.page.getByText).toHaveBeenCalledWith(
+      'LINGUA OS đã chọn 3 hoạt động tối ưu nhất cho bạn.', { exact: true },
+    );
+    expect(page.page.getByRole).toHaveBeenCalledTimes(3);
+    for (const activity of activities) {
+      expect(page.page.getByRole).toHaveBeenCalledWith('heading', {
+        name: activity.title, exact: true,
+      });
+    }
+  });
+
+  it('rejects a plan bound to another profile before checking UI', async () => {
+    const page = pageWithWait();
+    const foreignProfileId = '00000000-0000-4000-8000-000000000022';
+
+    await expect(assertK2PassiveTodayUiMatchesPlan(
+      page.page, apiResponse(todayPayload([], foreignProfileId, 'completed')), profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Today profile binding did not match.');
+
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+    expect(page.page.getByText).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid DTO and any Review activity in the passive plan', async () => {
+    const invalidPage = pageWithWait();
+    await expect(assertK2PassiveTodayUiMatchesPlan(
+      invalidPage.page, apiResponse({ data: { id: 'invalid' }, meta: mockTodayPlanResponse.meta }), profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Today DTO failed contract validation.');
+    expect(invalidPage.page.getByRole).not.toHaveBeenCalled();
+
+    const reviewPage = pageWithWait();
+    const reviewActivity = mockTodayPlanResponse.data.activities.find(activity =>
+      activity.activityType === 'review');
+    if (!reviewActivity) throw new Error('Today fixture has no Review activity.');
+    await expect(assertK2PassiveTodayUiMatchesPlan(
+      reviewPage.page,
+      apiResponse(todayPayload([reviewActivity])),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Today plan included a review activity.');
+    expect(reviewPage.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('redacts a failed UI match instead of exposing page content', async () => {
+    const page = pageWithWait(vi.fn(async () => {
+      throw new Error('PRIVATE_ACTIVITY_TITLE PRIVATE_PROFILE_MARKER');
+    }));
+    const readActivity = mockTodayPlanResponse.data.activities.find(activity =>
+      activity.activityType === 'read');
+    if (!readActivity) throw new Error('Today fixture has no content activity.');
+
+    let failure: unknown;
+    try {
+      await assertK2PassiveTodayUiMatchesPlan(
+        page.page,
+        apiResponse(todayPayload([readActivity])),
+        profileId,
+      );
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message)
+      .toBe('K2 hosted acceptance passive Today UI did not match its validated plan.');
+    expect(String(failure)).not.toContain('PRIVATE_ACTIVITY_TITLE');
+    expect(String(failure)).not.toContain('PRIVATE_PROFILE_MARKER');
+  });
+
+  it('accepts only same-origin GET responses for the Today API path', () => {
+    const response = (url: string, method: string): Pick<PlaywrightResponse, 'url' | 'request'> => ({
+      url: () => url,
+      request: () => ({ method: () => method }) as never,
+    });
+
+    expect(isK2PassiveTodayApiResponse(
+      response(`${vercelOrigin}/api/v1/today`, 'GET'), vercelOrigin,
+    )).toBe(true);
+    expect(isK2PassiveTodayApiResponse(
+      response('https://other.example.invalid/api/v1/today', 'GET'), vercelOrigin,
+    )).toBe(false);
+    expect(isK2PassiveTodayApiResponse(
+      response(`${vercelOrigin}/api/v1/other`, 'GET'), vercelOrigin,
+    )).toBe(false);
+    expect(isK2PassiveTodayApiResponse(
+      response(`${vercelOrigin}/api/v1/today`, 'POST'), vercelOrigin,
+    )).toBe(false);
+  });
+});
+
+describe('K2 passive Brain projection and empty UI parity', () => {
+  const vercelOrigin = 'https://app.example.invalid';
+  const profileId = '00000000-0000-4000-8000-000000000021';
+  const otherProfileId = '00000000-0000-4000-8000-000000000022';
+
+  function apiResponse(payload: unknown, status = 200): Pick<PlaywrightResponse, 'status' | 'json'> {
+    return { status: () => status, json: async () => payload };
+  }
+
+  function pageWithWait(waitFor = vi.fn(async () => {})) {
+    const locator = { waitFor };
+    return {
+      page: { getByRole: vi.fn(() => locator) } as unknown as Pick<Page, 'getByRole'>,
+      waitFor,
+    };
+  }
+
+  function emptySummary(languageProfileId = profileId): BrainSummaryResponseDto {
+    return {
+      ...mockBrainSummaryResponse,
+      data: {
+        ...mockBrainSummaryResponse.data,
+        languageProfileId,
+        statusCounts: {
+          total: 0,
+          unseen: 0,
+          discovered: 0,
+          learning: 0,
+          familiar: 0,
+          active: 0,
+          mastered: 0,
+          weak: 0,
+          forgotten: 0,
+        },
+        dueCount: 0,
+        competence: mockZeroEvidenceCompetence,
+        startingLevelEstimate: null,
+        recentConcepts: [],
+      },
+    };
+  }
+
+  function emptyConcepts(): BrainConceptListResponseDto {
+    return {
+      ...mockBrainConceptListResponse,
+      data: [],
+      meta: {
+        ...mockBrainConceptListResponse.meta,
+        nextCursor: null,
+        hasMore: false,
+        pageSize: 0,
+      },
+    };
+  }
+
+  it('accepts only the contract-valid empty Brain projection with its empty UI', async () => {
+    const page = pageWithWait();
+
+    await assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse(emptyConcepts()),
+      profileId,
+    );
+
+    expect(page.page.getByRole).toHaveBeenCalledWith('heading', {
+      name: 'Chưa có từ vựng trong Brain', exact: true,
+    });
+    expect(page.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 30_000 });
+  });
+
+  it('rejects a nonempty Brain DTO before checking the empty-state UI', async () => {
+    const page = pageWithWait();
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse({
+        ...emptySummary(),
+        data: {
+          ...emptySummary().data,
+          statusCounts: { ...emptySummary().data.statusCounts, total: 1, learning: 1 },
+        },
+      }),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse(mockBrainConceptListResponse),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it.each(['recognition', 'listening', 'production'] as const)(
+    'rejects nonzero %s evidence in an otherwise empty Brain projection', async dimension => {
+      const page = pageWithWait();
+      const summary = emptySummary();
+      const summaryWithEvidence: BrainSummaryResponseDto = {
+        ...summary,
+        data: {
+          ...summary.data,
+          competence: {
+            ...summary.data.competence,
+            [dimension]: {
+              ...summary.data.competence[dimension],
+              evidenceCount: 1,
+            },
+          },
+        },
+      };
+
+      await expect(assertK2PassiveBrainUiMatchesResponse(
+        page.page,
+        apiResponse(summaryWithEvidence),
+        apiResponse(emptyConcepts()),
+        profileId,
+      )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+      expect(page.page.getByRole).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a non-null starting-level estimate in an otherwise empty Brain projection', async () => {
+    const page = pageWithWait();
+    const summary = emptySummary();
+    const summaryWithEstimate: BrainSummaryResponseDto = {
+      ...summary,
+      data: {
+        ...summary.data,
+        startingLevelEstimate: mockBrainSummaryResponse.data.startingLevelEstimate,
+      },
+    };
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(summaryWithEstimate),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects a summary bound to another profile before checking UI', async () => {
+    const page = pageWithWait();
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary(otherProfileId)),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain profile binding did not match.');
+
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid Brain summary or concept-list DTOs', async () => {
+    const page = pageWithWait();
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse({ data: { id: 'invalid' }, meta: mockBrainSummaryResponse.meta }),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain DTO failed contract validation.');
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse({ data: 'invalid', meta: mockBrainConceptListResponse.meta }),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain DTO failed contract validation.');
+
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-200 responses before reading their bodies', async () => {
+    const page = pageWithWait();
+    const unreadable = { status: () => 401, json: vi.fn(async () => ({})) };
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      unreadable,
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain response was not HTTP 200.');
+
+    expect(unreadable.json).not.toHaveBeenCalled();
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse(emptyConcepts(), 503),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain response was not HTTP 200.');
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('redacts body and UI failures', async () => {
+    const bodyPage = pageWithWait();
+    const privateMarker = 'PRIVATE_BRAIN_PAYLOAD_PROFILE_TOKEN';
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      bodyPage.page,
+      { status: () => 200, json: async () => { throw new Error(privateMarker); } },
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain response body was invalid.');
+
+    const uiPage = pageWithWait(vi.fn(async () => { throw new Error(privateMarker); }));
+    const failure = await assertK2PassiveBrainUiMatchesResponse(
+      uiPage.page,
+      apiResponse(emptySummary()),
+      apiResponse(emptyConcepts()),
+      profileId,
+    ).catch(error => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message)
+      .toBe('K2 hosted acceptance passive Brain UI did not match its validated projection.');
+    expect(String(failure)).not.toContain(privateMarker);
+  });
+
+  it('matches same-origin Brain GETs without reading credentials', () => {
+    const response = (url: string, method: string): Pick<PlaywrightResponse, 'url' | 'request'> => ({
+      url: () => url,
+      request: () => ({ method: () => method }) as never,
+    });
+
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/summary`, 'GET'), vercelOrigin, profileId,
+    )).toBe(true);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/concepts?languageProfileId=${profileId}`, 'GET'),
+      vercelOrigin,
+      profileId,
+    )).toBe(true);
+    expect(isK2PassiveBrainApiResponse(
+      response(`https://other.example.invalid/api/v1/brain/summary`, 'GET'), vercelOrigin, profileId,
+    )).toBe(false);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/summary`, 'POST'), vercelOrigin, profileId,
+    )).toBe(false);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/concepts?languageProfileId=${otherProfileId}`, 'GET'),
+      vercelOrigin,
+      profileId,
+    )).toBe(false);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/concepts?languageProfileId=${profileId}&cursor=opaque`, 'GET'),
+      vercelOrigin,
+      profileId,
+    )).toBe(false);
+  });
 });
 
 describe('K2 hosted phase diagnostics', () => {
@@ -1002,6 +1418,63 @@ describe('K2-09 current-run fixture recovery', () => {
   });
 });
 
+describe('K2-10 fresh profile bootstrap snapshot', () => {
+  function snapshot(
+    rowOverrides: Partial<Record<k2HostedProbeClient.K2RetainedTableName, number>> = {},
+  ): k2HostedProbeClient.K2RetainedSnapshot {
+    const tables = Object.fromEntries(k2HostedProbeClient.k2RetainedTableNames().map(table => [
+      table,
+      { rows: rowOverrides[table] ?? 0, sha256: '0'.repeat(64) },
+    ])) as k2HostedProbeClient.K2RetainedSnapshot['tables'];
+    return {
+      tables,
+      totalRows: Object.values(tables).reduce((total, table) => total + table.rows, 0),
+    };
+  }
+
+  it('accepts the exact fresh onboarding rows including the profile-create receipt', () => {
+    const afterBootstrap = snapshot({
+      users: 1,
+      learner_profiles: 1,
+      user_languages: 1,
+      profile_mutation_results: 1,
+    });
+
+    expect(() => assertK210FreshProfileBootstrapSnapshot(afterBootstrap)).not.toThrow();
+  });
+
+  it('rejects an aggregate count that does not match the exact bootstrap rows', () => {
+    const exactRows = snapshot({
+      users: 1,
+      learner_profiles: 1,
+      user_languages: 1,
+      profile_mutation_results: 1,
+    });
+
+    expect(() => assertK210FreshProfileBootstrapSnapshot({ ...exactRows, totalRows: 3 }))
+      .toThrow('K2 hosted acceptance K2-10 fresh profile bootstrap snapshot was unexpected.');
+  });
+
+  it.each([
+    ['missing the profile-create receipt', {
+      users: 1, learner_profiles: 1, user_languages: 1,
+    }],
+    ['replacing the profile-create receipt with a review row', {
+      users: 1, learner_profiles: 1, user_languages: 1, review_items: 1,
+    }],
+    ['duplicating the profile-create receipt', {
+      users: 1, learner_profiles: 1, user_languages: 1, profile_mutation_results: 2,
+    }],
+    ['writing an unexpected review row', {
+      users: 1, learner_profiles: 1, user_languages: 1,
+      profile_mutation_results: 1, review_items: 1,
+    }],
+  ] as const)('rejects a fresh bootstrap that is %s', (_case, rows) => {
+    expect(() => assertK210FreshProfileBootstrapSnapshot(snapshot(rows)))
+      .toThrow('K2 hosted acceptance K2-10 fresh profile bootstrap snapshot was unexpected.');
+  });
+});
+
 describe('createLearnerProfile', () => {
   const config = {
     apiOrigin: 'https://staging.example.test',
@@ -1296,6 +1769,72 @@ function apiResponse(
     },
   });
 }
+
+describe('signInInitialK210Actor', () => {
+  const controllerToken = 'header.payload.signature';
+
+  it('binds the verified actor in a short-lived same-context page and leaves the product page blank', async () => {
+    const primaryPage = { url: vi.fn(() => 'about:blank') } as unknown as Page;
+    const controllerPage = { close: vi.fn(async () => {}) } as unknown as Page;
+    const browserContext = {
+      newPage: vi.fn(async () => controllerPage),
+    } as unknown as BrowserContext;
+    const signInController = vi.fn(async (page: Page) => {
+      expect(page).toBe(controllerPage);
+      return controllerToken;
+    });
+
+    const result = await signInInitialK210Actor(
+      primaryPage, browserContext, actor,
+      'https://supabase.example.invalid', 'publishable-marker', 'https://vercel.example.invalid',
+      signInController,
+    );
+
+    expect(result).toBe(controllerToken);
+    expect(browserContext.newPage).toHaveBeenCalledOnce();
+    expect(signInController).toHaveBeenCalledOnce();
+    expect(controllerPage.close).toHaveBeenCalledOnce();
+    expect(primaryPage.url).toHaveBeenCalledTimes(2);
+    expect(primaryPage.url()).toBe('about:blank');
+  });
+
+  it('fails closed and closes the controller when sign-in fails', async () => {
+    const primaryPage = { url: vi.fn(() => 'about:blank') } as unknown as Page;
+    const controllerPage = { close: vi.fn(async () => {}) } as unknown as Page;
+    const browserContext = {
+      newPage: vi.fn(async () => controllerPage),
+    } as unknown as BrowserContext;
+    const signInController = vi.fn(async () => {
+      throw new Error(`private=${actor.email};${actor.password};fake-session-marker`);
+    });
+
+    const error = await rejectedError(signInInitialK210Actor(
+      primaryPage, browserContext, actor,
+      'https://supabase.example.invalid', 'publishable-marker', 'https://vercel.example.invalid',
+      signInController,
+    ));
+    const report = `${error.message}\n${error.stack ?? ''}`;
+
+    expect(error.message).toContain('sensitive details were suppressed');
+    expect(error).not.toHaveProperty('cause');
+    expect(controllerPage.close).toHaveBeenCalledOnce();
+    for (const marker of privateMarkers) expect(report).not.toContain(marker);
+  });
+
+  it('rejects a product page that was navigated before K2-10 sign-in', async () => {
+    const primaryPage = { url: vi.fn(() => 'https://vercel.example.invalid/today') } as unknown as Page;
+    const browserContext = { newPage: vi.fn() } as unknown as BrowserContext;
+    const signInController = vi.fn(async () => controllerToken);
+
+    await expect(signInInitialK210Actor(
+      primaryPage, browserContext, actor,
+      'https://supabase.example.invalid', 'publishable-marker', 'https://vercel.example.invalid',
+      signInController,
+    )).rejects.toThrow('sensitive details were suppressed');
+    expect(browserContext.newPage).not.toHaveBeenCalled();
+    expect(signInController).not.toHaveBeenCalled();
+  });
+});
 
 describe('runK2ProtectedAuthUiSignIn', () => {
   it('preserves the normal sign-in identity check and destination wait', async () => {

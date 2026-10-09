@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -1406,6 +1408,372 @@ def _actor_lineage(
     }
 
 
+def _frll_decimal(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value)
+    if len(text) > 64 or not re.fullmatch(r"-?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?", text):
+        raise ProbeError
+    return text
+
+
+def _frll_timestamp(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        timestamp = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+        text = timestamp.astimezone(timezone.utc).isoformat()
+    elif isinstance(value, str):
+        text = value
+    else:
+        raise ProbeError
+    if len(text) > 64 or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)", text
+    ):
+        raise ProbeError
+    return text
+
+
+def _frll_snapshot_memory(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ProbeError
+    state = value.get("state")
+    params_version = value.get("paramsVersion")
+    step = value.get("step")
+    state_version = value.get("stateVersion")
+    if (
+        state not in {"learning", "review", "relearning"}
+        or not isinstance(params_version, str)
+        or not 1 <= len(params_version) <= 64
+        or type(state_version) is not int
+        or state_version < 2
+    ):
+        raise ProbeError
+    result = {
+        "state": state,
+        "dueAt": _frll_timestamp(value.get("dueAt")),
+        "lastReviewedAt": _frll_timestamp(value.get("lastReviewAt")),
+        "difficulty": _frll_decimal(value.get("difficulty")),
+        "stability": _frll_decimal(value.get("stability")),
+        "step": step,
+        "stateVersion": state_version,
+        "paramsVersion": params_version,
+    }
+    if (
+        result["dueAt"] is None
+        or result["lastReviewedAt"] is None
+        or result["difficulty"] is None
+        or result["stability"] is None
+    ):
+        raise ProbeError
+    if state == "review":
+        if step is not None:
+            raise ProbeError
+    elif type(step) is not int or step < 0:
+        raise ProbeError
+    return result
+
+
+def _frll_snapshot_competence(value: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {"recognition", "listening", "production"}:
+        raise ProbeError
+    result: dict[str, dict[str, Any]] = {}
+    for dimension in ("recognition", "listening", "production"):
+        row = value.get(dimension)
+        if not isinstance(row, dict):
+            raise ProbeError
+        score = _frll_decimal(row.get("score"))
+        confidence = _frll_decimal(row.get("confidence"))
+        evidence_count = row.get("evidenceCount")
+        if score is None or confidence is None or type(evidence_count) is not int or evidence_count < 0:
+            raise ProbeError
+        result[dimension] = {
+            "score": score,
+            "confidence": confidence,
+            "evidenceCount": evidence_count,
+            "updatedAt": _frll_timestamp(row.get("updatedAt")),
+        }
+    return result
+
+
+def _frll_semantic_proof(
+    connection: psycopg.Connection[tuple[Any, ...]],
+    actor_id: UUID,
+    profile_id: UUID,
+    idempotency_key_sha256: str | None,
+) -> dict[str, Any]:
+    # All SQL is fixed SELECT-only and anchored to the one accepted FRLL concept.
+    # Raw review keys and snapshot UUIDs are kept only transiently in this process.
+    identity = connection.execute(
+        """SELECT
+               (SELECT count(*)::integer FROM public.users WHERE id = %s),
+               (SELECT count(*)::integer FROM public.learner_profiles WHERE user_id = %s),
+               (SELECT count(*)::integer FROM public.user_languages WHERE user_id = %s),
+               (SELECT count(*)::integer FROM public.user_languages WHERE user_id = %s AND id = %s)""",
+        (actor_id, actor_id, actor_id, actor_id, profile_id),
+    ).fetchone()
+    if identity is None or any(type(value) is not int or not 0 <= value <= 20 for value in identity):
+        raise ProbeError
+    user_rows, learner_profile_rows, language_profile_rows, bound_rows = identity
+
+    save_counts = connection.execute(
+        """SELECT
+               (SELECT count(*)::integer FROM public.user_saved_concepts
+                WHERE user_id = %s AND concept_id = %s),
+               (SELECT count(*)::integer FROM public.concept_save_intents
+                WHERE user_id = %s AND concept_id = %s),
+               (SELECT count(*)::integer FROM public.learning_events AS event
+                JOIN public.concept_save_intents AS intent
+                  ON event.source_type = 'concept_save_intent'
+                 AND event.source_event_id = intent.id AND event.user_id = intent.user_id
+                WHERE intent.user_id = %s AND intent.concept_id = %s
+                  AND event.event_type = 'learning.concept.saved.v1'),
+               (SELECT count(*)::integer FROM public.review_items
+                WHERE user_id = %s AND concept_id = %s),
+               (SELECT count(*)::integer FROM public.fsrs_states AS memory
+                JOIN public.review_items AS item ON item.id = memory.review_item_id
+                WHERE item.user_id = %s AND item.concept_id = %s)""",
+        (actor_id, K2_ANCHOR_CONCEPT_ID, actor_id, K2_ANCHOR_CONCEPT_ID,
+         actor_id, K2_ANCHOR_CONCEPT_ID, actor_id, K2_ANCHOR_CONCEPT_ID,
+         actor_id, K2_ANCHOR_CONCEPT_ID),
+    ).fetchone()
+    if save_counts is None or any(type(value) is not int or not 0 <= value <= 100 for value in save_counts):
+        raise ProbeError
+
+    concept_rows = connection.execute(
+        """SELECT status, mastery::text, confidence::text, exposure_count, last_seen_at,
+                  state_version, has_learning_intent, has_projectable_evidence,
+                  recognition::text, recognition_confidence::text, recognition_evidence_count,
+                  recognition_last_evidence_at,
+                  listening::text, listening_confidence::text, listening_evidence_count,
+                  listening_last_evidence_at,
+                  production::text, production_confidence::text, production_evidence_count,
+                  production_last_evidence_at
+           FROM public.user_concept_states
+           WHERE user_id = %s AND concept_id = %s""",
+        (actor_id, K2_ANCHOR_CONCEPT_ID),
+    ).fetchall()
+    if len(concept_rows) > 1:
+        raise ProbeError
+    if concept_rows:
+        row = concept_rows[0]
+        status = row[0]
+        if status not in {"unseen", "discovered", "learning", "familiar", "active", "mastered", "weak", "forgotten"}:
+            raise ProbeError
+        concept = {
+            "rowCount": 1,
+            "status": status,
+            "mastery": _frll_decimal(row[1]),
+            "confidence": _frll_decimal(row[2]),
+            "exposureCount": row[3],
+            "lastSeenAt": _frll_timestamp(row[4]),
+            "stateVersion": row[5],
+            "hasLearningIntent": row[6],
+            "hasProjectableEvidence": row[7],
+            "recognition": {"score": _frll_decimal(row[8]), "confidence": _frll_decimal(row[9]),
+                            "evidenceCount": row[10], "lastEvidenceAt": _frll_timestamp(row[11])},
+            "listening": {"score": _frll_decimal(row[12]), "confidence": _frll_decimal(row[13]),
+                           "evidenceCount": row[14], "lastEvidenceAt": _frll_timestamp(row[15])},
+            "production": {"score": _frll_decimal(row[16]), "confidence": _frll_decimal(row[17]),
+                           "evidenceCount": row[18], "lastEvidenceAt": _frll_timestamp(row[19])},
+        }
+        if (type(concept["exposureCount"]) is not int or concept["exposureCount"] < 0 or
+            type(concept["stateVersion"]) is not int or concept["stateVersion"] < 1 or
+            type(concept["hasLearningIntent"]) is not bool or
+            type(concept["hasProjectableEvidence"]) is not bool):
+            raise ProbeError
+        for dimension in ("recognition", "listening", "production"):
+            details = concept[dimension]
+            if (details["score"] is None or details["confidence"] is None or
+                type(details["evidenceCount"]) is not int or details["evidenceCount"] < 0):
+                raise ProbeError
+    else:
+        empty_dimension = {"score": None, "confidence": None, "evidenceCount": None, "lastEvidenceAt": None}
+        concept = {
+            "rowCount": 0, "status": None, "mastery": None, "confidence": None,
+            "exposureCount": None, "lastSeenAt": None, "stateVersion": None,
+            "hasLearningIntent": None, "hasProjectableEvidence": None,
+            "recognition": empty_dimension, "listening": empty_dimension, "production": empty_dimension,
+        }
+
+    memory_rows = connection.execute(
+        """SELECT memory.state, memory.state_version, memory.due_at, memory.last_review_at,
+                  memory.difficulty::text, memory.stability::text,
+                  memory.params_version, memory.step
+           FROM public.fsrs_states AS memory
+           JOIN public.review_items AS item ON item.id = memory.review_item_id AND item.user_id = memory.user_id
+           WHERE item.user_id = %s AND item.concept_id = %s""",
+        (actor_id, K2_ANCHOR_CONCEPT_ID),
+    ).fetchall()
+    if len(memory_rows) > 1:
+        raise ProbeError
+    if memory_rows:
+        memory_row = memory_rows[0]
+        if (memory_row[0] not in {"new", "learning", "review", "relearning"} or
+            type(memory_row[1]) is not int or memory_row[1] < 1 or
+            not isinstance(memory_row[6], str) or not 1 <= len(memory_row[6]) <= 64):
+            raise ProbeError
+        state = memory_row[0]
+        due_at = _frll_timestamp(memory_row[2])
+        last_review_at = _frll_timestamp(memory_row[3])
+        difficulty = _frll_decimal(memory_row[4])
+        stability = _frll_decimal(memory_row[5])
+        step = memory_row[7]
+        if due_at is None:
+            raise ProbeError
+        if state == "new":
+            if (
+                last_review_at is not None
+                or difficulty is not None
+                or stability is not None
+                or step is not None
+            ):
+                raise ProbeError
+        elif state == "review":
+            if (
+                last_review_at is None
+                or difficulty is None
+                or stability is None
+                or step is not None
+            ):
+                raise ProbeError
+        elif (
+            last_review_at is None
+            or difficulty is None
+            or stability is None
+            or type(step) is not int
+            or step < 0
+        ):
+            raise ProbeError
+        memory = {
+            "rowCount": 1, "state": state, "stateVersion": memory_row[1],
+            "dueAt": due_at, "lastReviewedAt": last_review_at,
+            "difficulty": difficulty, "stability": stability, "step": step,
+            "paramsVersion": memory_row[6],
+        }
+    else:
+        memory = {
+            "rowCount": 0, "state": None, "stateVersion": None, "dueAt": None,
+            "lastReviewedAt": None, "difficulty": None, "stability": None, "step": None,
+            "paramsVersion": None,
+        }
+
+    review_rows = connection.execute(
+        """SELECT event.idempotency_key, event.rating, event.response_time_ms, event.correct,
+                  event.exercise_mode, event.evidence_mode,
+                  event.result_memory_snapshot, event.result_competence_snapshot,
+                  (SELECT count(*)::integer FROM public.learning_events AS learning
+                   WHERE learning.user_id = event.user_id AND learning.source_type = 'review_event'
+                     AND learning.source_event_id = event.id
+                     AND learning.event_type = 'learning.review.completed.v1')
+           FROM public.review_events AS event
+           JOIN public.review_items AS item ON item.id = event.review_item_id AND item.user_id = event.user_id
+           WHERE event.user_id = %s AND item.concept_id = %s
+           ORDER BY event.created_at, event.id""",
+        (actor_id, K2_ANCHOR_CONCEPT_ID),
+    ).fetchall()
+    if len(review_rows) > 10:
+        raise ProbeError
+    if review_rows:
+        (event_key, rating, response_time_ms, correct, exercise_mode, evidence_mode,
+         memory_snapshot, competence_snapshot, learning_count) = review_rows[-1]
+        if (rating not in {"again", "hard", "good", "easy"} or
+            type(response_time_ms) is not int or response_time_ms < 0 or
+            (correct is not None and type(correct) is not bool) or
+            exercise_mode not in {
+                "self_recall", "multiple_choice", "typing", "cloze", "listening",
+            } or
+            (correct is not None and exercise_mode != "self_recall") or
+            evidence_mode not in {"recognition", "listening", "cloze", "production"} or
+            type(learning_count) is not int or not 0 <= learning_count <= 10 or
+            not isinstance(event_key, str)):
+            raise ProbeError
+        review = {
+            "eventRows": len(review_rows),
+            "reviewLearningEventRows": sum(row[8] for row in review_rows),
+            "idempotencyKeyMatched": bool(idempotency_key_sha256 and
+                hashlib.sha256(event_key.encode("utf-8")).hexdigest() == idempotency_key_sha256),
+            "rating": rating,
+            "responseTimeMs": response_time_ms,
+            "correct": correct,
+            "exerciseMode": exercise_mode,
+            "evidenceMode": evidence_mode,
+            "resultMemory": _frll_snapshot_memory(memory_snapshot),
+            "resultCompetence": _frll_snapshot_competence(competence_snapshot),
+        }
+    else:
+        review = {
+            "eventRows": 0, "reviewLearningEventRows": 0, "idempotencyKeyMatched": False,
+            "rating": None, "responseTimeMs": None, "correct": None,
+            "exerciseMode": None, "evidenceMode": None,
+            "resultMemory": None, "resultCompetence": None,
+        }
+
+    head_rows = connection.execute(
+        """SELECT next_ingestion_sequence, projection_method_version, state_version
+           FROM public.user_language_projection_heads
+           WHERE user_id = %s AND user_language_id = %s""",
+        (actor_id, profile_id),
+    ).fetchall()
+    if len(head_rows) > 1:
+        raise ProbeError
+    if head_rows:
+        next_sequence, method_version, projection_state_version = head_rows[0]
+        if (type(next_sequence) is not int or next_sequence < 1 or
+            not isinstance(method_version, str) or not 1 <= len(method_version) <= 64 or
+            type(projection_state_version) is not int or projection_state_version < 1):
+            raise ProbeError
+        projection_head = {
+            "headRows": 1, "nextIngestionSequence": next_sequence,
+            "methodVersion": method_version, "stateVersion": projection_state_version,
+        }
+    else:
+        projection_head = {"headRows": 0, "nextIngestionSequence": None,
+                           "methodVersion": None, "stateVersion": None}
+
+    skill_rows = connection.execute(
+        """SELECT skill, score::text, confidence::text, evidence_count, state_version,
+                  last_evidence_at, method_version
+           FROM public.user_skill_states
+           WHERE user_id = %s AND user_language_id = %s
+           ORDER BY skill""",
+        (actor_id, profile_id),
+    ).fetchall()
+    if len(skill_rows) > 3:
+        raise ProbeError
+    skills: list[dict[str, Any]] = []
+    for skill, score, confidence, evidence_count, state_version, last_evidence_at, method_version in skill_rows:
+        if (skill not in {"recognition", "listening", "production"} or
+            _frll_decimal(score) is None or _frll_decimal(confidence) is None or
+            type(evidence_count) is not int or evidence_count < 0 or
+            type(state_version) is not int or state_version < 1 or
+            not isinstance(method_version, str) or not 1 <= len(method_version) <= 64):
+            raise ProbeError
+        skills.append({
+            "skill": skill, "score": _frll_decimal(score), "confidence": _frll_decimal(confidence),
+            "evidenceCount": evidence_count, "stateVersion": state_version,
+            "lastEvidenceAt": _frll_timestamp(last_evidence_at), "methodVersion": method_version,
+        })
+    if len({item["skill"] for item in skills}) != len(skills):
+        raise ProbeError
+
+    return {
+        "identity": {
+            "userRows": user_rows, "learnerProfileRows": learner_profile_rows,
+            "languageProfileRows": language_profile_rows, "profileBound": bound_rows == 1,
+        },
+        "save": {
+            "savedMembershipRows": save_counts[0], "saveIntentRows": save_counts[1],
+            "saveLearningEventRows": save_counts[2], "reviewItemRows": save_counts[3],
+            "fsrsStateRows": save_counts[4],
+        },
+        "concept": concept,
+        "memory": memory,
+        "review": review,
+        "projection": {**projection_head, "skillRows": len(skills), "skills": skills},
+    }
+
+
 def _today_review_targets(
     connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID
 ) -> dict[str, Any]:
@@ -1483,7 +1851,10 @@ def main() -> int:
     actor_value = os.environ.get("K2_ACCEPTANCE_ACTOR_ID", "")
     profile_value = os.environ.get("K2_ACCEPTANCE_PROFILE_ID", "")
     concept_values = os.environ.get("K2_ACCEPTANCE_CONCEPT_IDS", "")
+    idempotency_key_sha256 = os.environ.get("K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256", "")
     try:
+        if os.environ.get("K2_ACCEPTANCE_IDEMPOTENCY_KEY") is not None:
+            raise ProbeError
         actor_id = UUID(actor_value) if actor_value else None
         profile_id = UUID(profile_value) if profile_value else None
         raw_concepts = json.loads(concept_values) if concept_values else None
@@ -1513,17 +1884,24 @@ def main() -> int:
             "k208_catalog_preflight",
             "k208_candidate_base",
             "k208_due_candidate_overlap",
+            "frll_anchor_semantic_proof",
         }:
             raise ProbeError
         if (
-            action in {"actor_snapshot", "actor_lineage", "actor_absent", "today_review_targets"}
+            action in {"actor_snapshot", "actor_lineage", "actor_absent", "today_review_targets",
+                       "frll_anchor_semantic_proof"}
             and actor_id is None
         ):
             raise ProbeError
-        if action in {"k208_candidate_base", "k208_due_candidate_overlap"}:
+        if action in {"k208_candidate_base", "k208_due_candidate_overlap", "frll_anchor_semantic_proof"}:
             if actor_id is None or profile_id is None:
                 raise ProbeError
         elif profile_id is not None:
+            raise ProbeError
+        if idempotency_key_sha256 and (
+            action != "frll_anchor_semantic_proof"
+            or not re.fullmatch(r"[a-f0-9]{64}", idempotency_key_sha256)
+        ):
             raise ProbeError
         if action == "k208_due_candidate_overlap":
             if due_concept_ids is None:
@@ -1561,6 +1939,12 @@ def main() -> int:
                     raise ProbeError
                 output = _k208_due_candidate_overlap(
                     connection, actor_id, profile_id, due_concept_ids
+                )
+            elif action == "frll_anchor_semantic_proof":
+                if actor_id is None or profile_id is None:
+                    raise ProbeError
+                output = _frll_semantic_proof(
+                    connection, actor_id, profile_id, idempotency_key_sha256 or None
                 )
             elif action == "actor_lineage":
                 if actor_id is None:

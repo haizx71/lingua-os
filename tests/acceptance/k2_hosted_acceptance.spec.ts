@@ -18,6 +18,7 @@ import { k2HostedWaveK207 } from './support/k2_hosted_wave_k2_07';
 import { k2HostedWaveK208DueOnly } from './support/k2_hosted_wave_k2_08_due_only';
 import { k2HostedWaveK208 } from './support/k2_hosted_wave_k2_08';
 import { k2HostedWaveK209 } from './support/k2_hosted_wave_k2_09';
+import { k2HostedWaveK210 } from './support/k2_hosted_wave_k2_10';
 import { cleanupK209FixtureAfterCurrentRun } from './support/k2_hosted_runner';
 
 const RUN_MODE = resolveK2HostedRunMode(process.env.K2_ACCEPTANCE_MODE);
@@ -60,6 +61,14 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
     test.setTimeout(25 * 60_000);
     const config = validateK2HostedEnvironment(process.env, 'acceptance');
     await runK2HostedWave(config, page, context, test.info(), k2HostedWaveK209);
+  });
+
+  test('hosted lifecycle runs the complete fresh-actor FRLL/R1 K2-10 gate', async ({ page, context }) => {
+    test.skip(RUN_MODE !== 'acceptance' || WAVE_SELECTOR !== 'K2-10',
+      'The selected hosted subcase is not K2-10.');
+    test.setTimeout(30 * 60_000);
+    const config = validateK2HostedEnvironment(process.env, 'acceptance');
+    await runK2HostedWave(config, page, context, test.info(), k2HostedWaveK210);
   });
 
   test('strict TTL janitor only reaps marked expired actors', async () => {
