@@ -1,5 +1,11 @@
 # LINGUA OS — MVP Task Board
 
+## PILOT-FULL-WEB-DESIGN — approved option 3 across existing app
+
+Status: DOING — implementation frozen and local verification PASS (633/633 frontend tests, additional 12/12 Reader resume regression, workspace typecheck/generated contracts, lint, production build and browser QA); independent Luna Max review PASS, exact-head CI/Preview pending. Owner-authorized presentation exception, isolated on `codex/pilot-full-web-design` from authoritative master `5d0aa9769a14af3be254982f9f252cf9db24d383`.
+
+Scope and dependencies: [bounded full web plan](plans/PILOT-FULL-WEB-DESIGN.md). Cover existing learner/auth/onboarding/admin presentation while preserving routes, hooks, contracts and all accepted K2/FRLL behavior. Source implementation → regression/build → browser visual/interaction QA → separate Luna Max review → exact-head CI/Preview → normal promotion. No hosted mutation is authorized by this status entry; root Commander retains the shared mutation lock.
+
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
 ## Current Knowledge V2 delivery gate — 2026-10-09

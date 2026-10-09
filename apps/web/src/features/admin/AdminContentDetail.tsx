@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, InlineAlert, LoadingState } from '@lingua/ui';
+import { Badge, Button, Card, InlineAlert, LoadingState } from '@lingua/ui';
 import { mapApiErrorToUi, type ApiClient } from '@lingua/types';
 import { getApiClient } from '../../lib/api/client';
 import {
@@ -42,16 +42,25 @@ export function AdminContentDetail({ contentId, apiClient = getApiClient() }: { 
 
   if (!content && !error) return <LoadingState message="Đang tải bản thảo..." count={2} />;
   if (!content) return <InlineAlert variant="danger" title="Không thể tải nội dung">{error}</InlineAlert>;
+  const statusLabel = ({
+    draft: 'Bản nháp',
+    reviewed: 'Đã kiểm tra',
+    published: 'Đã phát hành',
+    retired: 'Đã ngừng phát hành',
+  } as Record<string, string>)[content.status] ?? 'Trạng thái khác';
   return (
-    <div className="max-w-4xl space-y-5">
-      <header><p className="text-sm text-[var(--text-secondary)]">{content.level} · {content.status}</p><h1 className="text-2xl font-bold text-[var(--text-primary)]">{content.title}</h1></header>
+    <div className="mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
+      <header className="flex min-w-0 flex-col gap-3 rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="min-w-0"><p className="lingua-kicker text-[var(--action-primary)]">{content.level} · Nội dung</p><h1 className="mt-1 break-words text-2xl font-bold tracking-[-0.035em] text-[var(--text-primary)] sm:text-3xl">{content.title}</h1></div>
+        <Badge variant={content.status === 'published' ? 'success' : content.status === 'reviewed' ? 'primary' : 'neutral'} size="md">{statusLabel}</Badge>
+      </header>
       {error && <InlineAlert variant="danger" title="Thao tác không thành công">{error}</InlineAlert>}
       {validation && !validation.isValid && <InlineAlert variant="danger" title="Chưa thể xuất bản"><ul className="list-disc pl-5">{validation.issues.map((issue) => <li key={`${issue.field}:${issue.reason}`}>{issue.reason}</li>)}</ul></InlineAlert>}
-      {validation?.isValid && <InlineAlert variant="success" title="Đã kiểm tra">Nội dung đáp ứng publication gate hiện tại.</InlineAlert>}
-      <Card className="p-5 space-y-2"><h2 className="font-semibold">Nguồn và quyền</h2><p>{content.authorName} · {content.sourceName} · {content.sourceVersion}</p><p className="text-sm text-[var(--text-secondary)]">{content.attributionText}</p><p className="text-sm text-[var(--text-secondary)]">{content.rightsStatement}</p><p className="break-all font-mono text-xs text-[var(--text-muted)]">SHA-256: {content.rawHash}</p></Card>
+      {validation?.isValid && <InlineAlert variant="success" title="Đã kiểm tra">Nội dung đáp ứng yêu cầu phát hành hiện tại.</InlineAlert>}
+      <Card padding="md" className="space-y-2"><h2 className="font-semibold text-[var(--text-primary)]">Nguồn và quyền sử dụng</h2><p className="text-sm text-[var(--text-primary)]">{content.authorName} · {content.sourceName} · {content.sourceVersion}</p><p className="text-sm leading-6 text-[var(--text-secondary)]">{content.attributionText}</p><p className="text-sm leading-6 text-[var(--text-secondary)]">{content.rightsStatement}</p><p className="break-all font-mono text-[11px] text-[var(--text-muted)]">SHA-256: {content.rawHash}</p></Card>
       <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold">Ánh xạ concept theo câu</h2>
+        <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Khái niệm trong câu</h2>
           <p className="text-sm text-[var(--text-secondary)]">
             {content.sentences.filter((sentence) => sentence.conceptCount > 0).length}/{content.sentences.length} câu đã sẵn sàng
           </p>

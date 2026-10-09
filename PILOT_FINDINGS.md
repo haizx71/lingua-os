@@ -16,4 +16,10 @@ Record only short, de-identified observations from learner-authorized feedback, 
 
 PILOT-001 records source and isolated mocked-actor regression verification, not a live signup outcome. PILOT-002 local implementation checks pass (7 suites, 122/122 tests, typecheck, focused lint); independent GPT-6 Luna / Max source review PASS; exact-head CI/Preview and normal promotion remain. PILOT-003 records the owner’s reported comprehension difficulty; the published item has no nonempty Vietnamese sentence translations, while learner API/DTO and benefit from correction are unverified. PILOT-004 is a single-frame owner usability report with source-corroborated hierarchy/labeling concerns, not a broader usability test. No production latency gain/cause, live journey outcome, or catalog-wide comprehension result is established. Overall journey and learning-quality status remain **UNKNOWN**. Background `/health` or deployment status alone does not establish that a learner completed a journey. Retain only de-identified evidence references; do not embed personal data.
 
+## Owner-approved presentation follow-up — 2026-10-09
+
+The owner selected Reader option 3, approved its local prototype, and explicitly authorized applying the design to the entire existing app. This bounded presentation exception addresses PILOT-004: compact reading-first hierarchy, coherent navigation, supplied-meaning reveal, readable tokens and simpler labels. Implementation and source/browser verification are isolated from real learner data; independent review and normal CI/Preview promotion remain required. See [full web plan](plans/PILOT-FULL-WEB-DESIGN.md) and [design QA](design-qa.md).
+
+PILOT-003 remains a content finding: adding a reveal control does not supply missing reviewed translations. The prototype's Vietnamese examples are synthetic test content and are not published to the real catalog. Comprehension benefit and novice usability remain unmeasured.
+
 See the [pilot and V2 freeze plan](plans/REAL-LEARNER-PILOT-V2-FREEZE.md), [separate hardening follow-ups](PILOT_HARDENING.md), [project status](STATUS.md), and [active tasks](TASKS.md).

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from './harness/test-render';
 import { MockApiService } from './harness/mock-api-service';
 import { AppShell } from '@/components/navigation/AppShell';
@@ -50,16 +50,19 @@ vi.mock('next/link', () => ({
 describe('Integration Suite 1: Navigation Shell & Focus Mode', () => {
   it('renders all 5 primary MVP routes in Desktop, Tablet, and Mobile layouts', () => {
     const { unmount: unmountDesktop } = renderWithProviders(<DesktopSidebar currentPath="/today" />);
-    expect(screen.getByRole('link', { name: /Hôm nay/i })).toHaveAttribute('href', '/today');
-    expect(screen.getByRole('link', { name: /Đọc/i })).toHaveAttribute('href', '/read');
-    expect(screen.getByRole('link', { name: /Ôn tập/i })).toHaveAttribute('href', '/review');
-    expect(screen.getByRole('link', { name: /Brain/i })).toHaveAttribute('href', '/brain');
-    expect(screen.getByRole('link', { name: /Tiến độ/i })).toHaveAttribute('href', '/progress');
+    const desktop = screen.getByRole('complementary', { name: /Điều hướng màn hình lớn/i });
+    const primary = within(desktop).getByRole('navigation', { name: 'Menu chính' });
+    expect(within(primary).getByRole('link', { name: /Hôm nay/i })).toHaveAttribute('href', '/today');
+    expect(within(primary).getByRole('link', { name: /Đọc/i })).toHaveAttribute('href', '/read');
+    expect(within(primary).getByRole('link', { name: /Ôn tập/i })).toHaveAttribute('href', '/review');
+    expect(within(primary).getByRole('link', { name: /Brain/i })).toHaveAttribute('href', '/brain');
+    expect(within(primary).getByRole('link', { name: /Tiến độ/i })).toHaveAttribute('href', '/progress');
     unmountDesktop();
 
     const { unmount: unmountTablet } = renderWithProviders(<TabletRail currentPath="/read" />);
-    expect(screen.getByRole('complementary', { name: /Điều hướng thanh bên thu gọn/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Đọc/i })).toHaveAttribute('aria-current', 'page');
+    const tablet = screen.getByRole('complementary', { name: /Điều hướng thanh bên thu gọn/i });
+    expect(tablet).toBeInTheDocument();
+    expect(within(tablet).getByRole('link', { name: /Đọc/i })).toHaveAttribute('aria-current', 'page');
     unmountTablet();
 
     const { unmount: unmountMobile } = renderWithProviders(<MobileBottomNav currentPath="/review" />);
@@ -154,7 +157,8 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
 
     // Initial card
     expect(screen.getAllByText('appointment').length).toBeGreaterThan(0);
-    expect(screen.getByText('23 từ đến hạn')).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ còn lại/)).not.toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toHaveAccessibleName('Tiến độ buổi ôn: 0 / 3 thẻ');
 
     // Reveal Answer
     const revealBtn = screen.getByRole('button', { name: /Hiện đáp án & nghĩa/i });
@@ -200,7 +204,7 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
     );
 
     // Click target word 'appointment'
-    const wordBtn = screen.getByRole('button', { name: 'appointment' });
+    const wordBtn = screen.getByRole('button', { name: /appointment/i });
     fireEvent.click(wordBtn);
 
     // Dialog opens with word details
@@ -209,7 +213,7 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
     expect(screen.getByText(/\/əˈpɔɪnt\.mənt\//i)).toBeInTheDocument();
 
     // Click target word 'available'
-    const availableBtn = screen.getByRole('button', { name: 'available' });
+    const availableBtn = screen.getByRole('button', { name: /available/i });
     fireEvent.click(availableBtn);
 
     const saveBtn = screen.getByRole('button', { name: /Lưu vào ôn tập/i });
@@ -220,7 +224,7 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
       expect(onSaveWord).toHaveBeenCalledWith(
         expect.objectContaining({ raw: 'available', isTarget: true })
       );
-      expect(screen.getByText(/Đã lưu "available" vào Language Brain/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đã lưu “available” để học/i)).toBeInTheDocument();
     });
   });
 
@@ -228,23 +232,23 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
     renderWithProviders(<LanguageBrainCanvas />);
 
     // Initial: all nodes visible (6 nodes)
-    expect(screen.getByText(/Mạng lưới khái niệm & từ vựng \(6 từ\)/i)).toBeInTheDocument();
+    expect(screen.getByText('6 mục')).toBeInTheDocument();
 
     // Filter by B1
     const b1Btn = screen.getByRole('button', { name: 'B1' });
     fireEvent.click(b1Btn);
-    expect(screen.getByText(/Mạng lưới khái niệm & từ vựng \(2 từ\)/i)).toBeInTheDocument();
+    expect(screen.getByText('2 mục')).toBeInTheDocument();
 
     // Filter by B2
     const b2Btn = screen.getByRole('button', { name: 'B2' });
     fireEvent.click(b2Btn);
-    expect(screen.getByText(/Mạng lưới khái niệm & từ vựng \(1 từ\)/i)).toBeInTheDocument();
+    expect(screen.getByText('1 mục')).toBeInTheDocument();
     expect(screen.getByText('collaborate')).toBeInTheDocument();
 
     // Click ALL to reset
     const allBtn = screen.getByRole('button', { name: 'ALL' });
     fireEvent.click(allBtn);
-    expect(screen.getByText(/Mạng lưới khái niệm & từ vựng \(6 từ\)/i)).toBeInTheDocument();
+    expect(screen.getByText('6 mục')).toBeInTheDocument();
   });
 
   it('executes Settings daily target minutes and new words budget updates', () => {
@@ -271,7 +275,7 @@ describe('Integration Suite 3: Interactive Workflows & State Machines', () => {
         newWordsBudgetPerDay: 8,
       })
     );
-    expect(screen.getByText(/Đã lưu tùy chọn cục bộ/i)).toBeInTheDocument();
+    expect(screen.getByText(/Giao diện đã được lưu trên thiết bị/i)).toBeInTheDocument();
   });
 
   it('executes Diagnostic Onboarding flow and returns a server-shaped estimate view', () => {

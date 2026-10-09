@@ -91,7 +91,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     // A fresh transport has no cached header token; collection data is sufficient.
     const freshApi = new HttpApiClient({ authTokenProvider: async () => session.access_token, fetchFn });
     render(<AuthProvider customClient={supabaseClient(session)}><LiveOnboardingFlow apiClient={freshApi} navigate={navigate} /></AuthProvider>);
-    expect(await screen.findByRole('button', { name: 'Tới Today' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Tới Hôm nay' })).toBeEnabled();
     expect(fetchFn.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
     expect(fetchFn.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(2);
   });
@@ -154,7 +154,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Khôi phục hồ sơ tiếng Anh' }));
     expect(await screen.findByText(/hãy kiểm tra lại rồi khôi phục/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Khôi phục hồ sơ tiếng Anh' })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Tới Today' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tới Hôm nay' }));
     expect(navigate).toHaveBeenCalledWith('/today');
     expect(fetchFn).toHaveBeenCalledTimes(5);
   });
@@ -203,7 +203,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
     fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
-    await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
     expect(api.updateMe).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({ timeZone: expect.any(String) }),
       headers: { 'If-Match': '"profile-revision-1"' },
@@ -231,12 +231,12 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: /25 phút/i }));
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
     fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
-    await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
     await waitFor(() => expect(screen.getByRole('button', { name: /Cuộc hẹn/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Cuộc hẹn/i }));
-    await waitFor(() => expect(screen.getByText(/Starting Level Estimate/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Tiếp tục tới Today/i }));
+    await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Tiếp tục tới Hôm nay/i }));
     expect(navigate).toHaveBeenCalledWith('/today');
     expect(api.submitStartingLevelResponse).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({ selectedOptionId: expect.any(String) }) }));
   });
@@ -257,7 +257,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Câu hỏi hiện tại do máy chủ quyết định/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Câu hỏi tiếp theo trong bài đánh giá/i)).toBeInTheDocument());
       expect(api.getStartingLevelAssessment).toHaveBeenCalledWith('assessment-resume');
       expect(screen.getByText(mockApiResponses.assessment.data.currentItem?.prompt ?? '')).toBeInTheDocument();
     } finally {
@@ -310,9 +310,9 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
-      await waitFor(() => expect(screen.getByText(/Câu hỏi hiện tại do máy chủ quyết định/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Câu hỏi tiếp theo trong bài đánh giá/i)).toBeInTheDocument());
       expect(api.startStartingLevelAssessment).toHaveBeenCalled();
     } finally {
       setItemSpy.mockRestore();
@@ -335,7 +335,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đã lưu trữ/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Hồ sơ đã lưu trữ' })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Chưa có phiên bản để khôi phục/i })).toBeDisabled();
     expect(api.createMyLanguageProfile).not.toHaveBeenCalled();
   });
@@ -365,7 +365,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
     fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
 
-    await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
     expect(screen.queryByText(/xung đột/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(listSpy).toHaveBeenCalledTimes(2);
@@ -396,7 +396,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
     fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đã lưu trữ/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Hồ sơ đã lưu trữ' })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Khôi phục hồ sơ tiếng Anh/i })).toBeEnabled();
     expect(listSpy).toHaveBeenCalledTimes(2);
   });
@@ -454,7 +454,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByTestId('assessment-text-snippet')).toBeInTheDocument());
       expect(screen.getByText('Đây là đoạn văn mẫu đọc hiểu cho người học.')).toBeInTheDocument();
@@ -491,7 +491,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByTestId('assessment-audio-player')).toBeInTheDocument());
       const playBtn = screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' });
@@ -548,7 +548,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByTestId('assessment-audio-player')).toBeInTheDocument());
 
@@ -596,7 +596,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' })).toBeInTheDocument());
 
@@ -641,7 +641,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
           <LiveOnboardingFlow apiClient={api} navigate={vi.fn()} />
         </AuthProvider>
       );
-      await waitFor(() => expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: /Bắt đầu đánh giá/i }));
       await waitFor(() => expect(screen.getByRole('button', { name: 'Phát đoạn âm thanh bài nghe' })).toBeInTheDocument());
 
@@ -669,7 +669,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Hồ sơ đang tạm dừng/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /Tạo hồ sơ tiếng Anh/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Chọn mục tiêu học tập/i)).not.toBeInTheDocument();
@@ -700,7 +700,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: /Giao tiếp/i }));
     fireEvent.click(screen.getByRole('button', { name: /Tạo hồ sơ tiếng Anh/i }));
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Hồ sơ đang tạm dừng/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i })).toBeEnabled();
     expect(listSpy).toHaveBeenCalledTimes(2);
     expect(createSpy).toHaveBeenCalledTimes(1); // No duplicate POST after paused row is known
@@ -728,7 +728,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Hồ sơ đang tạm dừng/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i }));
 
     await waitFor(() => {
@@ -760,7 +760,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Hồ sơ đang tạm dừng/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i }));
 
     await waitFor(() => {
@@ -793,12 +793,12 @@ describe('TASK-017 live auth and onboarding boundary', () => {
       </AuthProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Hồ sơ tiếng Anh đang tạm dừng/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Hồ sơ đang tạm dừng/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Tiếp tục lộ trình tiếng Anh/i }));
 
     // Upon activating an unestimated active profile, advances to ASSESSMENT_CHOICE
     await waitFor(() => {
-      expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /Bỏ qua đánh giá/i })).toBeEnabled();
   });
@@ -966,7 +966,7 @@ describe('TASK-017 live auth and onboarding boundary', () => {
     // Now Actor B's mutation settles
     resolveMutationB!(me({ timeZone: 'Asia/Ho_Chi_Minh' }));
     await waitFor(() => {
-      expect(screen.getByText(/Đánh giá trình độ khởi điểm/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ước lượng trình độ/i)).toBeInTheDocument();
     });
     expect(createSpy).toHaveBeenCalledTimes(1);
   });

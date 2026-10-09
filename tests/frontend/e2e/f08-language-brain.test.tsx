@@ -39,38 +39,40 @@ function renderPresentationBrain() {
 }
 
 describe('Tier 1: Feature 08 - Language Brain Graph & Memory Model', () => {
-  it('test_brain_page_renders_header_and_learner_state_model_subhead', () => {
+  it('uses a concise learner-facing Brain heading and description', () => {
     renderPresentationBrain();
 
-    expect(screen.getByText('Learner State Model')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Language Brain của bạn/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Bản đồ ghi nhớ thể hiện toàn bộ bằng chứng nhận diện, nghe và sử dụng/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText('Tổng quan ngôn ngữ')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Language Brain' })).toBeInTheDocument();
+    expect(screen.getByText('Xem các khái niệm đã gặp và trạng thái ghi nhớ được ghi nhận.')).toBeInTheDocument();
   });
 
   it('test_brain_page_renders_mastered_concepts_metric_card', () => {
     renderPresentationBrain();
 
-    expect(screen.getByText('Đã vững (Mastered)')).toBeInTheDocument();
-    expect(screen.getByText('483')).toBeInTheDocument();
-    expect(screen.getByText('Trí nhớ dài hạn FSRS')).toBeInTheDocument();
+    const statusSummary = screen.getByRole('region', { name: 'Trạng thái khái niệm' });
+    const masteredCard = within(statusSummary).getByText('Đã vững').closest('div');
+    expect(masteredCard).not.toBeNull();
+    expect(within(masteredCard as HTMLElement).getByText('483')).toBeInTheDocument();
+    expect(screen.getByText('Tổng khái niệm')).toBeInTheDocument();
   });
 
   it('test_brain_page_renders_learning_and_weak_metrics', () => {
     renderPresentationBrain();
 
-    expect(screen.getByText('Đang học (Learning)')).toBeInTheDocument();
-    expect(screen.getByText('71')).toBeInTheDocument();
-
-    expect(screen.getByText('Cần ôn (Weak / Due)')).toBeInTheDocument();
-    expect(screen.getByText('28')).toBeInTheDocument();
+    const statusSummary = screen.getByRole('region', { name: 'Trạng thái khái niệm' });
+    const learningCard = within(statusSummary).getByText('Đang học').closest('div');
+    expect(learningCard).not.toBeNull();
+    expect(within(learningCard as HTMLElement).getByText('71')).toBeInTheDocument();
+    const weakCard = within(statusSummary).getByText('Cần củng cố').closest('div');
+    expect(weakCard).not.toBeNull();
+    expect(within(weakCard as HTMLElement).getByText('28')).toBeInTheDocument();
   });
 
   it('test_brain_page_renders_overall_memory_health_score', () => {
     renderPresentationBrain();
 
-    expect(screen.getByText('Sức khỏe trí nhớ')).toBeInTheDocument();
+    expect(screen.getByText('Sức khỏe ghi nhớ')).toBeInTheDocument();
     expect(screen.getByText('87%')).toBeInTheDocument();
   });
 
@@ -78,7 +80,7 @@ describe('Tier 1: Feature 08 - Language Brain Graph & Memory Model', () => {
     renderPresentationBrain();
 
     expect(
-      screen.getByRole('heading', { level: 2, name: /Bằng chứng năng lực theo chiều kỹ năng/i })
+      screen.getByRole('heading', { level: 2, name: 'Bằng chứng theo kỹ năng' })
     ).toBeInTheDocument();
 
     const progressbars = screen.getAllByRole('progressbar');

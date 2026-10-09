@@ -73,7 +73,7 @@ describe('TASK-ADMIN-001 frontend boundary', () => {
     vi.spyOn(client, 'listAdminContent').mockResolvedValue(response);
     render(<AdminDashboard apiClient={client} />);
 
-    expect(await screen.findByRole('heading', { name: 'Nội dung LINGUA OS' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bài đọc' })).toBeInTheDocument();
     expect(screen.getByText('A calm first morning')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Nội dung mới' })).toHaveAttribute('href', '/admin/content/new');
   });

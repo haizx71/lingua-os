@@ -45,7 +45,7 @@ export function AccountSecurityCard() {
     try {
       await updateEmail(normalized);
       setNewEmail('');
-      setMessage('Yêu cầu đổi email đã được gửi. Hãy hoàn tất các bước xác minh Supabase gửi tới hộp thư liên quan.');
+      setMessage('Yêu cầu đổi email đã được gửi. Hãy hoàn tất xác minh qua email liên quan.');
     } catch {
       setLocalError('Chưa thể đổi email lúc này. Vui lòng kiểm tra địa chỉ email và thử lại.');
     } finally {
@@ -136,7 +136,7 @@ export function AccountSecurityCard() {
         <div>
           <h2 className="text-base font-semibold text-[var(--text-primary)]">Tài khoản & bảo mật</h2>
           <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
-            Identity do Supabase Auth quản lý; hồ sơ học tập và quyền dữ liệu vẫn do LINGUA API kiểm soát.
+            Quản lý email đăng nhập, mật khẩu và các phiên đang sử dụng tài khoản.
           </p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function AccountSecurityCard() {
       <form className="space-y-3 border-t border-[var(--border-subtle)] pt-5" onSubmit={changeEmail}>
         <div>
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">Đổi email đăng nhập</h3>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">Email mới chỉ trở thành identity chính sau khi hoàn tất xác minh theo chính sách Supabase.</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Bạn cần xác minh địa chỉ email mới trước khi dùng địa chỉ đó để đăng nhập.</p>
         </div>
         <Input
           type="email"
@@ -181,7 +181,7 @@ export function AccountSecurityCard() {
       <form className="space-y-3 border-t border-[var(--border-subtle)] pt-5" onSubmit={changePassword}>
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]"><KeyRound className="h-4 w-4" /> Đổi mật khẩu</h3>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">LINGUA không lưu mật khẩu; việc kiểm tra và cập nhật được Supabase Auth thực hiện.</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Dùng mật khẩu hiện tại để đổi sang mật khẩu mới an toàn hơn.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Input type="password" label="Mật khẩu hiện tại" autoComplete="current-password" fullWidth value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
@@ -211,7 +211,7 @@ export function AccountSecurityCard() {
       <div className="space-y-3 border-t border-[var(--status-danger,#E11D48)]/30 pt-5">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--status-danger,#E11D48)]"><Trash2 className="h-4 w-4" /> Xóa tài khoản</h3>
-          <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Thao tác này xóa identity Supabase và dữ liệu người học liên kết bằng cascade. Để giảm rủi ro khi phiên đăng nhập bị chiếm, máy chủ bắt buộc xác thực lại mật khẩu hiện tại ngay trước khi xóa. Không thể hoàn tác.</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Xóa tài khoản sẽ xóa dữ liệu học tập được liên kết và không thể hoàn tác. Nhập email cùng mật khẩu hiện tại để xác nhận.</p>
         </div>
         <Input
           type="email"
@@ -224,7 +224,7 @@ export function AccountSecurityCard() {
         />
         <Input
           type="password"
-          label="Mật khẩu hiện tại để xác thực lại"
+          label="Mật khẩu hiện tại để xóa tài khoản"
           autoComplete="current-password"
           fullWidth
           value={deleteCurrentPassword}

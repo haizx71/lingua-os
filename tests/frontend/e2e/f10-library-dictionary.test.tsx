@@ -13,8 +13,8 @@ describe('Tier 1: Feature 10 - Library & Dictionary', () => {
   it('test_dictionary_renders_header_and_search_input', () => {
     renderWithProviders(<DictionaryPage />);
 
-    expect(screen.getByText('Lexical Engine')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Từ điển & Tra cứu/i })).toBeInTheDocument();
+    expect(screen.getByText('Tra cứu')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Từ điển' })).toBeInTheDocument();
 
     const searchInput = screen.getByPlaceholderText(/Nhập từ vựng, cụm từ tiếng Anh\.\.\./i);
     expect(searchInput).toBeInTheDocument();
@@ -51,8 +51,8 @@ describe('Tier 1: Feature 10 - Library & Dictionary', () => {
   it('test_library_renders_header_and_empty_state_guidance', () => {
     renderWithProviders(<LibraryView forcedState="empty" />);
 
-    expect(screen.getByText('Content & Sentences')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Thư viện của bạn/i })).toBeInTheDocument();
+    expect(screen.getByText('Nội dung đã lưu')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Thư viện' })).toBeInTheDocument();
 
     assertEmptyState('Chưa có bài đọc nào được lưu', 'Đọc bài trong Reader');
   });

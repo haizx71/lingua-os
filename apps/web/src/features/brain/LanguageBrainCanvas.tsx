@@ -19,7 +19,6 @@ import {
 } from '@lingua/ui';
 import {
   Brain,
-  Sparkles,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -177,8 +176,8 @@ export function LanguageBrainCanvas({
   const visibleSelectedNode = detailNode && selectedNodeForContext?.id === detailNode.id ? detailNode : selectedNodeForContext;
   const displayPercent = (value: number | null | undefined): string => value == null ? 'Chưa có dữ liệu' : `${Math.round(value * 100)}%`;
   const summaryCount = (key: keyof BrainSummaryViewModel['statusCounts']): string => summary ? String(summary.statusCounts[key]) : '—';
-  const summarySkillPercent = (dimension: 'recognition' | 'listening' | 'production'): number => summary ? Math.round(summary.competence[dimension].score * 100) : 0;
-  const memoryPercent = summary?.memoryHealth == null ? 0 : Math.round(summary.memoryHealth * 100);
+  const summarySkillPercent = (dimension: 'recognition' | 'listening' | 'production'): number | null => summary ? Math.round(summary.competence[dimension].score * 100) : null;
+  const memoryPercent = summary?.memoryHealth == null ? null : Math.round(summary.memoryHealth * 100);
 
   if (currentState === 'loading') return <LoadingState message="Đang tải dữ liệu mạng lưới Language Brain..." count={4} />;
   if (currentState === 'error') return <ErrorState code={error?.code ?? forcedErrorCode} title="Không thể tải Language Brain" message="Không thể tải dữ liệu Language Brain. Vui lòng thử lại sau." onRetry={handleRetry} />;
@@ -187,55 +186,14 @@ export function LanguageBrainCanvas({
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
       <header className="min-w-0">
-        <div className="lingua-kicker text-[var(--action-primary)]">Learner State Model</div>
-        <h1 className="mt-2 text-[28px] font-black leading-tight tracking-[-0.045em] text-[var(--text-primary)] sm:text-4xl">Language Brain của bạn</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-[15px]">Bản đồ ghi nhớ thể hiện toàn bộ bằng chứng nhận diện, nghe và sử dụng từ vựng của bạn.</p>
+        <div className="lingua-kicker text-[var(--action-primary)]">Tổng quan ngôn ngữ</div>
+        <h1 className="mt-2 text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Language Brain</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Xem các khái niệm đã gặp và trạng thái ghi nhớ được ghi nhận.</p>
       </header>
 
-      <section className="grid min-w-0 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Card padding="lg" className="min-w-0 overflow-hidden rounded-[28px] bg-gradient-to-br from-white via-white to-[var(--accent-teal-soft)]">
-          <div className="lingua-kicker text-[var(--accent-teal-strong)]">Sức khỏe trí nhớ</div>
-          <div className="mt-5 flex flex-col items-center text-center">
-            <div className="relative flex h-44 w-44 items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--accent-teal) ${memoryPercent * 3.6}deg, #e8ece8 0deg)` }}>
-              <div className="absolute inset-[13px] rounded-full bg-white shadow-[inset_0_0_0_1px_var(--border-subtle)]" />
-              <div className="relative z-10">
-                <Brain className="mx-auto h-6 w-6 text-[var(--accent-teal-strong)]" />
-                <div className="mt-1 text-4xl font-black tracking-[-0.06em] text-[var(--text-primary)]">{displayPercent(summary?.memoryHealth)}</div>
-                <div className="mt-1 text-xs font-bold text-[var(--text-muted)]">trạng thái trí nhớ</div>
-              </div>
-            </div>
-            <p className="mt-4 text-xs leading-5 text-[var(--text-secondary)]">{summary?.memoryHealth == null ? 'Chưa đủ bằng chứng để tính sức khỏe trí nhớ.' : 'Theo dõi độ bền của những gì bạn đã học.'}</p>
-            <span className="sr-only">Trí nhớ dài hạn FSRS</span>
-          </div>
-        </Card>
-
-        <Card padding="lg" className="min-w-0 rounded-[28px]">
-          <div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><div className="lingua-kicker">Competence evidence</div><h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-[var(--text-primary)]">Bằng chứng năng lực theo chiều kỹ năng</h2></div><Sparkles className="h-5 w-5 shrink-0 text-[var(--accent-teal)]" /></div>
-          <div className="mt-6 space-y-5">
-            <Progress value={summarySkillPercent('recognition')} max={100} label="Nhận diện khi đọc" showValueText size="sm" />
-            <Progress value={summarySkillPercent('listening')} max={100} label="Nhận diện khi nghe" showValueText size="sm" variant="warning" />
-            <Progress value={summarySkillPercent('production')} max={100} label="Năng lực tự sử dụng" showValueText size="sm" variant="warning" />
-          </div>
-        </Card>
-      </section>
-
-      <section className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          ['Đã vững (Mastered)', summaryCount('mastered'), 'var(--accent-teal-soft)', 'var(--accent-teal-strong)'],
-          ['Đang học (Learning)', summaryCount('learning'), 'var(--surface-blue)', 'var(--action-primary)'],
-          ['Cần ôn (Weak / Due)', summaryCount('weak'), 'var(--surface-warm)', 'var(--status-warning)'],
-          ['Tổng khái niệm', String(nodes.length), 'var(--surface-lilac)', 'var(--accent-purple)'],
-        ].map(([label, value, bg, color]) => (
-          <div key={label} className="min-w-0 rounded-[22px] border border-[var(--border-subtle)] p-4 shadow-[var(--shadow-card)]" style={{ background: bg }}>
-            <span className="truncate text-xs font-semibold text-[var(--text-muted)]">{label}</span>
-            <div className="mt-1 text-2xl font-black tracking-[-0.04em]" style={{ color }}>{value}</div>
-          </div>
-        ))}
-      </section>
-
       <Card padding="lg" className="min-w-0 overflow-hidden rounded-[28px]">
-        <div className="flex min-w-0 flex-col gap-4 border-b border-[var(--border-subtle)] pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><Brain className="h-5 w-5 shrink-0 text-[var(--action-primary)]" /><h3 className="truncate text-base font-black text-[var(--text-primary)]">Mạng lưới khái niệm</h3></div><p className="mt-1 text-xs text-[var(--text-muted)]">{filteredNodes.length} từ đang hiển thị</p><span className="sr-only">Mạng lưới khái niệm &amp; từ vựng ({filteredNodes.length} từ)</span></div>
+          <div className="flex min-w-0 flex-col gap-4 border-b border-[var(--border-subtle)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><Brain className="h-5 w-5 shrink-0 text-[var(--action-primary)]" /><h3 className="truncate text-base font-bold text-[var(--text-primary)]">Khái niệm</h3></div><p className="mt-1 text-xs text-[var(--text-muted)]">{filteredNodes.length} mục</p></div>
           <div className="flex shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-subtle)] p-1">
             <Button variant="ghost" size="icon" onClick={() => handleZoomChange(zoomLevel - 10)} aria-label="Thu nhỏ mạng lưới"><ZoomOut className="h-4 w-4" /></Button>
             <span className="w-11 text-center font-mono text-[11px] text-[var(--text-muted)]">{zoomLevel}%</span>
@@ -247,16 +205,17 @@ export function LanguageBrainCanvas({
         <div className="mt-4 min-w-0 space-y-3">
           <div className="relative min-w-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-            <input type="text" placeholder="Lọc từ vựng trong Brain..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="min-h-11 w-full min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-9 pr-3 text-base text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus-ring)] sm:text-sm" />
+            <label htmlFor="brain-concept-search" className="sr-only">Tìm khái niệm trong Brain</label>
+            <input id="brain-concept-search" type="search" placeholder="Lọc từ vựng trong Brain..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="min-h-11 w-full min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-9 pr-3 text-base text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus-ring)] sm:text-sm" />
           </div>
 
           <div className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
             {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => <button key={lvl} type="button" aria-label={lvl === 'ALL' ? 'ALL' : undefined} onClick={() => setSelectedCefr(lvl)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedCefr === lvl ? 'bg-[var(--action-primary)] text-white' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{lvl === 'ALL' ? 'Tất cả CEFR' : lvl}</button>)}
-            {[{ id: 'ALL', label: 'Tất cả' }, { id: 'mastered', label: 'Đã vững' }, { id: 'learning', label: 'Đang học' }, { id: 'weak', label: 'Cần củng cố' }].map((st) => <button key={st.id} type="button" onClick={() => setSelectedStatus(st.id)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedStatus === st.id ? 'bg-[var(--accent-teal)] text-white' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{st.label}</button>)}
+            {[{ id: 'ALL', label: 'Tất cả' }, { id: 'mastered', label: 'Đã vững' }, { id: 'learning', label: 'Đang học' }, { id: 'weak', label: 'Cần củng cố' }].map((st) => <button key={st.id} type="button" onClick={() => setSelectedStatus(st.id)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedStatus === st.id ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{st.label}</button>)}
           </div>
         </div>
 
-        <div ref={viewportRef} className="relative mt-4 h-[380px] w-full overflow-hidden rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)] sm:h-[520px]">
+        <div ref={viewportRef} className="relative mt-4 min-h-[250px] w-full overflow-hidden rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)] sm:min-h-[340px]">
           <div ref={stageRef} className="flex min-w-full flex-wrap content-start gap-3 p-4 will-change-transform sm:p-6" style={{ transformOrigin: '0 0' }}>
             {filteredNodes.length === 0 ? <div className="w-full py-12 text-center text-sm text-[var(--text-secondary)]">Không tìm thấy từ vựng nào khớp với bộ lọc.</div> : filteredNodes.map((node) => (
               <button key={node.id} ref={(el) => { nodeRefs.current[node.id] = el; }} type="button" onClick={() => handleNodeClick(node)} className="rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]">
@@ -267,8 +226,49 @@ export function LanguageBrainCanvas({
         </div>
       </Card>
 
+      <section className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Trạng thái khái niệm">
+        {[
+          ['Đã vững', summaryCount('mastered'), 'var(--status-success-bg)', 'var(--status-success)'],
+          ['Đang học', summaryCount('learning'), 'var(--surface-blue)', 'var(--action-primary)'],
+          ['Cần củng cố', summaryCount('weak'), 'var(--status-warning-bg)', 'var(--status-warning)'],
+          ['Tổng khái niệm', String(nodes.length), 'var(--surface-lilac)', 'var(--accent-purple)'],
+        ].map(([label, value, bg, color]) => (
+          <div key={label} className="min-w-0 rounded-[22px] border border-[var(--border-subtle)] p-4 shadow-[var(--shadow-card)]" style={{ background: bg }}>
+            <span className="truncate text-xs font-semibold text-[var(--text-muted)]">{label}</span>
+            <div className="mt-1 text-2xl font-black tracking-[-0.04em]" style={{ color }}>{value}</div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid min-w-0 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]" aria-label="Ghi nhớ và kỹ năng">
+        <Card padding="md" className="min-w-0 overflow-hidden bg-[var(--surface-lilac)]">
+          <div className="lingua-kicker text-[var(--action-primary)]">Sức khỏe ghi nhớ</div>
+          <div className="mt-3 flex min-w-0 items-center gap-4">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full" style={{ background: memoryPercent === null ? 'var(--surface-subtle)' : `conic-gradient(var(--action-primary) ${memoryPercent * 3.6}deg, var(--surface-subtle) 0deg)` }}>
+              <div className="absolute inset-[7px] rounded-full bg-[var(--surface)] shadow-[inset_0_0_0_1px_var(--border-subtle)]" />
+              <div className="relative z-10 text-center">
+                <Brain className="mx-auto h-4 w-4 text-[var(--action-primary)]" />
+                <div className="mt-1 max-w-[64px] text-xs font-bold leading-tight text-[var(--text-primary)]">{displayPercent(summary?.memoryHealth)}</div>
+              </div>
+            </div>
+            <p className="min-w-0 text-xs leading-5 text-[var(--text-secondary)]">{summary?.memoryHealth == null ? 'Chưa có dữ liệu ghi nhớ.' : 'Ước lượng từ dữ liệu ghi nhớ hiện có.'}</p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="min-w-0">
+          <div className="min-w-0"><div className="lingua-kicker">Kỹ năng</div><h2 className="mt-1 text-base font-bold text-[var(--text-primary)]">Bằng chứng theo kỹ năng</h2></div>
+          {summary ? (
+            <div className="mt-4 space-y-3">
+              <Progress value={summarySkillPercent('recognition') ?? 0} max={100} label="Nhận diện khi đọc" showValueText size="sm" />
+              <Progress value={summarySkillPercent('listening') ?? 0} max={100} label="Nhận diện khi nghe" showValueText size="sm" variant="warning" />
+              <Progress value={summarySkillPercent('production') ?? 0} max={100} label="Tự sử dụng" showValueText size="sm" variant="warning" />
+            </div>
+          ) : <p className="mt-3 rounded-xl bg-[var(--surface-subtle)] p-3 text-xs leading-5 text-[var(--text-secondary)]">Chưa có dữ liệu theo kỹ năng.</p>}
+        </Card>
+      </section>
+
       {visibleSelectedNode && (
-        <div role="dialog" aria-modal="true" aria-label="Chi tiết khái niệm" className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] max-h-[68dvh] overflow-y-auto rounded-[26px] border border-[var(--border-subtle)] bg-white p-4 shadow-[0_24px_70px_rgba(33,45,78,0.25)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:w-[390px] sm:p-5">
+        <div role="dialog" aria-modal="true" aria-label="Chi tiết khái niệm" className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] max-h-[68dvh] overflow-y-auto rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 shadow-[var(--shadow-floating)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:w-[390px] sm:p-5">
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="truncate text-xl font-black tracking-[-0.03em] text-[var(--text-primary)]">{visibleSelectedNode.label}</h3>{visibleSelectedNode.cefr && <Badge variant="primary" size="sm">{visibleSelectedNode.cefr}</Badge>}</div>{(visibleSelectedNode.ipa || visibleSelectedNode.pos) && <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">{[visibleSelectedNode.ipa, visibleSelectedNode.pos].filter(Boolean).join(' • ')}</p>}</div>
             <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)} aria-label="Đóng bảng chi tiết"><X className="h-4 w-4" /></Button>

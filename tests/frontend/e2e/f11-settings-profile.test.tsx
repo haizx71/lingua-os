@@ -7,60 +7,57 @@ import { ProfileView } from '@/features/profile/ProfileView';
 import { renderWithProviders } from '../harness/test-render';
 
 describe('Tier 1: Feature 11 - Settings & Profile Views', () => {
-  it('test_settings_page_renders_header_and_learning_goal_section', () => {
+  it('shows the settings page and daily learning controls', () => {
     renderWithProviders(<SettingsPage />);
 
-    expect(screen.getByText('Preferences & Account')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Cài đặt hệ thống/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: /Mục tiêu học tập hàng ngày/i })).toBeInTheDocument();
-  });
-
-  it('test_settings_page_renders_daily_target_minutes_and_new_words_budget', () => {
-    renderWithProviders(<SettingsPage />);
-
+    expect(screen.getByRole('heading', { level: 1, name: 'Cài đặt' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Mục tiêu học mỗi ngày' })).toBeInTheDocument();
     expect(screen.getByText('Thời lượng học mỗi ngày')).toBeInTheDocument();
     expect(screen.getByText('25 phút / ngày')).toBeInTheDocument();
-
     expect(screen.getByText('Ngân sách từ mới mỗi ngày')).toBeInTheDocument();
     expect(screen.getByText('4 từ mới / ngày')).toBeInTheDocument();
+    expect(screen.getByText(/chưa được lưu lâu dài/i)).toBeInTheDocument();
   });
 
-  it('test_profile_page_renders_user_account_header_with_avatar_badge', () => {
+  it('does not present unprovided profile metrics or level estimates as learner data', () => {
     renderWithProviders(<ProfilePage />);
 
-    expect(screen.getByText('User Account')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Hồ sơ người học/i })).toBeInTheDocument();
-    expect(screen.getByText('A2')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: /Learner Account/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chưa thể hiển thị hồ sơ' })).toBeInTheDocument();
+    expect(screen.queryByText('A2')).not.toBeInTheDocument();
+    expect(screen.queryByText('582')).not.toBeInTheDocument();
+    expect(screen.queryByText('483')).not.toBeInTheDocument();
+    expect(screen.queryByText(/ước lượng khởi điểm/i)).not.toBeInTheDocument();
   });
 
-  it('test_profile_page_displays_starting_level_estimate_and_confidence', () => {
-    renderWithProviders(<ProfilePage />);
-
-    expect(screen.getByText(/Ước lượng khởi điểm:/i)).toBeInTheDocument();
-    expect(screen.getByText(/A2 Elementary/i)).toBeInTheDocument();
-    expect(screen.getByText(/Độ tin cậy: Vừa/i)).toBeInTheDocument();
-  });
-
-  it('test_profile_view_renders_neutral_identity_when_name_and_email_are_absent', () => {
+  it('uses a neutral identity when the supplied profile omits name and email', () => {
     renderWithProviders(
       <ProfileView initialProfile={{ name: null, email: null, timeZone: null }} />
     );
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Chưa cung cấp' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Người học' })).toBeInTheDocument();
     expect(screen.queryByText(/@/)).not.toBeInTheDocument();
+    expect(screen.getAllByText('—')).toHaveLength(3);
   });
 
-  it('test_profile_page_renders_total_stats_and_streak', () => {
-    renderWithProviders(<ProfilePage />);
+  it('renders profile summaries only from the supplied profile values', () => {
+    renderWithProviders(
+      <ProfileView initialProfile={{
+        name: 'Học viên',
+        email: 'learner@example.test',
+        timeZone: 'Asia/Ho_Chi_Minh',
+        startingLevelEstimate: 'A2',
+        targetGoal: 'Đọc tốt hơn',
+        totalConceptsEncountered: 12,
+        totalConceptsMastered: 3,
+        streakDays: 2,
+      }} />
+    );
 
-    expect(screen.getByText('Tổng từ đã gặp')).toBeInTheDocument();
-    expect(screen.getByText('582 từ')).toBeInTheDocument();
-
-    expect(screen.getByText('Đã nắm vững')).toBeInTheDocument();
-    expect(screen.getByText('483 từ')).toBeInTheDocument();
-
-    expect(screen.getByText('Số ngày học liên tục')).toBeInTheDocument();
-    expect(screen.getByText('5 ngày')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Học viên' })).toBeInTheDocument();
+    expect(screen.getByText('learner@example.test')).toBeInTheDocument();
+    expect(screen.getByText('A2')).toBeInTheDocument();
+    expect(screen.getByText('3 trên 12 khái niệm đã gặp được ghi nhận là đã củng cố.')).toBeInTheDocument();
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    expect(screen.getByText('2 ngày')).toBeInTheDocument();
   });
 });

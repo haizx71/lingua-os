@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import gsap from 'gsap';
 
 import { ReviewCard, ConceptNode } from '@lingua/ui';
@@ -18,6 +18,7 @@ import { LanguageBrainCanvas } from '@/features/brain/LanguageBrainCanvas';
 import { ProgressAnalytics } from '@/features/progress/ProgressAnalytics';
 import { defaultReviewQueue } from '@/fixtures/reviewFixture';
 import { defaultBrainNodes } from '@/fixtures/brainFixture';
+import { defaultProgressSummary } from '@/fixtures/progressFixture';
 
 // Helper to mock window.matchMedia for reduced motion testing
 function mockMatchMedia(matchesReducedMotion: boolean) {
@@ -309,41 +310,33 @@ describe('Milestone 2 & 3 Verification: P0/P1 GSAP Motion & Lifecycle', () => {
   /* 5. ProgressAnalytics: Staggered Entrance & Frame-0 ARIA Data Correctness   */
   /* -------------------------------------------------------------------------- */
   describe('ProgressAnalytics Staggered Entrance & ARIA Data Correctness', () => {
-    it('verifies progress bars render exact semantic ARIA and text data on Frame 0', () => {
-      render(<ProgressAnalytics />);
+    it('renders explicitly supplied progress data and accessible day summaries immediately', () => {
+      render(<ProgressAnalytics initialData={defaultProgressSummary} />);
 
-      // Invariant 3: DOM text and ARIA attributes reflect accurate learning data immediately
-      const progressbars = screen.getAllByRole('progressbar');
-      expect(progressbars.length).toBeGreaterThanOrEqual(4);
-
-      // FSRS bar
-      expect(progressbars[0]).toHaveAttribute('aria-valuenow', '28');
-      expect(progressbars[0]).toHaveAttribute('aria-valuemin', '0');
-      expect(progressbars[0]).toHaveAttribute('aria-valuemax', '100');
-      expect(screen.getByText('45 phút (28%)')).toBeInTheDocument();
-
-      // Reader bar
-      expect(progressbars[1]).toHaveAttribute('aria-valuenow', '38');
-      expect(screen.getByText('60 phút (38%)')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Tiến độ học' })).toBeInTheDocument();
+      expect(screen.getByText(String(defaultProgressSummary.totalStudyMinutes))).toBeInTheDocument();
+      const daySummaries = screen.getByRole('list', { name: 'Thời gian học theo ngày' });
+      expect(within(daySummaries).getAllByRole('img')).toHaveLength(defaultProgressSummary.history7d.length);
+      for (const point of defaultProgressSummary.history7d) {
+        expect(within(daySummaries).getByRole('img', { name: new RegExp(point.dayLabel) })).toBeInTheDocument();
+      }
     });
 
-    it('verifies time-window switch (7d -> 30d) updates semantic data immediately and triggers entrance', () => {
-      render(<ProgressAnalytics />);
+    it('labels the supported seven-day window without offering an unbacked month view', () => {
+      render(<ProgressAnalytics initialData={defaultProgressSummary} />);
 
-      const monthBtn = screen.getByRole('button', { name: /30 ngày qua/i });
-      fireEvent.click(monthBtn);
-
-      // Text updates immediately
-      expect(screen.getByText(/30 ngày: 640 phút/i)).toBeInTheDocument();
-      expect(screen.getByText('180 phút (28%)')).toBeInTheDocument();
+      expect(screen.getByText('7 ngày gần nhất')).toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Thời gian học theo ngày' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /30 ngày qua/i })).not.toBeInTheDocument();
     });
 
     it('verifies reduced-motion displays full bar widths instantly without staggered delay', () => {
       mediaMock.setMatches(true);
 
-      const { unmount } = render(<ProgressAnalytics />);
+      const { unmount, container } = render(<ProgressAnalytics initialData={defaultProgressSummary} />);
 
-      expect(screen.getByText('45 phút (28%)')).toBeInTheDocument();
+      expect(screen.getByText(String(defaultProgressSummary.totalStudyMinutes))).toBeInTheDocument();
+      expect(container.querySelectorAll('.progress-bar-fill')).toHaveLength(defaultProgressSummary.history7d.length);
       unmount();
     });
   });

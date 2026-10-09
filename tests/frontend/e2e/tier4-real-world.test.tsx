@@ -40,7 +40,7 @@ describe('Tier 4: Real-World Application Workload Scenarios', () => {
       </AppShell>,
       { apiService }
     );
-    expect(screen.getByRole('heading', { level: 1, name: /Chào buổi sáng/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Kế hoạch của bạn' })).toBeInTheDocument();
 
     // Step 2: Learner starts Smart Review (FSRS) and reviews all 3 cards
     rerender(
@@ -48,7 +48,7 @@ describe('Tier 4: Real-World Application Workload Scenarios', () => {
         <ReviewPage />
       </AppShell>
     );
-    expect(screen.getByRole('heading', { level: 1, name: /Hàng đợi ôn tập/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Thẻ đến lượt' })).toBeInTheDocument();
 
     const queue = await apiService.getReviewQueue();
     await apiService.submitReviewRating(queue[0].id, 'good');
@@ -64,7 +64,7 @@ describe('Tier 4: Real-World Application Workload Scenarios', () => {
         <InteractiveReader passage={defaultReaderPassage} />
       </AppShell>
     );
-    expect(screen.getByRole('heading', { level: 2, name: /Making an Appointment/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /Making an Appointment/i })).toBeInTheDocument();
 
     // Step 4: Learner inspects Language Brain to observe updated memory metrics
     rerender(

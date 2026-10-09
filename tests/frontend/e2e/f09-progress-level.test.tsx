@@ -1,44 +1,35 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import ProgressPage from '@/app/progress/page';
+import { ProgressAnalytics } from '@/features/progress/ProgressAnalytics';
+import { defaultProgressSummary } from '@/fixtures/progressFixture';
 import { renderWithProviders } from '../harness/test-render';
 
 describe('Tier 1: Feature 09 - Progress & Level Estimation', () => {
-  it('test_progress_page_renders_header_and_evidence_subhead', () => {
+  it('shows a truthful unavailable state instead of fixture progress numbers', () => {
     renderWithProviders(<ProgressPage />);
 
-    expect(screen.getByText('Learning Evidence & Trends')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Tiến độ học thực tế/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Đo lường sự tiến bộ dựa trên bằng chứng ghi nhớ thực tế/i)
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tiến độ học' })).toBeInTheDocument();
+    expect(screen.getByText('Chưa thể hiển thị tiến độ')).toBeInTheDocument();
+    expect(screen.getByText('Chưa thể hiển thị thống kê tại đây. Bạn có thể tiếp tục bài học ở Hôm nay.')).toBeInTheDocument();
+    expect(screen.queryByText('115')).not.toBeInTheDocument();
+    expect(screen.queryByText('14')).not.toBeInTheDocument();
+    expect(screen.queryByText('26')).not.toBeInTheDocument();
+    expect(screen.queryByText('87%')).not.toBeInTheDocument();
   });
 
-  it('test_progress_page_renders_weekly_evidence_card', () => {
-    renderWithProviders(<ProgressPage />);
+  it('renders supplied progress data without deriving or changing the server values', () => {
+    renderWithProviders(<ProgressAnalytics initialData={defaultProgressSummary} />);
 
-    expect(screen.getByText('Bằng chứng tuần này')).toBeInTheDocument();
-  });
+    expect(screen.getByRole('heading', { level: 1, name: 'Tiến độ học' })).toBeInTheDocument();
+    expect(screen.getByText('115')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('14')).toBeInTheDocument();
+    expect(screen.getByText('26 từ')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.tagName === 'P' && element.textContent?.replace(/\s/g, '') === '87%')).toBeInTheDocument();
 
-  it('test_progress_page_renders_new_concepts_acquired_metric', () => {
-    renderWithProviders(<ProgressPage />);
-
-    expect(screen.getByText('Từ mới đã tiếp nạp')).toBeInTheDocument();
-    expect(screen.getByText('+14 từ')).toBeInTheDocument();
-  });
-
-  it('test_progress_page_renders_concepts_solidified_metric', () => {
-    renderWithProviders(<ProgressPage />);
-
-    expect(screen.getByText('Từ đã củng cố vững chắc')).toBeInTheDocument();
-    expect(screen.getByText('+26 từ')).toBeInTheDocument();
-  });
-
-  it('test_progress_page_renders_active_study_days_ratio', () => {
-    renderWithProviders(<ProgressPage />);
-
-    expect(screen.getByText('Ngày học thành công')).toBeInTheDocument();
-    expect(screen.getByText('5 / 7 ngày')).toBeInTheDocument();
+    const history = screen.getByRole('list', { name: 'Thời gian học theo ngày' });
+    expect(within(history).getAllByRole('listitem')).toHaveLength(defaultProgressSummary.history7d.length);
   });
 });

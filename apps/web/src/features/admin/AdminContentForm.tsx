@@ -52,10 +52,10 @@ export function AdminContentFormView({
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <header><h1 className="text-2xl font-bold text-[var(--text-primary)]">Nội dung mới</h1><p className="mt-1 text-sm text-[var(--text-secondary)]">Micro-article tiếng Anh, nguồn sở hữu trực tiếp.</p></header>
+    <div className="mx-auto w-full max-w-3xl space-y-6">
+      <header><p className="lingua-kicker text-[var(--action-primary)]">Quản trị nội dung</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)]">Bài đọc mới</h1><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Thêm nội dung tiếng Anh cùng thông tin nguồn và quyền sử dụng.</p></header>
       {error && <InlineAlert variant="danger" title="Không thể lưu">{error}</InlineAlert>}
-      <Card className="p-5">
+      <Card padding="lg" className="min-w-0">
         <form className="space-y-4" onSubmit={submit}>
           <Field label="Tiêu đề"><input required maxLength={500} value={values.title} onChange={(e) => set('title', e.target.value)} className={inputClass} /></Field>
           <Field label="Mức nội dung"><select value={values.level} onChange={(e) => set('level', e.target.value)} className={inputClass}>{['A0','A1','A2','B1'].map((level) => <option key={level}>{level}</option>)}</select></Field>
@@ -72,7 +72,7 @@ export function AdminContentFormView({
   );
 }
 
-const inputClass = 'mt-1 w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]';
+const inputClass = 'mt-1 min-h-11 w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-subtle)] px-3 py-2 text-[var(--text-primary)] focus:bg-[var(--surface)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm font-medium text-[var(--text-primary)]">{label}{children}</label>;
 }

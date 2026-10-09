@@ -229,6 +229,6 @@ describe('Tier 3: Cross-Feature Combinations & State Transitions', () => {
 
     expect(screen.queryByLabelText('Điều hướng chính di động')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Điều hướng màn hình lớn')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /Hàng đợi ôn tập/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Thẻ đến lượt' })).toBeInTheDocument();
   });
 });

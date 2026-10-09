@@ -4,6 +4,10 @@ Version: 1.0
 Status: APPROVED GLOBAL SPECIFICATION
 Consumer: Frontend Web (`apps/web`), UI Package (`packages/ui`), Mobile Web
 
+### Owner-approved presentation update — 2026-10-09
+
+The owner selected Reader option 3 and approved applying it to the existing app. The active presentation work uses a pale lavender canvas, white surfaces, indigo actions, restrained elevation, compact persistent navigation and serif English reading text. It preserves the semantic state distinctions, accessibility and multilingual rules below. This supersedes earlier warm blue/teal visual treatments for the scoped implementation; it changes no learner metric or learning rule. Exact source reference and release gates are recorded in [the full web plan](../plans/PILOT-FULL-WEB-DESIGN.md).
+
 ---
 
 ## 1. Visual Direction & Design Rationale

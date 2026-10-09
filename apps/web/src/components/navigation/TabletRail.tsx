@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -41,16 +42,16 @@ export function TabletRail({ currentPath }: TabletRailProps = {}) {
   return (
     <aside
       aria-label="Điều hướng thanh bên thu gọn"
-      className="hidden md:flex xl:hidden flex-col w-20 fixed left-0 top-0 bottom-0 z-30 bg-[var(--surface)] border-r border-[var(--border-subtle)] py-4 items-center justify-between"
+      className="hidden md:flex xl:hidden flex-col w-[76px] fixed left-0 top-0 bottom-0 z-30 bg-[var(--surface)] border-r border-[var(--border-subtle)] py-4 items-center justify-between"
     >
       <div className="flex flex-col items-center gap-6 w-full">
         {/* Brand Icon */}
         <Link
           href="/today"
-          className="w-10 h-10 rounded-xl bg-[var(--action-primary)] flex items-center justify-center text-[var(--action-primary-text)] font-bold text-lg shadow-sm focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          className="flex h-10 w-10 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           aria-label="Trang chủ LINGUA OS"
         >
-          L
+          <Image src="/assets/lingua-mark.png" alt="" width={40} height={40} className="h-10 w-10 rounded-full" />
         </Link>
 
         {/* Primary Navigation Rail */}
