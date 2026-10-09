@@ -10,7 +10,6 @@ import {
   HttpApiClient,
   mockApiResponses,
   type MeResponseDto,
-  type LanguageProfilesResponseDto,
 } from '@lingua/types';
 
 const mockPush = vi.fn();
@@ -50,10 +49,6 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
       ...mockApiResponses.me,
       data: { ...mockApiResponses.me.data, timeZone: null },
     } as MeResponseDto);
-    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
-      data: [],
-      meta: mockApiResponses.me.meta,
-    } as LanguageProfilesResponseDto);
     setApiClient(api);
 
     render(
@@ -77,10 +72,6 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
       ...mockApiResponses.me,
       data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
     } as MeResponseDto);
-    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
-      data: [{ ...mockApiResponses.languageProfile.data, nativeLanguageCode: 'vi', targetLanguageCode: 'en', status: 'active' }],
-      meta: mockApiResponses.me.meta,
-    } as LanguageProfilesResponseDto);
     setApiClient(api);
 
     render(
@@ -105,16 +96,6 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
       ...mockApiResponses.me,
       data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
     } as MeResponseDto);
-    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
-      data: [{
-        ...mockApiResponses.languageProfile.data,
-        nativeLanguageCode: 'vi',
-        targetLanguageCode: 'en',
-        status: 'active',
-        startingLevelEstimate: null, // explicitly unassessed
-      }],
-      meta: mockApiResponses.me.meta,
-    } as LanguageProfilesResponseDto);
     setApiClient(api);
 
     render(
@@ -140,10 +121,6 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
       ...mockApiResponses.me,
       data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
     } as MeResponseDto);
-    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
-      data: [{ ...mockApiResponses.languageProfile.data, nativeLanguageCode: 'vi', targetLanguageCode: 'en', status: 'active' }],
-      meta: mockApiResponses.me.meta,
-    } as LanguageProfilesResponseDto);
     setApiClient(api);
 
     render(
@@ -223,12 +200,18 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
     const api = new MockApiClient();
     vi.spyOn(api, 'getMe').mockResolvedValue({
       ...mockApiResponses.me,
-      data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
+      data: {
+        ...mockApiResponses.me.data,
+        timeZone: 'Asia/Ho_Chi_Minh',
+        languageProfiles: [{
+          ...mockApiResponses.languageProfile.data,
+          nativeLanguageCode: 'vi',
+          targetLanguageCode: 'en',
+          status: 'active',
+          dailyMinutes: 3,
+        }],
+      },
     } as MeResponseDto);
-    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
-      data: [{ ...mockApiResponses.languageProfile.data, nativeLanguageCode: 'vi', targetLanguageCode: 'en', status: 'active', dailyMinutes: 3 }],
-      meta: mockApiResponses.me.meta,
-    } as LanguageProfilesResponseDto);
     setApiClient(api);
 
     render(
@@ -250,12 +233,18 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
     const api = new MockApiClient();
     vi.spyOn(api, 'getMe').mockResolvedValue({
       ...mockApiResponses.me,
-      data: { ...mockApiResponses.me.data, timeZone: 'Asia/Ho_Chi_Minh' },
+      data: {
+        ...mockApiResponses.me.data,
+        timeZone: 'Asia/Ho_Chi_Minh',
+        languageProfiles: [{
+          ...mockApiResponses.languageProfile.data,
+          nativeLanguageCode: 'vi',
+          targetLanguageCode: 'en',
+          status: 'active',
+          goal: 'unknown-goal' as never,
+        }],
+      },
     } as MeResponseDto);
-    vi.spyOn(api, 'listMyLanguageProfiles').mockResolvedValue({
-      data: [{ ...mockApiResponses.languageProfile.data, nativeLanguageCode: 'vi', targetLanguageCode: 'en', status: 'active', goal: 'unknown-goal' as never }],
-      meta: mockApiResponses.me.meta,
-    } as LanguageProfilesResponseDto);
     setApiClient(api);
 
     render(
@@ -301,14 +290,17 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
     } as unknown as SupabaseClient;
 
     let activeActor = 'user-a';
-    const fetchFn = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
+    const fetchFn = vi.fn(async () => {
       if (activeActor === 'user-a') {
         return latePromiseA;
       }
-      if (url.includes('/v1/me/languages')) {
-        return new Response(JSON.stringify({
-          data: [{
+      return new Response(JSON.stringify({
+        ...mockApiResponses.me,
+        data: {
+          ...mockApiResponses.me.data,
+          id: 'user-b',
+          timeZone: 'Asia/Ho_Chi_Minh',
+          languageProfiles: [{
             ...mockApiResponses.languageProfile.data,
             nativeLanguageCode: 'vi',
             targetLanguageCode: 'en',
@@ -316,12 +308,7 @@ describe('AppRouteBoundary Product Readiness & Route Gating (Slice B)', () => {
             goal: 'communication',
             dailyMinutes: 25,
           }],
-          meta: mockApiResponses.me.meta,
-        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-      }
-      return new Response(JSON.stringify({
-        ...mockApiResponses.me,
-        data: { ...mockApiResponses.me.data, id: 'user-b', timeZone: 'Asia/Ho_Chi_Minh' },
+        },
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     });
 
