@@ -16,13 +16,13 @@ win.
 The remaining authoritative roadmap is K2-04 through K2-10. K2-01 through K2-03 are prerequisites,
 not remaining implementation waves.
 
-## Current execution checkpoint — 2026-10-08
+## Current execution checkpoint — 2026-10-09
 
 - K2-08 remains DONE with full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; see `STATUS.md` and `reviews/K2-08-auth-cleanup-boundary-review.md`.
 - K2-09 is DONE. PR #45 exact head `ef6a00b198dc76caaed6d8b18c5370b1dc3ee599` merged at `cd062c750257a8656ba691eaf57723bc13e6012d`; exact-head Security, all six Knowledge Audit jobs, Vercel Preview, Render health, and Vercel Production passed. Migration `0021` was already applied and verified; it was not reapplied.
 - Full hosted workflow `37685182215` on merged master passed overall. Main job `113011062961` and recovery job `113016493879` succeeded. Ordered evidence passed for fresh baseline, normal actor Save/Review/answer and replay, wave, actor and fresh-identity cleanup, Auth/27-table before-and-after checks, fixture closure, current-run retained comparison, and finalizer. Separate GPT-6 Luna / Max final review verified workflow jobs, phase artifact hashes, and source assertions with no HIGH/BLOCKER. See the final review record for exact timestamps and hashes; no retained row totals are inferred from earlier snapshots.
 - Hosted attempt `37681286589` remains a historical failure before actor creation. The fixed source used `/git/ref/heads/master` instead of the oversized `/commits/master`; source review, two separate 52-test protocol runs, CI, merge, and redeployment passed before the successful hosted rerun.
-- K2-10 is DOING only for the verification seal. No new schema feature or migration is in scope. Migration 0020 and accepted K2-06/K2-07 behavior remain unchanged.
+- K2-10 is DONE. The two-run hosted acceptance, final read-only checks, and independent evidence review are recorded in the verification seal. No new schema feature or migration is in scope. Migration 0020 and accepted K2-06/K2-07 behavior remain unchanged.
 
 ## Historical execution checkpoint — 2026-10-02
 
@@ -293,7 +293,7 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
 
 ## K2-10 — End-to-End Verification and Documentation Seal
 
-- **Current state:** DOING verification seal after K2-09 hosted PASS. No new schema feature or migration is authorized by this checkpoint.
+- **Current state:** DONE. Hosted acceptance passed 2/2 on the same merged SHA, final read-only gates passed, and independent evidence review passed. No new schema feature or migration is authorized by this checkpoint.
 - **Exact objective:** prove the full Knowledge V2 system and historical FRLL boundary, reconcile
   project truth, and produce the final acceptance record.
 - **Schema impact:** none; verification only.
@@ -314,7 +314,8 @@ Phase C regression; hosted acceptance remains a later gate, not part of readines
 - **Hosted acceptance:** GitHub master, Supabase migration head, Render SHA, and Vercel SHA when
   frontend changed all identify the same accepted source; health/API/Brain/Review/Today/Dictionary
   smoke pass; canonical counts/import hashes and learner deltas are recorded; fixtures are absent;
-  `STATUS.md`, `TASKS.md`, plans, and final acceptance evidence agree.
+  `STATUS.md`, `TASKS.md`, plans, and final acceptance evidence agree. Current run, read-only catalog/import, learner-retention and deployment evidence are recorded in `reviews/K2-10-verification-seal.md`.
+- **K2-10 status: DONE.** Both full owner-dispatched hosted runs and all final read-only gates passed at merged SHA `754821ec4c6c0c13ed1a14c526e0856c3a3aabc3`; independent evidence review passed. See [the K2-10 verification seal](../reviews/K2-10-verification-seal.md).
 
 ## Sequential promotion rule
 

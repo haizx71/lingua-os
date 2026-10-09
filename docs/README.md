@@ -41,7 +41,7 @@ Important active specifications include:
 - `KNOWLEDGE_SOURCE_SNAPSHOT_POLICY_V1.md`
 - `KNOWLEDGE_VIETNAMESE_LEARNER_PRIORS_V1.md`
 
-Knowledge V2 material lives under `knowledge-v2/`. Active K2 execution plans are linked from `../plans/KNOWLEDGE-V2-REMAINING-EXECUTION-MAP.md`; the current K2-09 product plan is `../plans/TASK-K2-09-dictionary-normalization.md`, and its hosted fixture control-plane proposal is `../plans/TASK-K2-09-hosted-fixture-control.md`. Review evidence is kept under `../reviews/`, including the K2-09 product source gate, hosted fixture architecture review, and current hosted-fixture source/migration gate record (`../reviews/K2-09-hosted-fixture-source-migration-gate-review.md`).
+Knowledge V2 material lives under `knowledge-v2/`. Active K2 execution plans are linked from `../plans/KNOWLEDGE-V2-REMAINING-EXECUTION-MAP.md`; the current K2-09 product plan is `../plans/TASK-K2-09-dictionary-normalization.md`, and its hosted fixture control-plane proposal is `../plans/TASK-K2-09-hosted-fixture-control.md`. Review evidence is kept under `../reviews/`, including the K2-09 product source gate, hosted fixture architecture review, current hosted-fixture source/migration gate record (`../reviews/K2-09-hosted-fixture-source-migration-gate-review.md`), and the K2-10 verification seal (`../reviews/K2-10-verification-seal.md`).
 
 ## UI/UX
 
