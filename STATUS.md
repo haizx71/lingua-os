@@ -1,7 +1,7 @@
 # LINGUA OS — Project Status
 
 Version: 4.0 starter
-Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-09 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-10 DONE
+Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-09 full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS; K2-10 DONE; real learner pilot kickoff 2026-10-09 (one source-corroborated owner-reported P2; no reproduced runtime defect)
 
 ## Current Knowledge V2 checkpoint — 2026-10-09
 
@@ -9,6 +9,12 @@ Phase: FRLL accepted/frozen; K2-06 staging accepted; K2-07 hosted PASS; K2-08 fu
 - **K2-09 DONE: full hosted acceptance, cleanup, fresh retained comparison, and independent final review PASS.** PR #45 merged at `cd062c750257a8656ba691eaf57723bc13e6012d`; its head passed all Security and Knowledge Audit jobs and Vercel Preview. Render is live/healthy and Vercel Production succeeded at the merged SHA. Migration `0021` was already applied and verified; it was not reapplied. Full run `37685182215` on merged master passed with successful main job `113011062961`, recovery job `113016493879`, and overall workflow status SUCCESS. The fresh baseline and actor/fresh identity/wave/replay/cleanup/finalizer sequence passed; the current-run 27-table retained comparison passed. Independent GPT-6 Luna / Max final review verified workflow jobs, phase artifact hashes, and source assertions with no HIGH/BLOCKER. See the source/migration review for exact evidence and hashes.
 - **Earlier hosted attempt `37681286589`: historical FAIL before actor creation.** It stopped at fixture inspect with HTTP 503, and its recovery job also failed. This is superseded by the successful later run; no evidence from that failure is presented as the successful run’s cleanup or retained comparison.
 - **K2-10: DONE.** Two consecutive full owner-dispatched runs `37863647590` and `37866643904` passed on master SHA `754821ec4c6c0c13ed1a14c526e0856c3a3aabc3`; all final read-only gates and the independent evidence review passed. No schema feature or migration is in scope. See `reviews/K2-10-verification-seal.md` for the evidence ledger.
+
+## Real learner pilot and V2 freeze — 2026-10-09
+
+- **Pilot active, day 0 of a 7–14 day window.** Kickoff is 2026-10-09 (Asia/Saigon); day 7 review is 2026-10-16 and day 14 review is 2026-10-23. One owner-reported P2 timezone-step friction is source-corroborated but not reproduced in a disposable-actor/browser walkthrough; no learning-quality observation is verified. Background health and prior synthetic acceptance are not journey evidence.
+- **V2 remains frozen.** K2-06 through K2-10 stay accepted; migration head `0021` and checksum `3c984a59afe9031ee5480a4fa111d5fb239b5f7164af39289712f1e98ad45ca6` remain unchanged. Reopen K2 only for a reproducible real defect, not for P2 friction. PILOT-001 is a separate, owner-authorized P2 frontend onboarding exception within TASK-017; it does not reopen or change accepted K2 work or its evidence. Hosted actor checks are conditional on changed risk/surface; if actors are created, full Auth deletion, zero residue across 27 learner tables, and retained comparison are mandatory.
+- See [PILOT-001 findings](PILOT_FINDINGS.md), [separate hardening follow-ups](PILOT_HARDENING.md), and the [pilot and freeze plan](plans/REAL-LEARNER-PILOT-V2-FREEZE.md).
 
 ## Historical Knowledge V2 checkpoint — 2026-10-02
 
