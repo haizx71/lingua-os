@@ -2,9 +2,9 @@
 
 ## PILOT-FULL-WEB-DESIGN — approved option 3 across existing app
 
-Status: DOING — implementation frozen and local verification PASS (633/633 frontend tests, additional 12/12 Reader resume regression, workspace typecheck/generated contracts, lint, production build and browser QA); independent Luna Max review PASS, exact-head CI/Preview pending. Owner-authorized presentation exception, isolated on `codex/pilot-full-web-design` from authoritative master `5d0aa9769a14af3be254982f9f252cf9db24d383`.
+Status: DONE — PR #66 normal merge `2058a089529423343f7aae971bd43e1411359539`; independent Luna Max review, all exact-head CI/Preview and Vercel Production READY at the merged SHA PASS. Local verification: 633/633 frontend tests, additional 12/12 Reader resume regression, workspace typecheck/generated contracts, lint, production build and browser QA. See [release evidence](reviews/PILOT-FULL-WEB-RELEASE.md). Owner-authorized presentation exception implemented from authoritative baseline `5d0aa9769a14af3be254982f9f252cf9db24d383`.
 
-Scope and dependencies: [bounded full web plan](plans/PILOT-FULL-WEB-DESIGN.md). Cover existing learner/auth/onboarding/admin presentation while preserving routes, hooks, contracts and all accepted K2/FRLL behavior. Source implementation → regression/build → browser visual/interaction QA → separate Luna Max review → exact-head CI/Preview → normal promotion. No hosted mutation is authorized by this status entry; root Commander retains the shared mutation lock.
+Scope and dependencies: [bounded full web plan](plans/PILOT-FULL-WEB-DESIGN.md). Existing learner/auth/onboarding/admin presentation is covered while preserving routes, hooks, contracts and all accepted K2/FRLL behavior. Source implementation → regression/build → local browser QA → independent review → exact-head CI/Preview → normal promotion gates passed. No learner mutation was performed. Continue the existing pilot; published translation coverage and unconnected Profile/Progress data remain distinct limitations.
 
 Status values: BACKLOG, READY, DESIGN / AWAITING APPROVAL, DOING, BLOCKED, DONE
 
