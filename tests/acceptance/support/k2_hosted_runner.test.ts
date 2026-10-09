@@ -3,6 +3,7 @@ import type { BrowserContext, Page, Response as PlaywrightResponse } from '@play
 import { AuthApiError, type User } from '@supabase/supabase-js';
 import {
   assertK210FreshProfileBootstrapSnapshot,
+  assertK2PassiveBrainUiMatchesResponse,
   assertK2PassiveTodayUiMatchesPlan,
   createLearnerProfile,
   cleanupK209FixtureAfterActorProofs,
@@ -13,6 +14,7 @@ import {
   markK2HostedCheckpoint,
   markK2HostedFinalizerComplete,
   isK2PassiveTodayApiResponse,
+  isK2PassiveBrainApiResponse,
   createK2OpaqueIdProjector,
   exactK208FixtureStateReadback,
   normalizeK2WaveRequest,
@@ -41,9 +43,17 @@ import * as k2HostedProbeClient from './k2_hosted_probe_client';
 import type { TestInfo } from '@playwright/test';
 import { assertK2HostedDueOnlyPlanReplay } from './k2_hosted_wave_k2_08_due_only';
 import {
+  mockBrainConceptListResponse,
+  mockBrainSummaryResponse,
   mockTodayPlanResponse,
+  mockZeroEvidenceCompetence,
 } from '../../../packages/types/src/api/mock-fixtures';
-import type { TodayActivityDto, TodayPlanDto } from '../../../packages/types/src/api/dtos';
+import type {
+  BrainConceptListResponseDto,
+  BrainSummaryResponseDto,
+  TodayActivityDto,
+  TodayPlanDto,
+} from '../../../packages/types/src/api/dtos';
 
 const actor = {
   id: 'fake-actor-id-marker',
@@ -226,6 +236,261 @@ describe('K2 passive Today plan and UI parity', () => {
     )).toBe(false);
     expect(isK2PassiveTodayApiResponse(
       response(`${vercelOrigin}/api/v1/today`, 'POST'), vercelOrigin,
+    )).toBe(false);
+  });
+});
+
+describe('K2 passive Brain projection and empty UI parity', () => {
+  const vercelOrigin = 'https://app.example.invalid';
+  const profileId = '00000000-0000-4000-8000-000000000021';
+  const otherProfileId = '00000000-0000-4000-8000-000000000022';
+
+  function apiResponse(payload: unknown, status = 200): Pick<PlaywrightResponse, 'status' | 'json'> {
+    return { status: () => status, json: async () => payload };
+  }
+
+  function pageWithWait(waitFor = vi.fn(async () => {})) {
+    const locator = { waitFor };
+    return {
+      page: { getByRole: vi.fn(() => locator) } as unknown as Pick<Page, 'getByRole'>,
+      waitFor,
+    };
+  }
+
+  function emptySummary(languageProfileId = profileId): BrainSummaryResponseDto {
+    return {
+      ...mockBrainSummaryResponse,
+      data: {
+        ...mockBrainSummaryResponse.data,
+        languageProfileId,
+        statusCounts: {
+          total: 0,
+          unseen: 0,
+          discovered: 0,
+          learning: 0,
+          familiar: 0,
+          active: 0,
+          mastered: 0,
+          weak: 0,
+          forgotten: 0,
+        },
+        dueCount: 0,
+        competence: mockZeroEvidenceCompetence,
+        startingLevelEstimate: null,
+        recentConcepts: [],
+      },
+    };
+  }
+
+  function emptyConcepts(): BrainConceptListResponseDto {
+    return {
+      ...mockBrainConceptListResponse,
+      data: [],
+      meta: {
+        ...mockBrainConceptListResponse.meta,
+        nextCursor: null,
+        hasMore: false,
+        pageSize: 0,
+      },
+    };
+  }
+
+  it('accepts only the contract-valid empty Brain projection with its empty UI', async () => {
+    const page = pageWithWait();
+
+    await assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse(emptyConcepts()),
+      profileId,
+    );
+
+    expect(page.page.getByRole).toHaveBeenCalledWith('heading', {
+      name: 'Chưa có từ vựng trong Brain', exact: true,
+    });
+    expect(page.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 30_000 });
+  });
+
+  it('rejects a nonempty Brain DTO before checking the empty-state UI', async () => {
+    const page = pageWithWait();
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse({
+        ...emptySummary(),
+        data: {
+          ...emptySummary().data,
+          statusCounts: { ...emptySummary().data.statusCounts, total: 1, learning: 1 },
+        },
+      }),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse(mockBrainConceptListResponse),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it.each(['recognition', 'listening', 'production'] as const)(
+    'rejects nonzero %s evidence in an otherwise empty Brain projection', async dimension => {
+      const page = pageWithWait();
+      const summary = emptySummary();
+      const summaryWithEvidence: BrainSummaryResponseDto = {
+        ...summary,
+        data: {
+          ...summary.data,
+          competence: {
+            ...summary.data.competence,
+            [dimension]: {
+              ...summary.data.competence[dimension],
+              evidenceCount: 1,
+            },
+          },
+        },
+      };
+
+      await expect(assertK2PassiveBrainUiMatchesResponse(
+        page.page,
+        apiResponse(summaryWithEvidence),
+        apiResponse(emptyConcepts()),
+        profileId,
+      )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+      expect(page.page.getByRole).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a non-null starting-level estimate in an otherwise empty Brain projection', async () => {
+    const page = pageWithWait();
+    const summary = emptySummary();
+    const summaryWithEstimate: BrainSummaryResponseDto = {
+      ...summary,
+      data: {
+        ...summary.data,
+        startingLevelEstimate: mockBrainSummaryResponse.data.startingLevelEstimate,
+      },
+    };
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(summaryWithEstimate),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain projection was not empty.');
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects a summary bound to another profile before checking UI', async () => {
+    const page = pageWithWait();
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary(otherProfileId)),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain profile binding did not match.');
+
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid Brain summary or concept-list DTOs', async () => {
+    const page = pageWithWait();
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse({ data: { id: 'invalid' }, meta: mockBrainSummaryResponse.meta }),
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain DTO failed contract validation.');
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse({ data: 'invalid', meta: mockBrainConceptListResponse.meta }),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain DTO failed contract validation.');
+
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-200 responses before reading their bodies', async () => {
+    const page = pageWithWait();
+    const unreadable = { status: () => 401, json: vi.fn(async () => ({})) };
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      unreadable,
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain response was not HTTP 200.');
+
+    expect(unreadable.json).not.toHaveBeenCalled();
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      page.page,
+      apiResponse(emptySummary()),
+      apiResponse(emptyConcepts(), 503),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain response was not HTTP 200.');
+    expect(page.page.getByRole).not.toHaveBeenCalled();
+  });
+
+  it('redacts body and UI failures', async () => {
+    const bodyPage = pageWithWait();
+    const privateMarker = 'PRIVATE_BRAIN_PAYLOAD_PROFILE_TOKEN';
+
+    await expect(assertK2PassiveBrainUiMatchesResponse(
+      bodyPage.page,
+      { status: () => 200, json: async () => { throw new Error(privateMarker); } },
+      apiResponse(emptyConcepts()),
+      profileId,
+    )).rejects.toThrow('K2 hosted acceptance passive Brain response body was invalid.');
+
+    const uiPage = pageWithWait(vi.fn(async () => { throw new Error(privateMarker); }));
+    const failure = await assertK2PassiveBrainUiMatchesResponse(
+      uiPage.page,
+      apiResponse(emptySummary()),
+      apiResponse(emptyConcepts()),
+      profileId,
+    ).catch(error => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message)
+      .toBe('K2 hosted acceptance passive Brain UI did not match its validated projection.');
+    expect(String(failure)).not.toContain(privateMarker);
+  });
+
+  it('matches same-origin Brain GETs without reading credentials', () => {
+    const response = (url: string, method: string): Pick<PlaywrightResponse, 'url' | 'request'> => ({
+      url: () => url,
+      request: () => ({ method: () => method }) as never,
+    });
+
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/summary`, 'GET'), vercelOrigin, profileId,
+    )).toBe(true);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/concepts?languageProfileId=${profileId}`, 'GET'),
+      vercelOrigin,
+      profileId,
+    )).toBe(true);
+    expect(isK2PassiveBrainApiResponse(
+      response(`https://other.example.invalid/api/v1/brain/summary`, 'GET'), vercelOrigin, profileId,
+    )).toBe(false);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/summary`, 'POST'), vercelOrigin, profileId,
+    )).toBe(false);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/concepts?languageProfileId=${otherProfileId}`, 'GET'),
+      vercelOrigin,
+      profileId,
+    )).toBe(false);
+    expect(isK2PassiveBrainApiResponse(
+      response(`${vercelOrigin}/api/v1/brain/concepts?languageProfileId=${profileId}&cursor=opaque`, 'GET'),
+      vercelOrigin,
+      profileId,
     )).toBe(false);
   });
 });
