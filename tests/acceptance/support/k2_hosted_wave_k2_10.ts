@@ -639,8 +639,7 @@ export const k2HostedWaveK210: K2HostedWavePlugin = {
     await frll.ui.openPassiveToday(pageD, actorDProfiles[0].id);
     const afterPassiveToday = await context.actorSnapshot(actorD);
     assertTodayCoordinationOnly(passiveBaseline, afterPassiveToday);
-    await frll.ui.openBrain(pageD);
-    await frll.ui.waitForEmptyBrain(pageD);
+    await frll.ui.openPassiveBrain(pageD, actorDProfiles[0].id);
     assertTodayCoordinationOnly(passiveBaseline, await context.actorSnapshot(actorD));
     context.checkpoint('fixture_frll_passive_zero_write', 'pass');
   },

@@ -341,6 +341,7 @@ export interface K2HostedFrllUi {
   retryAnswer(page: Page): Promise<import('@playwright/test').Response>;
   waitForReviewComplete(page: Page): Promise<void>;
   openBrain(page: Page): Promise<void>;
+  openPassiveBrain(page: Page, expectedProfileId: string): Promise<void>;
   selectAnchorInBrain(page: Page): Promise<import('@playwright/test').Response>;
   waitForBrainAnchor(page: Page): Promise<void>;
   clickBrainAnchor(page: Page): Promise<void>;
@@ -1850,6 +1851,7 @@ export async function signInInitialK210Actor(
 
 const K2_PASSIVE_TODAY_CONTENT_TYPES = new Set(['read', 'listen', 'learn']);
 const K2_PASSIVE_TODAY_EMPTY_TITLE = 'Không có bài học nào cần ôn hôm nay';
+const K2_PASSIVE_BRAIN_EMPTY_TITLE = 'Chưa có từ vựng trong Brain';
 
 /** Accept only the normal same-origin Today API response made by the active page. */
 export function isK2PassiveTodayApiResponse(
@@ -1913,6 +1915,140 @@ export async function assertK2PassiveTodayUiMatchesPlan(
     throw new Error('K2 hosted acceptance passive Today UI did not match its validated plan.');
   }
   return plan;
+}
+
+function isK2SameOriginBrainReadResponse(
+  response: Pick<PlaywrightResponse, 'url' | 'request'>,
+  vercelOrigin: string,
+  pathname: '/api/v1/brain/summary' | '/api/v1/brain/concepts',
+): boolean {
+  try {
+    const url = new URL(response.url());
+    return url.origin === vercelOrigin && url.pathname === pathname &&
+      response.request().method() === 'GET';
+  } catch {
+    return false;
+  }
+}
+
+/** Accept only the same-origin, first-page Brain GETs for the expected profile. */
+export function isK2PassiveBrainApiResponse(
+  response: Pick<PlaywrightResponse, 'url' | 'request'>,
+  vercelOrigin: string,
+  expectedProfileId: string,
+): boolean {
+  try {
+    const url = new URL(response.url());
+    if (url.origin !== vercelOrigin || response.request().method() !== 'GET') return false;
+
+    const queryNames = Array.from(url.searchParams.keys());
+    if (url.pathname === '/api/v1/brain/summary') {
+      const profiles = url.searchParams.getAll('languageProfileId');
+      return queryNames.every(name => name === 'languageProfileId') && profiles.length <= 1 &&
+        (profiles.length === 0 || profiles[0] === expectedProfileId);
+    }
+    if (url.pathname === '/api/v1/brain/concepts') {
+      const profiles = url.searchParams.getAll('languageProfileId');
+      return queryNames.length === 1 && queryNames[0] === 'languageProfileId' &&
+        profiles.length === 1 && profiles[0] === expectedProfileId;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+type K2PassiveBrainSummary = components['schemas']['BrainSummary'];
+type K2PassiveBrainConceptList = components['schemas']['BrainConceptListResponse'];
+
+async function readK2PassiveBrainSummary(
+  response: Pick<PlaywrightResponse, 'status' | 'json'>,
+  expectedProfileId: string,
+): Promise<K2PassiveBrainSummary> {
+  if (response.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+  }
+
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain response body was invalid.');
+  }
+
+  let summary: K2PassiveBrainSummary;
+  try {
+    summary = validateContract('BrainSummaryResponse', raw).data;
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain DTO failed contract validation.');
+  }
+  if (summary.languageProfileId !== expectedProfileId) {
+    throw new Error('K2 hosted acceptance passive Brain profile binding did not match.');
+  }
+  return summary;
+}
+
+async function readK2PassiveBrainConceptList(
+  response: Pick<PlaywrightResponse, 'status' | 'json'>,
+): Promise<K2PassiveBrainConceptList> {
+  if (response.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+  }
+
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain response body was invalid.');
+  }
+
+  try {
+    return validateContract('BrainConceptListResponse', raw);
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain DTO failed contract validation.');
+  }
+}
+
+async function assertK2PassiveBrainProjectionMatchesUi(
+  page: Pick<Page, 'getByRole'>,
+  summary: K2PassiveBrainSummary,
+  conceptList: K2PassiveBrainConceptList,
+): Promise<void> {
+  const emptyProjection = summary.statusCounts.total === 0 &&
+    Object.values(summary.statusCounts).every(count => count === 0) &&
+    summary.dueCount === 0 && summary.recentConcepts.length === 0 &&
+    summary.competence.recognition.evidenceCount === 0 &&
+    summary.competence.listening.evidenceCount === 0 &&
+    summary.competence.production.evidenceCount === 0 &&
+    summary.startingLevelEstimate === null &&
+    conceptList.data.length === 0 && !conceptList.meta.hasMore &&
+    conceptList.meta.nextCursor === null;
+  if (!emptyProjection) {
+    throw new Error('K2 hosted acceptance passive Brain projection was not empty.');
+  }
+
+  try {
+    await page.getByRole('heading', { name: K2_PASSIVE_BRAIN_EMPTY_TITLE, exact: true })
+      .waitFor({ state: 'visible', timeout: 30_000 });
+  } catch {
+    throw new Error('K2 hosted acceptance passive Brain UI did not match its validated projection.');
+  }
+}
+
+/** Validate both actual Brain responses before accepting the corresponding empty UI branch. */
+export async function assertK2PassiveBrainUiMatchesResponse(
+  page: Pick<Page, 'getByRole'>,
+  summaryResponse: Pick<PlaywrightResponse, 'status' | 'json'>,
+  conceptListResponse: Pick<PlaywrightResponse, 'status' | 'json'>,
+  expectedProfileId: string,
+): Promise<void> {
+  if (summaryResponse.status() !== 200 || conceptListResponse.status() !== 200) {
+    throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+  }
+
+  const summary = await readK2PassiveBrainSummary(summaryResponse, expectedProfileId);
+  const conceptList = await readK2PassiveBrainConceptList(conceptListResponse);
+  await assertK2PassiveBrainProjectionMatchesUi(page, summary, conceptList);
 }
 
 function createK2HostedFrllUi(
@@ -2015,6 +2151,43 @@ function createK2HostedFrllUi(
         throw new Error('K2 hosted acceptance passive Today response was not observed.');
       }
       await assertK2PassiveTodayUiMatchesPlan(page, response, expectedProfileId);
+    },
+    async openPassiveBrain(page, expectedProfileId) {
+      const waitForBrainResponse = (pathname: '/api/v1/brain/summary' | '/api/v1/brain/concepts') =>
+        page.waitForResponse(
+          response => isK2SameOriginBrainReadResponse(response, vercelOrigin, pathname),
+          { timeout: 30_000 },
+        ).then(response => response, () => null);
+      const summaryResponsePromise = waitForBrainResponse('/api/v1/brain/summary');
+      const conceptListResponsePromise = waitForBrainResponse('/api/v1/brain/concepts');
+
+      try {
+        await goto(page, '/brain');
+      } catch {
+        throw new Error('K2 hosted acceptance passive Brain page navigation failed.');
+      }
+
+      const summaryResponse = await summaryResponsePromise;
+      if (!summaryResponse) {
+        throw new Error('K2 hosted acceptance passive Brain summary response was not observed.');
+      }
+      if (!isK2PassiveBrainApiResponse(summaryResponse, vercelOrigin, expectedProfileId)) {
+        throw new Error('K2 hosted acceptance passive Brain request did not match its expected profile.');
+      }
+      const summary = await readK2PassiveBrainSummary(summaryResponse, expectedProfileId);
+
+      const conceptListResponse = await conceptListResponsePromise;
+      if (!conceptListResponse) {
+        throw new Error('K2 hosted acceptance passive Brain concept-list response was not observed.');
+      }
+      if (conceptListResponse.status() !== 200) {
+        throw new Error('K2 hosted acceptance passive Brain response was not HTTP 200.');
+      }
+      if (!isK2PassiveBrainApiResponse(conceptListResponse, vercelOrigin, expectedProfileId)) {
+        throw new Error('K2 hosted acceptance passive Brain request did not match its expected profile.');
+      }
+      const conceptList = await readK2PassiveBrainConceptList(conceptListResponse);
+      await assertK2PassiveBrainProjectionMatchesUi(page, summary, conceptList);
     },
     async openReview(page) {
       await goto(page, '/review');
