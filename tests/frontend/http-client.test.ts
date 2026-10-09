@@ -18,6 +18,14 @@ function response(body: unknown, init: ResponseInit = {}): Response {
   });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
 describe('HttpApiClient', () => {
   it('sends the configured base URL, Bearer token, JSON body and query', async () => {
     const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -138,6 +146,54 @@ describe('HttpApiClient', () => {
     await client.getMe();
 
     expect(client.getLastEtag('me')).toBe('"profile-v1"');
+  });
+
+  it('does not let a cancelled same-actor GET /v1/me body overwrite a newer ETag', async () => {
+    const bodyReadStarted = deferred<void>();
+    const lateBody = deferred<string>();
+    const oldResponse = response(mockApiResponses.me, { headers: { ETag: '"me-old"' } });
+    vi.spyOn(oldResponse, 'text').mockImplementation(() => {
+      bodyReadStarted.resolve();
+      return lateBody.promise;
+    });
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(oldResponse)
+      .mockResolvedValueOnce(response(mockApiResponses.me, { headers: { ETag: '"me-new"' } }));
+    const client = new HttpApiClient({
+      baseUrl: 'https://api.example.test',
+      authTokenProvider: tokenProvider,
+      fetchFn,
+      actorId: 'same-actor',
+    });
+    const oldController = new AbortController();
+    const oldRead = client.getMe({ signal: oldController.signal });
+
+    await bodyReadStarted.promise;
+    oldController.abort();
+    await client.getMe({ signal: new AbortController().signal });
+    expect(client.getLastEtag('me')).toBe('"me-new"');
+
+    lateBody.resolve(JSON.stringify(mockApiResponses.me));
+    await expect(oldRead).rejects.toMatchObject({ name: 'AbortError' });
+    expect(client.getLastEtag('me')).toBe('"me-new"');
+  });
+
+  it('does not start GET /v1/me fetch when its signal aborts during token acquisition', async () => {
+    const pendingToken = deferred<string | null>();
+    const fetchFn = vi.fn(async () => response(mockApiResponses.me));
+    const client = new HttpApiClient({
+      baseUrl: 'https://api.example.test',
+      authTokenProvider: { getAccessToken: () => pendingToken.promise },
+      fetchFn,
+    });
+    const controller = new AbortController();
+    const read = client.getMe({ signal: controller.signal });
+
+    controller.abort();
+    pendingToken.resolve('late-synthetic-token');
+
+    await expect(read).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   it('tunnels If-Match across the hosted proxy without exposing it to the Vercel cache layer', async () => {

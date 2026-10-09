@@ -9,6 +9,7 @@ on:
       - 'apps/web/src/features/auth/**'
       - 'apps/web/src/features/onboarding/**'
       - 'apps/web/src/features/today/**'
+      - 'apps/web/src/hooks/useProductReadiness.ts'
       - 'apps/web/src/lib/api/**'
       - 'packages/types/src/adapters/**'
       - 'packages/types/src/api/**'
@@ -18,6 +19,7 @@ on:
       - 'tests/frontend/AppRouteBoundary.test.tsx'
       - 'tests/frontend/http-client.test.ts'
       - 'tests/frontend/pilot-onboarding-timezone.test.tsx'
+      - 'tests/frontend/pilot-profile-readiness.test.tsx'
       - 'tests/frontend/readiness.test.ts'
       - 'tests/frontend/setup.ts'
       - 'tests/frontend/task011-today-live.test.tsx'
@@ -54,6 +56,7 @@ jobs:
           pnpm exec vitest run
           tests/frontend/task017-live-onboarding.test.tsx
           tests/frontend/pilot-onboarding-timezone.test.tsx
+          tests/frontend/pilot-profile-readiness.test.tsx
           tests/frontend/readiness.test.ts
           tests/frontend/AppRouteBoundary.test.tsx
           tests/frontend/task011-today-live.test.tsx

@@ -75,7 +75,8 @@ export interface ApiClient {
   searchAdminConcepts(query: OperationQuery<'searchAdminConcepts'>): Promise<AdminConceptSearchResponseDto>;
   putAdminSentenceConcept(input: { contentId: string; sentenceId: string; conceptId: string; body: PutAdminSentenceConceptRequestDto }): Promise<AdminContentResponseDto>;
   deleteAdminSentenceConcept(input: { contentId: string; sentenceId: string; conceptId: string; query: OperationQuery<'deleteAdminSentenceConcept'> }): Promise<AdminContentResponseDto>;
-  getMe(): Promise<MeResponseDto>;
+  /** Internal cancellation for readiness/profile bootstrap reads; never sent over the API wire. */
+  getMe(options?: { readonly signal?: AbortSignal }): Promise<MeResponseDto>;
   updateMe(input: { body: UpdateMeRequestDto; headers: OperationHeaders<'updateMe'> }): Promise<MeResponseDto>;
   listMyLanguageProfiles(): Promise<LanguageProfilesResponseDto>;
   createMyLanguageProfile(input: { body: CreateLanguageProfileRequestDto; headers: OperationHeaders<'createMyLanguageProfile'> }): Promise<LanguageProfileResponseDto>;
@@ -118,6 +119,51 @@ export interface HttpApiClientOptions {
 
 type RequestHeaders = Record<string, string>;
 type QueryValue = string | number | boolean | null | undefined;
+
+function createAbortError(): Error {
+  const error = new Error('The operation was aborted.');
+  error.name = 'AbortError';
+  return error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw createAbortError();
+}
+
+function awaitWithAbort<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return operation;
+  if (signal.aborted) return Promise.reject(createAbortError());
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => signal.removeEventListener('abort', abort);
+    const abort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(createAbortError());
+    };
+    signal.addEventListener('abort', abort, { once: true });
+    operation.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(value);
+      },
+      (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      }
+    );
+  });
+}
 
 function queryString(query?: Record<string, QueryValue>): string {
   if (!query) return '';
@@ -199,14 +245,17 @@ export class HttpApiClient implements ApiClient {
     body?: unknown;
     headers?: Record<string, unknown>;
     resourceKey?: string;
+    signal?: AbortSignal;
   }): Promise<T> {
     const requestGeneration = this.actorGeneration;
     const requestActorId = this.currentActorId;
 
     let token: string | null;
     try {
-      token = await this.authTokenProvider.getAccessToken();
+      throwIfAborted(params.signal);
+      token = await awaitWithAbort(this.authTokenProvider.getAccessToken(), params.signal);
     } catch (error) {
+      if (params.signal?.aborted || isAbortError(error)) throw createAbortError();
       if (error instanceof AuthTokenProviderError) throw error;
       throw new AuthTokenProviderError('Không thể kiểm tra phiên đăng nhập.', 'INFRASTRUCTURE_ERROR', { cause: error });
     }
@@ -217,6 +266,7 @@ export class HttpApiClient implements ApiClient {
     if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
       throw new LinguaActorAbortedError();
     }
+    throwIfAborted(params.signal);
 
     const headers: RequestHeaders = {
       Accept: 'application/json',
@@ -231,6 +281,7 @@ export class HttpApiClient implements ApiClient {
       }
     }
     const init: RequestInit = { method: params.method, headers };
+    if (params.signal) init.signal = params.signal;
     if (params.body !== undefined) {
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(params.body);
@@ -238,11 +289,15 @@ export class HttpApiClient implements ApiClient {
 
     let response: Response;
     try {
-      response = await this.fetchFn(joinUrl(this.baseUrl, params.path) + queryString(params.query), init);
+      response = await awaitWithAbort(
+        this.fetchFn(joinUrl(this.baseUrl, params.path) + queryString(params.query), init),
+        params.signal
+      );
     } catch (error) {
       if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
         throw new LinguaActorAbortedError();
       }
+      if (params.signal?.aborted || isAbortError(error)) throw createAbortError();
       throw new LinguaNetworkError({ cause: error });
     }
 
@@ -250,7 +305,8 @@ export class HttpApiClient implements ApiClient {
       throw new LinguaActorAbortedError();
     }
 
-    const raw = await response.text();
+    throwIfAborted(params.signal);
+    const raw = await awaitWithAbort(response.text(), params.signal);
 
     if (this.actorGeneration !== requestGeneration || this.currentActorId !== requestActorId) {
       throw new LinguaActorAbortedError();
@@ -283,6 +339,7 @@ export class HttpApiClient implements ApiClient {
     if (typeof payload !== 'object' || payload === null || !('data' in payload) || !('meta' in payload)) {
       throw new LinguaApiError({ code: 'INTERNAL_ERROR', httpStatus: response.status });
     }
+    throwIfAborted(params.signal);
     if (params.resourceKey) {
       const etag = response.headers.get('X-Lingua-Upstream-ETag') ?? response.headers.get('ETag');
       if (etag && this.actorGeneration === requestGeneration && this.currentActorId === requestActorId) {
@@ -303,7 +360,9 @@ export class HttpApiClient implements ApiClient {
   putAdminSentenceConcept(input: Parameters<ApiClient['putAdminSentenceConcept']>[0]) { return this.request<AdminContentResponseDto>({ method: 'PUT', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}/sentences/${encodeURIComponent(input.sentenceId)}/concepts/${encodeURIComponent(input.conceptId)}`, body: input.body }); }
   deleteAdminSentenceConcept(input: Parameters<ApiClient['deleteAdminSentenceConcept']>[0]) { return this.request<AdminContentResponseDto>({ method: 'DELETE', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}/sentences/${encodeURIComponent(input.sentenceId)}/concepts/${encodeURIComponent(input.conceptId)}`, query: input.query }); }
 
-  getMe() { return this.request<MeResponseDto>({ method: 'GET', path: '/v1/me', resourceKey: 'me' }); }
+  getMe(options?: { readonly signal?: AbortSignal }) {
+    return this.request<MeResponseDto>({ method: 'GET', path: '/v1/me', resourceKey: 'me', signal: options?.signal });
+  }
   updateMe(input: Parameters<ApiClient['updateMe']>[0]) { return this.request<MeResponseDto>({ method: 'PATCH', path: '/v1/me', body: input.body, headers: input.headers, resourceKey: 'me' }); }
   listMyLanguageProfiles() { return this.request<LanguageProfilesResponseDto>({ method: 'GET', path: '/v1/me/languages' }); }
   createMyLanguageProfile(input: Parameters<ApiClient['createMyLanguageProfile']>[0]) { return this.request<LanguageProfileResponseDto>({ method: 'POST', path: '/v1/me/languages', body: input.body, headers: input.headers, resourceKey: 'language-profile' }); }
