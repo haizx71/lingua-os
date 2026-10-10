@@ -816,7 +816,7 @@ def _pilot_reader_migration_head(
                   has_table_privilege(current_user, 'public.schema_migrations', 'DELETE'),
                   has_table_privilege(current_user, 'public.schema_migrations', 'TRUNCATE')"""
     ).fetchone()
-    if app_privileges != (True, True, True, False, False, False, False, False):
+    if app_privileges != (True, True, True, True, False, False, False, False):
         raise ProbeError
 
     platform_privileges = connection.execute(

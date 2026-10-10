@@ -290,7 +290,7 @@ class PilotReaderMigrationConnection:
         *,
         app_rows: list[tuple[str, str, str]] | None = None,
         platform_rows: list[tuple[str, str]] | None = None,
-        app_privileges: tuple[bool, ...] = (True, True, True, False, False, False, False, False),
+        app_privileges: tuple[bool, ...] = (True, True, True, True, False, False, False, False),
         platform_privileges: tuple[bool, ...] = (
             True,
             True,
@@ -408,14 +408,44 @@ def test_pilot_reader_migration_head_rejects_ledger_drift(
         probe._pilot_reader_migration_head(connection)
 
 
-def test_pilot_reader_migration_head_rejects_unapproved_privilege_shape(
+@pytest.mark.parametrize(
+    ("ledger", "privilege_index", "enabled"),
+    [
+        pytest.param("app", 0, False, id="app-missing-version"),
+        pytest.param("app", 1, False, id="app-missing-name"),
+        pytest.param("app", 2, False, id="app-missing-checksum"),
+        pytest.param("app", 3, False, id="app-missing-table-select"),
+        pytest.param("app", 4, True, id="app-insert"),
+        pytest.param("app", 5, True, id="app-update"),
+        pytest.param("app", 6, True, id="app-delete"),
+        pytest.param("app", 7, True, id="app-truncate"),
+        pytest.param("platform", 0, False, id="platform-missing-version"),
+        pytest.param("platform", 1, False, id="platform-missing-name"),
+        pytest.param("platform", 2, True, id="platform-table-select"),
+        pytest.param("platform", 3, True, id="platform-statements-select"),
+        pytest.param("platform", 4, True, id="platform-insert"),
+        pytest.param("platform", 5, True, id="platform-update"),
+        pytest.param("platform", 6, True, id="platform-delete"),
+        pytest.param("platform", 7, True, id="platform-truncate"),
+    ],
+)
+def test_pilot_reader_migration_head_rejects_unapproved_ledger_privilege_shape(
     monkeypatch: pytest.MonkeyPatch,
+    ledger: str,
+    privilege_index: int,
+    enabled: bool,
 ) -> None:
     monkeypatch.setattr(
         probe, "PILOT_READER_EXPECTED_PLATFORM_0022_VERSION", PILOT_PLATFORM_VERSION
     )
+    privileges = (
+        [True, True, True, True, False, False, False, False]
+        if ledger == "app"
+        else [True, True, False, False, False, False, False, False]
+    )
+    privileges[privilege_index] = enabled
     connection = PilotReaderMigrationConnection(
-        app_privileges=(True, True, True, False, True, False, False, False)
+        **{f"{ledger}_privileges": tuple(privileges)}
     )
 
     with pytest.raises(probe.ProbeError):
