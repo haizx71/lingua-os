@@ -1,5 +1,9 @@
 # LINGUA OS — Project Status
 
+## Reader pilot follow-up — 2026-10-10
+
+**DESIGN REVIEW PASS / AWAITING APPROVAL.** After the redesign, the owner again reports no sentence translation and clarifies that they do not know which feature to use next. The 72-pair first-party Vietnamese draft and [bounded correction plan](plans/PILOT-READER-COMPREHENSION-FOLLOWUP.md) passed independent GPT-6 Luna / Max design review with no HIGH/BLOCKER ([review](reviews/PILOT-READER-COMPREHENSION-PLAN-REVIEW.md)); exact owner editorial/rights/scope approval remains pending. Current Admin create/update has no translation input; a supported authoring-contract extension is proposed, not implemented. PILOT-004 next-action guidance remains P2 and needs a specific runtime exception. No content publication/retirement, learner mutation, runtime change or K2 reopening occurred. Existing presentation release remains DONE.
+
 ## Owner-approved full web presentation — 2026-10-09
 
 **DONE — presentation released, 2026-10-10 Asia/Saigon.** PR #66 passed independent Luna Max frozen-source review, all exact-head CI jobs and Vercel Preview, then merged normally at `2058a089529423343f7aae971bd43e1411359539`. Vercel Production `dpl_CbvghXA3Pgrm88JsMCCbnah1X7fP` is READY at that SHA with the canonical website alias assigned. Frontend regression passed 633/633 tests, additional Reader resume assertions passed 12/12, and workspace typecheck/generated contracts, lint, build and local browser QA passed. See [release evidence](reviews/PILOT-FULL-WEB-RELEASE.md) and [the bounded plan](plans/PILOT-FULL-WEB-DESIGN.md). Knowledge V2, migration `0021`, Auth/RLS, domain hooks and learner-state semantics remain frozen. Profile/Progress defaults show honest unavailable states; Reader reveals only supplied translation, so missing published translations remain PILOT-003. This release does not claim a hosted learner journey or improved learning outcomes.

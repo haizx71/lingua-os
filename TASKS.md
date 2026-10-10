@@ -1,5 +1,9 @@
 # LINGUA OS — MVP Task Board
 
+## PILOT-READER-COMPREHENSION-FOLLOWUP
+
+Status: DESIGN REVIEW PASS / AWAITING APPROVAL — repeated missing-translation report and specific next-action uncertainty (2026-10-10). Exact 72-pair editorial candidate and bounded supported Admin authoring proposal prepared; independent Luna Max design review PASS with no HIGH/BLOCKER. Next: owner content/rights/scope approval and specific P2 guidance exception → only then bounded implementation/review/CI/publication/isolated acceptance. See [plan](plans/PILOT-READER-COMPREHENSION-FOLLOWUP.md) and [review](reviews/PILOT-READER-COMPREHENSION-PLAN-REVIEW.md). This does not authorize a next major system or any hosted/learner write.
+
 ## PILOT-FULL-WEB-DESIGN — approved option 3 across existing app
 
 Status: DONE — PR #66 normal merge `2058a089529423343f7aae971bd43e1411359539`; independent Luna Max review, all exact-head CI/Preview and Vercel Production READY at the merged SHA PASS. Local verification: 633/633 frontend tests, additional 12/12 Reader resume regression, workspace typecheck/generated contracts, lint, production build and browser QA. See [release evidence](reviews/PILOT-FULL-WEB-RELEASE.md). Owner-authorized presentation exception implemented from authoritative baseline `5d0aa9769a14af3be254982f9f252cf9db24d383`.
