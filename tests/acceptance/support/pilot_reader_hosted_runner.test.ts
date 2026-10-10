@@ -10,6 +10,7 @@ import {
   canClaimOneShotReaderCommand,
   classifyPilotReaderRequest,
   loadPilotReaderCandidateFiles,
+  pilotReaderFinalizationFailure,
   pilotReaderSelectionUrl,
   type ReaderTarget,
 } from './pilot_reader_hosted_runner';
@@ -146,6 +147,22 @@ const blockedState = {
 };
 
 describe('PILOT-READER hosted acceptance harness', () => {
+  it('preserves a safe primary stage when mandatory cleanup proofs also fail', () => {
+    expect(pilotReaderFinalizationFailure(
+      'actor A lookup, Save, completion, and Today proof',
+      ['Auth cleanup or actor-zero proof', '27-table retained comparison'],
+    )?.message).toBe(
+      'PILOT-READER failed during actor A lookup, Save, completion, and Today proof; ' +
+      'cleanup proof failed at Auth cleanup or actor-zero proof, 27-table retained comparison.',
+    );
+    expect(pilotReaderFinalizationFailure(
+      'exact PILOT-READER migration preflight', [],
+    )?.message).toBe(
+      'PILOT-READER failed during exact PILOT-READER migration preflight; provider details were suppressed.',
+    );
+    expect(pilotReaderFinalizationFailure(undefined, [])).toBeUndefined();
+  });
+
   it('pins the exact candidate and all 72 ordered English/Vietnamese pairs', async () => {
     const candidate = await loadPilotReaderCandidateFiles();
     expect(candidate.pairs).toHaveLength(72);

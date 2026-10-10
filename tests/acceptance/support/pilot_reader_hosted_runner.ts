@@ -7,14 +7,15 @@ import {
   assertK2HostedAuthAbsent, assertNoK2ActorsRemain, authenticateK2HostedActor,
   K2_HOSTED_STAGING_SUPABASE_REF,
   cleanupFreshK2HostedActorIdentity, cleanupK2RunActors, createGithubTrustedSourceToken,
-  createK2AdminClient, createK2HostedActor, createK2LearnerClient, reapExpiredK2Actors,
+  createK2AdminClient, createK2HostedActor, createK2LearnerClient,
+  recoverCurrentPilotReaderRunActors, recoverExactPilotReaderFailedRunActor,
   validateK2HostedEnvironment, verifyK2HostedCurrentMasterSha, verifyK2HostedDeploymentAttestations,
   verifyK2FreshActorOwnership, verifyK2StagingApiHealth, verifyProtectedVercelOrigin,
   type K2AdminClient, type K2AuthenticatedActor, type K2FreshActorIdentity,
   type K2HostedActor, type K2HostedConfig, type K2LearnerClient,
 } from './k2_hosted_actors';
 import {
-  assertK2RetainedStateUnchanged, K2_APPROVED_APP_MIGRATION_HEAD,
+  assertK2RetainedStateUnchanged,
   parseK2ActorSnapshot, parseK2RetainedSnapshot,
   runK2HostedProbe, type K2RetainedSnapshot, type PilotReaderCatalogManifestProof,
   type PilotReaderCompletionBinding, type PilotReaderCompletionProof,
@@ -87,8 +88,42 @@ type ActorRun = Readonly<{
   session: K2AuthenticatedActor; profileId: string;
 }>;
 type K2ConceptDetail = components['schemas']['ConceptDetail'];
+type PilotReaderFailureStage =
+  | 'trusted deployment preflight'
+  | 'exact PILOT-READER migration preflight'
+  | 'actorless publication proof'
+  | 'reserved actor absence and retained baseline proof'
+  | 'two-actor bootstrap'
+  | 'protected Reader lifecycle'
+  | 'actor A lookup, Save, completion, and Today proof'
+  | 'actor B isolation proof';
+type PilotReaderCleanupStage =
+  | 'browser state cleanup'
+  | 'learner sign-out'
+  | 'browser context close'
+  | 'Auth cleanup or actor-zero proof'
+  | 'Auth absence proof'
+  | 'actor-zero proof'
+  | 'reserved actor absence proof'
+  | '27-table retained comparison';
 
 function fail(message: string): Error { return new Error(message); }
+export function pilotReaderFinalizationFailure(
+  primaryStage: PilotReaderFailureStage | undefined,
+  cleanupStages: readonly PilotReaderCleanupStage[],
+): Error | undefined {
+  const cleanupSummary = [...new Set(cleanupStages)].join(', ');
+  if (primaryStage && cleanupSummary) {
+    return fail(`PILOT-READER failed during ${primaryStage}; cleanup proof failed at ${cleanupSummary}.`);
+  }
+  if (primaryStage) {
+    return fail(`PILOT-READER failed during ${primaryStage}; provider details were suppressed.`);
+  }
+  if (cleanupSummary) {
+    return fail(`PILOT-READER mandatory cleanup proof failed at ${cleanupSummary}.`);
+  }
+  return undefined;
+}
 function sha256(value: Uint8Array | string): string {
   return createHash('sha256').update(value).digest('hex');
 }
@@ -938,8 +973,10 @@ export async function runPilotReaderHostedAcceptance(
   const contexts: BrowserContext[] = [baseContext];
   let secondContext: BrowserContext | undefined;
   let baseline: K2RetainedSnapshot | undefined;
-  let cleanupFailed = false;
   let cleanupEligible = false;
+  const cleanupFailureStages = new Set<PilotReaderCleanupStage>();
+  let activeStage: PilotReaderFailureStage = 'trusted deployment preflight';
+  let primaryFailureStage: PilotReaderFailureStage | undefined;
 
   try {
     await verifyK2HostedCurrentMasterSha(config);
@@ -949,12 +986,14 @@ export async function runPilotReaderHostedAcceptance(
       deploymentOrigin, initialTrustedToken, config.githubSha,
     );
     await verifyK2StagingApiHealth(config.apiOrigin, config.githubSha);
-    const migration = await runK2HostedProbe('migrations', config.readonlyDatabaseUrl);
+    activeStage = 'exact PILOT-READER migration preflight';
+    const migration = await runK2HostedProbe('pilot_reader_migrations', config.readonlyDatabaseUrl);
     if (!('appMigrationHead' in migration) ||
-        migration.appMigrationHead !== K2_APPROVED_APP_MIGRATION_HEAD) {
+        migration.appMigrationHead !== '0022' || migration.appliedMigrations !== 22) {
       throw fail('PILOT-READER staging migration head was not approved.');
     }
 
+    activeStage = 'actorless publication proof';
     const candidate = await loadPilotReaderCandidateFiles();
     const catalogResult = await runK2HostedProbe(
       'pilot_reader_catalog_manifest', config.readonlyDatabaseUrl,
@@ -964,15 +1003,12 @@ export async function runPilotReaderHostedAcceptance(
     }
     const contentId = assertPilotReaderCatalogProof(catalogResult, candidate);
 
-    cleanupEligible = true;
-    await reapExpiredK2Actors(
-      config, admin, Date.now(), actorId => verifyActorGone(config, actorId),
-      { allowSameRunUnmarked: config },
-    );
-    await cleanupK2RunActors(config, admin, actorId => verifyActorGone(config, actorId));
+    activeStage = 'reserved actor absence and retained baseline proof';
     await assertNoK2ActorsRemain(config, admin);
     baseline = await retainedSnapshot(config);
 
+    cleanupEligible = true;
+    activeStage = 'two-actor bootstrap';
     const actorRuns: ActorRun[] = [];
     for (let index = 0; index < 2; index += 1) {
       const actor = await createK2HostedActor(config, admin, identity => identities.push(identity));
@@ -988,6 +1024,7 @@ export async function runPilotReaderHostedAcceptance(
       actorRuns.push({ actor, learner, session, profileId });
     }
 
+    activeStage = 'protected Reader lifecycle';
     await verifyK2HostedCurrentMasterSha(config);
     const browserTrustedToken = await createGithubTrustedSourceToken(config);
     const reattestedOrigin = await verifyProtectedVercelOrigin(
@@ -1003,6 +1040,7 @@ export async function runPilotReaderHostedAcceptance(
     const actorA = actorRuns[0];
     const actorB = actorRuns[1];
     if (!actorA || !actorB) throw fail('PILOT-READER two-actor setup was incomplete.');
+    activeStage = 'actor A lookup, Save, completion, and Today proof';
     const stateA = createPilotRouteState(
       config, vercelOrigin, actorA.actor.id, actorA.profileId, candidate, contentId,
     );
@@ -1228,6 +1266,7 @@ export async function runPilotReaderHostedAcceptance(
     );
     stateA.todayClickArmed.value = false;
 
+    activeStage = 'actor B isolation proof';
     await clearBrowserState(baseContext, page);
     await actorA.learner.auth.signOut({ scope: 'global' });
     stateA.token = '';
@@ -1303,40 +1342,98 @@ export async function runPilotReaderHostedAcceptance(
     if (stateA.failed.value || stateB.failed.value) {
       throw fail('PILOT-READER browser request guard rejected a required lifecycle route.');
     }
+  } catch {
+    primaryFailureStage = activeStage;
   } finally {
-    for (const context of contexts) await clearBrowserState(context, context === baseContext ? page : undefined);
+    for (const context of contexts) {
+      try { await clearBrowserState(context, context === baseContext ? page : undefined); }
+      catch { cleanupFailureStages.add('browser state cleanup'); }
+    }
     for (const learner of learnerClients) {
       try { await learner.auth.signOut({ scope: 'global' }); }
-      catch { cleanupFailed = true; }
+      catch { cleanupFailureStages.add('learner sign-out'); }
     }
     if (secondContext) {
-      try { await secondContext.close(); } catch { cleanupFailed = true; }
+      try { await secondContext.close(); } catch { cleanupFailureStages.add('browser context close'); }
     }
     if (cleanupEligible) {
       try {
         await cleanupK2RunActors(config, admin, actorId => verifyActorGone(config, actorId));
-      } catch { cleanupFailed = true; }
+      } catch { cleanupFailureStages.add('Auth cleanup or actor-zero proof'); }
       for (const identity of identities) {
         try {
           await cleanupFreshK2HostedActorIdentity(
             config, identity, admin, actorId => verifyActorGone(config, actorId),
           );
-        } catch { cleanupFailed = true; }
+        } catch { cleanupFailureStages.add('Auth cleanup or actor-zero proof'); }
         try { await assertK2HostedAuthAbsent(admin, identity.id); }
-        catch { cleanupFailed = true; }
+        catch { cleanupFailureStages.add('Auth absence proof'); }
         try { await verifyActorGone(config, identity.id); }
-        catch { cleanupFailed = true; }
+        catch { cleanupFailureStages.add('actor-zero proof'); }
       }
       try { await assertNoK2ActorsRemain(config, admin); }
-      catch { cleanupFailed = true; }
+      catch { cleanupFailureStages.add('reserved actor absence proof'); }
     }
     if (baseline) {
       try { assertK2RetainedStateUnchanged(baseline, await retainedSnapshot(config)); }
-      catch { cleanupFailed = true; }
-    }
-    if (cleanupFailed) {
-      throw fail('PILOT-READER Auth cleanup, 27-table zero-residue proof, or retained-state comparison failed.');
+      catch { cleanupFailureStages.add('27-table retained comparison'); }
     }
   }
 
+  const finalizationFailure = pilotReaderFinalizationFailure(
+    primaryFailureStage, [...cleanupFailureStages],
+  );
+  if (finalizationFailure) throw finalizationFailure;
+
+}
+
+/** Recovers only the fixed failed run after exact 0022 and trusted executor gates pass. */
+export async function runPilotReaderHostedRecovery(config: K2HostedConfig): Promise<void> {
+  if (config.supabaseProjectRef !== K2_HOSTED_STAGING_SUPABASE_REF) {
+    throw fail('PILOT-READER recovery staging project binding was invalid.');
+  }
+  await verifyK2HostedCurrentMasterSha(config);
+  const migration = await runK2HostedProbe('pilot_reader_migrations', config.readonlyDatabaseUrl);
+  if (!('appMigrationHead' in migration) ||
+      migration.appMigrationHead !== '0022' || migration.appliedMigrations !== 22) {
+    throw fail('PILOT-READER recovery stopped because the exact reviewed migration head was unavailable.');
+  }
+
+  const admin = createK2AdminClient(config) as unknown as K2AdminClient;
+  await recoverExactPilotReaderFailedRunActor(config, admin, {
+    captureRetainedSnapshot: async actorId => snapshot(await runK2HostedProbe(
+      'pilot_reader_retained_snapshot_excluding_actor', config.readonlyDatabaseUrl, actorId,
+    )),
+    verifyAuthAbsent: actorId => assertK2HostedAuthAbsent(admin, actorId),
+    verifyActorZero: async actorId => assertZeroActorSnapshot(snapshot(await runK2HostedProbe(
+      'pilot_reader_actor_zero', config.readonlyDatabaseUrl, actorId,
+    ))),
+    assertRetainedUnchanged: assertK2RetainedStateUnchanged,
+  });
+  await assertNoK2ActorsRemain(config, admin);
+}
+
+/** Crash fallback for only this executor's PILOT run after the exact 0022 gate. */
+export async function runPilotReaderHostedCurrentRunCleanup(config: K2HostedConfig): Promise<void> {
+  if (config.supabaseProjectRef !== K2_HOSTED_STAGING_SUPABASE_REF) {
+    throw fail('PILOT-READER current-run cleanup staging project binding was invalid.');
+  }
+  const migration = await runK2HostedProbe('pilot_reader_migrations', config.readonlyDatabaseUrl);
+  if (!('appMigrationHead' in migration) ||
+      migration.appMigrationHead !== '0022' || migration.appliedMigrations !== 22) {
+    throw fail('PILOT-READER current-run cleanup stopped because the exact reviewed migration head was unavailable.');
+  }
+
+  const admin = createK2AdminClient(config) as unknown as K2AdminClient;
+  await recoverCurrentPilotReaderRunActors(config, admin, {
+    captureRetainedSnapshot: async actorId => snapshot(await runK2HostedProbe(
+      'pilot_reader_retained_snapshot_excluding_actor', config.readonlyDatabaseUrl, actorId,
+    )),
+    verifyAuthAbsent: actorId => assertK2HostedAuthAbsent(admin, actorId),
+    verifyActorZero: async actorId => assertZeroActorSnapshot(snapshot(await runK2HostedProbe(
+      'pilot_reader_actor_zero', config.readonlyDatabaseUrl, actorId,
+    ))),
+    assertRetainedUnchanged: assertK2RetainedStateUnchanged,
+  });
+  await assertNoK2ActorsRemain(config, admin);
 }

@@ -64,10 +64,17 @@ describe('K2 hosted workflow credential boundary', () => {
   const acceptance = asMap(secretJobs['hosted-acceptance'], 'hosted-acceptance job');
   const janitor = asMap(secretJobs.janitor, 'janitor job');
   const cleanup = asMap(secretJobs['current-run-cleanup'], 'current-run-cleanup job');
+  const readerRecovery = asMap(secretJobs['reader-recovery'], 'reader-recovery job');
   const fixtureReaper = asMap(secretJobs['fixture-reaper'], 'fixture-reaper job');
   const securityGate = asMap(securityJobs['security-gate'], 'security-gate job');
   const dbPreflight = asMap(asMap(dbPreflightWorkflow.jobs, 'db preflight jobs')['readonly-preflight'], 'readonly-preflight job');
   const todayCi = readWorkflow('.github/workflows/knowledge-audit-ci.yml');
+  const k2AcceptanceSource = readFileSync(
+    resolve(process.cwd(), 'tests/acceptance/k2_hosted_acceptance.spec.ts'), 'utf8',
+  );
+  const pilotReaderRunnerSource = readFileSync(
+    resolve(process.cwd(), 'tests/acceptance/support/pilot_reader_hosted_runner.ts'), 'utf8',
+  );
   const todayPostgres = asMap(asMap(todayCi.jobs, 'Today CI jobs')['today-postgres-integration'],
     'Today PostgreSQL job');
 
@@ -162,6 +169,9 @@ describe('K2 hosted workflow credential boundary', () => {
     const localProbe = stepNamed(securityGate, 'Run read-only hosted probe tests');
     expect(String(localProbe.run)).toContain('tests/acceptance/support/test_k2_hosted_probe.py');
     expect(String(localProbe.run)).toContain('tests/backend/database/test_pilot_reader_catalog_probe.py');
+    expect(String(localProbe.run)).toContain('tests/backend/database/test_pilot_reader_auth_erasure.py');
+    expect(String(localProbe.run)).toContain('tests/backend/database/test_pilot_reader_retained_snapshot.py');
+    expect(String(localProbe.run)).toContain('tests/acceptance/support/test_k2_hosted_probe.py');
     expect(asMap(localProbe.env, 'local probe environment').DB_LOCALONLY).toBe('1');
     expect(readFileSync(resolve(process.cwd(), 'playwright.k2-hosted.config.ts'), 'utf8'))
       .toContain("'pilot_reader_hosted_acceptance.spec.ts'");
@@ -235,6 +245,7 @@ describe('K2 hosted workflow credential boundary', () => {
       'current-run-cleanup:Recover only actors marked for this workflow run',
       'hosted-acceptance:Run protected selected hosted subcase',
       'janitor:Run guarded TTL janitor only',
+      'reader-recovery:Recover only the fixed failed PILOT-READER run',
     ]);
     const acceptanceEnv = asMap(
       stepNamed(acceptance, 'Run protected selected hosted subcase').env,
@@ -290,12 +301,89 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(cleanupEnv.K2_ACCEPTANCE_WAVE).toBe('${{ inputs.wave }}');
     expect(cleanupEnv.K2_ACCEPTANCE_MODE).toBe('cleanup-current');
     expect(cleanupEnv.K2_GITHUB_TOKEN).toBe("${{ inputs.wave == 'K2-09' && github.token || '' }}");
+    const pilotCurrentRunBranch = k2AcceptanceSource.indexOf("if (WAVE_SELECTOR === 'PILOT-READER')");
+    const pilotCurrentRunCleanup = k2AcceptanceSource.indexOf('runPilotReaderHostedCurrentRunCleanup(config);');
+    const exactK2Gate = k2AcceptanceSource.indexOf('await requireExactK2MigrationHead(config);', pilotCurrentRunBranch);
+    const janitorGate = k2AcceptanceSource.indexOf('await requireExactK2MigrationHead(config);');
+    const janitorCleanup = k2AcceptanceSource.indexOf('await reapExpiredK2Actors(', janitorGate);
+    const currentCleanup = k2AcceptanceSource.indexOf('await cleanupK2RunActors(', exactK2Gate);
+    const currentPilotCleanupRunner = pilotReaderRunnerSource.slice(
+      pilotReaderRunnerSource.indexOf('export async function runPilotReaderHostedCurrentRunCleanup'),
+    );
+    const pilotMigrationGate = currentPilotCleanupRunner.indexOf(
+      "runK2HostedProbe('pilot_reader_migrations', config.readonlyDatabaseUrl)",
+    );
+    const pilotAdminCreation = currentPilotCleanupRunner.indexOf('createK2AdminClient(config)', pilotMigrationGate);
+    const pilotCurrentActorCleanup = currentPilotCleanupRunner.indexOf('recoverCurrentPilotReaderRunActors(', pilotAdminCreation);
+    expect(exactK2Gate).toBeGreaterThanOrEqual(0);
+    expect(pilotCurrentRunBranch).toBeGreaterThanOrEqual(0);
+    expect(pilotCurrentRunCleanup).toBeGreaterThan(pilotCurrentRunBranch);
+    expect(pilotCurrentRunCleanup).toBeLessThan(exactK2Gate);
+    expect(janitorCleanup).toBeGreaterThan(janitorGate);
+    expect(currentCleanup).toBeGreaterThan(exactK2Gate);
+    expect(pilotMigrationGate).toBeGreaterThanOrEqual(0);
+    expect(pilotAdminCreation).toBeGreaterThan(pilotMigrationGate);
+    expect(pilotCurrentActorCleanup).toBeGreaterThan(pilotAdminCreation);
+    expect(pilotReaderRunnerSource).toContain('pilot_reader_retained_snapshot_excluding_actor');
+    expect(pilotReaderRunnerSource).toContain("'pilot_reader_actor_zero'");
+  });
+
+  it('runs the exact failed Reader recovery as a separate owner-gated, read-only-permission job', () => {
+    const triggers = asMap(secretWorkflow.on, 'secret workflow triggers');
+    const dispatchInputs = asMap(asMap(triggers.workflow_dispatch, 'dispatch trigger').inputs,
+      'dispatch inputs');
+    expect(asMap(dispatchInputs.mode, 'dispatch mode').options)
+      .toEqual(['acceptance', 'janitor', 'fixture-reap', 'reader-recovery']);
+    const guard = String(readerRecovery.if);
+    for (const condition of [
+      "github.event_name == 'workflow_dispatch'",
+      "inputs.mode == 'reader-recovery'",
+      "inputs.wave == 'PILOT-READER'",
+      "github.repository == 'haizx71/lingua-os'",
+      "github.ref == 'refs/heads/master'",
+      `github.workflow_ref == '${WORKFLOW_REF}'`,
+      `github.actor == '${OWNER}'`,
+      `github.triggering_actor == '${OWNER}'`,
+    ]) expect(guard).toContain(condition);
+    expect(asMap(readerRecovery.permissions, 'Reader recovery permissions')).toEqual({ contents: 'read' });
+    expect(readerRecovery.environment).toBeUndefined();
+    expect(JSON.stringify(readerRecovery)).not.toContain('id-token');
+    const preflight = stepNamed(readerRecovery, 'Verify exact recovery dispatch SHA and selector before staging secrets');
+    const recoveryStep = stepNamed(readerRecovery, 'Recover only the fixed failed PILOT-READER run');
+    expect(stepsFor(readerRecovery).indexOf(preflight)).toBeLessThan(stepsFor(readerRecovery).indexOf(recoveryStep));
+    expect(JSON.stringify(preflight)).not.toContain('secrets.');
+    for (const fixedGate of [
+      'GITHUB_EVENT_NAME', 'GITHUB_ACTOR', 'GITHUB_TRIGGERING_ACTOR',
+      'K2_REQUESTED_MODE', 'K2_REQUESTED_WAVE', '/git/ref/heads/master', 'process.env.GITHUB_SHA',
+    ]) expect(String(preflight.run)).toContain(fixedGate);
+    const recoveryEnv = asMap(recoveryStep.env, 'Reader recovery environment');
+    expect(recoveryEnv).toEqual({
+      K2_ACCEPTANCE_MODE: 'reader-recovery',
+      K2_ACCEPTANCE_WAVE: 'PILOT-READER',
+      PGSSLROOTCERT: SUPABASE_CA_ENV,
+      K2_STAGING_SUPABASE_URL: '${{ secrets.K2_STAGING_SUPABASE_URL }}',
+      K2_STAGING_SUPABASE_PROJECT_REF: '${{ secrets.K2_STAGING_SUPABASE_PROJECT_REF }}',
+      K2_STAGING_SUPABASE_SECRET_KEY: '${{ secrets.K2_STAGING_SUPABASE_SECRET_KEY }}',
+      K2_STAGING_READONLY_DATABASE_URL: '${{ secrets.K2_STAGING_READONLY_DATABASE_URL }}',
+      K2_GITHUB_TOKEN: '${{ github.token }}',
+      GITHUB_ACTOR: '${{ github.actor }}',
+      GITHUB_TRIGGERING_ACTOR: '${{ github.triggering_actor }}',
+    });
+    expect(recoveryEnv.GITHUB_RUN_ID).toBeUndefined();
+    expect(recoveryEnv.GITHUB_RUN_ATTEMPT).toBeUndefined();
+    expect(recoveryEnv.ACTIONS_ID_TOKEN_REQUEST_URL).toBeUndefined();
+    expect(recoveryEnv.K2_STAGING_API_ORIGIN).toBeUndefined();
+    expect(recoveryEnv.K2_STAGING_SUPABASE_PUBLISHABLE_KEY).toBeUndefined();
+    expect(recoveryStep.run).toContain('--grep "recover only the fixed failed PILOT-READER run"');
+    expect(recoveryStep.run).toContain('tests/acceptance/pilot_reader_hosted_acceptance.spec.ts');
+    expect(recoveryStep.run).not.toContain('tests/acceptance/k2_hosted_acceptance.spec.ts');
   });
 
   it('isolates the fixture reaper behind owner dispatch, current master, and minimal permissions', () => {
     const triggers = asMap(secretWorkflow.on, 'workflow triggers');
     const inputs = asMap(asMap(triggers.workflow_dispatch, 'dispatch trigger').inputs, 'dispatch inputs');
-    expect(asMap(inputs.mode, 'dispatch mode').options).toEqual(['acceptance', 'janitor', 'fixture-reap']);
+    expect(asMap(inputs.mode, 'dispatch mode').options)
+      .toEqual(['acceptance', 'janitor', 'fixture-reap', 'reader-recovery']);
     const guard = String(fixtureReaper.if);
     for (const condition of [
       "github.event_name == 'workflow_dispatch'",

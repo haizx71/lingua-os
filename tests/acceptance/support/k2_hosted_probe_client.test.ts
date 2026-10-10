@@ -15,6 +15,7 @@ import {
   parseK2HostedCatalogPreflight,
   parsePilotReaderCatalogManifestProof,
   parsePilotReaderCompletionProof,
+  parsePilotReaderMigrationProof,
   parseK2RetainedSnapshot,
   type K2RetainedSnapshot,
 } from './k2_hosted_probe_client';
@@ -274,6 +275,39 @@ describe('K2 read-only probe client', () => {
       .toThrow('staging migration head does not match');
     expect(() => parseK2HostedMigrationProof({ appMigrationHead: '0020', appliedMigrations: 21 }))
       .toThrow('staging migration head does not match');
+  });
+
+  it('accepts the fixed PILOT-READER migration proof without actor identity or extra fields', () => {
+    const proof = { appMigrationHead: '0022', appliedMigrations: 22 };
+    expect(parsePilotReaderMigrationProof(proof)).toEqual(proof);
+    expect(() => parsePilotReaderMigrationProof({ ...proof, actorId: 'private-actor-marker' }))
+      .toThrow('PILOT-READER migration probe returned invalid output');
+    expect(() => parsePilotReaderMigrationProof({ appMigrationHead: '0021', appliedMigrations: 21 }))
+      .toThrow('reviewed 0022 source');
+  });
+
+  it('keeps the PILOT-READER migration action actorless and passes verified actor IDs only in child env', () => {
+    const url = 'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require';
+    const systemEnv = { PATH: 'runner-path', SERVICE_ROLE_KEY: 'must-not-inherit' };
+    const migrations = buildK2ProbeChildEnvironment('pilot_reader_migrations', url, undefined, systemEnv);
+    expect(migrations.K2_ACCEPTANCE_PROBE_ACTION).toBe('pilot_reader_migrations');
+    expect(migrations.K2_ACCEPTANCE_ACTOR_ID).toBeUndefined();
+    expect(migrations.SERVICE_ROLE_KEY).toBeUndefined();
+    expect(() => buildK2ProbeChildEnvironment(
+      'pilot_reader_migrations', url, '00000000-0000-4000-8000-000000000001', systemEnv,
+    )).toThrow('migration proof is actorless');
+
+    const actorId = '00000000-0000-4000-8000-000000000001';
+    const retained = buildK2ProbeChildEnvironment(
+      'pilot_reader_retained_snapshot_excluding_actor', url, actorId, systemEnv,
+    );
+    expect(retained.K2_ACCEPTANCE_ACTOR_ID).toBe(actorId);
+    expect(Object.keys(retained)).toEqual([
+      'PATH', 'K2_STAGING_READONLY_DATABASE_URL', 'K2_ACCEPTANCE_PROBE_ACTION', 'K2_ACCEPTANCE_ACTOR_ID',
+    ]);
+    expect(() => buildK2ProbeChildEnvironment(
+      'pilot_reader_retained_snapshot_excluding_actor', url, undefined, systemEnv,
+    )).toThrow('verified actor binding');
   });
 
   it('accepts only the complete pinned Auth ownership and incoming-FK closure proof', () => {

@@ -1,14 +1,14 @@
-"""Reproduce and locally prove the bounded Reader Auth-erasure guard fix.
+"""Reproduce the pre-0022 blocker and prove the versioned Auth-erasure guard.
 
 This module always creates loopback PostgreSQL and overrides the shared
-database fixture, so it cannot use TEST_DATABASE_URL or a hosted target. The
-candidate function body is installed only in that disposable database and is
-restored before the test exits; it is not a migration or production change.
+database fixture, so it cannot use TEST_DATABASE_URL or a hosted target.
 """
 
 from __future__ import annotations
 
 import socket
+import subprocess
+import sys
 import time
 import uuid
 from collections.abc import Iterator
@@ -26,6 +26,7 @@ from lingua_api.main import create_app
 from lingua_api.memory.domain import AuthenticatedActor
 from psycopg.conninfo import make_conninfo
 
+from database.migrate import MigrationChecksumError, discover_migrations, migrate_down, migrate_up
 from tests.acceptance.support import k2_hosted_probe as probe
 from tests.backend.database.conftest import _run_docker
 from tests.backend.database.test_admin_content_api import (
@@ -44,38 +45,29 @@ from tests.backend.database.test_pilot_reader_catalog_probe import (
 
 AUTH_BOOTSTRAP = Path(__file__).with_name("supabase_test_bootstrap.sql")
 POSTGRES_IMAGE = "postgres:17.11-alpine3.24"
-CANDIDATE_READER_GUARD_SQL = """
-CREATE OR REPLACE FUNCTION public.enforce_reader_history_append_only()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = pg_catalog
-AS $function$
-BEGIN
-    IF TG_TABLE_NAME = 'exposure_events' THEN
-        IF OLD.request_fingerprint IS NULL THEN
-            IF TG_OP = 'DELETE' THEN
-                RETURN OLD;
-            END IF;
-            RETURN NEW;
-        END IF;
-    END IF;
+ROOT = Path(__file__).resolve().parents[3]
+MIGRATIONS = ROOT / "database" / "migrations"
 
-    IF TG_OP = 'DELETE'
-       AND pg_catalog.pg_trigger_depth() > 1
-       AND NOT EXISTS (
-           SELECT 1
-           FROM auth.users AS auth_user
-           WHERE auth_user.id = OLD.user_id
-       ) THEN
-        RETURN OLD;
-    END IF;
 
-    RAISE EXCEPTION 'Reader source facts and replay snapshots are append-only'
-        USING ERRCODE = '23514';
-END
-$function$;
-"""
+def _safe_start_local_container(*args: str) -> subprocess.CompletedProcess[str] | None:
+    try:
+        return _run_docker(*args)
+    except Exception:
+        return None
+
+
+def test_local_container_start_failure_does_not_return_docker_arguments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = "local-password-sentinel"
+
+    def fail_with_argv(*args: str) -> None:
+        raise subprocess.CalledProcessError(1, ["docker", *args, sentinel])
+
+    monkeypatch.setattr(sys.modules[__name__], "_run_docker", fail_with_argv)
+    result = _safe_start_local_container("run", "--env", f"POSTGRES_PASSWORD={sentinel}")
+    assert result is None
+    assert sentinel not in repr(result)
 
 
 @dataclass(frozen=True)
@@ -87,6 +79,8 @@ class ErasureTokenVerifier:
     def verify(self, token: str) -> AuthenticatedActor:
         if token == "owner-token":
             return self.owner
+        if token == "survivor-token":
+            return self.learner
         if token == "learner-token":
             return self.learner
         if token == "control-token":
@@ -109,7 +103,50 @@ def _wait_local_postgres(database_url: str) -> None:
             return
         except psycopg.Error:
             time.sleep(0.5)
-    raise RuntimeError("Local Reader erasure PostgreSQL did not become ready")
+    raise RuntimeError("Local Reader erasure PostgreSQL did not become ready") from None
+
+
+def _function_definition(database_url: str) -> str:
+    with psycopg.connect(database_url) as connection:
+        row = connection.execute(
+            "SELECT pg_catalog.pg_get_functiondef("
+            "'public.enforce_reader_history_append_only()'::regprocedure)"
+        ).fetchone()
+    if row is None or not isinstance(row[0], str):
+        pytest.fail("Reader history trigger function was unavailable in local PostgreSQL.")
+    return row[0]
+
+
+def _reader_guard_boundary_snapshot(database_url: str) -> tuple[object, ...]:
+    with psycopg.connect(database_url) as connection:
+        function = connection.execute(
+            """SELECT procedure.proowner::regrole::text, procedure.proacl,
+                      procedure.prosecdef
+               FROM pg_catalog.pg_proc AS procedure
+               WHERE procedure.oid =
+                   'public.enforce_reader_history_append_only()'::regprocedure"""
+        ).fetchone()
+        triggers = connection.execute(
+            """SELECT relation.relname::text, trigger.tgname::text,
+                      pg_catalog.pg_get_triggerdef(trigger.oid),
+                      trigger.tgfoid::regprocedure::text, trigger.tgtype,
+                      trigger.tgisinternal
+               FROM pg_catalog.pg_trigger AS trigger
+               JOIN pg_catalog.pg_class AS relation ON relation.oid = trigger.tgrelid
+               JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+               WHERE namespace.nspname = 'public'
+                 AND relation.relname IN (
+                     'exposure_events', 'reader_exposure_concepts',
+                     'reader_mutation_results'
+                 )
+                 AND trigger.tgname <> 'aaa_reader_auth_erasure_probe'
+               ORDER BY relation.relname, trigger.tgname, trigger.oid"""
+        ).fetchall()
+    if function is None or function[2] is not False:
+        pytest.fail("Reader history guard did not retain its invoker-security boundary.")
+    if len(triggers) < 3:
+        pytest.fail("Reader history trigger bindings were incomplete in local PostgreSQL.")
+    return (*function[:2], tuple(triggers))
 
 
 @pytest.fixture(scope="session")
@@ -118,7 +155,7 @@ def postgres_url() -> Iterator[str]:
     port = _free_loopback_port()
     container_name = f"lingua-reader-erasure-{uuid.uuid4().hex[:12]}"
     password = f"local-{uuid.uuid4().hex}"
-    result = _run_docker(
+    result = _safe_start_local_container(
         "run",
         "--detach",
         "--rm",
@@ -132,6 +169,8 @@ def postgres_url() -> Iterator[str]:
         "POSTGRES_DB=lingua_test",
         POSTGRES_IMAGE,
     )
+    if result is None:
+        pytest.fail("Local Reader erasure PostgreSQL container could not start.", pytrace=False)
     container_id = result.stdout.strip()
     database_url = f"postgresql://postgres:{password}@127.0.0.1:{port}/lingua_test"
     try:
@@ -141,18 +180,27 @@ def postgres_url() -> Iterator[str]:
         yield database_url
     finally:
         if container_id:
-            _run_docker("rm", "--force", container_id, check=False)
+            cleanup_ok = True
+            try:
+                _run_docker("rm", "--force", container_id, check=False)
+            except Exception:
+                cleanup_ok = False
+            if not cleanup_ok:
+                pytest.fail(
+                    "Local Reader erasure PostgreSQL container cleanup failed.", pytrace=False
+                )
 
 
 @pytest.fixture
 def erasure_api(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> tuple[AdminApi, AuthenticatedActor, AuthenticatedActor, AuthenticatedActor]:
+    database_url, _ = isolated_postgres_at_migration
     owner = AuthenticatedActor(uuid.uuid4())
     survivor = AuthenticatedActor(uuid.uuid4())
     control = AuthenticatedActor(uuid.uuid4())
     racer = AuthenticatedActor(uuid.uuid4())
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         connection.execute(READER_SEED.read_text(encoding="utf-8"))
         for actor in (owner, survivor, control, racer):
             connection.execute("INSERT INTO auth.users (id) VALUES (%s)", (actor.id,))
@@ -172,12 +220,12 @@ def erasure_api(
         connection.commit()
 
     app = create_app(
-        database_url=isolated_migrated_postgres_url,
+        database_url=database_url,
         token_verifier=ErasureTokenVerifier(owner, survivor, control),
         cursor_secret=b"pilot-reader-auth-erasure-local-db-cursor-secret",
         admin_user_ids=str(owner.id),
     )
-    api = AdminApi(TestClient(app), isolated_migrated_postgres_url, owner)
+    api = AdminApi(TestClient(app), database_url, owner)
     return api, survivor, control, racer
 
 
@@ -279,22 +327,39 @@ def _assert_reader_guard_direct_mutations_rejected(database_url: str, actor_id: 
 
 
 @contextmanager
-def _candidate_reader_guard(database_url: str) -> Iterator[None]:
-    """Install a counterfactual function only inside the disposable DB test."""
+def _reader_erasure_migration(database_url: str) -> Iterator[tuple[str, str]]:
+    """Apply actual 0022 and restore the exact 0021 trigger function on exit."""
+    original_definition = _function_definition(database_url)
+    migration_matches = [item for item in discover_migrations(MIGRATIONS) if item.version == "0022"]
+    if len(migration_matches) != 1 or migration_matches[0].name != "reader_history_auth_erasure":
+        pytest.fail("The pinned Reader Auth-erasure migration pair was not uniquely discoverable.")
+    migration = migration_matches[0]
+    if migrate_up(database_url, MIGRATIONS) != ["0022"]:
+        pytest.fail("The exact-0021 disposable database did not apply only migration 0022.")
     with psycopg.connect(database_url) as connection:
-        original = connection.execute(
-            "SELECT pg_catalog.pg_get_functiondef("
-            "'public.enforce_reader_history_append_only()'::regprocedure)"
+        recorded = connection.execute(
+            "SELECT name, checksum FROM public.schema_migrations WHERE version = '0022'"
         ).fetchone()
-        if original is None or not isinstance(original[0], str):
-            pytest.fail("Current Reader history trigger function was unavailable locally.")
-        original_definition = original[0]
-        connection.execute(CANDIDATE_READER_GUARD_SQL)
+    if recorded != (migration.name, migration.checksum):
+        pytest.fail("Migration 0022 ledger did not record its exact discovered checksum.")
+    if migrate_up(database_url, MIGRATIONS) != []:
+        pytest.fail("Migration 0022 was not a no-op on its exact applied checksum.")
     try:
-        yield
+        yield original_definition, migration.checksum
     finally:
         with psycopg.connect(database_url) as connection:
-            connection.execute(original_definition)
+            head = connection.execute(
+                "SELECT version FROM public.schema_migrations ORDER BY version DESC LIMIT 1"
+            ).fetchone()
+        if head == ("0022",):
+            if migrate_down(database_url, MIGRATIONS, steps=1) != ["0022"]:
+                pytest.fail(
+                    "Migration 0022 could not roll back from the local disposable database."
+                )
+        elif head != ("0021",):
+            pytest.fail("Reader erasure test left an unexpected migration head.")
+        if _function_definition(database_url) != original_definition:
+            pytest.fail("Migration 0022 down did not restore the exact 0021 function definition.")
 
 
 def _assert_concurrent_insert_waits_for_auth_erasure(
@@ -346,11 +411,12 @@ def _assert_concurrent_insert_waits_for_auth_erasure(
         deletion.close()
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_reader_auth_erasure_is_narrowly_allowed_only_for_trusted_cascade(
     erasure_api: tuple[AdminApi, AuthenticatedActor, AuthenticatedActor, AuthenticatedActor],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Prove the current blocker and the minimal 0019-style candidate locally."""
+    """Reproduce the 0021 blocker and exercise the real 0022 migration locally."""
     api, survivor, control, racer = erasure_api
     owner_id = api.owner.id
     monkeypatch.setattr(
@@ -365,6 +431,39 @@ def test_reader_auth_erasure_is_narrowly_allowed_only_for_trusted_cascade(
     _put_translations(api, content_id, manifest, candidate)
     _validate_and_publish(api, content_id)
 
+    survivor_profile_id, survivor_segment_id, _, survivor_lookup = _actor_reader_target(
+        api.database_url, survivor.id, content_id
+    )
+    survivor_save = api.client.put(
+        f"/v1/library/concepts/{survivor_lookup[2]}",
+        params={"languageProfileId": str(survivor_profile_id)},
+        headers=_headers("survivor-token"),
+    )
+    if survivor_save.status_code != 200:
+        pytest.fail("Local retained Actor B concept Save did not use the normal Library endpoint.")
+    survivor_read = api.client.post(
+        "/v1/reader/exposures",
+        headers={**_headers("survivor-token"), "Idempotency-Key": str(uuid.uuid4())},
+        json={
+            "languageProfileId": str(survivor_profile_id),
+            "contentId": content_id,
+            "segmentId": str(survivor_segment_id),
+            "exposureType": "read",
+        },
+    )
+    if survivor_read.status_code != 200:
+        pytest.fail("Local retained Actor B Reader completion exposure failed.")
+    survivor_progress = api.client.put(
+        f"/v1/reader/progress/{content_id}",
+        json={
+            "languageProfileId": str(survivor_profile_id),
+            "currentSegmentId": str(survivor_segment_id),
+            "isCompleted": True,
+        },
+        headers={**_headers("survivor-token"), "Idempotency-Key": str(uuid.uuid4())},
+    )
+    if survivor_progress.status_code != 200:
+        pytest.fail("Local retained Actor B Reader completion progress failed.")
     survivor_before = _actor_snapshot(api.database_url, survivor.id)
 
     # A saved-concept-only control exercises the accepted 0019 exception under
@@ -471,10 +570,11 @@ def test_reader_auth_erasure_is_narrowly_allowed_only_for_trusted_cascade(
     if _actor_snapshot(api.database_url, owner_id) != owner_before_failed_delete:
         pytest.fail("Failed current Auth cascade changed the actor's complete 27-table snapshot.")
 
-    # Verify the candidate locally without writing any migration or changing a
-    # persistent environment. pg_get_functiondef restores the exact installed
-    # current function even when an assertion below fails.
-    with _candidate_reader_guard(api.database_url):
+    # Apply the real paired migration to this exact-0021 disposable database.
+    boundary_before_0022 = _reader_guard_boundary_snapshot(api.database_url)
+    with _reader_erasure_migration(api.database_url) as (pre_0022_function, checksum):
+        if _reader_guard_boundary_snapshot(api.database_url) != boundary_before_0022:
+            pytest.fail("Migration 0022 changed Reader guard owner, ACL, or trigger bindings.")
         _assert_reader_guard_direct_mutations_rejected(api.database_url, owner_id)
 
         with psycopg.connect(api.database_url) as connection:
@@ -573,6 +673,46 @@ def test_reader_auth_erasure_is_narrowly_allowed_only_for_trusted_cascade(
                 (racer.id,),
             ).fetchone() != (0,):
                 pytest.fail("Concurrent Reader result insert left an orphan row.")
+
+        # A checksum mismatch must stop reapplication instead of accepting an
+        # altered or unknown migration pair.
+        with psycopg.connect(api.database_url) as connection:
+            connection.execute(
+                "UPDATE public.schema_migrations SET checksum = %s WHERE version = '0022'",
+                ("0" * 64,),
+            )
+        try:
+            with pytest.raises(MigrationChecksumError):
+                migrate_up(api.database_url, MIGRATIONS)
+        finally:
+            with psycopg.connect(api.database_url) as connection:
+                connection.execute(
+                    "UPDATE public.schema_migrations SET checksum = %s WHERE version = '0022'",
+                    (checksum,),
+                )
+
+        # Roll back only 0022 and prove the exact original guard rejects Auth
+        # erasure for Actor B's retained Reader history, then reapply cleanly.
+        if migrate_down(api.database_url, MIGRATIONS, steps=1) != ["0022"]:
+            pytest.fail("Migration 0022 did not roll back as the current head.")
+        if _function_definition(api.database_url) != pre_0022_function:
+            pytest.fail("Migration 0022 down changed the exact pre-0022 guard definition.")
+        if _reader_guard_boundary_snapshot(api.database_url) != boundary_before_0022:
+            pytest.fail("Migration 0022 down changed Reader guard owner, ACL, or trigger bindings.")
+        with psycopg.connect(api.database_url) as connection:
+            with pytest.raises(
+                psycopg.errors.CheckViolation,
+                match="Reader source facts and replay snapshots are append-only",
+            ) as error:
+                connection.execute("SET LOCAL ROLE supabase_auth_admin")
+                connection.execute("DELETE FROM auth.users WHERE id = %s", (survivor.id,))
+            if error.value.sqlstate != "23514":
+                pytest.fail("Rolled-back migration did not restore SQLSTATE 23514 behavior.")
+            connection.rollback()
+        if migrate_up(api.database_url, MIGRATIONS) != ["0022"]:
+            pytest.fail("Migration 0022 did not reapply from the exact 0021 state.")
+        if migrate_up(api.database_url, MIGRATIONS) != []:
+            pytest.fail("Reapplied migration 0022 was not checksum-stable and idempotent.")
 
     if _actor_snapshot(api.database_url, survivor.id) != survivor_before:
         pytest.fail("Auth erasure changed Actor B's complete 27-table snapshot.")

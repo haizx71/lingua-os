@@ -11,9 +11,13 @@ import {
   K2_HOSTED_UNMARKED_RECOVERY_MAX_AGE_MS,
   K2_VERCEL_ATTESTATION_PATH,
   K2_HOSTED_WORKFLOW_REF,
+  PILOT_READER_FAILED_RUN_ID,
+  PILOT_READER_FAILED_RUN_ATTEMPT,
   authenticateK2HostedActor,
   createK2HostedActor,
   cleanupK2RunActors,
+  recoverExactPilotReaderFailedRunActor,
+  recoverCurrentPilotReaderRunActors,
   cleanupK2Actor,
   cleanupFreshK2HostedActorIdentity,
   assertNoK2ActorsRemain,
@@ -404,6 +408,413 @@ describe('K2 hosted actor lifecycle boundaries', () => {
       ...recoveryEnv,
       ACTIONS_ID_TOKEN_REQUEST_URL: '',
     }, 'cleanup-current')).toThrow('ACTIONS_ID_TOKEN_REQUEST_URL');
+
+    const pilotRecoveryEnv = validEnvironment();
+    pilotRecoveryEnv.K2_ACCEPTANCE_WAVE = 'PILOT-READER';
+    delete pilotRecoveryEnv.K2_STAGING_API_ORIGIN;
+    delete pilotRecoveryEnv.K2_STAGING_SUPABASE_PUBLISHABLE_KEY;
+    delete pilotRecoveryEnv.ACTIONS_ID_TOKEN_REQUEST_URL;
+    delete pilotRecoveryEnv.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+    const pilotRecovery = validateK2HostedEnvironment(pilotRecoveryEnv, 'reader-recovery');
+    expect(pilotRecovery.githubToken).toBe('placeholder');
+    expect(pilotRecovery.apiOrigin).toBe('');
+    expect(() => validateK2HostedEnvironment({
+      ...pilotRecoveryEnv,
+      K2_ACCEPTANCE_WAVE: 'K2-09',
+    }, 'reader-recovery')).toThrow('fixed wave selector');
+    delete pilotRecoveryEnv.K2_GITHUB_TOKEN;
+    expect(() => validateK2HostedEnvironment(pilotRecoveryEnv, 'reader-recovery'))
+      .toThrow('K2_GITHUB_TOKEN');
+  });
+
+  it('recovers only the exact failed Reader actor and attempts every post-delete proof', async () => {
+    const cfg = config({ githubRunAttempt: '2' });
+    const targetCfg = config({
+      githubRunId: PILOT_READER_FAILED_RUN_ID,
+      githubRunAttempt: PILOT_READER_FAILED_RUN_ATTEMPT,
+    });
+    const actor = makeActor(targetCfg);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const admin = adminWithUsers([user], [actor.id]);
+    let lookup = 0;
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      lookup += 1;
+      return lookup <= 3
+        ? { data: { user }, error: null }
+        : { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
+    });
+    const order: string[] = [];
+    (admin.auth.admin.deleteUser as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      order.push('auth-delete');
+      return { error: null };
+    });
+    const snapshots = [{ retained: 27 }, { retained: 27 }];
+    const proofs = {
+      captureRetainedSnapshot: vi.fn(async (actorId: string) => {
+        expect(actorId).toBe(actor.id);
+        order.push(snapshots.length === 2 ? 'retained-before' : 'retained-after');
+        return snapshots.shift()!;
+      }),
+      verifyAuthAbsent: vi.fn(async (actorId: string) => {
+        expect(actorId).toBe(actor.id);
+        order.push('auth-absent');
+      }),
+      verifyActorZero: vi.fn(async (actorId: string) => {
+        expect(actorId).toBe(actor.id);
+        order.push('actor-zero');
+      }),
+      assertRetainedUnchanged: vi.fn((before: { retained: number }, after: { retained: number }) => {
+        expect(after).toEqual(before);
+        order.push('retained-equal');
+      }),
+    };
+
+    await expect(recoverExactPilotReaderFailedRunActor(cfg, admin, proofs, NOW.getTime()))
+      .resolves.toBeUndefined();
+
+    expect(admin.auth.admin.listUsers).toHaveBeenCalledTimes(1);
+    expect(admin.auth.admin.getUserById).toHaveBeenCalledTimes(4);
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledExactlyOnceWith(actor.id);
+    expect(order).toEqual([
+      'retained-before', 'auth-delete', 'auth-absent', 'actor-zero', 'retained-after', 'retained-equal',
+    ]);
+  });
+
+  it('does not treat the failed target run as the trusted recovery executor', async () => {
+    const targetConfig = config({
+      githubRunId: PILOT_READER_FAILED_RUN_ID,
+      githubRunAttempt: PILOT_READER_FAILED_RUN_ATTEMPT,
+    });
+    const admin = adminWithUsers([]);
+    await expect(recoverExactPilotReaderFailedRunActor(targetConfig, admin, {
+      captureRetainedSnapshot: vi.fn(async () => ({})),
+      verifyAuthAbsent: vi.fn(async () => undefined),
+      verifyActorZero: vi.fn(async () => undefined),
+      assertRetainedUnchanged: vi.fn(),
+    }, NOW.getTime())).rejects.toThrow('executor identity was invalid');
+    expect(admin.auth.admin.listUsers).not.toHaveBeenCalled();
+  });
+
+  it('cleans only this current PILOT run with per-actor retained proofs', async () => {
+    const cfg = config({ githubRunAttempt: '2' });
+    const actorAttempt = config({ githubRunAttempt: '1' });
+    const first = makeActor(actorAttempt);
+    const secondBase = makeActor(actorAttempt);
+    const second: K2HostedActor = {
+      ...secondBase,
+      id: '550e8400-e29b-41d4-a716-446655440001',
+      email: 'k2ha-123456789-1-bbbbbbbbbbbbbbbb@example.invalid',
+    };
+    const users = [
+      authUser(first.id, first.email, first.ownership),
+      authUser(second.id, second.email, second.ownership),
+    ];
+    const admin = adminWithUsers(users, [first.id, second.id]);
+    const active = new Map(users.map(user => [user.id, user]));
+    (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>).mockImplementation(async (userId: string) => {
+      const user = active.get(userId);
+      return user
+        ? { data: { user }, error: null }
+        : { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
+    });
+    (admin.auth.admin.deleteUser as ReturnType<typeof vi.fn>).mockImplementation(async (userId: string) => {
+      active.delete(userId);
+      return { error: null };
+    });
+
+    const order: string[] = [];
+    const captureCounts = new Map<string, number>();
+    const proofs = {
+      captureRetainedSnapshot: vi.fn(async (actorId: string) => {
+        const count = (captureCounts.get(actorId) ?? 0) + 1;
+        captureCounts.set(actorId, count);
+        order.push(`${actorId === first.id ? 'first' : 'second'}-retained-${count === 1 ? 'before' : 'after'}`);
+        return { actorId };
+      }),
+      verifyAuthAbsent: vi.fn(async (actorId: string) => {
+        order.push(`${actorId === first.id ? 'first' : 'second'}-auth-absent`);
+      }),
+      verifyActorZero: vi.fn(async (actorId: string) => {
+        order.push(`${actorId === first.id ? 'first' : 'second'}-actor-zero`);
+      }),
+      assertRetainedUnchanged: vi.fn((before: { actorId: string }, after: { actorId: string }) => {
+        expect(after).toEqual(before);
+        order.push(`${before.actorId === first.id ? 'first' : 'second'}-retained-equal`);
+      }),
+    };
+
+    await expect(recoverCurrentPilotReaderRunActors(cfg, admin, proofs, NOW.getTime()))
+      .resolves.toBe(2);
+
+    expect(admin.auth.admin.listUsers).toHaveBeenCalledTimes(1);
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledTimes(2);
+    expect(admin.auth.admin.deleteUser).toHaveBeenNthCalledWith(1, first.id);
+    expect(admin.auth.admin.deleteUser).toHaveBeenNthCalledWith(2, second.id);
+    expect([...active.keys()]).toEqual([]);
+    expect(order).toEqual([
+      'first-retained-before', 'first-auth-absent', 'first-actor-zero', 'first-retained-after', 'first-retained-equal',
+      'second-retained-before', 'second-auth-absent', 'second-actor-zero', 'second-retained-after', 'second-retained-equal',
+    ]);
+  });
+
+  it.each([
+    ['foreign run mark', config({ githubRunId: '99999999999' })],
+    ['future attempt mark', config({ githubRunAttempt: '3' })],
+  ])('stops current PILOT cleanup before retained reads for a %s', async (_label, targetConfig) => {
+    const cfg = config({ githubRunAttempt: '2' });
+    const actor = makeActor(targetConfig);
+    const admin = adminWithUsers([authUser(actor.id, actor.email, actor.ownership)]);
+    const captureRetainedSnapshot = vi.fn(async () => ({}));
+    const proofs = {
+      captureRetainedSnapshot,
+      verifyAuthAbsent: vi.fn(async () => undefined),
+      verifyActorZero: vi.fn(async () => undefined),
+      assertRetainedUnchanged: vi.fn(),
+    };
+
+    await expect(recoverCurrentPilotReaderRunActors(cfg, admin, proofs, NOW.getTime()))
+      .rejects.toThrow('mismatched actor ownership');
+    expect(captureRetainedSnapshot).not.toHaveBeenCalled();
+    expect(admin.auth.admin.getUserById).not.toHaveBeenCalled();
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('attempts every current-run PILOT proof when guarded deletion fails', async () => {
+    const cfg = config();
+    const actor = makeActor(cfg);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const admin = adminWithUsers([user]);
+    (admin.auth.admin.deleteUser as ReturnType<typeof vi.fn>).mockResolvedValue({ error: new Error('suppressed') });
+    let snapshotCount = 0;
+    const order: string[] = [];
+    const proofs = {
+      captureRetainedSnapshot: vi.fn(async () => {
+        order.push(snapshotCount++ === 0 ? 'before' : 'after');
+        return { stable: true };
+      }),
+      verifyAuthAbsent: vi.fn(async () => { order.push('auth-absent'); }),
+      verifyActorZero: vi.fn(async () => { order.push('actor-zero'); }),
+      assertRetainedUnchanged: vi.fn(() => { order.push('retained-equal'); }),
+    };
+
+    await expect(recoverCurrentPilotReaderRunActors(cfg, admin, proofs, NOW.getTime()))
+      .rejects.toThrow('current-run cleanup or required proof failed at: guarded Auth deletion');
+    expect(order).toEqual(['before', 'auth-absent', 'actor-zero', 'after', 'retained-equal']);
+  });
+
+  it.each(['refetch', 'baseline', 'delete', 'proof'] as const)(
+    'continues to actor B after actor A %s failure and still reports overall failure',
+    async failurePoint => {
+      const cfg = config({ githubRunAttempt: '2' });
+      const actorAttempt = config({ githubRunAttempt: '1' });
+      const first = makeActor(actorAttempt);
+      const secondBase = makeActor(actorAttempt);
+      const second: K2HostedActor = {
+        ...secondBase,
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        email: 'k2ha-123456789-1-bbbbbbbbbbbbbbbb@example.invalid',
+      };
+      const users = [
+        authUser(first.id, first.email, first.ownership),
+        authUser(second.id, second.email, second.ownership),
+      ];
+      const admin = adminWithUsers(users, [first.id, second.id]);
+      const active = new Map(users.map(user => [user.id, user]));
+      let actorARefetchFailed = false;
+      (admin.auth.admin.getUserById as ReturnType<typeof vi.fn>).mockImplementation(async (userId: string) => {
+        if (failurePoint === 'refetch' && userId === first.id && !actorARefetchFailed) {
+          actorARefetchFailed = true;
+          return { data: { user: null }, error: new Error('suppressed') };
+        }
+        const user = active.get(userId);
+        return user
+          ? { data: { user }, error: null }
+          : { data: { user: null }, error: new AuthApiError('suppressed', 404, 'user_not_found') };
+      });
+      const deleteCalls: string[] = [];
+      (admin.auth.admin.deleteUser as ReturnType<typeof vi.fn>).mockImplementation(async (userId: string) => {
+        deleteCalls.push(userId);
+        if (failurePoint === 'delete' && userId === first.id) return { error: new Error('suppressed') };
+        active.delete(userId);
+        return { error: null };
+      });
+
+      const order: string[] = [];
+      const proofs = {
+        captureRetainedSnapshot: vi.fn(async (actorId: string) => {
+          order.push(`${actorId === first.id ? 'A' : 'B'}:snapshot`);
+          if (failurePoint === 'baseline' && actorId === first.id) throw new Error('suppressed');
+          return { actorId };
+        }),
+        verifyAuthAbsent: vi.fn(async (actorId: string) => {
+          order.push(`${actorId === first.id ? 'A' : 'B'}:auth`);
+          if (active.has(actorId)) throw new Error('suppressed');
+        }),
+        verifyActorZero: vi.fn(async (actorId: string) => {
+          order.push(`${actorId === first.id ? 'A' : 'B'}:zero`);
+          if (active.has(actorId) || (failurePoint === 'proof' && actorId === first.id)) {
+            throw new Error('suppressed');
+          }
+        }),
+        assertRetainedUnchanged: vi.fn((before: { actorId: string }, after: { actorId: string }) => {
+          expect(after).toEqual(before);
+          order.push(`${before.actorId === first.id ? 'A' : 'B'}:retained`);
+        }),
+      };
+
+      let failure: unknown;
+      try { await recoverCurrentPilotReaderRunActors(cfg, admin, proofs, NOW.getTime()); }
+      catch (error) { failure = error; }
+      expect(failure).toBeInstanceOf(Error);
+      const message = (failure as Error).message;
+      expect(message).toContain('current-run cleanup or required proof failed at:');
+      const expectedStage = {
+        refetch: 'exact Auth re-fetch',
+        baseline: 'retained baseline',
+        delete: 'guarded Auth deletion',
+        proof: '27-table actor-zero',
+      }[failurePoint];
+      expect(message).toContain(expectedStage);
+      expect(message).not.toContain(first.id);
+      expect(message).not.toContain(second.id);
+
+      expect(deleteCalls).toContain(second.id);
+      expect(active.has(second.id)).toBe(false);
+      expect(proofs.captureRetainedSnapshot).toHaveBeenCalledWith(second.id);
+      expect(proofs.verifyAuthAbsent).toHaveBeenCalledWith(second.id);
+      expect(proofs.verifyActorZero).toHaveBeenCalledWith(second.id);
+      expect(proofs.assertRetainedUnchanged).toHaveBeenCalledWith(
+        { actorId: second.id }, { actorId: second.id },
+      );
+      if (failurePoint === 'refetch' || failurePoint === 'baseline') {
+        expect(deleteCalls).not.toContain(first.id);
+        expect(proofs.verifyAuthAbsent).not.toHaveBeenCalledWith(first.id);
+        expect(proofs.captureRetainedSnapshot.mock.calls.filter(([id]) => id === first.id))
+          .toHaveLength(failurePoint === 'baseline' ? 1 : 0);
+      } else {
+        expect(deleteCalls).toContain(first.id);
+        expect(proofs.verifyAuthAbsent).toHaveBeenCalledWith(first.id);
+        expect(proofs.verifyActorZero).toHaveBeenCalledWith(first.id);
+        expect(proofs.captureRetainedSnapshot.mock.calls.filter(([id]) => id === first.id)).toHaveLength(2);
+      }
+      expect(order.at(-1)).toBe('B:retained');
+    },
+  );
+
+  it('stops before retained reads when any other marked or reserved actor is present', async () => {
+    const targetConfig = config({
+      githubRunId: PILOT_READER_FAILED_RUN_ID,
+      githubRunAttempt: PILOT_READER_FAILED_RUN_ATTEMPT,
+    });
+    const target = makeActor(targetConfig);
+    const foreignConfig = config({ githubRunId: '99999999999' });
+    const foreign = makeActor(foreignConfig);
+    const admin = adminWithUsers([
+      authUser(target.id, target.email, target.ownership),
+      authUser('550e8400-e29b-41d4-a716-446655440099', foreign.email, foreign.ownership),
+    ]);
+    const captureRetainedSnapshot = vi.fn(async () => ({}));
+
+    await expect(recoverExactPilotReaderFailedRunActor(config({ githubRunAttempt: '2' }), admin, {
+      captureRetainedSnapshot,
+      verifyAuthAbsent: vi.fn(async () => undefined),
+      verifyActorZero: vi.fn(async () => undefined),
+      assertRetainedUnchanged: vi.fn(),
+    }, NOW.getTime())).rejects.toThrow('unmarked or mismatched reserved address');
+    expect(captureRetainedSnapshot).not.toHaveBeenCalled();
+    expect(admin.auth.admin.getUserById).not.toHaveBeenCalled();
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('attempts every cleanup proof after the guarded Auth delete fails', async () => {
+    const targetConfig = config({
+      githubRunId: PILOT_READER_FAILED_RUN_ID,
+      githubRunAttempt: PILOT_READER_FAILED_RUN_ATTEMPT,
+    });
+    const actor = makeActor(targetConfig);
+    const user = authUser(actor.id, actor.email, actor.ownership);
+    const admin = adminWithUsers([user], [actor.id]);
+    (admin.auth.admin.deleteUser as ReturnType<typeof vi.fn>).mockResolvedValue({
+      error: new Error('provider detail must not surface'),
+    });
+    const proofOrder: string[] = [];
+    const snapshots = [{ retained: 27 }, { retained: 27 }];
+    const proofs = {
+      captureRetainedSnapshot: vi.fn(async () => {
+        proofOrder.push(snapshots.length === 2 ? 'before' : 'after');
+        return snapshots.shift()!;
+      }),
+      verifyAuthAbsent: vi.fn(async () => { proofOrder.push('auth-absent'); }),
+      verifyActorZero: vi.fn(async () => { proofOrder.push('actor-zero'); }),
+      assertRetainedUnchanged: vi.fn(() => { proofOrder.push('retained-equal'); }),
+    };
+
+    await expect(recoverExactPilotReaderFailedRunActor(
+      config({ githubRunAttempt: '2' }), admin, proofs, NOW.getTime(),
+    )).rejects.toThrow('cleanup or required post-cleanup proof failed');
+    expect(proofOrder).toEqual(['before', 'auth-absent', 'actor-zero', 'after', 'retained-equal']);
+    expect(admin.todayPlanDeleteFilter).toHaveBeenCalledExactlyOnceWith('user_id', actor.id);
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledExactlyOnceWith(actor.id);
+  });
+
+  it.each([
+    ['unmarked reserved address', (actor: K2HostedActor) =>
+      authUser(actor.id, actor.email, null)],
+    ['user-metadata-only mark', (actor: K2HostedActor) =>
+      authUser(actor.id, actor.email, null, { [K2_HOSTED_MARKER_KEY]: actor.ownership })],
+    ['changed attempt mark', (actor: K2HostedActor) =>
+      authUser(actor.id, actor.email, { ...actor.ownership, runAttempt: '2' })],
+    ['mismatched target address', (actor: K2HostedActor) =>
+      authUser(actor.id, 'k2ha-99999999999-1-aaaaaaaaaaaaaaaa@example.invalid', actor.ownership)],
+    ['user-metadata marker alongside the server mark', (actor: K2HostedActor) =>
+      authUser(actor.id, actor.email, actor.ownership, { [K2_HOSTED_MARKER_KEY]: actor.ownership })],
+  ])('stops recovery before retained reads or deletion for a %s', async (_label, makeUser) => {
+    const targetCfg = config({
+      githubRunId: PILOT_READER_FAILED_RUN_ID,
+      githubRunAttempt: PILOT_READER_FAILED_RUN_ATTEMPT,
+    });
+    const actor = makeActor(targetCfg);
+    const admin = adminWithUsers([makeUser(actor)]);
+    const proofs = {
+      captureRetainedSnapshot: vi.fn(async () => ({})),
+      verifyAuthAbsent: vi.fn(async () => undefined),
+      verifyActorZero: vi.fn(async () => undefined),
+      assertRetainedUnchanged: vi.fn(),
+    };
+
+    await expect(recoverExactPilotReaderFailedRunActor(config(), admin, proofs, NOW.getTime()))
+      .rejects.toThrow(/PILOT-READER recovery/);
+
+    expect(proofs.captureRetainedSnapshot).not.toHaveBeenCalled();
+    expect(admin.auth.admin.getUserById).not.toHaveBeenCalled();
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate exact failed-run candidates before reading retained tables', async () => {
+    const targetCfg = config({
+      githubRunId: PILOT_READER_FAILED_RUN_ID,
+      githubRunAttempt: PILOT_READER_FAILED_RUN_ATTEMPT,
+    });
+    const actor = makeActor(targetCfg);
+    const duplicate = authUser(
+      '550e8400-e29b-41d4-a716-446655440099',
+      `k2ha-${PILOT_READER_FAILED_RUN_ID}-1-bbbbbbbbbbbbbbbb@example.invalid`,
+      actor.ownership,
+    );
+    const admin = adminWithUsers([authUser(actor.id, actor.email, actor.ownership), duplicate]);
+    const captureRetainedSnapshot = vi.fn(async () => ({}));
+
+    await expect(recoverExactPilotReaderFailedRunActor(config(), admin, {
+      captureRetainedSnapshot,
+      verifyAuthAbsent: vi.fn(async () => undefined),
+      verifyActorZero: vi.fn(async () => undefined),
+      assertRetainedUnchanged: vi.fn(),
+    }, NOW.getTime())).rejects.toThrow('exactly one marked failed-run actor');
+
+    expect(captureRetainedSnapshot).not.toHaveBeenCalled();
+    expect(admin.auth.admin.getUserById).not.toHaveBeenCalled();
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
   it('requires both the repository owner and owner-triggered acceptance dispatch', () => {

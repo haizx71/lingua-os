@@ -368,6 +368,10 @@ jobs:
             services/api/src/lingua_api/main.py \
             services/api/src/lingua_api/hosted_fixture \
             tests/backend/database/test_k2_09_hosted_fixture_migration.py \
+            tests/backend/database/test_assessment_api.py \
+            tests/backend/database/test_k210_database_verification.py \
+            tests/backend/database/test_pilot_reader_auth_erasure.py \
+            tests/backend/database/test_pilot_reader_retained_snapshot.py \
             tests/backend/database/test_k2_09_hosted_fixture_store.py \
             tests/backend/test_k2_09_hosted_fixture_protocol.py \
             scripts/verify_frll_database.py
@@ -387,6 +391,10 @@ jobs:
             services/api/src/lingua_api/main.py \
             services/api/src/lingua_api/hosted_fixture \
             tests/backend/database/test_k2_09_hosted_fixture_migration.py \
+            tests/backend/database/test_assessment_api.py \
+            tests/backend/database/test_k210_database_verification.py \
+            tests/backend/database/test_pilot_reader_auth_erasure.py \
+            tests/backend/database/test_pilot_reader_retained_snapshot.py \
             tests/backend/database/test_k2_09_hosted_fixture_store.py \
             tests/backend/test_k2_09_hosted_fixture_protocol.py \
             scripts/verify_frll_database.py

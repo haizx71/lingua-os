@@ -284,6 +284,144 @@ def test_migration_probe_fails_if_supabase_ledger_is_not_at_reader_migration() -
         probe._migration_head(OlderMigrationConnection())
 
 
+class PilotReaderMigrationConnection:
+    def __init__(
+        self,
+        *,
+        app_rows: list[tuple[str, str, str]] | None = None,
+        platform_rows: list[tuple[str, str]] | None = None,
+        app_privileges: tuple[bool, ...] = (True, True, True, False, False, False, False, False),
+        platform_privileges: tuple[bool, ...] = (
+            True,
+            True,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ),
+    ) -> None:
+        self.app_rows = app_rows or list(probe.PILOT_READER_EXPECTED_APP_MIGRATIONS)
+        self.platform_rows = platform_rows or [
+            *probe.PILOT_READER_EXPECTED_PLATFORM_PRIOR,
+            (PILOT_PLATFORM_VERSION, probe.PILOT_READER_EXPECTED_PLATFORM_0022_NAME),
+        ]
+        self.app_privileges = app_privileges
+        self.platform_privileges = platform_privileges
+        self.calls: list[str] = []
+
+    def execute(self, query: str) -> Result:
+        self.calls.append(query)
+        if "FROM public.schema_migrations" in query:
+            return Result(rows=self.app_rows)
+        if "FROM supabase_migrations.schema_migrations" in query:
+            return Result(rows=self.platform_rows)
+        if "'public.schema_migrations'" in query:
+            return Result(row=self.app_privileges)
+        if "'supabase_migrations.schema_migrations'" in query:
+            return Result(row=self.platform_privileges)
+        raise AssertionError("unexpected PILOT-READER migration query")
+
+
+PILOT_PLATFORM_VERSION = "20261010151500"
+
+
+def test_pilot_reader_migration_head_requires_the_reviewed_platform_pin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(probe, "PILOT_READER_EXPECTED_PLATFORM_0022_VERSION", None)
+    connection = PilotReaderMigrationConnection()
+
+    with pytest.raises(probe.ProbeError):
+        probe._pilot_reader_migration_head(connection)
+
+    assert connection.calls == []
+
+
+def test_pilot_reader_migration_head_accepts_only_exact_app_and_platform_ledgers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        probe, "PILOT_READER_EXPECTED_PLATFORM_0022_VERSION", PILOT_PLATFORM_VERSION
+    )
+    connection = PilotReaderMigrationConnection()
+
+    assert probe._pilot_reader_migration_head(connection) == {
+        "appMigrationHead": "0022",
+        "appliedMigrations": 22,
+    }
+    assert len(connection.calls) == 4
+
+
+@pytest.mark.parametrize(
+    ("ledger", "mutation"),
+    [
+        ("app", "name"),
+        ("app", "checksum"),
+        ("app", "missing"),
+        ("app", "extra"),
+        ("platform", "missing"),
+        ("platform", "name"),
+        ("platform", "duplicate"),
+        ("platform", "extra"),
+    ],
+)
+def test_pilot_reader_migration_head_rejects_ledger_drift(
+    monkeypatch: pytest.MonkeyPatch,
+    ledger: str,
+    mutation: str,
+) -> None:
+    monkeypatch.setattr(
+        probe, "PILOT_READER_EXPECTED_PLATFORM_0022_VERSION", PILOT_PLATFORM_VERSION
+    )
+    app_rows = list(probe.PILOT_READER_EXPECTED_APP_MIGRATIONS)
+    platform_rows = [
+        *probe.PILOT_READER_EXPECTED_PLATFORM_PRIOR,
+        (PILOT_PLATFORM_VERSION, probe.PILOT_READER_EXPECTED_PLATFORM_0022_NAME),
+    ]
+    if ledger == "app":
+        index = 21
+        if mutation == "name":
+            app_rows[index] = (
+                app_rows[index][0],
+                "unknown_reader_history_name",
+                app_rows[index][2],
+            )
+        elif mutation == "checksum":
+            app_rows[index] = (app_rows[index][0], app_rows[index][1], "0" * 64)
+        elif mutation == "missing":
+            app_rows.pop()
+        else:
+            app_rows.append(app_rows[-1])
+    elif mutation == "missing":
+        platform_rows.pop()
+    elif mutation == "name":
+        platform_rows[-1] = (platform_rows[-1][0], "unknown_reader_history_name")
+    elif mutation == "duplicate":
+        platform_rows.append(platform_rows[-1])
+    else:
+        platform_rows.append(("20261010151501", "unexpected_platform_migration"))
+
+    connection = PilotReaderMigrationConnection(app_rows=app_rows, platform_rows=platform_rows)
+    with pytest.raises(probe.ProbeError):
+        probe._pilot_reader_migration_head(connection)
+
+
+def test_pilot_reader_migration_head_rejects_unapproved_privilege_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        probe, "PILOT_READER_EXPECTED_PLATFORM_0022_VERSION", PILOT_PLATFORM_VERSION
+    )
+    connection = PilotReaderMigrationConnection(
+        app_privileges=(True, True, True, False, True, False, False, False)
+    )
+
+    with pytest.raises(probe.ProbeError):
+        probe._pilot_reader_migration_head(connection)
+
+
 def test_frll_semantic_probe_is_fixed_select_only_and_redacts_identity_and_key() -> None:
     actor_id = UUID("550e8400-e29b-41d4-a716-446655440000")
     profile_id = UUID("550e8400-e29b-41d4-a716-446655440001")

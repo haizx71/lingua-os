@@ -74,3 +74,5 @@ jobs:
           python -m pytest -q
           tests/acceptance/support/test_k2_hosted_probe.py
           tests/backend/database/test_pilot_reader_catalog_probe.py
+          tests/backend/database/test_pilot_reader_auth_erasure.py
+          tests/backend/database/test_pilot_reader_retained_snapshot.py
