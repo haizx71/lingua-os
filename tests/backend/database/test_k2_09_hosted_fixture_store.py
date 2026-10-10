@@ -178,9 +178,11 @@ def _enable_fixed_target(monkeypatch: pytest.MonkeyPatch, local_database_url: st
     monkeypatch.setattr(psycopg, "connect", connect_local_fixture_database)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_runtime_guard_checks_postgres_bypass_and_six_catalog_owners(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
     store.runtime_guard()
@@ -445,9 +447,11 @@ def test_libpq_target_overrides_abort_before_store_connection(
     assert connections == []
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_fixture_setup_inspect_retry_cleanup_and_terminal_replay(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -536,9 +540,11 @@ def test_fixture_setup_inspect_retry_cleanup_and_terminal_replay(
         assert counts == (0, 0, 0, 0, 0, 0)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_concurrent_same_run_setup_returns_one_creation_and_one_verified_retry(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     claims = _claims(915032)
@@ -564,9 +570,11 @@ def test_concurrent_same_run_setup_returns_one_creation_and_one_verified_retry(
         ).fetchone() == (1,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_later_attempt_cannot_adopt_active_or_closed_run_receipt(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -583,9 +591,11 @@ def test_later_attempt_cannot_adopt_active_or_closed_run_receipt(
     assert store.inspect(original)["receiptState"] == "CLOSED"
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_fixture_word_without_explicit_policy_uses_normal_save_and_review_api(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     with psycopg.connect(isolated_migrated_postgres_url) as connection:
         connection.execute(_READER_SEED.read_text(encoding="utf-8"))
@@ -676,9 +686,11 @@ def test_fixture_word_without_explicit_policy_uses_normal_save_and_review_api(
         store.cleanup(claims)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_tree_drift_is_conflict_and_setup_never_repairs(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -716,11 +728,13 @@ def test_tree_drift_is_conflict_and_setup_never_repairs(
         "form_normalized_lemma",
     ],
 )
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_setup_collision_preflight_preserves_the_preexisting_catalog_row(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
     monkeypatch: pytest.MonkeyPatch,
     collision: str,
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -852,11 +866,13 @@ def test_setup_collision_preflight_preserves_the_preexisting_catalog_row(
 
 
 @pytest.mark.parametrize("delete_action", ["CASCADE", "SET NULL"])
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_cross_schema_foreign_key_drift_blocks_setup_and_cleanup_atomically(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
     monkeypatch: pytest.MonkeyPatch,
     delete_action: str,
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -973,9 +989,11 @@ def test_cross_schema_foreign_key_drift_blocks_setup_and_cleanup_atomically(
             connection.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_cleanup_rolls_back_when_ordinary_saved_concept_references_fixture(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -1027,9 +1045,11 @@ def test_cleanup_rolls_back_when_ordinary_saved_concept_references_fixture(
     assert store.cleanup(claims)["receiptState"] == "CLOSED"
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_cleanup_parent_locks_serialize_a_concurrent_saved_concept_reference(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -1126,9 +1146,11 @@ def test_cleanup_parent_locks_serialize_a_concurrent_saved_concept_reference(
         connection.execute("DELETE FROM auth.users WHERE id=%s", (actor_id,))
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_reaper_purges_expired_closed_receipt_only_after_exact_fixture_absence(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     store = PostgresFixtureStore(_TEST_SERVICE_DATABASE_URL)
@@ -1195,9 +1217,11 @@ def test_reaper_purges_expired_closed_receipt_only_after_exact_fixture_absence(
         ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_authenticated_routes_gate_absent_setup_and_allow_owned_cleanup_after_deploy_change(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     claims = _claims(915013)
     monkeypatch.setenv("RENDER_GIT_COMMIT", claims.sha)
@@ -1254,9 +1278,11 @@ def test_authenticated_routes_gate_absent_setup_and_allow_owned_cleanup_after_de
     assert github_tokens == ["github-read-token-for-local-test"] * 2
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_reaper_requires_completed_exact_run_pair_before_active_fixture_cleanup(
-    isolated_migrated_postgres_url: str, monkeypatch: pytest.MonkeyPatch
+    isolated_postgres_at_migration: tuple[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    isolated_migrated_postgres_url, _ = isolated_postgres_at_migration
     _enable_fixed_target(monkeypatch, isolated_migrated_postgres_url)
     _seed_approved_source(isolated_migrated_postgres_url)
     claims = _claims(915026)

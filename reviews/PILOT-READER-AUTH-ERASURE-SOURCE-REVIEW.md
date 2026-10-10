@@ -159,3 +159,25 @@ This review changed only this review record. No implementation source, Git state
 On 2026-10-11, I independently compared the integration worktree's staged path set and Git blob bytes with the raw manifest in final runtime packet v2 (`2026-10-10-reader-auth-erasure-runtime-final-packet-v2.md`, SHA-256 `4fdb63325ddbdeb394af37015bdd4308b26a560c4537635d467738094760700e`). The staged set contains exactly the 24 manifest paths. Each staged blob SHA-256 matches its packet raw-file SHA-256; there are zero mismatches. All staged blobs are LF-only, and recomputing the ordinal-path/UTF-8-LF manifest aggregate yields `17efcbd3da7be80d66b4873cee213563169a19437dee72758b74f139a94048fd`.
 
 Therefore the staged runtime bytes are identical to the reviewed raw source pins, including both 0022 migration files; no line-ending normalization or semantic source delta is present in the staged 24-path set. This is a local staged-byte attestation only and adds no hosted migration, Auth cleanup, learner-state, or acceptance evidence. The reviewer inspected staged blobs read-only and did not stage or commit files.
+
+
+## CI gate fixture correction — independent PASS for exact 26-file snapshot
+
+**Reviewer configuration:** GPT-6 Luna / Max (assigned configuration; runtime introspection unavailable).
+
+Implementation packet: `2026-10-11-reader-auth-erasure-ci-gate-fix-packet-v1.md`, SHA-256 `5bdc888ce1b5daa102f8dd87ba50974c54b7e6530848e94074d258c7acde8835`. The frozen implementation tree is `C:\Users\pc\.codex\worktrees\pilot-reader-auth-erasure\LINGUA_OS_PROJECT_STARTER`. I independently verified all 26 raw file hashes and recomputed aggregate `fba4a30f502aa9a063a8a98247097f97314c971cc63d72ac050c20f8a311628d`; the preceding 24 runtime pins are byte-for-byte unchanged from aggregate `17efcbd3da7be80d66b4873cee213563169a19437dee72758b74f139a94048fd`.
+
+The two delta pins are `scripts/verify_frll_database.py` SHA-256 `e2e4c1c41a44103d8588948bc33fcb923d1a999612ab849f44733e0f7c623839` and `tests/backend/database/test_k2_09_hosted_fixture_store.py` SHA-256 `ec70e713253ebe03ba2fe50871d047c8e31b9a9a6df970bffbde0f4261deab44`.
+
+The FRLL verifier change only extends the canonical migration-name tuple and its documented range through `0022_reader_history_auth_erasure`. It retains `SET TRANSACTION READ ONLY`, ordered full `(version, name, checksum)` equality against `discover_migrations()`, required schema-table checks, the deterministic FRLL anchor checks, and the existing exact-zero learner-derived-table assertion. The bootstrap tooling test still requires `EXPECTED_MIGRATIONS` to equal every discovered migration name, so the 0022 entry cannot mask a missing or additional migration. The learner-table list and verification logic are unchanged.
+
+The K2-09 fixture-store test change pins all 13 previously database-backed test functions to the existing `isolated_postgres_at_migration("0021")` fixture. Comparing the base and frozen test ASTs shows the same 20 test functions; all 13 prior latest-schema database tests map to the same 13 test names with an explicit 0021 boundary, with no deleted tests or skip markers. The fixture copies only migrations through the requested four-digit version and asserts the applied prefix ends there. The production K2 fixture-store file is unchanged from the packet base and continues to reject any application migration head other than exact `0021`; no production guard was weakened.
+
+Independent verification on the frozen implementation bytes:
+
+- `python -m pytest tests/backend/database/test_bootstrap_tooling.py -q` — 7 passed.
+- `python -m pytest tests/backend/database/test_k2_09_hosted_fixture_store.py -q` — 44 passed in 37.12s. `TEST_DATABASE_URL` was unset; the existing test fixture used its loopback-only disposable PostgreSQL container, which was removed after the run.
+- `python -m ruff check scripts/verify_frll_database.py tests/backend/database/test_k2_09_hosted_fixture_store.py` — passed.
+- `git diff --check` for the two changed files — passed.
+
+**Delta verdict:** PASS for the exact 26-file packet; no HIGH/BLOCKER finding in this two-file correction. This is a source and local-test result only. The exact-head CI gate and any hosted operation remain separate and are not claimed as passed here. No hosted database, K2 hosted wave, Supabase Auth actor, secret, or learner row was accessed or changed by this reviewer.
