@@ -21,6 +21,8 @@ export const K2_HOSTED_FIXTURE_API_ORIGIN = 'https://lingua-api-staging.onrender
 export const K2_HOSTED_FIXTURE_READ_TOKEN_HEADER = 'X-GitHub-Read-Token';
 export const K2_HOSTED_READONLY_DATABASE_ROLE = 'k2_hosted_acceptance_reader';
 export const K2_HOSTED_MARKER_KEY = 'lingua_k2_hosted_acceptance';
+export const PILOT_READER_FAILED_RUN_ID = '38044569136';
+export const PILOT_READER_FAILED_RUN_ATTEMPT = '1';
 export const K2_VERCEL_ATTESTATION_PATH = '/api/k2-vercel-attestation';
 export const K2_HOSTED_ACTOR_TTL_MS = 2 * 60 * 60 * 1000;
 export const K2_HOSTED_UNMARKED_RECOVERY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -131,6 +133,13 @@ export interface K2FreshActorIdentity {
   readonly ownership: K2ActorOwnership;
 }
 
+export interface PilotReaderRecoveryProofCallbacks<Snapshot> {
+  readonly captureRetainedSnapshot: (actorId: string) => Promise<Snapshot>;
+  readonly verifyAuthAbsent: (actorId: string) => Promise<void>;
+  readonly verifyActorZero: (actorId: string) => Promise<void>;
+  readonly assertRetainedUnchanged: (before: Snapshot, after: Snapshot) => void;
+}
+
 export interface K2AuthenticatedActor {
   readonly userId: string;
   readonly accessToken: string;
@@ -193,10 +202,13 @@ export interface K2LearnerClient {
 
 export function validateK2HostedEnvironment(
   env: Record<string, string | undefined> = process.env,
-  mode: 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap' = 'acceptance',
+  mode: 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap' | 'reader-recovery' = 'acceptance',
 ): K2HostedConfig {
-  if (mode === 'acceptance' || mode === 'cleanup-current') {
+  if (mode === 'acceptance' || mode === 'cleanup-current' || mode === 'reader-recovery') {
     resolveK2HostedWaveSelector(env.K2_ACCEPTANCE_WAVE);
+  }
+  if (mode === 'reader-recovery' && env.K2_ACCEPTANCE_WAVE !== 'PILOT-READER') {
+    throw new Error('PILOT-READER recovery requires its fixed wave selector.');
   }
   const identityRequired = [
     'GITHUB_REPOSITORY',
@@ -981,6 +993,233 @@ export async function cleanupK2RunActors(
   verificationFailed ||= recovery.verificationFailed;
   if (verificationFailed) throw new Error('K2 hosted acceptance deleted actor residue proof failed.');
   return owned.length + recovery.recovered;
+}
+
+/**
+ * Recovers only the fixed failed PILOT-READER run after exact Admin ownership
+ * verification, then requires independent Auth, 27-table zero, and retained proofs.
+ */
+export async function recoverExactPilotReaderFailedRunActor<Snapshot>(
+  config: K2HostedConfig,
+  admin: K2AdminClient,
+  proofs: PilotReaderRecoveryProofCallbacks<Snapshot>,
+  now = Date.now(),
+): Promise<void> {
+  if (
+    config.githubRepository !== K2_HOSTED_REPOSITORY ||
+    config.githubRef !== 'refs/heads/master' ||
+    config.githubEventName !== 'workflow_dispatch' ||
+    config.githubWorkflow !== K2_HOSTED_WORKFLOW ||
+    config.githubWorkflowRef !== K2_HOSTED_WORKFLOW_REF ||
+    config.supabaseProjectRef !== K2_HOSTED_STAGING_SUPABASE_REF ||
+    config.githubRunId === PILOT_READER_FAILED_RUN_ID ||
+    !/^\d{1,20}$/.test(config.githubRunId) ||
+    !/^[1-9]\d{0,4}$/.test(config.githubRunAttempt)
+  ) {
+    throw new Error('PILOT-READER recovery executor identity was invalid; no Auth cleanup ran.');
+  }
+
+  const targetPrefix = `${USER_EMAIL_PREFIX}${PILOT_READER_FAILED_RUN_ID}-`;
+  const users = await listUsersBounded(admin);
+  const targets: Array<{ user: User; ownership: K2ActorOwnership }> = [];
+  for (const user of users) {
+    let ownership: K2ActorOwnership | null;
+    try { ownership = readMarker(user); }
+    catch {
+      throw new Error('PILOT-READER recovery found an ambiguous marked Auth actor; no cleanup ran.');
+    }
+    const targetAddress = user.email?.startsWith(targetPrefix) ?? false;
+    if (hasServerOwnedK2Marker(user) && !ownership) {
+      throw new Error('PILOT-READER recovery found an ambiguous marked Auth actor; no cleanup ran.');
+    }
+    if (ownership?.runId === PILOT_READER_FAILED_RUN_ID) {
+      if (
+        ownership.runAttempt !== PILOT_READER_FAILED_RUN_ATTEMPT ||
+        !exactTargetOwner(ownership, config) ||
+        !actorEmailMatches(user, ownership) ||
+        Object.hasOwn(user.user_metadata ?? {}, K2_HOSTED_MARKER_KEY) ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.id)
+      ) {
+        throw new Error('PILOT-READER recovery found mismatched target ownership; no Auth cleanup ran.');
+      }
+      const expiry = validateExpiry(ownership);
+      if (Date.parse(ownership.createdAt) > now + 5 * 60 * 1000 || expiry.created > now + 5 * 60 * 1000) {
+        throw new Error('PILOT-READER recovery found a stale or future target mark; no Auth cleanup ran.');
+      }
+      targets.push({ user, ownership });
+    } else if (ownership || targetAddress || parseReservedK2ActorAddress(user.email)) {
+      // Any other marked or reserved actor makes the recovery scope ambiguous.
+      throw new Error('PILOT-READER recovery found an unmarked or mismatched reserved address; no cleanup ran.');
+    }
+  }
+  if (targets.length !== 1) {
+    throw new Error('PILOT-READER recovery requires exactly one marked failed-run actor.');
+  }
+
+  const target = targets[0];
+  if (!target) throw new Error('PILOT-READER recovery target was unavailable.');
+  let current;
+  try {
+    current = await admin.auth.admin.getUserById(target.user.id);
+  } catch {
+    throw new Error('PILOT-READER recovery could not re-fetch the exact Auth actor.');
+  }
+  const fetched = current.data?.user;
+  if (
+    current.error || !fetched || fetched.id !== target.user.id ||
+    fetched.email !== target.user.email || fetched.created_at !== target.user.created_at ||
+    fetched.email_confirmed_at !== target.user.email_confirmed_at ||
+    Object.hasOwn(fetched.user_metadata ?? {}, K2_HOSTED_MARKER_KEY) ||
+    !ownershipMatches(fetched, target.ownership, target.user.email ?? '')
+  ) {
+    throw new Error('PILOT-READER recovery exact Auth ownership revalidation failed.');
+  }
+
+  let before: Snapshot;
+  try {
+    before = await proofs.captureRetainedSnapshot(fetched.id);
+  } catch {
+    throw new Error('PILOT-READER recovery retained baseline proof failed; no Auth cleanup ran.');
+  }
+
+  let proofFailed = false;
+  try {
+    await deleteExactMarkedUser(config, admin, fetched, target.ownership);
+  } catch {
+    proofFailed = true;
+  } finally {
+    try { await proofs.verifyAuthAbsent(fetched.id); }
+    catch { proofFailed = true; }
+    try { await proofs.verifyActorZero(fetched.id); }
+    catch { proofFailed = true; }
+    let after: Snapshot | undefined;
+    try { after = await proofs.captureRetainedSnapshot(fetched.id); }
+    catch { proofFailed = true; }
+    if (after !== undefined) {
+      try { proofs.assertRetainedUnchanged(before, after); }
+      catch { proofFailed = true; }
+    }
+  }
+  if (proofFailed) {
+    throw new Error('PILOT-READER recovery cleanup or required post-cleanup proof failed.');
+  }
+}
+
+/** Cleans only current-workflow-run PILOT actors after per-actor retained proofs. */
+export async function recoverCurrentPilotReaderRunActors<Snapshot>(
+  config: K2HostedConfig,
+  admin: K2AdminClient,
+  proofs: PilotReaderRecoveryProofCallbacks<Snapshot>,
+  now = Date.now(),
+): Promise<number> {
+  if (
+    config.githubRepository !== K2_HOSTED_REPOSITORY ||
+    config.githubRef !== 'refs/heads/master' ||
+    config.githubEventName !== 'workflow_dispatch' ||
+    config.githubWorkflow !== K2_HOSTED_WORKFLOW ||
+    config.githubWorkflowRef !== K2_HOSTED_WORKFLOW_REF ||
+    config.supabaseProjectRef !== K2_HOSTED_STAGING_SUPABASE_REF ||
+    !/^[1-9]\d{0,19}$/.test(config.githubRunId) ||
+    !/^[1-9]\d{0,4}$/.test(config.githubRunAttempt)
+  ) {
+    throw new Error('PILOT-READER current-run cleanup executor identity was invalid; no Auth cleanup ran.');
+  }
+
+  const currentAttempt = Number(config.githubRunAttempt);
+  const users = await listUsersBounded(admin);
+  const targets: Array<{ user: User; ownership: K2ActorOwnership }> = [];
+  const targetEmails = new Set<string>();
+  for (const user of users) {
+    let ownership: K2ActorOwnership | null;
+    try { ownership = readMarker(user); }
+    catch {
+      throw new Error('PILOT-READER current-run cleanup found an ambiguous marked Auth actor; no cleanup ran.');
+    }
+    if (Object.hasOwn(user.user_metadata ?? {}, K2_HOSTED_MARKER_KEY)) {
+      throw new Error('PILOT-READER current-run cleanup found an untrusted Auth marker; no cleanup ran.');
+    }
+    if (ownership) {
+      const actorAttempt = Number(ownership.runAttempt);
+      const expiry = validateExpiry(ownership);
+      if (
+        ownership.runId !== config.githubRunId ||
+        !/^[1-9]\d{0,4}$/.test(ownership.runAttempt) ||
+        String(actorAttempt) !== ownership.runAttempt ||
+        actorAttempt > currentAttempt ||
+        !exactTargetOwner(ownership, config) ||
+        !actorEmailMatches(user, ownership) ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.id) ||
+        Date.parse(ownership.createdAt) > now + 5 * 60 * 1000 ||
+        expiry.created > now + 5 * 60 * 1000 ||
+        !user.email || targetEmails.has(user.email)
+      ) {
+        throw new Error('PILOT-READER current-run cleanup found mismatched actor ownership; no cleanup ran.');
+      }
+      targetEmails.add(user.email);
+      targets.push({ user, ownership });
+    } else if (hasServerOwnedK2Marker(user) || user.email?.startsWith(USER_EMAIL_PREFIX) ||
+               parseReservedK2ActorAddress(user.email)) {
+      throw new Error('PILOT-READER current-run cleanup found an unmarked or foreign reserved actor; no cleanup ran.');
+    }
+  }
+  if (targets.length > 2) {
+    throw new Error('PILOT-READER current-run cleanup found too many marked actors; no cleanup ran.');
+  }
+
+  targets.sort((left, right) =>
+    Number(left.ownership.runAttempt) - Number(right.ownership.runAttempt) ||
+    left.user.id.localeCompare(right.user.id),
+  );
+  const failureStages = new Set<string>();
+  for (const target of targets) {
+    let current;
+    try { current = await admin.auth.admin.getUserById(target.user.id); }
+    catch {
+      failureStages.add('exact Auth re-fetch');
+      continue;
+    }
+    const fetched = current.data?.user;
+    if (
+      current.error || !fetched || fetched.id !== target.user.id ||
+      fetched.email !== target.user.email || fetched.created_at !== target.user.created_at ||
+      fetched.email_confirmed_at !== target.user.email_confirmed_at ||
+      Object.hasOwn(fetched.user_metadata ?? {}, K2_HOSTED_MARKER_KEY) ||
+      !ownershipMatches(fetched, target.ownership, target.user.email ?? '')
+    ) {
+      failureStages.add('exact Auth re-fetch');
+      continue;
+    }
+
+    let before: Snapshot;
+    try { before = await proofs.captureRetainedSnapshot(fetched.id); }
+    catch {
+      failureStages.add('retained baseline');
+      continue;
+    }
+
+    let after: Snapshot | undefined;
+    let afterCaptured = false;
+    try { await deleteExactMarkedUser(config, admin, fetched, target.ownership); }
+    catch { failureStages.add('guarded Auth deletion'); }
+    finally {
+      try { await proofs.verifyAuthAbsent(fetched.id); }
+      catch { failureStages.add('Auth absence'); }
+      try { await proofs.verifyActorZero(fetched.id); }
+      catch { failureStages.add('27-table actor-zero'); }
+      try {
+        after = await proofs.captureRetainedSnapshot(fetched.id);
+        afterCaptured = true;
+      } catch { failureStages.add('retained after-snapshot'); }
+      if (afterCaptured) {
+        try { proofs.assertRetainedUnchanged(before, after as Snapshot); }
+        catch { failureStages.add('retained equality'); }
+      }
+    }
+  }
+  if (failureStages.size > 0) {
+    throw new Error(`PILOT-READER current-run cleanup or required proof failed at: ${[...failureStages].join(', ')}.`);
+  }
+  return targets.length;
 }
 
 /** No marked staging actor may be absorbed into the retained baseline. */

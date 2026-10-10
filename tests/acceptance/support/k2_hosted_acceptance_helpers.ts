@@ -4,12 +4,16 @@ import { validateContract } from './contract_validation';
 
 export type K2LanguageProfileRecord = Readonly<Record<string, unknown>>;
 type K2LanguageProfileDto = components['schemas']['LanguageProfile'];
-export type K2HostedRunMode = 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap';
+export type K2HostedRunMode =
+  | 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap' | 'reader-recovery';
 export type K2HostedWaveSelector = 'PILOT-READER' | 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09' | 'K2-10';
 
 export function resolveK2HostedRunMode(value: string | undefined): K2HostedRunMode {
   const mode = value ?? 'acceptance';
-  if (mode === 'acceptance' || mode === 'janitor' || mode === 'cleanup-current' || mode === 'fixture-reap') return mode;
+  if (
+    mode === 'acceptance' || mode === 'janitor' || mode === 'cleanup-current' ||
+    mode === 'fixture-reap' || mode === 'reader-recovery'
+  ) return mode;
   throw new Error('K2 hosted acceptance run mode is invalid; no hosted actor was created.');
 }
 

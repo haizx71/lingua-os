@@ -238,7 +238,7 @@ def _migration_ledger(database_url: str) -> list[tuple[str, str, str]]:
 def test_0020_to_0021_preserves_reader_catalog_and_nonempty_learner_state(
     isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    database_url, _ = isolated_postgres_at_migration
+    database_url, prefix_migrations_dir = isolated_postgres_at_migration
     ledger_before = _migration_ledger(database_url)
     assert ledger_before and ledger_before[-1][0] == "0020"
     with psycopg.connect(database_url) as connection:
@@ -249,7 +249,9 @@ def test_0020_to_0021_preserves_reader_catalog_and_nonempty_learner_state(
     learner_before = _table_snapshots(database_url, EXPECTED_LEARNER_TABLES)
     _assert_reader_fixture_and_nonempty_learner(database_url, learner_before)
 
-    assert migrate_up(database_url, MIGRATIONS_DIR) == ["0021"]
+    for migration_path in MIGRATIONS_DIR.glob("0021_*.sql"):
+        shutil.copyfile(migration_path, prefix_migrations_dir / migration_path.name)
+    assert migrate_up(database_url, prefix_migrations_dir) == ["0021"]
 
     ledger_after = _migration_ledger(database_url)
     assert ledger_after[:-1] == ledger_before

@@ -913,6 +913,7 @@ def test_0008_preflight_rejects_ambiguous_legacy_assessment_data(
         "0019",
         "0020",
         "0021",
+        "0022",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()

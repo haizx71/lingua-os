@@ -399,6 +399,49 @@ EXPECTED_CATALOG_TABLES = (
 )
 EXPECTED_READONLY_ROLE = "k2_hosted_acceptance_reader"
 EXPECTED_APP_MIGRATION_HEAD = "0021"
+PILOT_READER_EXPECTED_APP_MIGRATIONS = (
+    ("0001", "core_schema_v1", "5fdafed11c84fab783710a8e91975823a1145cb790b118717429dbe8b99f91b1"),
+    ("0002", "memory_engine_fsrs_v1", "5acd2108dd226d6554e42f62906f6789f202c5ca7e8841c1953e31f965f4c2c5"),
+    ("0003", "review_idempotency_result_v1", "f4c57bd2f69a643e96750f2990bea6ce65d87a37dfe4db6990422ec2cbe38352"),
+    ("0004", "learner_evidence_competence_v1", "3b83d20ac1b6f6bab22098f7dd20f79d55c5fc753b247355b461804a517e034f"),
+    ("0005", "reader_content_service_v1", "c9ce8e8c4cbc97c586a1862d3b8cd9195b12d89ac2e1a58eb9b33beadd29aa1c"),
+    ("0006", "today_engine_heuristic_v1", "5c4a3f05197c7ad8f51a77315faa2c85395df3326b80ae149c966abeba85ed7c"),
+    ("0007", "profile_language_auth_bootstrap_v1", "830ac90cdec081595487b2ac69e9780d0dfbc913810943bb2d4482ac744404c6"),
+    ("0008", "starting_level_estimate_v1", "b76075886ffc2d3c0ecb8c9a1064e7b66832fe6b579331898a78c41fa0ee8687"),
+    ("0009", "library_concept_save_intent_v1", "25e30a361bb340890d11299e85721c3d0e02bb9c95e76f4ca9429333bb9bca46"),
+    ("0010", "supabase_public_data_api_lockdown_v1", "204f68779b61e8658b0530e1f69c26e51882652d4f2a0dc11a60553e771e79b1"),
+    ("0011", "supabase_public_function_execute_lockdown_v1", "204852a4b6db4ed3cedf2eff215dcce2a8413d4a4324a4997f8d13d76c78e4dc"),
+    ("0012", "supabase_public_schema_browser_lockdown_v1", "7d590e0324909afc98c9b8a5973b7fa3212235aa25bcbaec030688d1447929bd"),
+    ("0013", "supabase_public_function_default_execute_lockdown_v1", "0dbdeda5f8fadee2a6d4d3790e0c67ecb5a5fae16b025e8fd8fa6486d5d9ed4e"),
+    ("0014", "knowledge_v2_canonical_structures", "9dee05acb17f002f21dd3465d838953da33f57037ba621b274c69829e3348fd3"),
+    ("0015", "knowledge_v2_polysemy_resolution", "7a4af88604d164627fc35b389a4cbaf678fee1946e41b4b110059c2936b00fc8"),
+    ("0016", "knowledge_v2_graph_dag", "7d6b44285247b6c5897ffd0f89f70589f0c216baf6eff4272a84395ae5c48a6f"),
+    ("0017", "knowledge_v2_learner_retrievability", "0bcdaea9705e8f3a80ce0a7f124481aed2ea8b426eba346072c22d992acb8e8d"),
+    ("0018", "profile_replay_auth_erasure", "235df17290f98606a7964674a77c6cadef1fb1b1fdd83eaa766e1486077e84f1"),
+    ("0019", "concept_save_intent_auth_erasure", "62fb829f1db617db5e84b2219a4270989de0b6df314c38e92c2f7747aec39f2c"),
+    ("0020", "today_remediation_reason_codes", "afe0163c081ba91f0d2f42d24b3059feb809fc26e40f1c9cc7b615b2e0f389e3"),
+    ("0021", "k2_09_hosted_fixture_control", "3c984a59afe9031ee5480a4fa111d5fb239b5f7164af39289712f1e98ad45ca6"),
+    ("0022", "reader_history_auth_erasure", "1924d92b88e9f20ed1264850830a4f8f4794dad21f07a79d0a9b284b482ac858"),
+)
+PILOT_READER_EXPECTED_PLATFORM_PRIOR = (
+    ("20260915154706", "supabase_public_data_api_lockdown_v1"),
+    ("20260916001615", "supabase_public_function_execute_lockdown_v1"),
+    ("20260916001828", "supabase_public_schema_browser_lockdown_v1"),
+    ("20260916044338", "knowledge_catalog_indexes_v1"),
+    ("20260920231552", "supabase_public_function_default_execute_lockdown_v1"),
+    ("20260921234533", "knowledge_v2_canonical_structures"),
+    ("20260922100838", "knowledge_v2_polysemy_resolution"),
+    ("20260922101401", "knowledge_v2_graph_dag"),
+    ("20260923081253", "knowledge_v2_learner_retrievability_0017"),
+    ("20260927021246", "profile_replay_auth_erasure_0018"),
+    ("20260927034218", "concept_save_intent_auth_erasure_0019"),
+    ("20260928164141", "k2_hosted_acceptance_reader_staging"),
+    ("20261001112955", "today_remediation_reason_codes_0020"),
+    ("20261007201853", "k2_09_hosted_fixture_control_0021"),
+)
+PILOT_READER_EXPECTED_PLATFORM_0022_NAME = "reader_history_auth_erasure_0022"
+# This remains unset until the migration-only hosted apply is read back and independently reviewed.
+PILOT_READER_EXPECTED_PLATFORM_0022_VERSION: str | None = None
 PILOT_READER_CANDIDATE_SHA256 = "25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f"
 PILOT_READER_BODY_SHA256 = "180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e"
 PILOT_READER_PUBLICATION_MANIFEST_SHA256 = (
@@ -631,8 +674,13 @@ def _table_inventory(connection: psycopg.Connection[tuple[Any, ...]]) -> tuple[s
 
 
 def _snapshot(
-    connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID | None
+    connection: psycopg.Connection[tuple[Any, ...]],
+    actor_id: UUID | None,
+    *,
+    exclude_actor_id: UUID | None = None,
 ) -> dict[str, Any]:
+    if actor_id is not None and exclude_actor_id is not None:
+        raise ProbeError
     inventory = _table_inventory(connection)
     tables: dict[str, dict[str, Any]] = {}
     total_rows = 0
@@ -647,6 +695,11 @@ def _snapshot(
         if actor_id is not None:
             query += sql.SQL(" WHERE {} = %s").format(sql.Identifier(owner_column))
             parameters = (actor_id,)
+        elif exclude_actor_id is not None:
+            query += sql.SQL(" WHERE {} IS DISTINCT FROM %s").format(
+                sql.Identifier(owner_column)
+            )
+            parameters = (exclude_actor_id,)
         query += sql.SQL(" ORDER BY to_jsonb(row_data)::text")
 
         digest = hashlib.sha256()
@@ -719,6 +772,74 @@ def _migration_head(connection: psycopg.Connection[tuple[Any, ...]]) -> dict[str
     if privileges != (True, True, False, False, False, False, False, False):
         raise ProbeError
     return {"appMigrationHead": rows[-1][0], "appliedMigrations": len(rows)}
+
+
+def _pilot_reader_migration_head(
+    connection: psycopg.Connection[tuple[Any, ...]],
+) -> dict[str, Any]:
+    platform_0022_version = PILOT_READER_EXPECTED_PLATFORM_0022_VERSION
+    if (
+        not isinstance(platform_0022_version, str)
+        or not re.fullmatch(r"\d{14}", platform_0022_version)
+    ):
+        raise ProbeError
+
+    app_rows = connection.execute(
+        "SELECT version, name, checksum FROM public.schema_migrations ORDER BY version"
+    ).fetchall()
+    if app_rows != list(PILOT_READER_EXPECTED_APP_MIGRATIONS):
+        raise ProbeError
+
+    platform_rows = connection.execute(
+        "SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version"
+    ).fetchall()
+    expected_platform = [
+        *PILOT_READER_EXPECTED_PLATFORM_PRIOR,
+        (platform_0022_version, PILOT_READER_EXPECTED_PLATFORM_0022_NAME),
+    ]
+    if (
+        platform_rows != expected_platform
+        or int(platform_0022_version) <= int(PILOT_READER_EXPECTED_PLATFORM_PRIOR[-1][0])
+    ):
+        raise ProbeError
+
+    app_privileges = connection.execute(
+        """SELECT has_column_privilege(current_user, 'public.schema_migrations',
+                                         'version', 'SELECT'),
+                  has_column_privilege(current_user, 'public.schema_migrations',
+                                         'name', 'SELECT'),
+                  has_column_privilege(current_user, 'public.schema_migrations',
+                                         'checksum', 'SELECT'),
+                  has_table_privilege(current_user, 'public.schema_migrations', 'SELECT'),
+                  has_table_privilege(current_user, 'public.schema_migrations', 'INSERT'),
+                  has_table_privilege(current_user, 'public.schema_migrations', 'UPDATE'),
+                  has_table_privilege(current_user, 'public.schema_migrations', 'DELETE'),
+                  has_table_privilege(current_user, 'public.schema_migrations', 'TRUNCATE')"""
+    ).fetchone()
+    if app_privileges != (True, True, True, False, False, False, False, False):
+        raise ProbeError
+
+    platform_privileges = connection.execute(
+        """SELECT has_column_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                         'version', 'SELECT'),
+                  has_column_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                         'name', 'SELECT'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                      'SELECT'),
+                  has_column_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                       'statements', 'SELECT'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                      'INSERT'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                      'UPDATE'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                      'DELETE'),
+                  has_table_privilege(current_user, 'supabase_migrations.schema_migrations',
+                                      'TRUNCATE')"""
+    ).fetchone()
+    if platform_privileges != (True, True, False, False, False, False, False, False):
+        raise ProbeError
+    return {"appMigrationHead": "0022", "appliedMigrations": 22}
 
 
 def _actor_ownership_graph(connection: psycopg.Connection[tuple[Any, ...]]) -> dict[str, Any]:
@@ -2706,11 +2827,14 @@ def main() -> int:
             "actor_snapshot",
             "actor_lineage",
             "migrations",
+            "pilot_reader_migrations",
             "actor_ownership_graph",
             "actor_absent",
+            "pilot_reader_actor_zero",
             "anchor_material",
             "pilot_reader_catalog_manifest",
             "pilot_reader_completion",
+            "pilot_reader_retained_snapshot_excluding_actor",
             "today_review_targets",
             "k208_fixture_privilege_preflight",
             "k208_catalog_preflight",
@@ -2720,8 +2844,11 @@ def main() -> int:
         }:
             raise ProbeError
         if (
-            action in {"actor_snapshot", "actor_lineage", "actor_absent", "today_review_targets",
-                        "frll_anchor_semantic_proof", "pilot_reader_completion"}
+            action in {
+                "actor_snapshot", "actor_lineage", "actor_absent", "today_review_targets",
+                "frll_anchor_semantic_proof", "pilot_reader_completion",
+                "pilot_reader_actor_zero", "pilot_reader_retained_snapshot_excluding_actor",
+            }
             and actor_id is None
         ):
             raise ProbeError
@@ -2734,6 +2861,8 @@ def main() -> int:
             if actor_id is None or profile_id is None:
                 raise ProbeError
         elif profile_id is not None:
+            raise ProbeError
+        if action == "pilot_reader_migrations" and actor_id is not None:
             raise ProbeError
         if idempotency_key_sha256 and (
             action not in {"frll_anchor_semantic_proof", "pilot_reader_completion"}
@@ -2788,17 +2917,19 @@ def main() -> int:
             raise ProbeError
         if reader_binding_value and action != "pilot_reader_completion":
             raise ProbeError
-        if (
-            action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight",
-                       "pilot_reader_catalog_manifest"}
-            and actor_id is not None
-        ):
+        if action in {
+            "k208_fixture_privilege_preflight", "k208_catalog_preflight",
+            "pilot_reader_catalog_manifest", "pilot_reader_migrations",
+        } and actor_id is not None:
             raise ProbeError
 
         with _connection() as connection:
             if action == "migrations":
                 _table_inventory(connection)
                 output: dict[str, Any] = _migration_head(connection)
+            elif action == "pilot_reader_migrations":
+                _table_inventory(connection)
+                output = _pilot_reader_migration_head(connection)
             elif action == "actor_ownership_graph":
                 _table_inventory(connection)
                 _migration_head(connection)
@@ -2829,6 +2960,20 @@ def main() -> int:
                     binding=reader_binding,
                     idempotency_key_sha256=idempotency_key_sha256 or None,
                 )
+            elif action == "pilot_reader_retained_snapshot_excluding_actor":
+                if actor_id is None:
+                    raise ProbeError
+                _table_inventory(connection)
+                _pilot_reader_migration_head(connection)
+                output = _snapshot(connection, None, exclude_actor_id=actor_id)
+            elif action == "pilot_reader_actor_zero":
+                if actor_id is None:
+                    raise ProbeError
+                _table_inventory(connection)
+                _pilot_reader_migration_head(connection)
+                output = _snapshot(connection, actor_id)
+                if output["totalRows"] != 0:
+                    raise ProbeError
             elif action == "k208_candidate_base":
                 if actor_id is None or profile_id is None:
                     raise ProbeError

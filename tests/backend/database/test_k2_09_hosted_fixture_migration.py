@@ -25,10 +25,12 @@ def _insert_receipt(connection: psycopg.Connection[tuple[object, ...]], state: s
     )
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_0021_private_receipt_owner_acl_rls_columns_and_no_fk(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, _ = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as connection:
         assert connection.execute(
             "SELECT version, name FROM public.schema_migrations ORDER BY version DESC LIMIT 1"
         ).fetchone() == ("0021", "k2_09_hosted_fixture_control")
@@ -128,10 +130,12 @@ def test_0021_private_receipt_owner_acl_rls_columns_and_no_fk(
         )
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_actor_ownership_graph_matches_all_27_tables_and_51_inbound_fks(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, _ = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as connection:
         assert k2_hosted_probe._actor_ownership_graph(connection) == {
             "ownershipGraphValid": True,
             "ownedTableCount": 27,
@@ -190,13 +194,15 @@ def test_actor_ownership_graph_matches_all_27_tables_and_51_inbound_fks(
         )
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_cross_actor_causation_restrict_aborts_auth_cascade_atomically(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
     from uuid import uuid4
 
+    database_url, _ = isolated_postgres_at_migration
     actor_a, actor_b = uuid4(), uuid4()
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         connection.execute("INSERT INTO auth.users (id) VALUES (%s), (%s)", (actor_a, actor_b))
         connection.execute("INSERT INTO public.users (id) VALUES (%s), (%s)", (actor_a, actor_b))
         connection.execute(
@@ -242,10 +248,10 @@ def test_cross_actor_causation_restrict_aborts_auth_cascade_atomically(
     # roll back the entire Auth cascade, preserving both users and both events.
     with (
         pytest.raises(psycopg.Error),
-        psycopg.connect(isolated_migrated_postgres_url) as connection,
+        psycopg.connect(database_url) as connection,
     ):
         connection.execute("DELETE FROM auth.users WHERE id = %s", (actor_a,))
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         assert connection.execute(
             "SELECT count(*) FROM auth.users WHERE id = ANY(%s)", ([actor_a, actor_b],)
         ).fetchone() == (2,)
@@ -273,18 +279,20 @@ def test_cross_actor_causation_restrict_aborts_auth_cascade_atomically(
         ).fetchone() == (0,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 @pytest.mark.parametrize("state", ["ACTIVE", "CLOSED"])
 def test_0021_down_refuses_to_drop_active_or_retained_receipt(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
     state: str,
 ) -> None:
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, _ = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as connection:
         _insert_receipt(connection, state)
 
     with pytest.raises(psycopg.Error):
-        migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1)
+        migrate_down(database_url, MIGRATIONS, steps=1)
 
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         assert connection.execute(
             "SELECT version FROM public.schema_migrations ORDER BY version DESC LIMIT 1"
         ).fetchone() == ("0021",)
@@ -293,11 +301,13 @@ def test_0021_down_refuses_to_drop_active_or_retained_receipt(
         ).fetchone() == (state,)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_0021_down_drops_only_empty_table_and_reapply_fails_closed_on_existing_schema(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
-    assert migrate_down(isolated_migrated_postgres_url, MIGRATIONS, steps=1) == ["0021"]
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    database_url, _ = isolated_postgres_at_migration
+    assert migrate_down(database_url, MIGRATIONS, steps=1) == ["0021"]
+    with psycopg.connect(database_url) as connection:
         assert connection.execute(
             "SELECT pg_catalog.to_regnamespace('private') IS NOT NULL"
         ).fetchone() == (True,)
@@ -306,9 +316,9 @@ def test_0021_down_drops_only_empty_table_and_reapply_fails_closed_on_existing_s
         ).fetchone() == (None,)
 
     with pytest.raises(psycopg.Error):
-        migrate_up(isolated_migrated_postgres_url, MIGRATIONS)
+        migrate_up(database_url, MIGRATIONS)
 
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         assert connection.execute(
             "SELECT pg_catalog.to_regclass('private.k2_hosted_fixture_receipts')"
         ).fetchone() == (None,)
@@ -317,21 +327,21 @@ def test_0021_down_drops_only_empty_table_and_reapply_fails_closed_on_existing_s
         ).fetchone() == ("0020",)
 
 
+@pytest.mark.parametrize("isolated_postgres_at_migration", ["0021"], indirect=True)
 def test_0021_down_serializes_with_uncommitted_receipt_insert(
-    isolated_migrated_postgres_url: str,
+    isolated_postgres_at_migration: tuple[str, Path],
 ) -> None:
     from concurrent.futures import ThreadPoolExecutor
     from time import monotonic, sleep
 
-    with psycopg.connect(isolated_migrated_postgres_url) as writer:
+    database_url, _ = isolated_postgres_at_migration
+    with psycopg.connect(database_url) as writer:
         _insert_receipt(writer, "ACTIVE")
         with ThreadPoolExecutor(max_workers=1) as pool:
-            rollback = pool.submit(
-                migrate_down, isolated_migrated_postgres_url, MIGRATIONS, steps=1
-            )
+            rollback = pool.submit(migrate_down, database_url, MIGRATIONS, steps=1)
             deadline = monotonic() + 5
             while monotonic() < deadline:
-                with psycopg.connect(isolated_migrated_postgres_url) as observer:
+                with psycopg.connect(database_url) as observer:
                     waiting = observer.execute(
                         """
                         SELECT EXISTS (
@@ -350,7 +360,7 @@ def test_0021_down_serializes_with_uncommitted_receipt_insert(
             with pytest.raises(psycopg.Error):
                 rollback.result(timeout=10)
 
-    with psycopg.connect(isolated_migrated_postgres_url) as connection:
+    with psycopg.connect(database_url) as connection:
         assert connection.execute(
             "SELECT state FROM private.k2_hosted_fixture_receipts"
         ).fetchone() == ("ACTIVE",)

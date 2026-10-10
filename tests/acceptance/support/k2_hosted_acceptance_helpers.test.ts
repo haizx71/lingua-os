@@ -57,6 +57,7 @@ describe('K2 hosted acceptance response shapes', () => {
     expect(resolveK2HostedRunMode('janitor')).toBe('janitor');
     expect(resolveK2HostedRunMode('cleanup-current')).toBe('cleanup-current');
     expect(resolveK2HostedRunMode('fixture-reap')).toBe('fixture-reap');
+    expect(resolveK2HostedRunMode('reader-recovery')).toBe('reader-recovery');
     expect(() => resolveK2HostedRunMode('typo')).toThrow('run mode is invalid');
   });
 

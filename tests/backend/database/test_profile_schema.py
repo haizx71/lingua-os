@@ -505,6 +505,7 @@ def test_profile_migration_preserves_known_legacy_pair_and_fails_closed_prefligh
         "0019",
         "0020",
         "0021",
+        "0022",
     ):
         for path in partial.glob(f"{version}_*.sql"):
             path.unlink()

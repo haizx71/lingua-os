@@ -2,7 +2,7 @@
 
 Strictly verifies that:
 1. PostgreSQL connection is operational.
-2. All canonical migrations (0001..0021) are applied and valid in public.schema_migrations.
+2. All canonical migrations (0001..0022) are applied and valid in public.schema_migrations.
 3. Core application schema tables exist in the public schema.
 4. Deterministic FRLL catalog anchor concept exists exactly once.
 5. Zero rows exist across all learner-derived tables (strict learner isolation).
@@ -52,6 +52,7 @@ EXPECTED_MIGRATIONS = (
     "0019_concept_save_intent_auth_erasure",
     "0020_today_remediation_reason_codes",
     "0021_k2_09_hosted_fixture_control",
+    "0022_reader_history_auth_erasure",
 )
 
 

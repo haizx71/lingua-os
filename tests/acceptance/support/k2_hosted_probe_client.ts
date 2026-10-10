@@ -42,8 +42,11 @@ export type K2ProbeAction =
   | 'actor_lineage'
   | 'today_review_targets'
   | 'migrations'
+  | 'pilot_reader_migrations'
   | 'actor_ownership_graph'
   | 'actor_absent'
+  | 'pilot_reader_actor_zero'
+  | 'pilot_reader_retained_snapshot_excluding_actor'
   | 'anchor_material'
   | 'frll_anchor_semantic_proof'
   | 'k208_fixture_privilege_preflight'
@@ -269,8 +272,13 @@ export type K2HostedCandidateBaseProof = Readonly<{
 }>;
 export const K2_APPROVED_APP_MIGRATION_HEAD = '0021' as const;
 const K2_APPROVED_APP_MIGRATION_COUNT = 21 as const;
+export type PilotReaderMigrationProof = Readonly<{
+  appMigrationHead: '0022';
+  appliedMigrations: 22;
+}>;
 export type K2HostedProbeResult =
   | K2RetainedSnapshot
+  | PilotReaderMigrationProof
   | PilotReaderCatalogManifestProof
   | PilotReaderCompletionProof
   | K2HostedAnchorMaterial
@@ -779,6 +787,18 @@ export function parseK2HostedMigrationProof(value: unknown): {
   };
 }
 
+export function parsePilotReaderMigrationProof(value: unknown): PilotReaderMigrationProof {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(['appMigrationHead', 'appliedMigrations'])) {
+    throw new Error('PILOT-READER migration probe returned invalid output.');
+  }
+  const migration = value as { appMigrationHead?: unknown; appliedMigrations?: unknown };
+  if (migration.appMigrationHead !== '0022' || migration.appliedMigrations !== 22) {
+    throw new Error('PILOT-READER staging migration head does not match the reviewed 0022 source.');
+  }
+  return { appMigrationHead: '0022', appliedMigrations: 22 };
+}
+
 export function parseK2ActorOwnershipGraph(value: unknown): K2ActorOwnershipGraph {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
       JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([
@@ -881,6 +901,14 @@ export function buildK2ProbeChildEnvironment(
   if (action === 'pilot_reader_catalog_manifest' && actorId !== undefined) {
     throw new Error('K2 hosted acceptance Reader catalog probe is actorless.');
   }
+  if (action === 'pilot_reader_migrations' && actorId !== undefined) {
+    throw new Error('PILOT-READER migration proof is actorless.');
+  }
+  if ((action === 'pilot_reader_actor_zero' ||
+       action === 'pilot_reader_retained_snapshot_excluding_actor') &&
+      !UUID_RE.test(actorId ?? '')) {
+    throw new Error('PILOT-READER retained-state probe requires the verified actor binding.');
+  }
   const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap' ||
     action === 'frll_anchor_semantic_proof' || action === 'pilot_reader_completion';
   if ((exactActorProfileAction && (!UUID_RE.test(actorId ?? '') || !UUID_RE.test(profileId ?? ''))) ||
@@ -951,7 +979,8 @@ export async function runK2HostedProbe(
     throw new Error('K2 hosted acceptance Reader catalog probe is actorless.');
   }
   if ((action === 'actor_snapshot' || action === 'actor_lineage' || action === 'actor_absent' ||
-       action === 'today_review_targets') &&
+       action === 'today_review_targets' || action === 'pilot_reader_actor_zero' ||
+       action === 'pilot_reader_retained_snapshot_excluding_actor') &&
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '')) {
     throw new Error('K2 hosted acceptance actor probe requires a canonical actor identity.');
   }
@@ -996,7 +1025,9 @@ export async function runK2HostedProbe(
     throw new Error('K2 hosted acceptance FRLL probe requires only an SHA-256 key digest.');
   }
   if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' &&
-       action !== 'today_review_targets' && !exactActorProfileAction && actorId !== undefined) {
+       action !== 'today_review_targets' && action !== 'pilot_reader_actor_zero' &&
+       action !== 'pilot_reader_retained_snapshot_excluding_actor' &&
+       !exactActorProfileAction && actorId !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected actor identity.');
   }
 
@@ -1023,8 +1054,12 @@ export async function runK2HostedProbe(
   try { value = JSON.parse(stdout); }
   catch { throw new Error('K2 hosted acceptance read-only probe returned invalid output.'); }
 
-  if (action === 'retained_snapshot') return parseK2RetainedSnapshot(value);
-  if (action === 'actor_snapshot' || action === 'actor_absent') return parseK2ActorSnapshot(value);
+  if (action === 'retained_snapshot' || action === 'pilot_reader_retained_snapshot_excluding_actor') {
+    return parseK2RetainedSnapshot(value);
+  }
+  if (action === 'actor_snapshot' || action === 'actor_absent' || action === 'pilot_reader_actor_zero') {
+    return parseK2ActorSnapshot(value);
+  }
   if (action === 'actor_lineage') return parseK2HostedActorLineage(value);
   if (action === 'actor_ownership_graph') return parseK2ActorOwnershipGraph(value);
   if (action === 'today_review_targets') return parseK2HostedTodayReviewTargets(value);
@@ -1036,6 +1071,7 @@ export async function runK2HostedProbe(
   if (action === 'k208_catalog_preflight') return parseK2HostedCatalogPreflight(value);
   if (action === 'pilot_reader_catalog_manifest') return parsePilotReaderCatalogManifestProof(value);
   if (action === 'pilot_reader_completion') return parsePilotReaderCompletionProof(value);
+  if (action === 'pilot_reader_migrations') return parsePilotReaderMigrationProof(value);
   return parseK2HostedMigrationProof(value);
 }
 

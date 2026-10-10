@@ -12,7 +12,10 @@ import {
   resolveK2HostedRunMode,
   resolveK2HostedWaveSelector,
 } from './support/k2_hosted_acceptance_helpers';
-import { runK2HostedProbe } from './support/k2_hosted_probe_client';
+import {
+  K2_APPROVED_APP_MIGRATION_HEAD,
+  runK2HostedProbe,
+} from './support/k2_hosted_probe_client';
 import { runK2HostedWave } from './support/k2_hosted_runner';
 import { k2HostedWaveK207 } from './support/k2_hosted_wave_k2_07';
 import { k2HostedWaveK208DueOnly } from './support/k2_hosted_wave_k2_08_due_only';
@@ -20,6 +23,7 @@ import { k2HostedWaveK208 } from './support/k2_hosted_wave_k2_08';
 import { k2HostedWaveK209 } from './support/k2_hosted_wave_k2_09';
 import { k2HostedWaveK210 } from './support/k2_hosted_wave_k2_10';
 import { cleanupK209FixtureAfterCurrentRun } from './support/k2_hosted_runner';
+import { runPilotReaderHostedCurrentRunCleanup } from './support/pilot_reader_hosted_runner';
 
 const RUN_MODE = resolveK2HostedRunMode(process.env.K2_ACCEPTANCE_MODE);
 const WAVE_SELECTOR = resolveK2HostedWaveSelector(process.env.K2_ACCEPTANCE_WAVE);
@@ -28,6 +32,16 @@ async function verifyActorGone(config: ReturnType<typeof validateK2HostedEnviron
   const result = await runK2HostedProbe('actor_absent', config.readonlyDatabaseUrl, actorId);
   if (!('tables' in result) || result.totalRows !== 0) {
     throw new Error('K2 hosted acceptance cleanup left actor-owned learner rows.');
+  }
+}
+
+async function requireExactK2MigrationHead(
+  config: ReturnType<typeof validateK2HostedEnvironment>,
+): Promise<void> {
+  const proof = await runK2HostedProbe('migrations', config.readonlyDatabaseUrl);
+  if (!('appMigrationHead' in proof) || proof.appMigrationHead !== K2_APPROVED_APP_MIGRATION_HEAD ||
+      proof.appliedMigrations !== 21) {
+    throw new Error('K2 hosted cleanup requires the exact approved 0021 application and platform head.');
   }
 }
 
@@ -75,6 +89,7 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
     test.skip(RUN_MODE !== 'janitor', 'The configured run mode is not janitor.');
     const config = validateK2HostedEnvironment(process.env, 'janitor');
     await verifyK2HostedCurrentMasterSha(config);
+    await requireExactK2MigrationHead(config);
     const removed = await reapExpiredK2Actors(
       config,
       undefined,
@@ -87,6 +102,12 @@ test.describe('K2 protected hosted acceptance lifecycle', () => {
   test('unconditional current-run cleanup recovery', async () => {
     test.skip(RUN_MODE !== 'cleanup-current', 'The configured run mode is not cleanup recovery.');
     const config = validateK2HostedEnvironment(process.env, 'cleanup-current');
+    if (WAVE_SELECTOR === 'PILOT-READER') {
+      const removed = await runPilotReaderHostedCurrentRunCleanup(config);
+      test.info().annotations.push({ type: 'current-run-actors-cleaned', description: String(removed) });
+      return;
+    }
+    await requireExactK2MigrationHead(config);
     const removed = await cleanupK2RunActors(
       config,
       createK2AdminClient(config) as never,
