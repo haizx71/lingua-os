@@ -291,3 +291,34 @@ No HIGH/BLOCKER source finding remains for this exact 18-path source snapshot. R
 Independently checked the staged `tests/acceptance/support/pilot_reader_hosted_runner.ts` bytes against the reviewed raw file. The raw file SHA-256 is `f15eafc5654e76ae24b749ee294e87e64d0d0ed889eabd5689131800ac3b6f00` and is 64,906 bytes. It contains exactly one CRLF pair and no lone CR. The repository has `.gitattributes` rule `* text=auto eol=lf` and effective `core.autocrlf=true`. Replacing that sole CRLF with LF yields 64,905 bytes exactly equal, byte for byte, to the blob read from the Git index. The normalized staged-blob content SHA-256 is `db15115942aa862ca9a0e698ba57b00c339ccc0e9b5a3dec9c4ea5e0869fe936`.
 
 The checkout reports Git object format `sha1`; consequently the index entry's Git blob object ID is `d19825d75a8e7c843376158223e9f0176027a05b`. That 40-hex Git object ID is distinct from the 64-hex SHA-256 content digest above. The byte equality proves the line-ending normalization is the only difference from the previously reviewed raw source. No implementation source, Git index, cloud state, or actor was changed; no tests were run. This review record is the only file edited in this follow-up.
+
+## Hosted acceptance attempt 38044569136 — FAIL / HOLD
+
+**Date:** 2026-10-10
+**Reviewer configuration:** GPT-6 Luna / Max (assigned reviewer configuration; runtime introspection unavailable).
+**Verdict:** **FAIL for this hosted attempt; promotion remains held.** The previously recorded source PASS applies only to the exact 18-path harness snapshot. It does not override this failed run.
+
+### Frozen target and run identity
+
+- Merged source commit: `c76d72d7cfc67f5060d233f68df971fc338ab0ff` on `master`.
+- Reviewed harness source aggregate: `8efbb8d7ac77122d54d1495a2d5cb42e93a88a35e3c4eca2c12227dda1a6134c`, with the exact 18 path pins and runner line-ending attestation recorded above. The merged Git tree was independently checked against those pins; the runner's only byte difference is the already-proven CRLF-to-LF normalization.
+- Run `38044569136`: workflow `K2 Hosted Acceptance`, event `workflow_dispatch`, exact `headSha` above, final run conclusion **failure**. The owner-authorized dispatch selected the `PILOT-READER` acceptance mode. The workflow's exact-SHA/selected-wave preflight step completed successfully before the hosted subcase.
+- `hosted-acceptance` job `114191384216` failed at “Run protected selected hosted subcase.” Setup, checkout, locked dependency installation, SHA/wave preflight, and Chromium installation succeeded. `janitor` and `fixture-reaper` were skipped. `current-run-cleanup` job `114193804254` also completed **failure**.
+
+### What the run establishes
+
+The sanitized static hosted-step summary received from the Commander reports the selected subcase's final error as `PILOT-READER Auth cleanup, 27-table zero-residue proof, or retained-state comparison failed.` In the exact reviewed runner, the `finally` block catches and discards the individual errors from global Auth sign-out, context close, marked-run actor cleanup, fresh-identity cleanup, Auth-absence verification, per-actor zero-residue checks, the no-actors proof, and retained-state comparison, then raises that generic message (`pilot_reader_hosted_runner.ts:1306-1338`). It does not reveal whether an earlier browser/catalog/normal-JWT assertion failed before cleanup; the primary-flow result is therefore **unknown**.
+
+The separate current-run cleanup job failed with the sanitized fixed message `K2 hosted acceptance Auth deletion failed; the guarded janitor may retry after TTL.` The exact source throws that message when the guarded `admin.auth.admin.deleteUser` call errors (`k2_hosted_actors.ts:766-770`). A separate sanitized strict-count read, bound to server metadata and the reserved run-identity prefix, confirmed exactly one current-run Auth identity remains (diagnostic JSON SHA-256 `26ac066fde654469bc4785b0df1b860849dcccd3393e082518da5d25ee42e51d`). Auth absence therefore **failed**. The count returned no actor ID or email and did not establish the actor-owned 27-table row count or retained-state equality; those remain unproven.
+
+Accordingly, this run does not prove hosted success for the actorless catalog pin, normal-JWT Reader flow, or Save/replay behavior. Auth absence is confirmed **FAIL**; 27-table zero residue and retained-state equality remain unproven. No hosted PASS, learner-outcome claim, zero-residue claim, or post-actor retained-state PASS is supported. The no-artifact run record and unavailable detailed failure summary provide no persisted per-phase evidence to narrow the primary-flow outcome.
+
+### Separate publication evidence and limits
+
+Before this acceptance attempt, the sanitized Owner Admin publication proof `C:\Users\pc\.codex\artifacts\lingua-pilot\reader-publication-retained-proof.json` was independently checked; SHA-256 `1e47f26bc214a152eb1dbaba5a01f69394b495f1c60800641b519fc1b4536dc8`. It records normal Owner Admin publication, exactly 72 EN/VI pairs, and equal pre/post counts and digests for 27 tables. The root also reported read-only publication-page rendering of the exact candidate. This is **pre-acceptance publication** evidence, not the post-actor cleanup/retained-state proof required by the failed run. The publication snapshot cannot substitute for a fresh post-run comparison.
+
+### Required disposition
+
+Treat the hosted acceptance gate as **blocked by a failed attempt and confirmed Auth-absence failure**. Keep the mutation lock. Allow only the existing guarded same-run cleanup/recovery path, then require fresh bounded evidence of Auth absence, zero actor rows across the required tables, and retained-state equality before considering any further acceptance attempt. Do not use manual SQL or broaden Auth permissions to remove an actor. If the generic cleanup failure still needs diagnosis, use fixed non-sensitive reason codes for the existing checks only; preserve every current assertion and cleanup boundary, and independently review any source delta before a new authorized run.
+
+This addendum records the failed hosted attempt and its limits; it does not change the source verdict for the reviewed 18 paths. No source, Git, cloud, actor, or learner-session state was changed by this review. This review record is the only file edited in this addendum.
