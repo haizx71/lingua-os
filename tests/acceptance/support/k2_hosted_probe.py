@@ -440,8 +440,8 @@ PILOT_READER_EXPECTED_PLATFORM_PRIOR = (
     ("20261007201853", "k2_09_hosted_fixture_control_0021"),
 )
 PILOT_READER_EXPECTED_PLATFORM_0022_NAME = "reader_history_auth_erasure_0022"
-# This remains unset until the migration-only hosted apply is read back and independently reviewed.
-PILOT_READER_EXPECTED_PLATFORM_0022_VERSION: str | None = None
+# Exact platform migration version read back after the reviewed migration-only hosted apply.
+PILOT_READER_EXPECTED_PLATFORM_0022_VERSION: str | None = "20261010174303"
 PILOT_READER_CANDIDATE_SHA256 = "25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f"
 PILOT_READER_BODY_SHA256 = "180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e"
 PILOT_READER_PUBLICATION_MANIFEST_SHA256 = (
