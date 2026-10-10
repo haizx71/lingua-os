@@ -2,7 +2,7 @@
 
 **CHƯA ĐƯỢC DUYỆT / CHƯA XUẤT BẢN.** Chỉ đề xuất sửa nội dung staging; không thuộc phê duyệt PR #38 cũ. Đây là tài liệu biên tập, không phải dữ liệu người học hay payload Admin.
 
-Candidate SHA-256: `e88ccc0938dfcc00df6e84a0aea8918ea9cb6c6e62cc1471c935ae6aafd79838`
+Candidate SHA-256: `25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f`
 
 ## Bốn chỉnh sửa tiếng Anh được đề xuất
 
