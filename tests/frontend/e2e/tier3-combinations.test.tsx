@@ -143,10 +143,11 @@ describe('Tier 3: Cross-Feature Combinations & State Transitions', () => {
     expect(dictResults[0].term).toBe('appointment');
   });
 
-  it('combo_10_appshell_renders_across_all_5_primary_routes_cleanly', () => {
+  it('combo_10_appshell_renders_across_all_5_primary_routes_cleanly', async () => {
+    const readPage = await ReadPage({ searchParams: Promise.resolve({}) });
     const routes = [
       { path: '/today', component: <TodayPage /> },
-      { path: '/read', component: <ReadPage /> },
+      { path: '/read', component: readPage },
       { path: '/review', component: <ReviewPage /> },
       { path: '/brain', component: <BrainPage /> },
       { path: '/progress', component: <ProgressPage /> },
