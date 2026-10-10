@@ -7,7 +7,8 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -398,6 +399,12 @@ EXPECTED_CATALOG_TABLES = (
 )
 EXPECTED_READONLY_ROLE = "k2_hosted_acceptance_reader"
 EXPECTED_APP_MIGRATION_HEAD = "0021"
+PILOT_READER_CANDIDATE_SHA256 = "25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f"
+PILOT_READER_BODY_SHA256 = "180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e"
+PILOT_READER_PUBLICATION_MANIFEST_SHA256 = (
+    "724014360eb401de10d2e72c897834b4e177f32a131a6a7ca331d3aa03135200"
+)
+PILOT_READER_LICENSE_CODE = "LINGUA-FIRST-PARTY"
 EXPECTED_SUPABASE_PLATFORM_TAIL = (
     "concept_save_intent_auth_erasure_0019",
     "k2_hosted_acceptance_reader_staging",
@@ -410,6 +417,12 @@ MAX_ROWS_PER_TABLE = 100_000
 MAX_TOTAL_ROWS = 300_000
 MAX_ROW_BYTES = 16_384
 MAX_TOTAL_BYTES = 128 * 1024 * 1024
+PILOT_READER_STABLE_TABLES = (
+    "exposure_events",
+    "learning_events",
+    "reader_exposure_concepts",
+    "user_concept_states",
+)
 
 
 class ProbeError(Exception):
@@ -1207,6 +1220,805 @@ def _k208_catalog_preflight(
     }
 
 
+def _pilot_reader_manifest_files() -> tuple[dict[str, Any], dict[str, Any]]:
+    root = Path(__file__).resolve().parents[3]
+    candidate_path = (
+        root / "knowledge" / "staging" / "pilot-reader-vi-draft" / "translation-draft.json"
+    )
+    manifest_path = (
+        root / "knowledge" / "staging" / "pilot-reader-vi-draft" / "publication-manifest.json"
+    )
+    try:
+        candidate_bytes = candidate_path.read_bytes()
+        manifest_bytes = manifest_path.read_bytes()
+        if hashlib.sha256(candidate_bytes).hexdigest() != PILOT_READER_CANDIDATE_SHA256:
+            raise ProbeError
+        if hashlib.sha256(manifest_bytes).hexdigest() != PILOT_READER_PUBLICATION_MANIFEST_SHA256:
+            raise ProbeError
+        candidate = json.loads(candidate_bytes)
+        manifest = json.loads(manifest_bytes)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        raise ProbeError from None
+    if not isinstance(candidate, dict) or not isinstance(manifest, dict):
+        raise ProbeError
+
+    approval = manifest.get("owner_approval")
+    content = manifest.get("content")
+    translation = manifest.get("translationSource")
+    sentences = candidate.get("sentences")
+    if (
+        manifest.get("schema_version") != "lingua.pilot.reader-publication.v1"
+        or manifest.get("scope") != "staging_only"
+        or manifest.get("candidate_id") != "pilot-reader-tea-vi-v1"
+        or manifest.get("candidate_sha256") != PILOT_READER_CANDIDATE_SHA256
+        or manifest.get("candidate_body_sha256") != PILOT_READER_BODY_SHA256
+        or manifest.get("sentence_count") != 72
+        or manifest.get("identity_policy")
+        != (
+            "Resolve exactly one normally published content identity matching this manifest "
+            "and the complete approved candidate. Keep that identity transient in the "
+            "runner; preserve the previous published item and learner references."
+        )
+        or not isinstance(approval, dict)
+        or approval.get("exact_candidate_editorial_rights_and_staging_scope") is not True
+        or approval.get("publication_requires_normal_admin_validation_and_reviewed_runtime")
+        is not True
+        or approval.get("supersedes_historical_candidate_pending_flags") is not True
+        or approval.get("inherits_pr38_approval") is not False
+        or not isinstance(content, dict)
+        or not isinstance(translation, dict)
+        or candidate.get("title") != content.get("title")
+        or candidate.get("language") != content.get("languageCode")
+        or candidate.get("candidate_body_sha256") != PILOT_READER_BODY_SHA256
+        or not isinstance(candidate.get("body"), str)
+        or not isinstance(sentences, list)
+        or len(sentences) != 72
+    ):
+        raise ProbeError
+
+    expected_pairs: list[tuple[int, str, str]] = []
+    for ordinal, sentence in enumerate(sentences, start=1):
+        if (
+            not isinstance(sentence, dict)
+            or sentence.get("ordinal") != ordinal
+            or not isinstance(sentence.get("english"), str)
+            or not isinstance(sentence.get("vietnamese"), str)
+            or not sentence["english"].strip()
+            or not sentence["vietnamese"].strip()
+            or "\n" in sentence["english"]
+            or "\t" in sentence["english"]
+            or "\n" in sentence["vietnamese"]
+            or "\t" in sentence["vietnamese"]
+            or hashlib.sha256(sentence["english"].encode("utf-8")).hexdigest()
+            != sentence.get("english_sha256")
+        ):
+            raise ProbeError
+        expected_pairs.append((ordinal, sentence["english"], sentence["vietnamese"]))
+
+    body = candidate["body"]
+    if (
+        body != " ".join(pair[1] for pair in expected_pairs)
+        or hashlib.sha256(body.encode("utf-8")).hexdigest() != PILOT_READER_BODY_SHA256
+    ):
+        raise ProbeError
+    return manifest, {"pairs": expected_pairs, "body": body}
+
+
+def _pilot_reader_translation_raw_hash(
+    source: dict[str, Any], pairs: list[tuple[int, str, str]]
+) -> str:
+    entries = [
+        {"ordinal": ordinal, "sourceText": english, "translationText": vietnamese}
+        for ordinal, english, vietnamese in pairs
+    ]
+    canonical = {
+        "targetLanguageCode": "vi",
+        "source": {
+            "authorName": source["authorName"],
+            "sourceName": source["sourceName"],
+            "sourceVersion": source["sourceVersion"],
+            "attributionText": source["attributionText"],
+            "rightsStatement": source["rightsStatement"],
+        },
+        "entries": entries,
+    }
+    return hashlib.sha256(
+        json.dumps(
+            canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _pilot_reader_catalog_manifest(
+    connection: psycopg.Connection[tuple[Any, ...]],
+) -> dict[str, Any]:
+    _table_inventory(connection)
+    manifest, candidate = _pilot_reader_manifest_files()
+    expected_content = manifest["content"]
+    expected_translation = manifest["translationSource"]
+
+    identity_rows = connection.execute(
+        """SELECT item.id, item.title, item.language_code, item.publication_status,
+                  item.content_type, level.code, version.version, version.content_hash,
+                  public.reader_content_passes_publication_gate(item.id),
+                  source.source_type, source.name, source.source_version,
+                  source.attribution_text, license.code, license.usage_policy,
+                  record.review_status, record.quality_score,
+                  record.metadata ->> 'authorName',
+                  record.metadata ->> 'sourceVersion',
+                  record.metadata ->> 'rightsStatement',
+                  (SELECT count(*) FROM public.content_versions AS all_versions
+                   WHERE all_versions.content_id = item.id),
+                  item.quality_score,
+                  record.metadata ->> 'authoringVersion',
+                  record.metadata ->> 'sourceName',
+                  record.metadata ->> 'body',
+                  record.metadata ->> 'languageCode',
+                  record.metadata ->> 'licenseCode'
+           FROM public.content_versions AS version
+           JOIN public.content_items AS item ON item.id = version.content_id
+           JOIN public.proficiency_levels AS level ON level.id = item.curated_level_id
+           JOIN public.source_records AS record ON record.id = item.source_record_id
+           JOIN public.data_sources AS source ON source.id = record.source_id
+           JOIN public.licenses AS license ON license.id = source.license_id
+           WHERE version.content_hash = %s
+           ORDER BY item.id, version.version
+           LIMIT 2""",
+        (PILOT_READER_BODY_SHA256,),
+    ).fetchall()
+    if len(identity_rows) != 1:
+        raise ProbeError
+    identity = identity_rows[0]
+    content_id = identity[0]
+    content_provenance = {
+        "authorMatched": identity[17] == expected_content.get("authorName"),
+        "sourceNameMatched": identity[10] == expected_content.get("sourceName"),
+        "sourceVersionMatched": identity[18] == expected_content.get("sourceVersion")
+        and identity[11] == f"{expected_content.get('sourceVersion')}#content-{content_id}",
+        "attributionMatched": identity[12] == expected_content.get("attributionText"),
+        "rightsStatementMatched": identity[19] == expected_content.get("rightsStatement"),
+        "approved": identity[15] == "approved" and identity[16] == 1 and identity[21] == 1,
+        "firstPartySource": identity[9] == "internal",
+        "firstPartyLicense": identity[13] == PILOT_READER_LICENSE_CODE
+        and identity[14] == "allowed",
+    }
+    if (
+        not isinstance(content_id, UUID)
+        or identity[1] != expected_content.get("title")
+        or identity[2] != expected_content.get("languageCode")
+        or identity[3] != "published"
+        or identity[4] != "article"
+        or identity[5] != expected_content.get("level")
+        or identity[6] != 1
+        or identity[7] != PILOT_READER_BODY_SHA256
+        or identity[8] is not True
+        or identity[20] != 1
+        or identity[22] != "admin-first-party-v1"
+        or identity[23] != expected_content.get("sourceName")
+        or identity[24] != candidate["body"]
+        or identity[25] != expected_content.get("languageCode")
+        or identity[26] != PILOT_READER_LICENSE_CODE
+        or not all(content_provenance.values())
+    ):
+        raise ProbeError
+
+    sentence_rows = connection.execute(
+        """SELECT segment.order_index, segment.text, sentence.text, translation.text,
+                  translation_record.review_status, translation_record.quality_score,
+                  translation_record.metadata ->> 'authorName',
+                  translation_record.metadata ->> 'sourceVersion',
+                  translation_record.metadata ->> 'rightsStatement',
+                  translation_source.source_type, translation_source.name,
+                  translation_source.source_version, translation_source.attribution_text,
+                  translation_license.code, translation_license.usage_policy,
+                  translation_record.raw_hash,
+                  translation_record.metadata ->> 'authoringVersion',
+                  translation_record.metadata ->> 'contentId',
+                  translation_record.metadata ->> 'targetLanguageCode',
+                  translation_record.metadata ->> 'licenseCode',
+                  translation_record.metadata -> 'entries'
+           FROM public.content_segments AS segment
+           JOIN public.sentences AS sentence
+             ON sentence.id = segment.sentence_id
+            AND sentence.language_code = segment.language_code
+           LEFT JOIN public.sentence_translations AS translation
+             ON translation.sentence_id = sentence.id
+            AND translation.target_language_code = 'vi'
+           LEFT JOIN public.source_records AS translation_record
+             ON translation_record.id = translation.source_record_id
+           LEFT JOIN public.data_sources AS translation_source
+             ON translation_source.id = translation_record.source_id
+           LEFT JOIN public.licenses AS translation_license
+             ON translation_license.id = translation_source.license_id
+           WHERE segment.content_id = %s
+           ORDER BY segment.order_index, translation.id
+           LIMIT 145""",
+        (content_id,),
+    ).fetchall()
+    expected_pairs = candidate["pairs"]
+    expected_translation_hash = _pilot_reader_translation_raw_hash(
+        expected_translation, expected_pairs
+    )
+    expected_translation_entries = [
+        {"ordinal": ordinal, "sourceText": english, "translationText": vietnamese}
+        for ordinal, english, vietnamese in expected_pairs
+    ]
+    if len(sentence_rows) != len(expected_pairs):
+        raise ProbeError
+    translations: list[str] = []
+    for ordinal, (row, expected) in enumerate(
+        zip(sentence_rows, expected_pairs, strict=True), start=1
+    ):
+        if (
+            row[0] != ordinal - 1
+            or row[1] != expected[1]
+            or row[2] != expected[1]
+            or row[3] != expected[2]
+            or row[4] != "approved"
+            or row[5] is None
+            or row[6] != expected_translation.get("authorName")
+            or row[7] != expected_translation.get("sourceVersion")
+            or row[8] != expected_translation.get("rightsStatement")
+            or row[9] != "internal"
+            or row[10] != expected_translation.get("sourceName")
+            or row[11] != (
+                f"{expected_translation.get('sourceVersion')}#content-{content_id}-translation-"
+                f"{expected_translation_hash[:12]}"
+            )
+            or row[12] != expected_translation.get("attributionText")
+            or row[13] != PILOT_READER_LICENSE_CODE
+            or row[14] != "allowed"
+            or row[15] != expected_translation_hash
+            or row[16] != "admin-translation-v1"
+            or row[17] != str(content_id)
+            or row[18] != "vi"
+            or row[19] != PILOT_READER_LICENSE_CODE
+            or row[20] != expected_translation_entries
+        ):
+            raise ProbeError
+        translations.append(row[3])
+
+    # This second bounded query obtains only one internal equality key per row;
+    # the key is never returned or logged.
+    translation_source_rows = connection.execute(
+        """SELECT translation.source_record_id
+           FROM public.content_segments AS segment
+           JOIN public.sentences AS sentence
+             ON sentence.id = segment.sentence_id
+            AND sentence.language_code = segment.language_code
+           JOIN public.sentence_translations AS translation
+             ON translation.sentence_id = sentence.id
+            AND translation.target_language_code = 'vi'
+           WHERE segment.content_id = %s
+           ORDER BY segment.order_index, translation.id
+           LIMIT 73""",
+        (content_id,),
+    ).fetchall()
+    if len(translation_source_rows) != 72 or len({row[0] for row in translation_source_rows}) != 1:
+        raise ProbeError
+
+    concept_row = connection.execute(
+        """SELECT count(DISTINCT concept_id)::integer
+           FROM public.content_concepts WHERE content_id = %s""",
+        (content_id,),
+    ).fetchone()
+    if concept_row is None or type(concept_row[0]) is not int or concept_row[0] < 1:
+        raise ProbeError
+
+    translation_hash = hashlib.sha256(
+        "\n".join(
+            f"{ordinal}\t{text}" for ordinal, text in enumerate(translations, start=1)
+        ).encode("utf-8")
+    ).hexdigest()
+    pair_hash = hashlib.sha256(
+        "\n".join(
+            f"{ordinal}\t{english}\t{translation}"
+            for ordinal, english, translation in expected_pairs
+        ).encode("utf-8")
+    ).hexdigest()
+    if translation_hash != hashlib.sha256(
+        "\n".join(
+            f"{ordinal}\t{pair[2]}" for ordinal, pair in enumerate(expected_pairs, start=1)
+        ).encode("utf-8")
+    ).hexdigest():
+        raise ProbeError
+
+    return {
+        "contentId": str(content_id),
+        "contentCount": 1,
+        "segmentCount": len(sentence_rows),
+        "sentenceCount": len(sentence_rows),
+        "translationCount": len(translations),
+        "conceptCount": int(concept_row[0]),
+        "candidateSha256": PILOT_READER_CANDIDATE_SHA256,
+        "bodySha256": PILOT_READER_BODY_SHA256,
+        "translationSha256": translation_hash,
+        "pairSha256": pair_hash,
+        "contentProvenance": content_provenance,
+        "translationProvenance": {
+            "sourceRecordCount": len({row[0] for row in translation_source_rows}),
+            "authorMatched": True,
+            "sourceNameMatched": True,
+            "sourceVersionMatched": True,
+            "attributionMatched": True,
+            "rightsStatementMatched": True,
+            "approved": True,
+            "firstPartySource": True,
+            "firstPartyLicense": True,
+        },
+    }
+
+
+def _pilot_reader_passive_concept_state(
+    row: tuple[Any, ...],
+    concept_id: UUID,
+    *,
+    recorded_at: datetime,
+    parameter_set_id: UUID,
+    parameter_version: str,
+    projection_method_version: str,
+) -> dict[str, Any]:
+    (
+        actual_concept_id, status, recognition, listening, production, mastery, confidence,
+        exposure_count, has_learning_intent, has_projectable_evidence, highest_achievement_status,
+        recognition_positive, recognition_negative, recognition_confidence, recognition_evidence,
+        recognition_last, listening_positive, listening_negative, listening_confidence,
+        listening_evidence, listening_last, production_positive, production_negative,
+        production_confidence, production_evidence, production_last, outcomes, language_code,
+        state_version, last_seen_at, state_projection_method_version,
+        state_parameter_set_id, state_parameter_version, created_at, updated_at,
+    ) = row
+    try:
+        neutral = (
+            UUID(str(actual_concept_id)) == concept_id
+            and status == "discovered"
+            and language_code == "en"
+            and Decimal(str(recognition)) == Decimal("0.5")
+            and Decimal(str(listening)) == Decimal("0.5")
+            and Decimal(str(production)) == Decimal("0.5")
+            and mastery is None
+            and Decimal(str(confidence)) == Decimal("0")
+            and type(exposure_count) is int and exposure_count == 1
+            and has_learning_intent is False
+            and has_projectable_evidence is False
+            and highest_achievement_status is None
+            and all(Decimal(str(value)) == Decimal("0") for value in (
+                recognition_positive, recognition_negative, recognition_confidence,
+                listening_positive, listening_negative, listening_confidence,
+                production_positive, production_negative, production_confidence,
+            ))
+            and recognition_evidence == listening_evidence == production_evidence == 0
+            and recognition_last is listening_last is production_last is None
+            and outcomes == {"recognition": [], "listening": [], "production": []}
+            and state_version == 2
+            and _pilot_reader_aware_datetime(last_seen_at) == recorded_at
+            and state_projection_method_version == projection_method_version
+            and UUID(str(state_parameter_set_id)) == parameter_set_id
+            and state_parameter_version == parameter_version
+            and _pilot_reader_aware_datetime(created_at) == recorded_at
+            and _pilot_reader_aware_datetime(updated_at) == recorded_at
+        )
+    except (ArithmeticError, TypeError, ValueError):
+        neutral = False
+    if not neutral:
+        raise ProbeError
+    return {
+        "conceptId": str(concept_id),
+        "status": "discovered",
+        "exposureCount": 1,
+        "passiveOnly": True,
+    }
+
+
+def _pilot_reader_aware_datetime(value: object) -> datetime:
+    try:
+        parsed = (
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if isinstance(value, str)
+            else value
+        )
+        if not isinstance(parsed, datetime) or parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ProbeError
+        return parsed.astimezone(UTC)
+    except (OverflowError, TypeError, ValueError):
+        raise ProbeError from None
+
+
+def _pilot_reader_stable_rows(
+    connection: psycopg.Connection[tuple[Any, ...]],
+    *,
+    actor_id: UUID,
+    profile_id: UUID,
+    phase: str,
+    eligible_ids: list[UUID],
+    expected_exposure_id: UUID | None,
+) -> dict[str, dict[str, Any]]:
+    if phase not in {"before", "after"} or (phase == "after") != (expected_exposure_id is not None):
+        raise ProbeError
+
+    tables: dict[str, dict[str, Any]] = {}
+    total_rows = 0
+    total_bytes = 0
+    for table_name in PILOT_READER_STABLE_TABLES:
+        query = sql.SQL(
+            "SELECT to_jsonb(row_data)::text FROM public.{} AS row_data "
+            "WHERE row_data.user_id = %s"
+        ).format(sql.Identifier(table_name))
+        parameters: tuple[Any, ...] = (actor_id,)
+        if phase == "after":
+            if table_name == "exposure_events":
+                query += sql.SQL(" AND row_data.id <> %s")
+                parameters += (expected_exposure_id,)
+            elif table_name == "reader_exposure_concepts":
+                query += sql.SQL(" AND row_data.exposure_event_id <> %s")
+                parameters += (expected_exposure_id,)
+            elif table_name == "learning_events":
+                query += sql.SQL(
+                    " AND NOT (row_data.source_type = 'exposure_event' "
+                    "AND row_data.source_event_id = %s)"
+                )
+                parameters += (expected_exposure_id,)
+            else:
+                query += sql.SQL(
+                    " AND NOT (row_data.user_language_id = %s "
+                    "AND row_data.concept_id = ANY(%s))"
+                )
+                parameters += (profile_id, eligible_ids)
+        query += sql.SQL(' ORDER BY to_jsonb(row_data)::text COLLATE "C"')
+
+        digest = hashlib.sha256()
+        row_count = 0
+        with connection.cursor(name=f"pilot_reader_stable_{table_name}") as cursor:
+            cursor.execute(query, parameters)
+            while batch := cursor.fetchmany(500):
+                for (serialized,) in batch:
+                    if not isinstance(serialized, str):
+                        raise ProbeError
+                    row = serialized.encode("utf-8")
+                    if len(row) > MAX_ROW_BYTES:
+                        raise ProbeError
+                    row_count += 1
+                    total_rows += 1
+                    total_bytes += len(row)
+                    if (
+                        row_count > MAX_ROWS_PER_TABLE
+                        or total_rows > MAX_TOTAL_ROWS
+                        or total_bytes > MAX_TOTAL_BYTES
+                    ):
+                        raise ProbeError
+                    digest.update(row)
+                    digest.update(b"\n")
+        tables[table_name] = {"rows": row_count, "sha256": digest.hexdigest()}
+    return tables
+
+
+def _pilot_reader_completion(
+    connection: psycopg.Connection[tuple[Any, ...]],
+    *,
+    actor_id: UUID,
+    profile_id: UUID,
+    concept_ids: list[UUID],
+    binding: dict[str, Any],
+    idempotency_key_sha256: str | None,
+) -> dict[str, Any]:
+    _table_inventory(connection)
+    phase = binding.get("phase")
+    content_id = UUID(str(binding.get("contentId")))
+    segment_id = UUID(str(binding.get("segmentId")))
+    if phase not in {"before", "after"}:
+        raise ProbeError
+    profile = connection.execute(
+        "SELECT language_code, status FROM public.user_languages WHERE id = %s AND user_id = %s",
+        (profile_id, actor_id),
+    ).fetchone()
+    if profile != ("en", "active"):
+        raise ProbeError
+    segment = connection.execute(
+        """SELECT item.publication_status, item.language_code,
+                  public.reader_content_passes_publication_gate(item.id),
+                  target.order_index,
+                  (SELECT count(*)::integer FROM public.content_segments AS all_segments
+                   WHERE all_segments.content_id = item.id)
+           FROM public.content_items AS item
+           JOIN public.content_segments AS target ON target.content_id = item.id
+           WHERE item.id = %s AND target.id = %s""",
+        (content_id, segment_id),
+    ).fetchone()
+    if segment != ("published", "en", True, 71, 72):
+        raise ProbeError
+    eligible_rows = connection.execute(
+        """SELECT DISTINCT occurrence.concept_id
+           FROM public.content_segments AS target
+           JOIN public.sentence_concepts AS occurrence
+             ON occurrence.sentence_id = target.sentence_id
+            AND occurrence.language_code = 'en'
+           WHERE target.id = %s AND target.content_id = %s
+           ORDER BY occurrence.concept_id
+           LIMIT 1001""",
+        (segment_id, content_id),
+    ).fetchall()
+    eligible_ids = [UUID(str(row[0])) for row in eligible_rows]
+    if not eligible_ids or len(eligible_ids) > 1000 or eligible_ids != sorted(set(eligible_ids)):
+        raise ProbeError
+    if eligible_ids != sorted(concept_ids) or len(concept_ids) != len(set(concept_ids)):
+        raise ProbeError
+
+    exposure_rows = connection.execute(
+        """SELECT id, user_language_id, language_code, exposure_type, content_id,
+                  content_segment_id, idempotency_key, result_snapshot, created_at, occurred_at
+           FROM public.exposure_events
+           WHERE user_id = %s AND user_language_id = %s
+             AND content_id = %s AND content_segment_id = %s
+           ORDER BY id
+           LIMIT 2""",
+        (actor_id, profile_id, content_id, segment_id),
+    ).fetchall()
+    link_rows: list[tuple[Any, ...]] = []
+    learning_rows: list[tuple[Any, ...]] = []
+    exposure_ids = [UUID(str(row[0])) for row in exposure_rows]
+    expected_recorded_at: datetime | None = None
+    expected_occurred_at: datetime | None = None
+    expected_exposure_id: UUID | None = None
+    if phase == "before":
+        if exposure_rows or "projectionHeadBefore" in binding:
+            raise ProbeError
+    else:
+        expected_exposure_id = UUID(str(binding.get("exposureId")))
+        if idempotency_key_sha256 is None or len(exposure_rows) != 1:
+            raise ProbeError
+        exposure = exposure_rows[0]
+        (
+            actual_id, actual_profile, language_code, exposure_type, actual_content,
+            actual_segment, idempotency_key, result_snapshot, exposure_created_at,
+            exposure_occurred_at,
+        ) = exposure
+        if (
+            UUID(str(actual_id)) != expected_exposure_id
+            or UUID(str(actual_profile)) != profile_id
+            or language_code != "en"
+            or exposure_type != "read"
+            or UUID(str(actual_content)) != content_id
+            or UUID(str(actual_segment)) != segment_id
+            or hashlib.sha256(str(idempotency_key).encode("ascii")).hexdigest()
+            != idempotency_key_sha256
+            or not isinstance(result_snapshot, dict)
+            or set(result_snapshot) != {
+                "acceptedConceptCount", "contentId", "exposureId", "exposureType",
+                "occurredAt", "recordedAt", "segmentId",
+            }
+            or result_snapshot.get("acceptedConceptCount") != len(eligible_ids)
+            or result_snapshot.get("contentId") != str(content_id)
+            or result_snapshot.get("exposureId") != str(expected_exposure_id)
+            or result_snapshot.get("exposureType") != "read"
+            or result_snapshot.get("segmentId") != str(segment_id)
+        ):
+            raise ProbeError
+        expected_recorded_at = _pilot_reader_aware_datetime(result_snapshot.get("recordedAt"))
+        expected_occurred_at = _pilot_reader_aware_datetime(result_snapshot.get("occurredAt"))
+        if _pilot_reader_aware_datetime(exposure_created_at) != expected_recorded_at:
+            raise ProbeError
+        if _pilot_reader_aware_datetime(exposure_occurred_at) != expected_occurred_at:
+            raise ProbeError
+        link_rows = connection.execute(
+            """SELECT user_id, user_language_id, language_code, concept_id, derivation_key,
+                      created_at
+               FROM public.reader_exposure_concepts
+               WHERE exposure_event_id = %s
+               ORDER BY concept_id
+               LIMIT 1001""",
+            (expected_exposure_id,),
+        ).fetchall()
+        learning_rows = connection.execute(
+            """SELECT user_id, user_language_id, language_code, event_type, concept_id,
+                      payload, idempotency_key, source_type, source_event_id, derivation_key,
+                      ingestion_sequence, ingested_at, projection_method_version,
+                      competence_parameter_set_id, competence_parameter_version,
+                      occurred_at, created_at
+               FROM public.learning_events
+               WHERE user_id = %s AND source_type = 'exposure_event'
+                 AND source_event_id = %s
+               ORDER BY concept_id
+               LIMIT 1001""",
+            (actor_id, expected_exposure_id),
+        ).fetchall()
+
+    states = connection.execute(
+        """SELECT concept_id, status, recognition, listening, production, mastery, confidence,
+                  exposure_count, has_learning_intent, has_projectable_evidence,
+                  highest_achievement_status,
+                  recognition_positive_mass, recognition_negative_mass,
+                  recognition_confidence, recognition_evidence_count, recognition_last_evidence_at,
+                  listening_positive_mass, listening_negative_mass,
+                  listening_confidence, listening_evidence_count, listening_last_evidence_at,
+                  production_positive_mass, production_negative_mass,
+                  production_confidence, production_evidence_count, production_last_evidence_at,
+                  recent_competence_outcomes, language_code, state_version, last_seen_at,
+                  projection_method_version, competence_parameter_set_id,
+                  competence_parameter_version, created_at, updated_at
+           FROM public.user_concept_states
+           WHERE user_id = %s AND user_language_id = %s AND concept_id = ANY(%s)
+           ORDER BY concept_id
+           LIMIT 1001""",
+        (actor_id, profile_id, eligible_ids),
+    ).fetchall()
+    if phase == "before" and states:
+        raise ProbeError
+    if phase == "after" and len(states) != len(eligible_ids):
+        raise ProbeError
+
+    head_rows = connection.execute(
+        """SELECT head.user_id, head.user_language_id, head.state_version,
+                  head.next_ingestion_sequence, head.parameter_set_id, head.parameter_version,
+                  head.projection_method_version, head.updated_at,
+                  (to_jsonb(head) - ARRAY[
+                      'state_version', 'next_ingestion_sequence', 'updated_at'
+                  ]::text[])::text
+           FROM public.user_language_projection_heads AS head
+           WHERE head.user_id = %s AND head.user_language_id = %s
+           LIMIT 2""",
+        (actor_id, profile_id),
+    ).fetchall()
+    if len(head_rows) != 1:
+        raise ProbeError
+    (head_user_id, head_profile_id, head_state_version, next_sequence, parameter_set_id,
+     parameter_version, projection_method_version, head_updated_at,
+     immutable_head_json) = head_rows[0]
+    if (UUID(str(head_user_id)) != actor_id or UUID(str(head_profile_id)) != profile_id
+            or type(head_state_version) is not int or head_state_version < 1
+            or type(next_sequence) is not int or next_sequence < 1
+            or parameter_set_id is None or not isinstance(parameter_version, str)
+            or not parameter_version or projection_method_version != "competence-beta-v1"
+            or not isinstance(immutable_head_json, str)
+            or len(immutable_head_json.encode("utf-8")) > MAX_ROW_BYTES):
+        raise ProbeError
+    parameter_set_id = UUID(str(parameter_set_id))
+    head_updated_at = _pilot_reader_aware_datetime(head_updated_at)
+    immutable_head_sha256 = hashlib.sha256(immutable_head_json.encode("utf-8")).hexdigest()
+
+    projection_head_before: dict[str, int] | None = None
+    if phase == "after":
+        raw_head_before = binding.get("projectionHeadBefore")
+        if (
+            not isinstance(raw_head_before, dict)
+            or set(raw_head_before) != {"stateVersion", "nextIngestionSequence"}
+            or type(raw_head_before.get("stateVersion")) is not int
+            or raw_head_before["stateVersion"] < 1
+            or type(raw_head_before.get("nextIngestionSequence")) is not int
+            or raw_head_before["nextIngestionSequence"] < 1
+            or expected_recorded_at is None
+            or head_updated_at != expected_recorded_at
+            or head_state_version != raw_head_before["stateVersion"] + len(eligible_ids)
+            or next_sequence != raw_head_before["nextIngestionSequence"] + len(eligible_ids)
+        ):
+            raise ProbeError
+        projection_head_before = raw_head_before
+
+    skill_rows = connection.execute(
+        """SELECT skill, score, confidence, evidence_count, positive_mass, negative_mass,
+                  last_evidence_at, state_version, competence_parameter_set_id,
+                  competence_parameter_version
+           FROM public.user_skill_states
+           WHERE user_id = %s AND user_language_id = %s
+           ORDER BY skill
+           LIMIT 4""",
+        (actor_id, profile_id),
+    ).fetchall()
+    if len(skill_rows) != 3:
+        raise ProbeError
+    expected_skills = ("listening", "production", "recognition")
+    for row, expected_skill in zip(skill_rows, expected_skills, strict=True):
+        (skill, score, confidence, evidence_count, positive_mass, negative_mass,
+         last_evidence_at, state_version, skill_parameter_id, skill_parameter_version) = row
+        if (
+            skill != expected_skill
+            or Decimal(str(score)) != Decimal("0.5")
+            or Decimal(str(confidence)) != Decimal("0")
+            or evidence_count != 0
+            or Decimal(str(positive_mass)) != Decimal("0")
+            or Decimal(str(negative_mass)) != Decimal("0")
+            or last_evidence_at is not None
+            or state_version != 1
+            or UUID(str(skill_parameter_id)) != UUID(str(parameter_set_id))
+            or skill_parameter_version != parameter_version
+        ):
+            raise ProbeError
+
+    concept_states = [] if phase == "before" else [
+        _pilot_reader_passive_concept_state(
+            row,
+            concept_id,
+            recorded_at=expected_recorded_at,
+            parameter_set_id=parameter_set_id,
+            parameter_version=parameter_version,
+            projection_method_version=projection_method_version,
+        )
+        for row, concept_id in zip(states, eligible_ids, strict=True)
+    ]
+
+    if phase == "before":
+        linked_ids: list[UUID] = []
+        learning_ids: list[UUID] = []
+    else:
+        linked_ids = []
+        for row in link_rows:
+            row_user, row_profile, language_code, concept_id, derivation_key, created_at = row
+            concept_id = UUID(str(concept_id))
+            if (UUID(str(row_user)) != actor_id or UUID(str(row_profile)) != profile_id
+                    or language_code != "en" or derivation_key != f"concept:{concept_id}"
+                    or _pilot_reader_aware_datetime(created_at) != expected_recorded_at):
+                raise ProbeError
+            linked_ids.append(concept_id)
+        learning_ids = []
+        event_sequences: list[int] = []
+        for row in learning_rows:
+            (row_user, row_profile, language_code, event_type, concept_id, payload,
+             event_key, source_type, source_event_id, derivation_key, ingestion_sequence,
+             ingested_at, event_projection_method_version, event_parameter_set_id,
+             event_parameter_version, occurred_at, created_at) = row
+            concept_id = UUID(str(concept_id))
+            if (UUID(str(row_user)) != actor_id or UUID(str(row_profile)) != profile_id
+                    or language_code != "en" or event_type != "learning.exposure.recorded.v1"
+                    or payload != {"exposureType": "read"}
+                    or str(event_key) != str(idempotency_key)
+                    or source_type != "exposure_event"
+                    or UUID(str(source_event_id)) != expected_exposure_id
+                    or derivation_key != f"concept:{concept_id}"
+                    or type(ingestion_sequence) is not int
+                    or _pilot_reader_aware_datetime(ingested_at) != expected_recorded_at
+                    or _pilot_reader_aware_datetime(created_at) != expected_recorded_at
+                    or _pilot_reader_aware_datetime(occurred_at) != expected_occurred_at
+                    or event_projection_method_version != projection_method_version
+                    or UUID(str(event_parameter_set_id)) != parameter_set_id
+                    or event_parameter_version != parameter_version):
+                raise ProbeError
+            event_sequences.append(ingestion_sequence)
+            learning_ids.append(concept_id)
+        if (len(linked_ids) != len(eligible_ids) or len(set(linked_ids)) != len(linked_ids)
+                or sorted(linked_ids) != eligible_ids
+                or len(learning_ids) != len(eligible_ids)
+                or len(set(learning_ids)) != len(learning_ids)
+                or sorted(learning_ids) != eligible_ids):
+            raise ProbeError
+        expected_sequences = list(range(
+            projection_head_before["nextIngestionSequence"],
+            projection_head_before["nextIngestionSequence"] + len(eligible_ids),
+        ))
+        if sorted(event_sequences) != expected_sequences:
+            raise ProbeError
+
+    stable_rows = _pilot_reader_stable_rows(
+        connection,
+        actor_id=actor_id,
+        profile_id=profile_id,
+        phase=phase,
+        eligible_ids=eligible_ids,
+        expected_exposure_id=expected_exposure_id,
+    )
+
+    return {
+        "phase": phase,
+        "eligibleConceptIds": [str(value) for value in eligible_ids],
+        "exposureEventIds": [str(value) for value in exposure_ids],
+        "linkedConceptIds": [str(value) for value in linked_ids],
+        "learningConceptIds": [str(value) for value in learning_ids],
+        "conceptStates": concept_states,
+        "skillStateCount": len(skill_rows),
+        "skillNames": list(expected_skills),
+        "skillStatesPassiveOnly": True,
+        "projectionHead": {
+            "rowCount": len(head_rows),
+            "stateVersion": head_state_version,
+            "nextIngestionSequence": next_sequence,
+            "parameterVersion": parameter_version,
+            "immutableSha256": immutable_head_sha256,
+            "updatedAtMatchesCompletion": (
+                None if phase == "before" else head_updated_at == expected_recorded_at
+            ),
+        },
+        "stableRows": stable_rows,
+    }
+
+
 def _k208_candidate_base(
     connection: psycopg.Connection[tuple[Any, ...]], actor_id: UUID, profile_id: UUID
 ) -> dict[str, Any]:
@@ -1852,6 +2664,7 @@ def main() -> int:
     profile_value = os.environ.get("K2_ACCEPTANCE_PROFILE_ID", "")
     concept_values = os.environ.get("K2_ACCEPTANCE_CONCEPT_IDS", "")
     idempotency_key_sha256 = os.environ.get("K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256", "")
+    reader_binding_value = os.environ.get("K2_ACCEPTANCE_PILOT_READER_BINDING", "")
     try:
         if os.environ.get("K2_ACCEPTANCE_IDEMPOTENCY_KEY") is not None:
             raise ProbeError
@@ -1859,17 +2672,34 @@ def main() -> int:
         profile_id = UUID(profile_value) if profile_value else None
         raw_concepts = json.loads(concept_values) if concept_values else None
         due_concept_ids = None
+        reader_concept_ids = None
         if raw_concepts is not None:
-            if (
-                not isinstance(raw_concepts, list)
-                or len(raw_concepts) != 20
-                or any(not isinstance(value, str) for value in raw_concepts)
+            if not isinstance(raw_concepts, list) or any(
+                not isinstance(value, str) for value in raw_concepts
             ):
                 raise ProbeError
-            due_concept_ids = [UUID(value) for value in raw_concepts]
-            if len(set(due_concept_ids)) != 20 or any(
-                str(value) != raw for value, raw in zip(due_concept_ids, raw_concepts, strict=True)
-            ):
+            if action == "pilot_reader_completion":
+                if not 1 <= len(raw_concepts) <= 1000:
+                    raise ProbeError
+                reader_concept_ids = [UUID(value) for value in raw_concepts]
+                if len(set(reader_concept_ids)) != len(reader_concept_ids) or any(
+                    str(value) != raw
+                    for value, raw in zip(reader_concept_ids, raw_concepts, strict=True)
+                ):
+                    raise ProbeError
+            else:
+                if len(raw_concepts) != 20:
+                    raise ProbeError
+                due_concept_ids = [UUID(value) for value in raw_concepts]
+                if len(set(due_concept_ids)) != 20 or any(
+                    str(value) != raw
+                    for value, raw in zip(due_concept_ids, raw_concepts, strict=True)
+                ):
+                    raise ProbeError
+        reader_binding = None
+        if reader_binding_value:
+            reader_binding = json.loads(reader_binding_value)
+            if not isinstance(reader_binding, dict):
                 raise ProbeError
         if action not in {
             "retained_snapshot",
@@ -1879,6 +2709,8 @@ def main() -> int:
             "actor_ownership_graph",
             "actor_absent",
             "anchor_material",
+            "pilot_reader_catalog_manifest",
+            "pilot_reader_completion",
             "today_review_targets",
             "k208_fixture_privilege_preflight",
             "k208_catalog_preflight",
@@ -1889,17 +2721,22 @@ def main() -> int:
             raise ProbeError
         if (
             action in {"actor_snapshot", "actor_lineage", "actor_absent", "today_review_targets",
-                       "frll_anchor_semantic_proof"}
+                        "frll_anchor_semantic_proof", "pilot_reader_completion"}
             and actor_id is None
         ):
             raise ProbeError
-        if action in {"k208_candidate_base", "k208_due_candidate_overlap", "frll_anchor_semantic_proof"}:
+        if action in {
+            "k208_candidate_base",
+            "k208_due_candidate_overlap",
+            "frll_anchor_semantic_proof",
+            "pilot_reader_completion",
+        }:
             if actor_id is None or profile_id is None:
                 raise ProbeError
         elif profile_id is not None:
             raise ProbeError
         if idempotency_key_sha256 and (
-            action != "frll_anchor_semantic_proof"
+            action not in {"frll_anchor_semantic_proof", "pilot_reader_completion"}
             or not re.fullmatch(r"[a-f0-9]{64}", idempotency_key_sha256)
         ):
             raise ProbeError
@@ -1908,8 +2745,52 @@ def main() -> int:
                 raise ProbeError
         elif due_concept_ids is not None:
             raise ProbeError
+        if action == "pilot_reader_completion":
+            if (reader_concept_ids is None or not isinstance(reader_binding, dict)
+                    or set(reader_binding) not in ({"phase", "contentId", "segmentId"},
+                                                   {"phase", "contentId", "segmentId", "exposureId",
+                                                    "projectionHeadBefore"})):
+                raise ProbeError
+            try:
+                binding_content_id = UUID(reader_binding["contentId"])
+                binding_segment_id = UUID(reader_binding["segmentId"])
+            except (KeyError, TypeError, ValueError):
+                raise ProbeError from None
+            if (str(binding_content_id) != reader_binding.get("contentId")
+                    or str(binding_segment_id) != reader_binding.get("segmentId")):
+                raise ProbeError
+            if reader_binding.get("phase") == "before":
+                if (
+                    set(reader_binding) != {"phase", "contentId", "segmentId"}
+                    or idempotency_key_sha256
+                ):
+                    raise ProbeError
+            elif reader_binding.get("phase") == "after":
+                head_before = reader_binding.get("projectionHeadBefore")
+                try:
+                    exposure_id = UUID(reader_binding.get("exposureId", ""))
+                except (TypeError, ValueError):
+                    raise ProbeError from None
+                if (set(reader_binding) != {"phase", "contentId", "segmentId", "exposureId",
+                                           "projectionHeadBefore"}
+                        or str(exposure_id) != reader_binding.get("exposureId")
+                        or not isinstance(head_before, dict)
+                        or set(head_before) != {"stateVersion", "nextIngestionSequence"}
+                        or type(head_before.get("stateVersion")) is not int
+                        or head_before["stateVersion"] < 1
+                        or type(head_before.get("nextIngestionSequence")) is not int
+                        or head_before["nextIngestionSequence"] < 1
+                        or not re.fullmatch(r"[a-f0-9]{64}", idempotency_key_sha256)):
+                    raise ProbeError
+            else:
+                raise ProbeError
+        elif reader_concept_ids is not None or reader_binding is not None:
+            raise ProbeError
+        if reader_binding_value and action != "pilot_reader_completion":
+            raise ProbeError
         if (
-            action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight"}
+            action in {"k208_fixture_privilege_preflight", "k208_catalog_preflight",
+                       "pilot_reader_catalog_manifest"}
             and actor_id is not None
         ):
             raise ProbeError
@@ -1930,6 +2811,24 @@ def main() -> int:
                 output = _k208_fixture_privilege_preflight(connection)
             elif action == "k208_catalog_preflight":
                 output = _k208_catalog_preflight(connection)
+            elif action == "pilot_reader_catalog_manifest":
+                output = _pilot_reader_catalog_manifest(connection)
+            elif action == "pilot_reader_completion":
+                if (
+                    actor_id is None
+                    or profile_id is None
+                    or reader_concept_ids is None
+                    or reader_binding is None
+                ):
+                    raise ProbeError
+                output = _pilot_reader_completion(
+                    connection,
+                    actor_id=actor_id,
+                    profile_id=profile_id,
+                    concept_ids=reader_concept_ids,
+                    binding=reader_binding,
+                    idempotency_key_sha256=idempotency_key_sha256 or None,
+                )
             elif action == "k208_candidate_base":
                 if actor_id is None or profile_id is None:
                     raise ProbeError

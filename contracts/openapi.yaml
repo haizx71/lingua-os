@@ -181,6 +181,36 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /v1/admin/content/{contentId}/translations/vi:
+    parameters:
+      - $ref: '#/components/parameters/ContentId'
+    put:
+      tags: [Admin]
+      operationId: putAdminVietnameseTranslations
+      summary: Replace or explicitly clear the complete owner-authored Vietnamese sentence set
+      description: |
+        The server locks the content and aligns the one-based ordinals and exact English source
+        text to its current deterministic sentence order. A non-empty set must cover every sentence.
+        The empty entries array is the only clear operation. Foreign Vietnamese provenance causes
+        a conflict before any translation row is changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutAdminVietnameseTranslationsRequest' }
+      responses:
+        '200':
+          description: Current ordered English and Vietnamese authoring preview.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminContentResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidStateTransition' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}:
     parameters:
       - $ref: '#/components/parameters/ContentId'
@@ -2226,6 +2256,56 @@ components:
         sourceVersion: { type: string, minLength: 1, maxLength: 100 }
         attributionText: { type: string, minLength: 1, maxLength: 1000 }
         rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+    AdminVietnameseTranslationEntry:
+      type: object
+      additionalProperties: false
+      required: [ordinal, sourceText, translationText]
+      properties:
+        ordinal: { type: integer, minimum: 1, maximum: 100 }
+        sourceText:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: Exact current server sentence; whitespace is significant.
+        translationText:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: Exact supplied Vietnamese text; whitespace is preserved and blank-only values are rejected.
+    AdminVietnameseTranslationSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [authorName, sourceName, sourceVersion, attributionText, rightsStatement]
+      properties:
+        authorName: { type: string, minLength: 1, maxLength: 200 }
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 100 }
+        attributionText: { type: string, minLength: 1, maxLength: 1000 }
+        rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+    PutAdminVietnameseTranslationsComplete:
+      type: object
+      additionalProperties: false
+      required: [entries, source]
+      properties:
+        entries:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/AdminVietnameseTranslationEntry' }
+        source: { $ref: '#/components/schemas/AdminVietnameseTranslationSourceRequest' }
+    PutAdminVietnameseTranslationsClear:
+      type: object
+      additionalProperties: false
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          maxItems: 0
+          items: { $ref: '#/components/schemas/AdminVietnameseTranslationEntry' }
+    PutAdminVietnameseTranslationsRequest:
+      oneOf:
+        - { $ref: '#/components/schemas/PutAdminVietnameseTranslationsComplete' }
+        - { $ref: '#/components/schemas/PutAdminVietnameseTranslationsClear' }
     AdminCatalogConcept:
       type: object
       additionalProperties: false
@@ -2263,11 +2343,15 @@ components:
     AdminSentencePreview:
       type: object
       additionalProperties: false
-      required: [id, order, text, conceptCount, concepts]
+      required: [id, order, text, translationVi, conceptCount, concepts]
       properties:
         id: { type: string, format: uuid }
         order: { type: integer, minimum: 0 }
         text: { type: string, minLength: 1, maxLength: 5000 }
+        translationVi:
+          oneOf:
+            - { type: string, minLength: 1, maxLength: 5000 }
+            - { type: 'null' }
         conceptCount: { type: integer, minimum: 0 }
         concepts:
           type: array
@@ -2276,7 +2360,7 @@ components:
     AdminContent:
       type: object
       additionalProperties: false
-      required: [id, title, body, languageCode, contentType, level, status, authorName, sourceName, sourceVersion, licenseCode, attributionText, rightsStatement, sourceRecordKey, rawHash, sentences, createdAt, updatedAt]
+      required: [id, title, body, languageCode, contentType, level, status, authorName, sourceName, sourceVersion, licenseCode, attributionText, rightsStatement, sourceRecordKey, rawHash, translationSource, sentences, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         title: { type: string, minLength: 1, maxLength: 500 }
@@ -2293,6 +2377,10 @@ components:
         rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
         sourceRecordKey: { type: string, minLength: 1, maxLength: 200 }
         rawHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        translationSource:
+          oneOf:
+            - { $ref: '#/components/schemas/AdminVietnameseTranslationSource' }
+            - { type: 'null' }
         sentences:
           type: array
           maxItems: 100
@@ -2303,6 +2391,20 @@ components:
             - { type: 'null' }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    AdminVietnameseTranslationSource:
+      type: object
+      additionalProperties: false
+      required: [targetLanguageCode, authorName, sourceName, sourceVersion, licenseCode, attributionText, rightsStatement, sourceRecordKey, rawHash]
+      properties:
+        targetLanguageCode: { type: string, const: vi }
+        authorName: { type: string, minLength: 1, maxLength: 200 }
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 100 }
+        licenseCode: { type: string, const: LINGUA-FIRST-PARTY }
+        attributionText: { type: string, minLength: 1, maxLength: 1000 }
+        rightsStatement: { type: string, minLength: 1, maxLength: 1000 }
+        sourceRecordKey: { type: string, minLength: 1, maxLength: 200 }
+        rawHash: { type: string, pattern: '^[0-9a-f]{64}$' }
     AdminContentValidation:
       type: object
       additionalProperties: false

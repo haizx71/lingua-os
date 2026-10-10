@@ -13,6 +13,8 @@ import {
   parseK2HostedFrllSemanticProof,
   parseK2HostedFixtureCapability,
   parseK2HostedCatalogPreflight,
+  parsePilotReaderCatalogManifestProof,
+  parsePilotReaderCompletionProof,
   parseK2RetainedSnapshot,
   type K2RetainedSnapshot,
 } from './k2_hosted_probe_client';
@@ -57,6 +59,186 @@ function emptyFrllSemanticProof() {
 }
 
 describe('K2 read-only probe client', () => {
+  it('accepts only the fixed actorless 72-pair Reader catalog proof', () => {
+    const proof = {
+      contentId: '550e8400-e29b-41d4-a716-446655440010',
+      contentCount: 1,
+      segmentCount: 72,
+      sentenceCount: 72,
+      translationCount: 72,
+      conceptCount: 4,
+      candidateSha256: '25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f',
+      bodySha256: '180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e',
+      translationSha256: 'a'.repeat(64),
+      pairSha256: 'b'.repeat(64),
+      contentProvenance: {
+        authorMatched: true,
+        sourceNameMatched: true,
+        sourceVersionMatched: true,
+        attributionMatched: true,
+        rightsStatementMatched: true,
+        approved: true,
+        firstPartySource: true,
+        firstPartyLicense: true,
+      },
+      translationProvenance: {
+        sourceRecordCount: 1,
+        authorMatched: true,
+        sourceNameMatched: true,
+        sourceVersionMatched: true,
+        attributionMatched: true,
+        rightsStatementMatched: true,
+        approved: true,
+        firstPartySource: true,
+        firstPartyLicense: true,
+      },
+    };
+    expect(parsePilotReaderCatalogManifestProof(proof)).toEqual(proof);
+    expect(() => parsePilotReaderCatalogManifestProof({ ...proof, translationCount: 71 }))
+      .toThrow('Reader catalog manifest proof was invalid');
+    expect(() => parsePilotReaderCatalogManifestProof({
+      ...proof,
+      translationProvenance: { ...proof.translationProvenance, sourceRecordCount: 2 },
+    })).toThrow('Reader catalog manifest proof was invalid');
+    expect(() => parsePilotReaderCatalogManifestProof({
+      ...proof,
+      contentProvenance: { ...proof.contentProvenance, approved: false },
+    })).toThrow('Reader catalog manifest proof was invalid');
+    expect(() => parsePilotReaderCatalogManifestProof({ ...proof, rawRows: [] }))
+      .toThrow('Reader catalog manifest proof was invalid');
+  });
+
+  it('keeps the Reader catalog manifest probe actorless in its child environment', () => {
+    const env = buildK2ProbeChildEnvironment(
+      'pilot_reader_catalog_manifest',
+      'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require',
+      undefined,
+      { PATH: 'runner-path', SERVICE_ROLE_KEY: 'must-not-inherit', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'secret' },
+    );
+    expect(env.K2_ACCEPTANCE_PROBE_ACTION).toBe('pilot_reader_catalog_manifest');
+    expect(env.K2_ACCEPTANCE_ACTOR_ID).toBeUndefined();
+    expect(env.SERVICE_ROLE_KEY).toBeUndefined();
+    expect(env.ACTIONS_ID_TOKEN_REQUEST_TOKEN).toBeUndefined();
+    expect(() => buildK2ProbeChildEnvironment(
+      'pilot_reader_catalog_manifest',
+      'read-only-url',
+      '550e8400-e29b-41d4-a716-446655440000',
+      { PATH: 'runner-path' },
+    )).toThrow('Reader catalog probe is actorless');
+  });
+
+  it('pins the passive Reader completion probe to an exact actor/profile/final-segment binding', () => {
+    const actorId = '00000000-0000-4000-8000-000000000001';
+    const profileId = '00000000-0000-4000-8000-000000000002';
+    const contentId = '00000000-0000-4000-8000-000000000003';
+    const segmentId = '00000000-0000-4000-8000-000000000004';
+    const conceptIds = [
+      '00000000-0000-4000-8000-000000000005',
+      '00000000-0000-4000-8000-000000000006',
+    ];
+    const before = buildK2ProbeChildEnvironment(
+      'pilot_reader_completion',
+      'postgresql://reader:placeholder@db.example.invalid/postgres?sslmode=require',
+      actorId,
+      { PATH: 'runner-path', SERVICE_ROLE_KEY: 'must-not-inherit', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'secret' },
+      profileId,
+      conceptIds,
+      undefined,
+      { phase: 'before', contentId, segmentId },
+    );
+    expect(before.K2_ACCEPTANCE_PILOT_READER_BINDING).toBe(JSON.stringify({ phase: 'before', contentId, segmentId }));
+    expect(before.K2_ACCEPTANCE_CONCEPT_IDS).toBe(JSON.stringify(conceptIds));
+    expect(before).not.toHaveProperty('K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256');
+    expect(before).not.toHaveProperty('SERVICE_ROLE_KEY');
+    expect(before).not.toHaveProperty('ACTIONS_ID_TOKEN_REQUEST_TOKEN');
+    expect(Object.keys(before).sort()).toEqual([
+      'K2_ACCEPTANCE_ACTOR_ID', 'K2_ACCEPTANCE_CONCEPT_IDS', 'K2_ACCEPTANCE_PILOT_READER_BINDING',
+      'K2_ACCEPTANCE_PROFILE_ID', 'K2_ACCEPTANCE_PROBE_ACTION', 'K2_STAGING_READONLY_DATABASE_URL', 'PATH',
+    ].sort());
+    expect(() => buildK2ProbeChildEnvironment(
+      'pilot_reader_completion', 'read-only-url', actorId, { PATH: 'runner-path' }, profileId,
+      conceptIds, undefined,
+    )).toThrow(/exact actor\/profile binding/);
+    expect(() => buildK2ProbeChildEnvironment(
+      'pilot_reader_completion', 'read-only-url', actorId, { PATH: 'runner-path' }, profileId,
+      [conceptIds[0]!, conceptIds[0]!], undefined, { phase: 'before', contentId, segmentId },
+    )).toThrow(/exact actor\/profile binding/);
+
+    const after = buildK2ProbeChildEnvironment(
+      'pilot_reader_completion', 'read-only-url', actorId, { PATH: 'runner-path' }, profileId,
+      conceptIds, 'a'.repeat(64), {
+        phase: 'after', contentId, segmentId,
+        exposureId: '00000000-0000-4000-8000-000000000007',
+        projectionHeadBefore: { stateVersion: 4, nextIngestionSequence: 4 },
+      },
+    );
+    expect(after.K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256).toBe('a'.repeat(64));
+    expect(after.K2_ACCEPTANCE_PILOT_READER_BINDING).toContain('projectionHeadBefore');
+  });
+
+  it('accepts only exact neutral passive-state reconciliation for every final concept', () => {
+    const ids = [
+      '00000000-0000-4000-8000-000000000005',
+      '00000000-0000-4000-8000-000000000006',
+    ];
+    const stableRows = {
+      exposure_events: { rows: 1, sha256: 'a'.repeat(64) },
+      learning_events: { rows: 2, sha256: 'b'.repeat(64) },
+      reader_exposure_concepts: { rows: 1, sha256: 'c'.repeat(64) },
+      user_concept_states: { rows: 1, sha256: 'd'.repeat(64) },
+    };
+    const before = {
+      phase: 'before', eligibleConceptIds: ids, exposureEventIds: [], linkedConceptIds: [],
+      learningConceptIds: [], conceptStates: [], skillStateCount: 3,
+      skillNames: ['listening', 'production', 'recognition'], skillStatesPassiveOnly: true,
+      projectionHead: {
+        rowCount: 1, stateVersion: 4, nextIngestionSequence: 4,
+        parameterVersion: 'competence-beta-v1', immutableSha256: 'e'.repeat(64),
+        updatedAtMatchesCompletion: null,
+      },
+      stableRows,
+    };
+    expect(parsePilotReaderCompletionProof(before)).toEqual(before);
+
+    const after = {
+      phase: 'after', eligibleConceptIds: ids,
+      exposureEventIds: ['00000000-0000-4000-8000-000000000007'],
+      linkedConceptIds: ids, learningConceptIds: ids,
+      conceptStates: ids.map(conceptId => ({ conceptId, status: 'discovered', exposureCount: 1, passiveOnly: true })),
+      skillStateCount: 3,
+      skillNames: ['listening', 'production', 'recognition'], skillStatesPassiveOnly: true,
+      projectionHead: {
+        rowCount: 1, stateVersion: 6, nextIngestionSequence: 6,
+        parameterVersion: 'competence-beta-v1', immutableSha256: 'e'.repeat(64),
+        updatedAtMatchesCompletion: true,
+      },
+      stableRows,
+    };
+    expect(parsePilotReaderCompletionProof(after)).toEqual(after);
+    expect(() => parsePilotReaderCompletionProof({
+      ...after, linkedConceptIds: [...ids, '00000000-0000-4000-8000-000000000008'],
+    })).toThrow(/completion proof was invalid/);
+    expect(() => parsePilotReaderCompletionProof({
+      ...after, exposureEventIds: [...after.exposureEventIds, '00000000-0000-4000-8000-000000000009'],
+    })).toThrow(/completion proof was invalid/);
+    expect(() => parsePilotReaderCompletionProof({
+      ...after,
+      conceptStates: after.conceptStates.map((state, index) =>
+        index === 1 ? { ...state, passiveOnly: false } : state),
+    })).toThrow(/completion proof was invalid/);
+    expect(() => parsePilotReaderCompletionProof({ ...after, stableRows: { ...stableRows, extra: { rows: 0, sha256: '0'.repeat(64) } } }))
+      .toThrow(/completion proof was invalid/);
+    expect(() => parsePilotReaderCompletionProof({
+      ...after, stableRows: { ...stableRows, user_concept_states: { rows: -1, sha256: 'd'.repeat(64) } },
+    })).toThrow(/completion proof was invalid/);
+    expect(() => parsePilotReaderCompletionProof({
+      ...after, projectionHead: { ...after.projectionHead, updatedAtMatchesCompletion: false },
+    })).toThrow(/completion proof was invalid/);
+    expect(() => parsePilotReaderCompletionProof({
+      ...before, projectionHead: { ...before.projectionHead, immutableSha256: 'not-a-hash' },
+    })).toThrow(/completion proof was invalid/);
+  });
+
   it('requires every pinned public learner table and visible retained rows', () => {
     const snapshot = emptyActorSnapshot();
     snapshot.totalRows = 2;

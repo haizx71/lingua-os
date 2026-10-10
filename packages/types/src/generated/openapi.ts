@@ -81,6 +81,32 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/v1/admin/content/{contentId}/translations/vi": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        /**
+         * Replace or explicitly clear the complete owner-authored Vietnamese sentence set
+         * @description The server locks the content and aligns the one-based ordinals and exact English source
+         *     text to its current deterministic sentence order. A non-empty set must cover every sentence.
+         *     The empty entries array is the only clear operation. Foreign Vietnamese provenance causes
+         *     a conflict before any translation row is changed.
+         *
+         */
+        readonly put: operations["putAdminVietnameseTranslations"];
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}": {
         readonly parameters: {
             readonly query?: never;
@@ -1390,6 +1416,28 @@ export interface components {
             readonly attributionText?: string;
             readonly rightsStatement?: string;
         };
+        readonly AdminVietnameseTranslationEntry: {
+            readonly ordinal: number;
+            /** @description Exact current server sentence; whitespace is significant. */
+            readonly sourceText: string;
+            /** @description Exact supplied Vietnamese text; whitespace is preserved and blank-only values are rejected. */
+            readonly translationText: string;
+        };
+        readonly AdminVietnameseTranslationSourceRequest: {
+            readonly authorName: string;
+            readonly sourceName: string;
+            readonly sourceVersion: string;
+            readonly attributionText: string;
+            readonly rightsStatement: string;
+        };
+        readonly PutAdminVietnameseTranslationsComplete: {
+            readonly entries: readonly components["schemas"]["AdminVietnameseTranslationEntry"][];
+            readonly source: components["schemas"]["AdminVietnameseTranslationSourceRequest"];
+        };
+        readonly PutAdminVietnameseTranslationsClear: {
+            readonly entries: readonly components["schemas"]["AdminVietnameseTranslationEntry"][];
+        };
+        readonly PutAdminVietnameseTranslationsRequest: components["schemas"]["PutAdminVietnameseTranslationsComplete"] | components["schemas"]["PutAdminVietnameseTranslationsClear"];
         readonly AdminCatalogConcept: {
             /** Format: uuid */
             readonly id: string;
@@ -1418,6 +1466,7 @@ export interface components {
             readonly id: string;
             readonly order: number;
             readonly text: string;
+            readonly translationVi: string | null;
             readonly conceptCount: number;
             readonly concepts: readonly components["schemas"]["AdminSentenceConcept"][];
         };
@@ -1441,12 +1490,26 @@ export interface components {
             readonly rightsStatement: string;
             readonly sourceRecordKey: string;
             readonly rawHash: string;
+            readonly translationSource: components["schemas"]["AdminVietnameseTranslationSource"] | null;
             readonly sentences: readonly components["schemas"]["AdminSentencePreview"][];
             readonly publishedAt?: string | null;
             /** Format: date-time */
             readonly createdAt: string;
             /** Format: date-time */
             readonly updatedAt: string;
+        };
+        readonly AdminVietnameseTranslationSource: {
+            /** @constant */
+            readonly targetLanguageCode: "vi";
+            readonly authorName: string;
+            readonly sourceName: string;
+            readonly sourceVersion: string;
+            /** @constant */
+            readonly licenseCode: "LINGUA-FIRST-PARTY";
+            readonly attributionText: string;
+            readonly rightsStatement: string;
+            readonly sourceRecordKey: string;
+            readonly rawHash: string;
         };
         readonly AdminContentValidation: {
             readonly content: components["schemas"]["AdminContent"];
@@ -1986,6 +2049,38 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminContentValidationResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 403: components["responses"]["Forbidden"];
+            readonly 404: components["responses"]["NotFound"];
+            readonly 409: components["responses"]["InvalidStateTransition"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly putAdminVietnameseTranslations: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly contentId: components["parameters"]["ContentId"];
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PutAdminVietnameseTranslationsRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Current ordered English and Vietnamese authoring preview. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminContentResponse"];
                 };
             };
             readonly 401: components["responses"]["Unauthenticated"];

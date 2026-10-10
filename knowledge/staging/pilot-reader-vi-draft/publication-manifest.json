@@ -1,0 +1,34 @@
+{
+  "schema_version": "lingua.pilot.reader-publication.v1",
+  "scope": "staging_only",
+  "candidate_id": "pilot-reader-tea-vi-v1",
+  "candidate_sha256": "25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f",
+  "candidate_body_sha256": "180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e",
+  "sentence_count": 72,
+  "owner_approval": {
+    "date": "2026-10-10",
+    "record": "plans/PILOT-READER-COMPREHENSION-FOLLOWUP.md#owner-authorization-and-execution--2026-10-10",
+    "exact_candidate_editorial_rights_and_staging_scope": true,
+    "publication_requires_normal_admin_validation_and_reviewed_runtime": true,
+    "supersedes_historical_candidate_pending_flags": true,
+    "inherits_pr38_approval": false
+  },
+  "content": {
+    "title": "A Quiet Cup of Tea",
+    "languageCode": "en",
+    "level": "A1",
+    "authorName": "LINGUA OS",
+    "sourceName": "LINGUA OS First-Party Reader Content (EN)",
+    "sourceVersion": "candidate-sha256-25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f",
+    "attributionText": "First-party original LINGUA OS article with four disclosed English continuity corrections at sentence ordinals 25, 37, 39 and 62; owner-approved for staging Reader use only.",
+    "rightsStatement": "LINGUA OS first-party original content with owner-approved English corrections; use authorized for LINGUA OS staging Reader only. No external text was used."
+  },
+  "translationSource": {
+    "authorName": "LINGUA OS",
+    "sourceName": "LINGUA OS First-Party Vietnamese Reader Translation (VI)",
+    "sourceVersion": "candidate-sha256-25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f",
+    "attributionText": "Vietnamese translation drafted with AI assistance for the LINGUA OS first-party Reader article; owner-approved for LINGUA OS staging Reader use only.",
+    "rightsStatement": "AI-assisted Vietnamese translation of LINGUA OS first-party content; owner-approved for LINGUA OS staging Reader use only. No external text was used."
+  },
+  "identity_policy": "Resolve exactly one normally published content identity matching this manifest and the complete approved candidate. Keep that identity transient in the runner; preserve the previous published item and learner references."
+}

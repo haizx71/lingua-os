@@ -12,6 +12,7 @@ from lingua_api.admin.domain import (
     AdminCatalogConceptProjection,
     AdminContentProjection,
     AdminContentValidationProjection,
+    AdminVietnameseTranslationSourceProjection,
 )
 from lingua_api.admin.models import (
     AdminCatalogConceptDto,
@@ -26,8 +27,10 @@ from lingua_api.admin.models import (
     AdminOccurrenceRoleDto,
     AdminSentenceConceptDto,
     AdminSentencePreviewDto,
+    AdminVietnameseTranslationSourceDto,
     CreateAdminContentRequestDto,
     PutAdminSentenceConceptRequestDto,
+    PutAdminVietnameseTranslationsRequestDto,
     ReaderContentLevelDto,
     ResponseMetaDto,
     UpdateAdminContentRequestDto,
@@ -161,6 +164,35 @@ def update_admin_content(
         for key, value in body.model_dump(exclude_none=True).items()
     }
     return _response(request, application.update_content(content_id, updates))
+
+
+@router.put(
+    "/content/{contentId}/translations/vi",
+    operation_id="putAdminVietnameseTranslations",
+    response_model=AdminContentResponseDto,
+    responses=MUTATION_ERRORS,
+)
+def put_admin_vietnamese_translations(
+    request: Request,
+    body: PutAdminVietnameseTranslationsRequestDto,
+    content_id: Annotated[UUID, Path(alias="contentId")],
+    actor: Annotated[AuthenticatedActor, Security(admin_actor)],
+) -> AdminContentResponseDto:
+    del actor
+    application = cast(AdminContentApplication, request.app.state.admin_content_application)
+    source = (
+        None
+        if body.source is None
+        else {
+            "author_name": body.source.author_name,
+            "source_name": body.source.source_name,
+            "source_version": body.source.source_version,
+            "attribution_text": body.source.attribution_text,
+            "rights_statement": body.source.rights_statement,
+        }
+    )
+    entries = [(entry.ordinal, entry.source_text, entry.translation_text) for entry in body.entries]
+    return _response(request, application.put_vietnamese_translations(content_id, entries, source))
 
 
 @router.post(
@@ -300,6 +332,7 @@ def _content(value: AdminContentProjection) -> AdminContentDto:
                 id=sentence.id,
                 order=sentence.order,
                 text=sentence.text,
+                translation_vi=sentence.translation_vi,
                 concept_count=sentence.concept_count,
                 concepts=[
                     AdminSentenceConceptDto(
@@ -314,6 +347,11 @@ def _content(value: AdminContentProjection) -> AdminContentDto:
             )
             for sentence in value.sentences
         ],
+        translation_source=(
+            None
+            if value.translation_source is None
+            else _translation_source(value.translation_source)
+        ),
         published_at=value.published_at,
         created_at=value.created_at,
         updated_at=value.updated_at,
@@ -337,4 +375,20 @@ def _catalog_concept(value: AdminCatalogConceptProjection) -> AdminCatalogConcep
         canonical_form=value.canonical_form,
         part_of_speech=value.part_of_speech,
         definition=value.definition,
+    )
+
+
+def _translation_source(
+    value: AdminVietnameseTranslationSourceProjection,
+) -> AdminVietnameseTranslationSourceDto:
+    return AdminVietnameseTranslationSourceDto(
+        target_language_code="vi",
+        author_name=value.author_name,
+        source_name=value.source_name,
+        source_version=value.source_version,
+        license_code="LINGUA-FIRST-PARTY",
+        attribution_text=value.attribution_text,
+        rights_statement=value.rights_statement,
+        source_record_key=value.source_record_key,
+        raw_hash=value.raw_hash,
     )

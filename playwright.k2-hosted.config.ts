@@ -2,7 +2,11 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/acceptance',
-  testMatch: ['k2_hosted_acceptance.spec.ts', 'k2_playwright_network.spec.ts'],
+  testMatch: [
+    'k2_hosted_acceptance.spec.ts',
+    'pilot_reader_hosted_acceptance.spec.ts',
+    'k2_playwright_network.spec.ts',
+  ],
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,

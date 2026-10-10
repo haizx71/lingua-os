@@ -190,6 +190,20 @@ describe('TASK-011: Today Live Frontend Integration', () => {
   }
 
   describe('1. Live Plan Read & Presentation', () => {
+    it('TEST-011-15 carries known read/listen content IDs and keeps missing IDs generic', () => {
+      const read = customServerPlan.activities[0]!;
+      const listen = customServerPlan.activities[2]!;
+      const readWithId = mapTodayActivityToViewModel({ ...read, contentId: 'article/with?reserved#chars' });
+      const listenWithId = mapTodayActivityToViewModel({ ...listen, contentId: 'listen-article-id' });
+      const genericRead = mapTodayActivityToViewModel(read);
+      const genericListen = mapTodayActivityToViewModel(listen);
+
+      expect(readWithId.targetUrl).toBe('/read?contentId=article%2Fwith%3Freserved%23chars');
+      expect(listenWithId.targetUrl).toBe('/read?contentId=listen-article-id');
+      expect(genericRead.targetUrl).toBe('/read');
+      expect(genericListen.targetUrl).toBe('/read');
+    });
+
     it('TEST-011-01: Authenticated product-ready learner loads real Today plan and renders server-provided items', async () => {
       await renderToday();
 

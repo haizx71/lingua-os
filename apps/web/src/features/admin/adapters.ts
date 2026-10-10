@@ -2,16 +2,19 @@ import type {
   AdminContentDto,
   AdminContentValidationDto,
   AdminCatalogConceptDto,
+  AdminVietnameseTranslationSourceDto,
   ApiClient,
   CreateAdminContentRequestDto,
   UpdateAdminContentRequestDto,
   PutAdminSentenceConceptRequestDto,
+  PutAdminVietnameseTranslationsRequestDto,
 } from '@lingua/types';
 
 export interface AdminSentenceViewModel {
   readonly id: string;
   readonly order: number;
   readonly text: string;
+  readonly translationVi: string | null;
   readonly conceptCount: number;
   readonly concepts: readonly AdminSentenceConceptViewModel[];
 }
@@ -45,6 +48,7 @@ export interface AdminContentViewModel {
   readonly attributionText: string;
   readonly rightsStatement: string;
   readonly rawHash: string;
+  readonly translationSource: AdminVietnameseTranslationSourceDto | null;
   readonly sentences: readonly AdminSentenceViewModel[];
   readonly publishedAt: string | null;
   readonly updatedAt: string;
@@ -72,6 +76,7 @@ export function toAdminContentViewModel(value: AdminContentDto): AdminContentVie
     attributionText: value.attributionText,
     rightsStatement: value.rightsStatement,
     rawHash: value.rawHash,
+    translationSource: value.translationSource,
     sentences: value.sentences.map((sentence) => ({
       ...sentence,
       concepts: sentence.concepts.map((occurrence) => ({
@@ -128,6 +133,16 @@ export async function updateAdminContent(
   values: UpdateAdminContentRequestDto,
 ): Promise<AdminContentViewModel> {
   return toAdminContentViewModel((await client.updateAdminContent({ contentId, body: values })).data);
+}
+
+export async function putAdminVietnameseTranslations(
+  client: ApiClient,
+  contentId: string,
+  body: PutAdminVietnameseTranslationsRequestDto,
+): Promise<AdminContentViewModel> {
+  return toAdminContentViewModel(
+    (await client.putAdminVietnameseTranslations({ contentId, body })).data,
+  );
 }
 
 export async function validateAdminContent(

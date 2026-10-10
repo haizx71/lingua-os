@@ -5,7 +5,7 @@ import { validateContract } from './contract_validation';
 export type K2LanguageProfileRecord = Readonly<Record<string, unknown>>;
 type K2LanguageProfileDto = components['schemas']['LanguageProfile'];
 export type K2HostedRunMode = 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap';
-export type K2HostedWaveSelector = 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09' | 'K2-10';
+export type K2HostedWaveSelector = 'PILOT-READER' | 'K2-07' | 'K2-08-DUE-ONLY' | 'K2-08' | 'K2-09' | 'K2-10';
 
 export function resolveK2HostedRunMode(value: string | undefined): K2HostedRunMode {
   const mode = value ?? 'acceptance';
@@ -14,6 +14,7 @@ export function resolveK2HostedRunMode(value: string | undefined): K2HostedRunMo
 }
 
 export function resolveK2HostedWaveSelector(value: string | undefined): K2HostedWaveSelector {
+  if (value === 'PILOT-READER') return value;
   if (value === undefined || value === 'K2-07') return 'K2-07';
   if (value === 'K2-08-DUE-ONLY' || value === 'K2-08' || value === 'K2-09' || value === 'K2-10') return value;
   throw new Error('K2 hosted acceptance wave selector is invalid; no hosted actor was created.');

@@ -130,7 +130,10 @@ describe('K2 hosted workflow credential boundary', () => {
       .toContain('python -m pytest -q tests/acceptance/support/test_k2_hosted_probe.py');
     const harnessTests = stepNamed(securityGate, 'Run hosted-harness unit and workflow security checks').run;
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_workflow_security.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/pilot_reader_hosted_runner.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_runner.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/pilot_reader_hosted_runner.test.ts');
+    expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_probe_client.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.test.ts');
     expect(harnessTests).toContain('tests/acceptance/support/k2_hosted_wave_k2_10.test.ts');
@@ -142,6 +145,9 @@ describe('K2 hosted workflow credential boundary', () => {
       include?: string[];
     };
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_runner.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/pilot_reader_hosted_runner.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/support/pilot_reader_hosted_runner.test.ts');
+    expect(harnessTypecheck.include).toContain('tests/acceptance/pilot_reader_hosted_acceptance.spec.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_08.test.ts');
     expect(harnessTypecheck.include).toContain('tests/acceptance/support/k2_hosted_wave_k2_09.ts');
@@ -153,6 +159,12 @@ describe('K2 hosted workflow credential boundary', () => {
       .toContain('tests/backend/database/test_today_api.py');
     expect(readFileSync(resolve(process.cwd(), 'tests/backend/database/test_today_api.py'), 'utf8'))
       .toContain('def test_k208_candidate_base_probe_matches_production_store_and_today_order');
+    const localProbe = stepNamed(securityGate, 'Run read-only hosted probe tests');
+    expect(String(localProbe.run)).toContain('tests/acceptance/support/test_k2_hosted_probe.py');
+    expect(String(localProbe.run)).toContain('tests/backend/database/test_pilot_reader_catalog_probe.py');
+    expect(asMap(localProbe.env, 'local probe environment').DB_LOCALONLY).toBe('1');
+    expect(readFileSync(resolve(process.cwd(), 'playwright.k2-hosted.config.ts'), 'utf8'))
+      .toContain("'pilot_reader_hosted_acceptance.spec.ts'");
     for (const step of securitySteps) {
       if (step.uses) expect(step.uses).toMatch(/^[\w./-]+@[a-f0-9]{40}(?:\s+#.*)?$/);
       expect(JSON.stringify(step)).not.toContain('secrets.');
@@ -164,7 +176,7 @@ describe('K2 hosted workflow credential boundary', () => {
     const dispatchInputs = asMap(asMap(secretWorkflow.on, 'secret workflow triggers').workflow_dispatch,
       'workflow_dispatch trigger').inputs;
     const waveInput = asMap(asMap(dispatchInputs, 'workflow_dispatch inputs').wave, 'wave selector input');
-    expect(waveInput.options).toEqual(['K2-07', 'K2-08-DUE-ONLY', 'K2-08', 'K2-09', 'K2-10']);
+    expect(waveInput.options).toEqual(['PILOT-READER', 'K2-07', 'K2-08-DUE-ONLY', 'K2-08', 'K2-09', 'K2-10']);
     expect(guard).toContain("github.event_name == 'workflow_dispatch'");
     expect(guard).toContain("github.repository == 'haizx71/lingua-os'");
     expect(guard).toContain("github.ref == 'refs/heads/master'");
@@ -172,24 +184,27 @@ describe('K2 hosted workflow credential boundary', () => {
     expect(guard).toContain(`github.actor == '${OWNER}'`);
     expect(guard).toContain(`github.triggering_actor == '${OWNER}'`);
     expect(guard).toContain("inputs.mode == 'acceptance'");
+    expect(guard).toContain("inputs.wave == 'PILOT-READER'");
     expect(guard).toContain("inputs.wave == 'K2-07'");
     expect(guard).toContain("inputs.wave == 'K2-08-DUE-ONLY'");
     expect(guard).toContain("inputs.wave == 'K2-08'");
     expect(guard).toContain("inputs.wave == 'K2-09'");
     expect(guard).toContain("inputs.wave == 'K2-10'");
     const preflight = stepNamed(acceptance, 'Verify run SHA and selected wave before staging secrets');
-    const acceptanceStep = stepNamed(acceptance, 'Run protected selected K2 hosted subcase');
+    const acceptanceStep = stepNamed(acceptance, 'Run protected selected hosted subcase');
     expect(stepsFor(acceptance).indexOf(preflight)).toBeLessThan(stepsFor(acceptance).indexOf(acceptanceStep));
     expect(preflight.run).toContain('redirect: \'error\'');
     expect(preflight.run).toContain('process.env.GITHUB_SHA');
     expect(preflight.run).toContain('/git/ref/heads/master');
     expect(preflight.run).toContain('K2_REQUESTED_WAVE');
+    expect(preflight.run).toContain("'PILOT-READER'");
     expect(preflight.run).toContain("'K2-08-DUE-ONLY'");
     expect(preflight.run).toContain("'K2-08'");
     expect(preflight.run).toContain("'K2-09'");
     expect(preflight.run).toContain("'K2-10'");
     expect(JSON.stringify(preflight)).not.toContain('secrets.');
     expect(acceptanceStep.run).toContain('--grep "hosted lifecycle"');
+    expect(acceptanceStep.run).toContain('--grep "pilot hosted Reader lifecycle"');
     expect(asMap(acceptanceStep.env, 'selected hosted subcase environment').K2_ACCEPTANCE_WAVE)
       .toBe('${{ inputs.wave }}');
     expect(asMap(acceptance.permissions, 'acceptance permissions')).toEqual({
@@ -198,6 +213,7 @@ describe('K2 hosted workflow credential boundary', () => {
       'id-token': 'write',
     });
     expect(String(acceptanceStep.run)).toContain('tests/acceptance/k2_hosted_acceptance.spec.ts');
+    expect(String(acceptanceStep.run)).toContain('tests/acceptance/pilot_reader_hosted_acceptance.spec.ts');
     expect(String(acceptanceStep.run)).not.toContain('wave_k2_08');
   });
 
@@ -217,11 +233,11 @@ describe('K2 hosted workflow credential boundary', () => {
     }
     expect(secretSteps.map(({ job, step }) => `${job}:${step}`).sort()).toEqual([
       'current-run-cleanup:Recover only actors marked for this workflow run',
-      'hosted-acceptance:Run protected selected K2 hosted subcase',
+      'hosted-acceptance:Run protected selected hosted subcase',
       'janitor:Run guarded TTL janitor only',
     ]);
     const acceptanceEnv = asMap(
-      stepNamed(acceptance, 'Run protected selected K2 hosted subcase').env,
+      stepNamed(acceptance, 'Run protected selected hosted subcase').env,
       'acceptance step env',
     );
     expect(acceptanceEnv.PGSSLROOTCERT).toBe(SUPABASE_CA_ENV);

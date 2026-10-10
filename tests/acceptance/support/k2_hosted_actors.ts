@@ -6,6 +6,7 @@ import {
   type User,
 } from '@supabase/supabase-js';
 import { DEFAULT_CANONICAL_WEB_ORIGIN } from '../../../apps/web/src/lib/routing/canonical-host';
+import { resolveK2HostedWaveSelector } from './k2_hosted_acceptance_helpers';
 
 export const K2_HOSTED_ENVIRONMENT = 'k2-staging';
 export const K2_HOSTED_WORKFLOW = 'K2 Hosted Acceptance';
@@ -194,6 +195,9 @@ export function validateK2HostedEnvironment(
   env: Record<string, string | undefined> = process.env,
   mode: 'acceptance' | 'janitor' | 'cleanup-current' | 'fixture-reap' = 'acceptance',
 ): K2HostedConfig {
+  if (mode === 'acceptance' || mode === 'cleanup-current') {
+    resolveK2HostedWaveSelector(env.K2_ACCEPTANCE_WAVE);
+  }
   const identityRequired = [
     'GITHUB_REPOSITORY',
     'GITHUB_REF',

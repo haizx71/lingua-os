@@ -12,6 +12,7 @@
   },
   "include": [
     "tests/acceptance/k2_hosted_acceptance.spec.ts",
+    "tests/acceptance/pilot_reader_hosted_acceptance.spec.ts",
     "tests/acceptance/support/k2_hosted_acceptance_helpers.ts",
     "tests/acceptance/support/k2_hosted_acceptance_helpers.test.ts",
     "tests/acceptance/support/k2_hosted_probe_client.ts",
@@ -29,6 +30,8 @@
     "tests/acceptance/support/k2_hosted_wave_k2_10.ts",
     "tests/acceptance/support/k2_hosted_wave_k2_10.test.ts",
     "tests/acceptance/support/browser_actor_switch.test.ts",
-    "tests/acceptance/support/k2_hosted_workflow_security.test.ts"
+    "tests/acceptance/support/k2_hosted_workflow_security.test.ts",
+    "tests/acceptance/support/pilot_reader_hosted_runner.ts",
+    "tests/acceptance/support/pilot_reader_hosted_runner.test.ts"
   ]
 }

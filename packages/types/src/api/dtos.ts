@@ -61,6 +61,7 @@ export type BrainConceptSummaryDto = ApiSchema<'BrainConceptSummary'>;
 export type BrainConceptDetailDto = ApiSchema<'BrainConceptDetail'>;
 export type ProgressOverviewDto = ApiSchema<'ProgressOverview'>;
 export type AdminContentDto = ApiSchema<'AdminContent'>;
+export type AdminVietnameseTranslationSourceDto = ApiSchema<'AdminVietnameseTranslationSource'>;
 export type AdminContentValidationDto = ApiSchema<'AdminContentValidation'>;
 export type AdminCatalogConceptDto = ApiSchema<'AdminCatalogConcept'>;
 export type AdminSentenceConceptDto = ApiSchema<'AdminSentenceConcept'>;
@@ -104,6 +105,7 @@ export type StartAssessmentRequestDto = ApiSchema<'StartAssessmentRequest'>;
 export type SubmitAssessmentResponseRequestDto = ApiSchema<'SubmitAssessmentResponseRequest'>;
 export type CreateAdminContentRequestDto = ApiSchema<'CreateAdminContentRequest'>;
 export type UpdateAdminContentRequestDto = ApiSchema<'UpdateAdminContentRequest'>;
+export type PutAdminVietnameseTranslationsRequestDto = ApiSchema<'PutAdminVietnameseTranslationsRequest'>;
 export type PutAdminSentenceConceptRequestDto = ApiSchema<'PutAdminSentenceConceptRequest'>;
 
 export type OperationQuery<Name extends keyof operations> = operations[Name] extends {

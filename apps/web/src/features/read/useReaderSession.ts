@@ -26,6 +26,7 @@ export interface UseReaderSessionOptions {
   readonly apiClient?: ApiClient;
   readonly initialPassage?: ReaderPassageViewModel;
   readonly enabled?: boolean;
+  readonly requestedContentId?: string | null;
 }
 
 export interface ReaderSessionState {
@@ -49,6 +50,18 @@ export interface ReaderSessionState {
 }
 
 const fallbackUuid = '00000000-0000-4000-8000-000000000001';
+const boundedUuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+interface ReaderOperationIdentity {
+  readonly requestIdentity: string;
+  readonly loadSequence: number;
+  readonly actorEpoch: number;
+  readonly actorId: string | null;
+  readonly languageProfileId: string | null;
+  readonly contentId: string | null;
+  readonly operationKey: string;
+  readonly operationSequence: number;
+}
 
 function newIdempotencyKey(): string {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -87,11 +100,16 @@ export function useReaderSession({
   apiClient: customApiClient,
   initialPassage,
   enabled = true,
+  requestedContentId,
 }: UseReaderSessionOptions = {}): ReaderSessionState {
   const auth = useOptionalAuth();
   const api = customApiClient ?? getApiClient();
+  const requestIdentity = requestedContentId === undefined
+    ? 'recommendations'
+    : requestedContentId === null ? 'duplicate' : `requested:${requestedContentId}`;
   const [reloadToken, setReloadToken] = useState(0);
   const [status, setStatus] = useState<ReaderLoadStatus>(initialPassage ? 'success' : 'loading');
+  const [settledRequestIdentity, setSettledRequestIdentity] = useState<string | null>(initialPassage ? 'sample' : null);
   const [passage, setPassage] = useState<ReaderPassageViewModel | null>(initialPassage ?? null);
   const [error, setError] = useState<UiErrorState | null>(null);
   const [languageProfileId, setLanguageProfileId] = useState<string | null>(null);
@@ -103,9 +121,16 @@ export function useReaderSession({
   const [savedConceptIds, setSavedConceptIds] = useState<ReadonlySet<string>>(() => new Set());
   const loadSequenceRef = useRef(0);
   const inspectSequenceRef = useRef(0);
+  const operationSequencesRef = useRef(new Map<string, number>());
   const previousActorIdRef = useRef<string | null>(auth?.user?.id ?? null);
   const idempotencyKeysRef = useRef(new Map<string, string>());
   const busyRef = useRef(new Set<string>());
+  const requestIdentityRef = useRef(requestIdentity);
+  requestIdentityRef.current = requestIdentity;
+  const profileIdRef = useRef(languageProfileId);
+  profileIdRef.current = languageProfileId;
+  const passageIdRef = useRef(passage?.id ?? null);
+  passageIdRef.current = passage?.id ?? null;
 
   const actorEpoch = auth?.getActorEpoch?.() ?? api.getActorGeneration?.() ?? 0;
   const actorId = auth?.user?.id ?? api.getCurrentActorId?.() ?? null;
@@ -119,9 +144,49 @@ export function useReaderSession({
     return true;
   }, [api, auth, initialPassage]);
 
+  const isOperationCurrent = useCallback((operation: ReaderOperationIdentity) => {
+    return operation.requestIdentity === requestIdentityRef.current
+      && operation.loadSequence === loadSequenceRef.current
+      && operation.languageProfileId === profileIdRef.current
+      && operation.contentId === passageIdRef.current
+      && operationSequencesRef.current.get(operation.operationKey) === operation.operationSequence
+      && isCurrent(operation.actorEpoch, operation.actorId);
+  }, [isCurrent]);
+
+  const isOperationActorCurrent = useCallback((operation: ReaderOperationIdentity) => {
+    return isCurrent(operation.actorEpoch, operation.actorId);
+  }, [isCurrent]);
+
+  const canContinueBoundMutation = useCallback((operation: ReaderOperationIdentity) => {
+    if (!isOperationActorCurrent(operation)) return false;
+    if (requestIdentityRef.current !== operation.requestIdentity) return true;
+    return operation.loadSequence === loadSequenceRef.current
+      && operation.languageProfileId === profileIdRef.current;
+  }, [isOperationActorCurrent]);
+
+  const captureOperation = useCallback((
+    operationKey: string,
+    operationProfileId: string | null,
+    operationContentId: string | null,
+  ): ReaderOperationIdentity => {
+    const operationSequence = (operationSequencesRef.current.get(operationKey) ?? 0) + 1;
+    operationSequencesRef.current.set(operationKey, operationSequence);
+    return {
+      requestIdentity,
+      loadSequence: loadSequenceRef.current,
+      actorEpoch,
+      actorId,
+      languageProfileId: operationProfileId,
+      contentId: operationContentId,
+      operationKey,
+      operationSequence,
+    };
+  }, [actorEpoch, actorId, requestIdentity]);
+
   const clearActorState = useCallback(() => {
     loadSequenceRef.current += 1;
     inspectSequenceRef.current += 1;
+    operationSequencesRef.current.clear();
     idempotencyKeysRef.current.clear();
     busyRef.current.clear();
     setPassage(null);
@@ -134,6 +199,7 @@ export function useReaderSession({
     setSavedSentenceIds(new Set());
     setSavedConceptIds(new Set());
     setStatus('loading');
+    setSettledRequestIdentity(null);
   }, []);
 
   useEffect(() => {
@@ -155,16 +221,42 @@ export function useReaderSession({
     const operationActorId = actorId;
     let cancelled = false;
     const operationIsCurrent = () =>
-      !cancelled && sequence === loadSequenceRef.current && isCurrent(operationEpoch, operationActorId);
+      !cancelled && sequence === loadSequenceRef.current
+        && requestIdentity === requestIdentityRef.current
+        && isCurrent(operationEpoch, operationActorId);
 
     setStatus('loading');
+    setSettledRequestIdentity(null);
     setPassage(null);
     setError(null);
+    setLanguageProfileId(null);
     setSelectedToken(null);
+    setInspecting(false);
     setActionError(null);
+    setBusyKeys(new Set());
+    setSavedSentenceIds(new Set());
+    setSavedConceptIds(new Set());
+    busyRef.current.clear();
+    operationSequencesRef.current.clear();
+    inspectSequenceRef.current += 1;
+
+    const unavailable = () => {
+      setError({ code: 'NOT_FOUND', message: 'Không tìm thấy nội dung được yêu cầu.', retryable: true });
+      setStatus('error');
+      setSettledRequestIdentity(requestIdentity);
+    };
 
     void (async () => {
       try {
+        let selectedContentId: string | undefined;
+        if (requestedContentId !== undefined) {
+          if (requestedContentId === null || !boundedUuidPattern.test(requestedContentId)) {
+            if (operationIsCurrent()) unavailable();
+            return;
+          }
+          selectedContentId = requestedContentId.toLowerCase();
+        }
+
         const me = await api.getMe();
         if (!operationIsCurrent()) return;
         const profile = me.data.languageProfiles.find((item) =>
@@ -173,31 +265,42 @@ export function useReaderSession({
         if (!profile) {
           setStatus('empty');
           setLanguageProfileId(null);
+          setSettledRequestIdentity(requestIdentity);
           return;
         }
 
-        const recommendations = await api.listRecommendedContent({ languageProfileId: profile.id });
-        if (!operationIsCurrent()) return;
-        const recommendation = recommendations.data[0];
-        if (!recommendation) {
-          setLanguageProfileId(profile.id);
-          setStatus('empty');
-          return;
+        let contentId = selectedContentId;
+        if (contentId === undefined) {
+          const recommendations = await api.listRecommendedContent({ languageProfileId: profile.id });
+          if (!operationIsCurrent()) return;
+          const recommendation = recommendations.data[0];
+          if (!recommendation) {
+            setLanguageProfileId(profile.id);
+            setStatus('empty');
+            setSettledRequestIdentity(requestIdentity);
+            return;
+          }
+          contentId = recommendation.id;
         }
 
-        const content = await api.getContent(recommendation.id);
+        const content = await api.getContent(contentId);
         if (!operationIsCurrent()) return;
-        if (content.data.summary.id !== recommendation.id) {
+        const returnedContentId = content.data.summary.id;
+        if (selectedContentId !== undefined
+          ? returnedContentId.toLowerCase() !== selectedContentId
+          : returnedContentId !== contentId) {
           throw new Error('Reader content identity mismatch');
         }
         setLanguageProfileId(profile.id);
         setPassage(mapContentToReaderPassage(content.data));
         setStatus('success');
+        setSettledRequestIdentity(requestIdentity);
       } catch (cause) {
         if (!operationIsCurrent() || isLinguaActorAbortedError(cause)) return;
         setPassage(null);
         setError(mapApiErrorToUi(cause));
         setStatus('error');
+        setSettledRequestIdentity(requestIdentity);
       }
     })();
 
@@ -205,21 +308,21 @@ export function useReaderSession({
       cancelled = true;
       if (sequence === loadSequenceRef.current) loadSequenceRef.current += 1;
     };
-  }, [api, actorEpoch, actorId, auth, authState, clearActorState, enabled, initialPassage, isCurrent, reloadToken]);
+  }, [api, actorEpoch, actorId, auth, authState, clearActorState, enabled, initialPassage, isCurrent, reloadToken, requestIdentity, requestedContentId]);
 
-  const beginAction = useCallback((key: string): boolean => {
-    if (busyRef.current.has(key)) return false;
-    busyRef.current.add(key);
+  const beginAction = useCallback((operation: ReaderOperationIdentity): boolean => {
+    if (!isOperationCurrent(operation) || busyRef.current.has(operation.operationKey)) return false;
+    busyRef.current.add(operation.operationKey);
     setBusyKeys(new Set(busyRef.current));
     setActionError(null);
     return true;
-  }, []);
+  }, [isOperationCurrent]);
 
-  const endAction = useCallback((key: string, epoch: number, operationActorId: string | null) => {
-    if (!isCurrent(epoch, operationActorId)) return;
-    busyRef.current.delete(key);
+  const endAction = useCallback((operation: ReaderOperationIdentity) => {
+    if (!isOperationCurrent(operation)) return;
+    busyRef.current.delete(operation.operationKey);
     setBusyKeys(new Set(busyRef.current));
-  }, [isCurrent]);
+  }, [isOperationCurrent]);
 
   const keyFor = useCallback((logicalOperation: string) => {
     const existing = idempotencyKeysRef.current.get(logicalOperation);
@@ -241,11 +344,10 @@ export function useReaderSession({
       || token.startOffset === undefined || token.endOffset === undefined
       || !languageProfileId) return;
     const sequence = ++inspectSequenceRef.current;
-    const operationEpoch = actorEpoch;
-    const operationActorId = actorId;
     const logical = `lookup:${passage.id}:${token.segmentId}:${token.sentenceId}:${token.startOffset}:${token.endOffset}`;
-    const operationIsCurrent = () =>
-      sequence === inspectSequenceRef.current && isCurrent(operationEpoch, operationActorId);
+    const operation = captureOperation(logical, languageProfileId, passage.id);
+    const operationIsCurrent = () => sequence === inspectSequenceRef.current && isOperationCurrent(operation);
+    if (!operationIsCurrent()) return;
 
     setSelectedToken(token);
     setInspecting(true);
@@ -280,7 +382,7 @@ export function useReaderSession({
       await exposure;
       if (operationIsCurrent()) setInspecting(false);
     }
-  }, [actorEpoch, actorId, api, initialPassage, isCurrent, keyFor, languageProfileId, passage]);
+  }, [api, captureOperation, initialPassage, isOperationCurrent, keyFor, languageProfileId, passage]);
 
   const closeInspector = useCallback(() => {
     inspectSequenceRef.current += 1;
@@ -291,77 +393,78 @@ export function useReaderSession({
 
   const saveConcept = useCallback(async (token: ReaderTokenViewModel) => {
     if (!token.conceptId) return false;
-    const actionKey = `concept:${token.conceptId}`;
-    if (!beginAction(actionKey)) return false;
-    const operationEpoch = actorEpoch;
-    const operationActorId = actorId;
+    const actionKey = `concept:${passage?.id ?? 'sample'}:${token.conceptId}`;
+    if (busyRef.current.has(actionKey)) return false;
+    const operation = captureOperation(actionKey, languageProfileId, passage?.id ?? null);
+    if (!beginAction(operation)) return false;
     try {
       const response = await api.saveConceptToLibrary(token.conceptId);
-      if (!isCurrent(operationEpoch, operationActorId)) return false;
+      if (!isOperationCurrent(operation)) return false;
       if (response.data.isSaved) {
         setSavedConceptIds((current) => new Set(current).add(token.conceptId!));
         return true;
       }
       return false;
     } catch (cause) {
-      if (isCurrent(operationEpoch, operationActorId) && !isLinguaActorAbortedError(cause)) {
+      if (isOperationCurrent(operation) && !isLinguaActorAbortedError(cause)) {
         setActionError({ kind: 'concept', message: actionMessage('concept') });
       }
       return false;
     } finally {
-      endAction(actionKey, operationEpoch, operationActorId);
+      endAction(operation);
     }
-  }, [actorEpoch, actorId, api, beginAction, endAction, isCurrent]);
+  }, [api, beginAction, captureOperation, endAction, isOperationCurrent, languageProfileId, passage]);
 
   const saveSentence = useCallback(async (sentenceId: string) => {
-    const actionKey = `sentence:${sentenceId}`;
-    if (!beginAction(actionKey)) return;
-    const operationEpoch = actorEpoch;
-    const operationActorId = actorId;
+    if (!passage) return;
+    const actionKey = `sentence:${passage.id}:${sentenceId}`;
+    if (busyRef.current.has(actionKey)) return;
+    const operation = captureOperation(actionKey, languageProfileId, passage.id);
+    if (!beginAction(operation)) return;
     try {
       const response = await api.saveReaderSentence({
         body: { sentenceId },
         headers: { 'Idempotency-Key': keyFor(actionKey) },
       });
-      if (!isCurrent(operationEpoch, operationActorId)) return;
+      if (!isOperationCurrent(operation)) return;
       if (response.data.isSaved) {
         setSavedSentenceIds((current) => new Set(current).add(sentenceId));
         idempotencyKeysRef.current.delete(actionKey);
       }
     } catch (cause) {
-      if (isCurrent(operationEpoch, operationActorId) && !isLinguaActorAbortedError(cause)) {
+      if (isOperationCurrent(operation) && !isLinguaActorAbortedError(cause)) {
         setActionError({ kind: 'sentence', message: actionMessage('sentence') });
       }
     } finally {
-      endAction(actionKey, operationEpoch, operationActorId);
+      endAction(operation);
     }
-  }, [actorEpoch, actorId, api, beginAction, endAction, isCurrent, keyFor]);
+  }, [api, beginAction, captureOperation, endAction, isOperationCurrent, keyFor, languageProfileId, passage]);
 
   const saveContent = useCallback(async () => {
     if (!passage) return;
     const actionKey = `content:${passage.id}`;
-    if (!beginAction(actionKey)) return;
-    const operationEpoch = actorEpoch;
-    const operationActorId = actorId;
+    if (busyRef.current.has(actionKey)) return;
+    const operation = captureOperation(actionKey, languageProfileId, passage.id);
+    if (!beginAction(operation)) return;
     try {
       const response = await api.saveContentToLibrary(passage.id);
-      if (!isCurrent(operationEpoch, operationActorId)) return;
+      if (!isOperationCurrent(operation)) return;
       if (response.data.isSaved) setPassage((current) => current ? { ...current, isSaved: true } : null);
     } catch (cause) {
-      if (isCurrent(operationEpoch, operationActorId) && !isLinguaActorAbortedError(cause)) {
+      if (isOperationCurrent(operation) && !isLinguaActorAbortedError(cause)) {
         setActionError({ kind: 'content', message: actionMessage('content') });
       }
     } finally {
-      endAction(actionKey, operationEpoch, operationActorId);
+      endAction(operation);
     }
-  }, [actorEpoch, actorId, api, beginAction, endAction, isCurrent, passage]);
+  }, [api, beginAction, captureOperation, endAction, isOperationCurrent, languageProfileId, passage]);
 
   const completeSegment = useCallback(async (segmentId: string, isCompleted: boolean) => {
     if (!passage || !languageProfileId) return;
     const actionKey = `segment:${passage.id}:${segmentId}:${isCompleted}`;
-    if (!beginAction(actionKey)) return;
-    const operationEpoch = actorEpoch;
-    const operationActorId = actorId;
+    if (busyRef.current.has(actionKey)) return;
+    const operation = captureOperation(actionKey, languageProfileId, passage.id);
+    if (!beginAction(operation)) return;
     const exposureLogical = `read:${passage.id}:${segmentId}`;
     const progressLogical = `progress:${passage.id}:${segmentId}:${isCompleted}`;
     try {
@@ -374,13 +477,13 @@ export function useReaderSession({
         },
         headers: { 'Idempotency-Key': keyFor(exposureLogical) },
       });
-      if (!isCurrent(operationEpoch, operationActorId)) return;
+      if (!canContinueBoundMutation(operation)) return;
       const response = await api.updateReaderProgress({
         contentId: passage.id,
         body: { languageProfileId, currentSegmentId: segmentId, isCompleted },
         headers: { 'Idempotency-Key': keyFor(progressLogical) },
       });
-      if (!isCurrent(operationEpoch, operationActorId)) return;
+      if (!isOperationCurrent(operation)) return;
       const nextProgress: ReaderProgressViewModel = {
         currentSegmentId: response.data.currentSegmentId,
         furthestSegmentId: response.data.furthestSegmentId,
@@ -391,26 +494,47 @@ export function useReaderSession({
       idempotencyKeysRef.current.delete(exposureLogical);
       idempotencyKeysRef.current.delete(progressLogical);
     } catch (cause) {
-      if (isCurrent(operationEpoch, operationActorId) && !isLinguaActorAbortedError(cause)) {
+      if (isOperationCurrent(operation) && !isLinguaActorAbortedError(cause)) {
         setActionError({ kind: 'progress', message: actionMessage('progress') });
       }
     } finally {
-      endAction(actionKey, operationEpoch, operationActorId);
+      endAction(operation);
     }
-  }, [actorEpoch, actorId, api, beginAction, endAction, isCurrent, keyFor, languageProfileId, passage]);
+  }, [api, beginAction, canContinueBoundMutation, captureOperation, endAction, isOperationCurrent, keyFor, languageProfileId, passage]);
+
+  const retry = useCallback(() => {
+    loadSequenceRef.current += 1;
+    inspectSequenceRef.current += 1;
+    operationSequencesRef.current.clear();
+    busyRef.current.clear();
+    setStatus('loading');
+    setSettledRequestIdentity(null);
+    setPassage(null);
+    setError(null);
+    setLanguageProfileId(null);
+    setSelectedToken(null);
+    setInspecting(false);
+    setActionError(null);
+    setBusyKeys(new Set());
+    setSavedSentenceIds(new Set());
+    setSavedConceptIds(new Set());
+    setReloadToken((value) => value + 1);
+  }, []);
+
+  const currentRequestIsSettled = Boolean(initialPassage) || settledRequestIdentity === requestIdentity;
 
   return {
-    status,
-    passage,
-    error,
-    languageProfileId,
-    selectedToken,
-    inspecting,
-    actionError,
-    busyKeys,
-    savedSentenceIds,
-    savedConceptIds,
-    retry: () => setReloadToken((value) => value + 1),
+    status: currentRequestIsSettled ? status : 'loading',
+    passage: currentRequestIsSettled ? passage : null,
+    error: currentRequestIsSettled ? error : null,
+    languageProfileId: currentRequestIsSettled ? languageProfileId : null,
+    selectedToken: currentRequestIsSettled ? selectedToken : null,
+    inspecting: currentRequestIsSettled && inspecting,
+    actionError: currentRequestIsSettled ? actionError : null,
+    busyKeys: currentRequestIsSettled ? busyKeys : new Set<string>(),
+    savedSentenceIds: currentRequestIsSettled ? savedSentenceIds : new Set<string>(),
+    savedConceptIds: currentRequestIsSettled ? savedConceptIds : new Set<string>(),
+    retry,
     inspectToken,
     closeInspector,
     saveConcept,

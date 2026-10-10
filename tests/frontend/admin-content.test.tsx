@@ -2,7 +2,7 @@ import React from 'react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import {
   HttpApiClient,
@@ -10,6 +10,7 @@ import {
   type AdminContentDto,
   type AdminContentListResponseDto,
   type AdminContentResponseDto,
+  type AdminContentValidationResponseDto,
 } from '@lingua/types';
 import { AdminDashboard } from '../../apps/web/src/features/admin/AdminDashboard';
 import { AdminContentDetail } from '../../apps/web/src/features/admin/AdminContentDetail';
@@ -34,10 +35,12 @@ const content: AdminContentDto = {
   rightsStatement: 'Owner-authored content.',
   sourceRecordKey: 'admin:10000000-0000-4000-8000-000000000001',
   rawHash: 'a'.repeat(64),
+  translationSource: null,
   sentences: [{
     id: '20000000-0000-4000-8000-000000000001',
     order: 0,
     text: 'A calm first morning.',
+    translationVi: null,
     conceptCount: 1,
     concepts: [{
       concept: {
@@ -60,6 +63,31 @@ const response: AdminContentListResponseDto = {
   data: [content],
   meta: { requestId: '30000000-0000-4000-8000-000000000001', apiVersion: '1.0' },
 };
+
+function withVietnameseTranslation(): AdminContentDto {
+  return {
+    ...content,
+    translationSource: {
+      targetLanguageCode: 'vi',
+      authorName: 'Test editor',
+      sourceName: 'Test translation set',
+      sourceVersion: 'test-v1',
+      licenseCode: 'LINGUA-FIRST-PARTY',
+      attributionText: 'Vietnamese translation by the test editor.',
+      rightsStatement: 'First-party test translation.',
+      sourceRecordKey: `admin-translation:${content.id}:${'b'.repeat(64)}`,
+      rawHash: 'b'.repeat(64),
+    },
+    sentences: content.sentences.map((sentence) => ({ ...sentence, translationVi: 'Bản dịch cũ.' })),
+  };
+}
+
+function validAdminValidation(contentValue: AdminContentDto): AdminContentValidationResponseDto {
+  return {
+    data: { content: contentValue, isValid: true, issues: [] },
+    meta: response.meta,
+  };
+}
 
 describe('TASK-ADMIN-001 frontend boundary', () => {
   it('maps authoritative DTOs into an admin view model without inventing metadata', () => {
@@ -130,6 +158,172 @@ describe('TASK-ADMIN-001 frontend boundary', () => {
       expect.stringContaining('?startOffset=2&endOffset=6'),
       expect.objectContaining({ method: 'DELETE' }),
     );
+
+    const translationBody = {
+      entries: [{ ordinal: 1, sourceText: content.sentences[0].text, translationText: 'Một bản dịch.' }],
+      source: {
+        authorName: 'Test editor',
+        sourceName: 'Test translation',
+        sourceVersion: 'test-v1',
+        attributionText: 'Translation by the test editor.',
+        rightsStatement: 'First-party test content.',
+      },
+    };
+    await client.putAdminVietnameseTranslations({ contentId: content.id, body: translationBody });
+    expect(fetchFn).toHaveBeenLastCalledWith(
+      `/api/v1/admin/content/${content.id}/translations/vi`,
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify(translationBody) }),
+    );
+  });
+
+  it('previews and explicitly submits a complete server-aligned 72-pair translation set', async () => {
+    const sentences = Array.from({ length: 72 }, (_, index) => ({
+      ...content.sentences[0],
+      id: `20000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      order: index,
+      text: `Synthetic English sentence ${index + 1}.`,
+      translationVi: null,
+      conceptCount: 0,
+      concepts: [],
+    }));
+    const draft: AdminContentDto = {
+      ...content,
+      title: 'Synthetic bulk translation test',
+      body: sentences.map((sentence) => sentence.text).join(' '),
+      sentences,
+    };
+    const imported = {
+      sentences: sentences.map((sentence, index) => ({
+        ordinal: index + 1,
+        english: sentence.text,
+        vietnamese: `Dòng dịch thử nghiệm ${index + 1}.`,
+      })),
+    };
+    const saved: AdminContentDto = {
+      ...draft,
+      translationSource: {
+        targetLanguageCode: 'vi',
+        authorName: 'Test editor',
+        sourceName: 'Test Vietnamese set',
+        sourceVersion: 'test-v1',
+        licenseCode: 'LINGUA-FIRST-PARTY',
+        attributionText: 'Vietnamese translation by the test editor.',
+        rightsStatement: 'First-party test translation.',
+        sourceRecordKey: `admin-translation:${draft.id}:${'b'.repeat(64)}`,
+        rawHash: 'b'.repeat(64),
+      },
+      sentences: sentences.map((sentence, index) => ({
+        ...sentence,
+        translationVi: imported.sentences[index].vietnamese,
+      })),
+    };
+    const detail = (data: AdminContentDto): AdminContentResponseDto => ({ data, meta: response.meta });
+    const client = new MockApiClient();
+    const load = vi.spyOn(client, 'getAdminContent').mockResolvedValue(detail(draft));
+    const put = vi.spyOn(client, 'putAdminVietnameseTranslations').mockResolvedValue(detail(saved));
+    const create = vi.spyOn(client, 'createAdminContent');
+
+    render(<AdminContentDetail contentId={draft.id} apiClient={client} />);
+    expect(await screen.findByRole('heading', { name: 'Xem trước theo từng câu' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('JSON các cặp tiếng Anh – tiếng Việt'), {
+      target: { value: JSON.stringify(imported) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Xem trước các cặp câu' }));
+
+    const preview = screen.getByLabelText('Bản xem trước tiếng Việt');
+    expect(within(preview).getAllByText(/^Dòng dịch thử nghiệm/)).toHaveLength(72);
+    expect(within(preview).getByText('Dòng dịch thử nghiệm 72.')).toBeInTheDocument();
+    const provenance = {
+      'Tác giả bản dịch': 'Test editor',
+      'Tên nguồn bản dịch': 'Test Vietnamese set',
+      'Phiên bản nguồn': 'test-v1',
+      'Ghi công bản dịch': 'Vietnamese translation by the test editor.',
+      'Quyền sử dụng bản dịch': 'First-party test translation.',
+    };
+    for (const [label, value] of Object.entries(provenance)) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu toàn bộ bản dịch' }));
+
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledWith({
+      contentId: draft.id,
+      body: {
+        entries: imported.sentences.map((entry) => ({
+          ordinal: entry.ordinal,
+          sourceText: entry.english,
+          translationText: entry.vietnamese,
+        })),
+        source: {
+          authorName: provenance['Tác giả bản dịch'],
+          sourceName: provenance['Tên nguồn bản dịch'],
+          sourceVersion: provenance['Phiên bản nguồn'],
+          attributionText: provenance['Ghi công bản dịch'],
+          rightsStatement: provenance['Quyền sử dụng bản dịch'],
+        },
+      },
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('clears successful validation after a saved translation replacement', async () => {
+    const translated = withVietnameseTranslation();
+    const reviewed = { ...translated, status: 'reviewed' as const };
+    const normalized: AdminContentDto = {
+      ...translated,
+      status: 'normalized',
+      sentences: translated.sentences.map((sentence) => ({ ...sentence, translationVi: 'Bản dịch mới.' })),
+    };
+    const detail = (data: AdminContentDto): AdminContentResponseDto => ({ data, meta: response.meta });
+    const client = new MockApiClient();
+    vi.spyOn(client, 'getAdminContent').mockResolvedValue(detail(translated));
+    vi.spyOn(client, 'validateAdminContent').mockResolvedValue(validAdminValidation(reviewed));
+    const put = vi.spyOn(client, 'putAdminVietnameseTranslations').mockResolvedValue(detail(normalized));
+
+    render(<AdminContentDetail contentId={content.id} apiClient={client} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Kiểm tra' }));
+    expect(await screen.findByText('Nội dung đáp ứng yêu cầu phát hành hiện tại.')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('JSON các cặp tiếng Anh – tiếng Việt'), {
+      target: { value: JSON.stringify({ entries: [{
+        ordinal: 1,
+        sourceText: translated.sentences[0].text,
+        translationText: 'Bản dịch mới.',
+      }] }) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Xem trước các cặp câu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu toàn bộ bản dịch' }));
+
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText('Nội dung đáp ứng yêu cầu phát hành hiện tại.')).not.toBeInTheDocument());
+    expect(screen.getByText('Đã chuẩn hóa')).toBeInTheDocument();
+  });
+
+  it('clears successful validation after the Vietnamese translation set is removed', async () => {
+    const translated = withVietnameseTranslation();
+    const reviewed = { ...translated, status: 'reviewed' as const };
+    const normalized: AdminContentDto = {
+      ...translated,
+      status: 'normalized',
+      translationSource: null,
+      sentences: translated.sentences.map((sentence) => ({ ...sentence, translationVi: null })),
+    };
+    const detail = (data: AdminContentDto): AdminContentResponseDto => ({ data, meta: response.meta });
+    const client = new MockApiClient();
+    vi.spyOn(client, 'getAdminContent').mockResolvedValue(detail(translated));
+    vi.spyOn(client, 'validateAdminContent').mockResolvedValue(validAdminValidation(reviewed));
+    const put = vi.spyOn(client, 'putAdminVietnameseTranslations').mockResolvedValue(detail(normalized));
+
+    render(<AdminContentDetail contentId={content.id} apiClient={client} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Kiểm tra' }));
+    expect(await screen.findByText('Nội dung đáp ứng yêu cầu phát hành hiện tại.')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Tôi xác nhận xóa bộ dịch hiện tại'));
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa bộ dịch tiếng Việt' }));
+
+    await waitFor(() => expect(put).toHaveBeenCalledWith({ contentId: content.id, body: { entries: [] } }));
+    await waitFor(() => expect(screen.queryByText('Nội dung đáp ứng yêu cầu phát hành hiện tại.')).not.toBeInTheDocument());
+    expect(screen.getByText('Đã chuẩn hóa')).toBeInTheDocument();
   });
 
   it('maps a selected sentence span to a searched catalog concept and shows readiness', async () => {
@@ -216,6 +410,9 @@ describe('TASK-ADMIN-001 frontend boundary', () => {
     ]) {
       expect(readFileSync(join(process.cwd(), path), 'utf8')).not.toContain('LINGUA_ADMIN_USER_IDS');
     }
+    expect(
+      readFileSync(join(process.cwd(), 'apps/web/src/features/admin/AdminVietnameseTranslationEditor.tsx'), 'utf8'),
+    ).not.toContain('A Quiet Cup of Tea');
   });
 
   it('requires authentication but skips learner bootstrap/readiness for /admin', async () => {

@@ -48,13 +48,30 @@ on:
       - 'services/api/src/lingua_api/dictionary/**'
       - 'tests/backend/database/test_dictionary_reader_analyze_api.py'
       - 'tests/backend/contracts/test_openapi_v1.py'
+      - 'services/api/src/lingua_api/admin/**'
+      - 'services/api/src/lingua_api/content/models.py'
       - 'apps/web/src/features/dictionary/**'
+      - 'apps/web/src/features/admin/**'
+      - 'apps/web/src/app/read/page.tsx'
+      - 'apps/web/src/features/library/LibraryView.tsx'
+      - 'apps/web/src/features/read/InteractiveReader.tsx'
+      - 'apps/web/src/features/read/useReaderSession.ts'
+      - 'apps/web/src/features/today/adapters.ts'
       - 'tests/frontend/task009-concept-discovery-save.test.tsx'
       - 'tests/frontend/e2e/f10-library-dictionary.test.tsx'
       - 'tests/frontend/e2e/f08-language-brain.test.tsx'
       - 'tests/frontend/p1-brain-live.test.tsx'
       - 'tests/frontend/task-library-001-library-live.test.tsx'
       - 'packages/types/src/api/dtos.ts'
+      - 'packages/types/src/client.ts'
+      - 'tests/frontend/admin-content.test.tsx'
+      - 'tests/frontend/admin-content-form.test.tsx'
+      - 'tests/frontend/reader-explicit-selection.test.tsx'
+      - 'tests/frontend/task-read-001-reader-live.test.tsx'
+      - 'tests/frontend/task011-today-live.test.tsx'
+      - 'tests/acceptance/pilot_reader_hosted_acceptance.spec.ts'
+      - 'tests/acceptance/support/pilot_reader_hosted_runner.ts'
+      - 'tests/acceptance/support/pilot_reader_hosted_runner.test.ts'
       - '.github/workflows/knowledge-audit-ci.yml'
   workflow_dispatch:
 
@@ -403,7 +420,14 @@ jobs:
       - name: Verify Review frontend and contract
         run: |
           pnpm contracts:check-generated
-          pnpm exec vitest run tests/frontend/e2e/f06-smart-review.test.tsx tests/frontend/pendingAnswer.test.ts
+          pnpm exec vitest run \
+            tests/frontend/e2e/f06-smart-review.test.tsx \
+            tests/frontend/pendingAnswer.test.ts \
+            tests/frontend/admin-content.test.tsx \
+            tests/frontend/admin-content-form.test.tsx \
+            tests/frontend/reader-explicit-selection.test.tsx \
+            tests/frontend/task-read-001-reader-live.test.tsx \
+            tests/frontend/task011-today-live.test.tsx
           pnpm --filter @lingua/web typecheck
       - name: Verify Dictionary, Library, and Brain frontend regressions
         run: >-

@@ -349,6 +349,10 @@ describe('K2 hosted actor lifecycle boundaries', () => {
   it('pins staging project and the read-only database identity before any hosted client is created', () => {
     const env = validEnvironment();
     expect(validateK2HostedEnvironment(env).supabaseProjectRef).toBe(K2_HOSTED_STAGING_SUPABASE_REF);
+    expect(() => validateK2HostedEnvironment({ ...env, K2_ACCEPTANCE_WAVE: 'PILOT-READER-TYPO' }))
+      .toThrow('wave selector is invalid');
+    expect(validateK2HostedEnvironment({ ...env, K2_ACCEPTANCE_WAVE: 'PILOT-READER' }).supabaseProjectRef)
+      .toBe(K2_HOSTED_STAGING_SUPABASE_REF);
     expect(() => validateK2HostedEnvironment({
       ...env,
       K2_STAGING_SUPABASE_PROJECT_REF: 'productionref123456',
