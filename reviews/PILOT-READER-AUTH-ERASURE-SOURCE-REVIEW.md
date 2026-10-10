@@ -198,3 +198,24 @@ The pre/post snapshots each contain the exact 27-table inventory; all per-table 
 Independent local verification on the frozen source, with database URL variables removed from the pytest child process: `python -m pytest -q tests/acceptance/support/test_k2_hosted_probe.py` passed 71/71; Ruff on that test file passed; `git diff --check` passed. I did not run the whole helper Ruff check; the packet reports the same 33 pre-existing diagnostics on pre-pin and pinned bytes, so no full-probe Ruff PASS is claimed. No hosted request, database connection, actor operation or source edit was performed by this reviewer.
 
 **Bounded verdict:** PASS for the exact one-file platform-version pin and the supplied migration-only metadata evidence, with 0 open HIGH/BLOCKER findings for this scope. The earlier hosted acceptance run remains FAIL. This result adds no Auth deletion, zero-27, retained-state cleanup, new-actor or learner-acceptance proof; those gates remain separate.
+
+## App migration-ledger privilege guard correction — independent PASS
+
+**Reviewer configuration:** GPT-6 Luna / Max (assigned configuration; runtime introspection unavailable). The frozen source author is GPT-6 Luna / Max; the v3 packet metadata-only correction was prepared by GPT-6 Luna / Medium.
+
+The bounded v3 packet is `2026-10-11-reader-0022-readonly-ledger-privilege-guard-packet-v3.md`, SHA-256 `0a808c2a1a66781801f6702a3a41baccb3771cba5dd913e9c43dfa653c9a2683`. Its exact 26-file aggregate is `655d0046ceca7603046f0a633304ea354f7e7f098a30455dc425557e435bf7b3`; I independently parsed the manifest, recomputed all 26 raw file hashes against the frozen implementation worktree, and rebuilt the ordinal-sorted UTF-8/LF aggregate. All hashes and the aggregate match. Compared with the prior 26-file platform-pin packet (SHA-256 `7837b7e61d3cf2b52bff6d701bf97b6703df45e367dc19172354e3f4af08285a`, aggregate `cd2c5d92c6d234a9f2d4b6e655699664629493030a8d15d15072e70acbfd4a8e`), the only changed paths are `tests/acceptance/support/k2_hosted_probe.py` and `tests/acceptance/support/test_k2_hosted_probe.py`. Their current hashes are `85d99a959bacc97ef3b6cfa6798355210408ba511dc25867c88225b869f05fd0` and `97f8c0259968f0689c819b71568505713c959f47c424b4e3c3b1fb9db5e6bd06`.
+
+The packet's v1 and v2 aggregate field (`24d42968554103063e985a6d0256df5f3fb001ec2f35c9334befff5b6ccf9538`) did not match the canonical raw manifest. I raised that pin discrepancy; v3 corrects the aggregate field and records the metadata correction. No source pin or test result changed during that correction. The corrected aggregate now verifies exactly.
+
+The only production-code delta in this correction changes the PILOT app-ledger privilege tuple to require version/name/checksum SELECT, full-table SELECT, and no INSERT/UPDATE/DELETE/TRUNCATE. `database/migrate.py` defines `public.schema_migrations` with only version, name, checksum, and applied_at metadata and reads migration identity from version/name/checksum. The sanitized diagnostic JSON (SHA-256 `d895b22bf20731a10834357f2a63a9344c822cbf5656bb64c94dde974ab967f4`) confirms the existing approved role already has those app-ledger SELECT privileges, all app writes false, and no actor mutation or grant change in the failed recovery attempt. The platform-ledger guard remains stricter: version/name SELECT only, with table SELECT, statements SELECT, and all writes false. Exact application 0001–0022 and platform prior-14-plus-pinned-0022 checks remain unchanged. The legacy K2 migration guard remains exact application 0021.
+
+Tests now reject each missing app or platform metadata SELECT, each app-ledger write privilege, app table-SELECT loss, platform table/statements SELECT, and every platform write privilege. The role shape expected by the test fixture matches the guard.
+
+Independent local verification on the frozen source, with database URL variables removed from the pytest process:
+
+- `python -m pytest -q tests/acceptance/support/test_k2_hosted_probe.py` — 86 passed.
+- `python -m ruff check tests/acceptance/support/test_k2_hosted_probe.py` — passed.
+- `git diff --check -- tests/acceptance/support/k2_hosted_probe.py tests/acceptance/support/test_k2_hosted_probe.py` — passed.
+- Whole-file Ruff on `k2_hosted_probe.py` was not rerun; the packet reports the prior 33 diagnostics. No whole-file Ruff PASS is claimed.
+
+**Bounded verdict:** PASS for this exact 26-file source packet; no open HIGH/BLOCKER finding in the privilege-guard correction. This is local source/test evidence only. Recovery run `38074226540` remains failed and stopped before actor inventory or deletion; no new hosted recovery, migration, grant, Auth actor, or learner-state operation was performed or is implied by this review.
