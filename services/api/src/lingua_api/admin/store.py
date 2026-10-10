@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from collections import Counter
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
@@ -23,6 +24,7 @@ from lingua_api.admin.domain import (
     AdminSentenceProjection,
     AdminValidationError,
     AdminValidationIssue,
+    AdminVietnameseTranslationSourceProjection,
 )
 from lingua_api.catalog.sql import allowed_record_sql
 from lingua_api.reader.analyze_policy import (
@@ -34,6 +36,7 @@ from lingua_api.reader.analyze_policy import (
 
 LICENSE_CODE = "LINGUA-FIRST-PARTY"
 AUTHORING_VERSION = "admin-first-party-v1"
+TRANSLATION_AUTHORING_VERSION = "admin-translation-v1"
 
 
 class PostgresAdminContentStore:
@@ -117,6 +120,219 @@ class PostgresAdminContentStore:
             )
             connection.commit()
             return self._get(connection, content_id)
+
+    @staticmethod
+    def _delete_admin_vietnamese_translations(
+        connection: Connection[tuple[object, ...]], content_id: UUID, sentence_ids: list[UUID]
+    ) -> None:
+        if not sentence_ids:
+            return
+        connection.execute(
+            """
+            DELETE FROM sentence_translations AS translation
+            USING source_records AS record
+            WHERE translation.source_record_id = record.id
+              AND translation.sentence_id = ANY(%s::uuid[])
+              AND translation.target_language_code = 'vi'
+              AND record.metadata ->> 'authoringVersion' = %s
+              AND record.metadata ->> 'contentId' = %s
+            """,
+            (sentence_ids, TRANSLATION_AUTHORING_VERSION, str(content_id)),
+        )
+
+    @staticmethod
+    def _reset_content_for_authoring(
+        connection: Connection[tuple[object, ...]], content_id: UUID, *, now: datetime
+    ) -> None:
+        row = connection.execute(
+            "SELECT source_record_id FROM content_items WHERE id = %s", (content_id,)
+        ).fetchone()
+        assert row is not None
+        connection.execute(
+            """
+            UPDATE source_records
+            SET review_status = 'normalized', quality_score = NULL, reviewed_at = NULL
+            WHERE id = %s
+            """,
+            (row[0],),
+        )
+        connection.execute(
+            """
+            UPDATE content_items
+            SET publication_status = 'normalized', quality_score = NULL,
+                reviewed_at = NULL, published_at = NULL, updated_at = %s
+            WHERE id = %s
+            """,
+            (now, content_id),
+        )
+
+    def _create_translation_source_record(
+        self,
+        connection: Connection[tuple[object, ...]],
+        *,
+        content_id: UUID,
+        source: dict[str, str],
+        metadata: dict[str, object],
+        raw_hash: str,
+        now: datetime,
+    ) -> UUID:
+        self._ensure_license(connection)
+        license_row = connection.execute(
+            "SELECT id FROM licenses WHERE code = %s", (LICENSE_CODE,)
+        ).fetchone()
+        assert license_row is not None
+        source_version = (
+            f"{source['source_version']}#content-{content_id}-translation-{raw_hash[:12]}"
+        )
+        connection.execute(
+            """
+            INSERT INTO data_sources
+                (name, source_type, source_version, license_id, attribution_text)
+            VALUES (%s, 'internal', %s, %s, %s)
+            ON CONFLICT (name, source_version) DO NOTHING
+            """,
+            (source["source_name"], source_version, license_row[0], source["attribution_text"]),
+        )
+        source_row = connection.execute(
+            """
+            SELECT id, license_id, attribution_text, source_type
+            FROM data_sources WHERE name = %s AND source_version = %s
+            """,
+            (source["source_name"], source_version),
+        ).fetchone()
+        assert source_row is not None
+        if (
+            source_row[1] != license_row[0]
+            or source_row[2] != source["attribution_text"]
+            or source_row[3] != "internal"
+        ):
+            raise AdminValidationError(
+                "translation source provenance conflicts with an existing source"
+            )
+
+        source_record_key = f"admin-translation:{content_id}:{raw_hash}"
+        record_row = connection.execute(
+            """
+            INSERT INTO source_records
+                (source_id, source_record_key, raw_hash, transform_version,
+                 review_status, imported_at, metadata)
+            VALUES (%s, %s, %s, %s, 'normalized', %s, %s::jsonb)
+            ON CONFLICT (source_id, source_record_key, raw_hash)
+            DO UPDATE SET review_status = 'normalized', quality_score = NULL,
+                          reviewed_at = NULL, metadata = EXCLUDED.metadata
+            RETURNING id
+            """,
+            (
+                source_row[0],
+                source_record_key,
+                raw_hash,
+                TRANSLATION_AUTHORING_VERSION,
+                now,
+                json.dumps(metadata, ensure_ascii=False, separators=(",", ":")),
+            ),
+        ).fetchone()
+        assert record_row is not None
+        return _uuid(record_row[0])
+
+    @staticmethod
+    def _translation_snapshot(
+        connection: Connection[tuple[object, ...]],
+        content_id: UUID,
+        sentence_pairs: list[tuple[UUID, str]],
+        *,
+        conflict_on_invalid: bool,
+    ) -> dict[str, object] | None:
+        if not sentence_pairs:
+            return None
+        rows = connection.execute(
+            """
+            SELECT segment.order_index, sentence.id, translation.text,
+                   translation.source_record_id, record.metadata, record.raw_hash,
+                   record.source_record_key, source.name, source.attribution_text,
+                   license.code, license.usage_policy, record.imported_at
+            FROM content_segments AS segment
+            JOIN sentences AS sentence ON sentence.id = segment.sentence_id
+            JOIN sentence_translations AS translation
+              ON translation.sentence_id = sentence.id
+             AND translation.target_language_code = 'vi'
+            JOIN source_records AS record ON record.id = translation.source_record_id
+            JOIN data_sources AS source ON source.id = record.source_id
+            JOIN licenses AS license ON license.id = source.license_id
+            WHERE segment.content_id = %s
+            ORDER BY segment.order_index, translation.id
+            """,
+            (content_id,),
+        ).fetchall()
+        if not rows:
+            return None
+
+        def invalid() -> None:
+            if conflict_on_invalid:
+                raise AdminInvalidState(
+                    "Vietnamese translations have conflicting or incomplete provenance"
+                )
+
+        first_metadata = cast(dict[str, object], rows[0][4])
+        source_record_ids = {_uuid(row[3]) for row in rows}
+        current_ids = [sentence_id for sentence_id, _ in sentence_pairs]
+        row_ids = [_uuid(row[1]) for row in rows]
+        if (
+            len(source_record_ids) != 1
+            or len(rows) != len(sentence_pairs)
+            or row_ids != current_ids
+            or first_metadata.get("authoringVersion") != TRANSLATION_AUTHORING_VERSION
+            or first_metadata.get("contentId") != str(content_id)
+            or first_metadata.get("targetLanguageCode") != "vi"
+        ):
+            invalid()
+            return None
+        if any(
+            cast(dict[str, object], row[4]) != first_metadata
+            or _uuid(row[3]) not in source_record_ids
+            for row in rows
+        ):
+            invalid()
+            return None
+
+        translation_entries = [
+            {"ordinal": index + 1, "sourceText": source_text, "translationText": str(row[2])}
+            for index, (row, (_, source_text)) in enumerate(zip(rows, sentence_pairs, strict=True))
+        ]
+        if first_metadata.get("entries") != translation_entries:
+            invalid()
+            return None
+        source = {
+            "author_name": str(first_metadata.get("authorName", "")),
+            "source_name": str(first_metadata.get("sourceName", "")),
+            "source_version": str(first_metadata.get("sourceVersion", "")),
+            "attribution_text": str(first_metadata.get("attributionText", "")),
+            "rights_statement": str(first_metadata.get("rightsStatement", "")),
+        }
+        if (
+            not all(value.strip() for value in source.values())
+            or source["source_name"] != str(rows[0][7])
+            or source["attribution_text"] != str(rows[0][8])
+            or _translation_raw_hash(source, translation_entries) != str(rows[0][5])
+            or str(rows[0][9]) != LICENSE_CODE
+        ):
+            invalid()
+            return None
+
+        return {
+            "sourceRecordId": _uuid(rows[0][3]),
+            "metadata": first_metadata,
+            "rawHash": str(rows[0][5]),
+            "sourceRecordKey": str(rows[0][6]),
+            "sourceName": str(rows[0][7]),
+            "sourceVersion": source["source_version"],
+            "authorName": source["author_name"],
+            "attributionText": str(rows[0][8]),
+            "rightsStatement": source["rights_statement"],
+            "licenseCode": str(rows[0][9]),
+            "licenseUsagePolicy": str(rows[0][10]),
+            "importedAt": cast(datetime, rows[0][11]),
+            "translations": {_uuid(row[1]): str(row[2]) for row in rows},
+        }
 
     def list(self) -> tuple[AdminContentProjection, ...]:
         with self.connect() as connection:
@@ -295,87 +511,191 @@ class PostgresAdminContentStore:
     def update(
         self, content_id: UUID, updates: dict[str, str], *, now: datetime
     ) -> AdminContentProjection:
+        try:
+            with self.connect() as connection:
+                current = self._get(connection, content_id, lock=True)
+                if current.status in {"published", "retired"}:
+                    raise AdminInvalidState("published or retired content cannot be edited")
+                values = {
+                    "title": current.title,
+                    "body": current.body,
+                    "level": current.level,
+                    "author_name": current.author_name,
+                    "source_name": current.source_name,
+                    "source_version": current.source_version,
+                    "attribution_text": current.attribution_text,
+                    "rights_statement": current.rights_statement,
+                }
+                values.update(updates)
+                body_changed = values["body"] != current.body
+                sentences = self._sentences(values["body"])
+                level_id, difficulty = self._level(connection, values["level"])
+                row = connection.execute(
+                    "SELECT source_record_id FROM content_items WHERE id = %s", (content_id,)
+                ).fetchone()
+                assert row is not None
+                source_record_id = _uuid(row[0])
+                source_row = connection.execute(
+                    "SELECT source_id FROM source_records WHERE id = %s", (source_record_id,)
+                ).fetchone()
+                assert source_row is not None
+                source_id = _uuid(source_row[0])
+                connection.execute(
+                    """
+                    UPDATE data_sources
+                    SET name = %s, source_version = %s, attribution_text = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        values["source_name"],
+                        _pinned_source_version(values["source_version"], content_id),
+                        values["attribution_text"],
+                        source_id,
+                    ),
+                )
+                connection.execute(
+                    """
+                    UPDATE source_records
+                    SET raw_hash = %s, review_status = 'normalized', quality_score = NULL,
+                        reviewed_at = NULL, metadata = %s::jsonb
+                    WHERE id = %s
+                    """,
+                    (
+                        _raw_hash(values),
+                        json.dumps(_metadata(values), ensure_ascii=False),
+                        source_record_id,
+                    ),
+                )
+                connection.execute(
+                    """
+                    UPDATE content_items
+                    SET title = %s, difficulty = %s, quality_score = NULL,
+                        publication_status = 'normalized', curated_level_id = %s,
+                        reviewed_at = NULL, published_at = NULL, updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (values["title"], difficulty, level_id, now, content_id),
+                )
+                if body_changed:
+                    sentence_ids = [sentence.id for sentence in current.sentences]
+                    self._delete_admin_vietnamese_translations(connection, content_id, sentence_ids)
+                    self._delete_structure(connection, content_id)
+                    connection.execute(
+                        """
+                        UPDATE content_versions
+                        SET content_hash = %s, source_record_id = %s, created_at = %s
+                        WHERE content_id = %s AND version = 1
+                        """,
+                        (_text_hash(values["body"]), source_record_id, now, content_id),
+                    )
+                    self._write_structure(
+                        connection,
+                        content_id=content_id,
+                        source_record_id=source_record_id,
+                        body=values["body"],
+                        sentences=sentences,
+                        difficulty=difficulty,
+                        now=now,
+                    )
+                connection.commit()
+                return self._get(connection, content_id)
+        except psycopg.errors.ForeignKeyViolation as error:
+            raise AdminInvalidState(
+                "content structure is still referenced and cannot be replaced"
+            ) from error
+
+    def put_vietnamese_translations(
+        self,
+        content_id: UUID,
+        entries: Sequence[tuple[int, str, str]],
+        source: dict[str, str] | None,
+        *,
+        now: datetime,
+    ) -> AdminContentProjection:
         with self.connect() as connection:
             current = self._get(connection, content_id, lock=True)
             if current.status in {"published", "retired"}:
-                raise AdminInvalidState("published or retired content cannot be edited")
-            values = {
-                "title": current.title,
-                "body": current.body,
-                "level": current.level,
-                "author_name": current.author_name,
-                "source_name": current.source_name,
-                "source_version": current.source_version,
-                "attribution_text": current.attribution_text,
-                "rights_statement": current.rights_statement,
-            }
-            values.update(updates)
-            sentences = self._sentences(values["body"])
-            level_id, difficulty = self._level(connection, values["level"])
-            row = connection.execute(
-                "SELECT source_record_id FROM content_items WHERE id = %s", (content_id,)
-            ).fetchone()
-            assert row is not None
-            source_record_id = _uuid(row[0])
-            source_row = connection.execute(
-                "SELECT source_id FROM source_records WHERE id = %s", (source_record_id,)
-            ).fetchone()
-            assert source_row is not None
-            source_id = _uuid(source_row[0])
-            connection.execute(
-                """
-                UPDATE data_sources
-                SET name = %s, source_version = %s, attribution_text = %s
-                WHERE id = %s
-                """,
-                (
-                    values["source_name"],
-                    _pinned_source_version(values["source_version"], content_id),
-                    values["attribution_text"],
-                    source_id,
-                ),
+                raise AdminInvalidState("published or retired content cannot be translated")
+            sentence_pairs = [(sentence.id, sentence.text) for sentence in current.sentences]
+            if entries:
+                if source is None:
+                    raise AdminValidationError("translation provenance is required")
+                if len(entries) != len(sentence_pairs):
+                    raise AdminValidationError(
+                        "a complete translation for every sentence is required"
+                    )
+                for expected_order, (entry, expected_sentence) in enumerate(
+                    zip(entries, sentence_pairs, strict=True), 1
+                ):
+                    ordinal, source_text, translation_text = entry
+                    if ordinal != expected_order or source_text != expected_sentence[1]:
+                        raise AdminValidationError(
+                            "translation entries do not match current sentence order"
+                        )
+                    if not translation_text.strip() or len(translation_text) > 5_000:
+                        raise AdminValidationError("translation text must contain visible text")
+            elif source is not None:
+                raise AdminValidationError("source provenance must be omitted when clearing")
+
+            active = self._translation_snapshot(
+                connection, content_id, sentence_pairs, conflict_on_invalid=True
             )
-            connection.execute(
-                """
-                UPDATE source_records
-                SET raw_hash = %s, review_status = 'normalized', quality_score = NULL,
-                    reviewed_at = NULL, metadata = %s::jsonb
-                WHERE id = %s
-                """,
-                (
-                    _raw_hash(values),
-                    json.dumps(_metadata(values), ensure_ascii=False),
-                    source_record_id,
-                ),
-            )
-            connection.execute(
-                """
-                UPDATE content_items
-                SET title = %s, difficulty = %s, quality_score = NULL,
-                    publication_status = 'normalized', curated_level_id = %s,
-                    reviewed_at = NULL, published_at = NULL, updated_at = %s
-                WHERE id = %s
-                """,
-                (values["title"], difficulty, level_id, now, content_id),
-            )
-            self._delete_structure(connection, content_id)
-            connection.execute(
-                """
-                UPDATE content_versions
-                SET content_hash = %s, source_record_id = %s, created_at = %s
-                WHERE content_id = %s AND version = 1
-                """,
-                (_text_hash(values["body"]), source_record_id, now, content_id),
-            )
-            self._write_structure(
+            if not entries:
+                if active is None:
+                    return current
+                connection.execute(
+                    """
+                    DELETE FROM sentence_translations
+                    WHERE source_record_id = %s AND target_language_code = 'vi'
+                    """,
+                    (active["sourceRecordId"],),
+                )
+                self._reset_content_for_authoring(connection, content_id, now=now)
+                connection.commit()
+                return self._get(connection, content_id)
+
+            assert source is not None
+            normalized_entries = [
+                {"ordinal": ordinal, "sourceText": source_text, "translationText": translation_text}
+                for ordinal, source_text, translation_text in entries
+            ]
+            raw_hash = _translation_raw_hash(source, normalized_entries)
+            metadata = _translation_metadata(content_id, source, normalized_entries)
+            if (
+                active is not None
+                and active["rawHash"] == raw_hash
+                and active["metadata"] == metadata
+            ):
+                return current
+
+            if active is not None:
+                connection.execute(
+                    """
+                    DELETE FROM sentence_translations
+                    WHERE source_record_id = %s AND target_language_code = 'vi'
+                    """,
+                    (active["sourceRecordId"],),
+                )
+            source_record_id = self._create_translation_source_record(
                 connection,
                 content_id=content_id,
-                source_record_id=source_record_id,
-                body=values["body"],
-                sentences=sentences,
-                difficulty=difficulty,
+                source=source,
+                metadata=metadata,
+                raw_hash=raw_hash,
                 now=now,
             )
+            for current_sentence, (_, _, translation_text) in zip(
+                current.sentences, entries, strict=True
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO sentence_translations
+                        (sentence_id, target_language_code, text, source_record_id, created_at)
+                    VALUES (%s, 'vi', %s, %s, %s)
+                    """,
+                    (current_sentence.id, translation_text, source_record_id, now),
+                )
+            self._reset_content_for_authoring(connection, content_id, now=now)
             connection.commit()
             return self._get(connection, content_id)
 
@@ -420,19 +740,88 @@ class PostgresAdminContentStore:
                 issues += (
                     AdminValidationIssue("rightsStatement", "A rights statement is required."),
                 )
+            sentence_pairs = [(sentence.id, sentence.text) for sentence in current.sentences]
+            translation_rows = connection.execute(
+                """
+                SELECT count(*)
+                FROM content_segments AS segment
+                JOIN sentence_translations AS translation
+                  ON translation.sentence_id = segment.sentence_id
+                 AND translation.target_language_code = 'vi'
+                WHERE segment.content_id = %s
+                """,
+                (content_id,),
+            ).fetchone()
+            has_vietnamese_rows = (
+                translation_rows is not None and cast(int, translation_rows[0]) > 0
+            )
+            active_translation = self._translation_snapshot(
+                connection, content_id, sentence_pairs, conflict_on_invalid=False
+            )
+            if has_vietnamese_rows and active_translation is None:
+                issues += (
+                    AdminValidationIssue(
+                        "translationSource",
+                        "Vietnamese translations must be one complete owner-authored set.",
+                    ),
+                )
+            if active_translation is not None:
+                if active_translation["licenseUsagePolicy"] != "allowed":
+                    issues += (
+                        AdminValidationIssue(
+                            "translationSource.licenseCode",
+                            "The Vietnamese translation license must allow publication.",
+                        ),
+                    )
+                if not str(active_translation["attributionText"]).strip():
+                    issues += (
+                        AdminValidationIssue(
+                            "translationSource.attributionText", "Attribution is required."
+                        ),
+                    )
+                if not str(active_translation["rightsStatement"]).strip():
+                    issues += (
+                        AdminValidationIssue(
+                            "translationSource.rightsStatement", "A rights statement is required."
+                        ),
+                    )
+                if re.fullmatch(r"[0-9a-f]{64}", str(active_translation["rawHash"])) is None:
+                    issues += (
+                        AdminValidationIssue(
+                            "translationSource.rawHash", "A valid source hash is required."
+                        ),
+                    )
             if not issues:
                 row = connection.execute(
-                    "SELECT source_record_id FROM content_items WHERE id = %s", (content_id,)
+                    """
+                    SELECT record.id, record.imported_at
+                    FROM content_items AS item
+                    JOIN source_records AS record ON record.id = item.source_record_id
+                    WHERE item.id = %s
+                    """,
+                    (content_id,),
                 ).fetchone()
                 assert row is not None
+                reviewed_at = max(now, cast(datetime, row[1]))
+                if active_translation is not None:
+                    reviewed_at = max(reviewed_at, cast(datetime, active_translation["importedAt"]))
                 connection.execute(
                     """
                     UPDATE source_records
                     SET review_status = 'approved', quality_score = 1, reviewed_at = %s
                     WHERE id = %s
                     """,
-                    (now, row[0]),
+                    (reviewed_at, row[0]),
                 )
+                if active_translation is not None:
+                    connection.execute(
+                        """
+                        UPDATE source_records
+                        SET review_status = 'approved', quality_score = 1, reviewed_at = %s
+                        WHERE id = %s
+                        """,
+                        (reviewed_at, active_translation["sourceRecordId"]),
+                    )
                 connection.execute(
                     """
                     UPDATE content_items
@@ -440,7 +829,7 @@ class PostgresAdminContentStore:
                         reviewed_at = %s, updated_at = %s
                     WHERE id = %s
                     """,
-                    (now, now, content_id),
+                    (reviewed_at, reviewed_at, content_id),
                 )
             connection.commit()
             return self._get(connection, content_id), issues
@@ -781,6 +1170,30 @@ class PostgresAdminContentStore:
             """,
             (content_id,),
         ).fetchall()
+        sentence_pairs = [(_uuid(value[0]), str(value[2])) for value in sentence_rows]
+        translation_snapshot = PostgresAdminContentStore._translation_snapshot(
+            connection, content_id, sentence_pairs, conflict_on_invalid=False
+        )
+        translations = (
+            {}
+            if translation_snapshot is None
+            else cast(dict[UUID, str], translation_snapshot["translations"])
+        )
+        translation_source = (
+            None
+            if translation_snapshot is None
+            else AdminVietnameseTranslationSourceProjection(
+                target_language_code="vi",
+                author_name=str(translation_snapshot["authorName"]),
+                source_name=str(translation_snapshot["sourceName"]),
+                source_version=str(translation_snapshot["sourceVersion"]),
+                license_code=str(translation_snapshot["licenseCode"]),
+                attribution_text=str(translation_snapshot["attributionText"]),
+                rights_statement=str(translation_snapshot["rightsStatement"]),
+                source_record_key=str(translation_snapshot["sourceRecordKey"]),
+                raw_hash=str(translation_snapshot["rawHash"]),
+            )
+        )
         sentence_projections: list[AdminSentenceProjection] = []
         for value in sentence_rows:
             sentence_id = _uuid(value[0])
@@ -832,6 +1245,7 @@ class PostgresAdminContentStore:
                     sentence_id,
                     int(cast(int, value[1])),
                     sentence_text,
+                    translations.get(sentence_id),
                     len(concepts),
                     concepts,
                 )
@@ -852,6 +1266,7 @@ class PostgresAdminContentStore:
             rights_statement=str(metadata["rightsStatement"]),
             source_record_key=str(row[7]),
             raw_hash=str(row[8]),
+            translation_source=translation_source,
             sentences=tuple(sentence_projections),
             published_at=cast(datetime | None, row[12]),
             created_at=cast(datetime, row[13]),
@@ -876,6 +1291,41 @@ def _raw_hash(values: dict[str, str]) -> str:
     return hashlib.sha256(
         json.dumps(values, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def _translation_metadata(
+    content_id: UUID, source: dict[str, str], entries: list[dict[str, object]]
+) -> dict[str, object]:
+    return {
+        "authoringVersion": TRANSLATION_AUTHORING_VERSION,
+        "contentId": str(content_id),
+        "targetLanguageCode": "vi",
+        "authorName": source["author_name"],
+        "sourceName": source["source_name"],
+        "sourceVersion": source["source_version"],
+        "attributionText": source["attribution_text"],
+        "rightsStatement": source["rights_statement"],
+        "licenseCode": LICENSE_CODE,
+        "entries": entries,
+    }
+
+
+def _translation_raw_hash(source: dict[str, str], entries: list[dict[str, object]]) -> str:
+    canonical = {
+        "targetLanguageCode": "vi",
+        "source": {
+            "authorName": source["author_name"],
+            "sourceName": source["source_name"],
+            "sourceVersion": source["source_version"],
+            "attributionText": source["attribution_text"],
+            "rightsStatement": source["rights_statement"],
+        },
+        "entries": entries,
+    }
+    encoded = json.dumps(
+        canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _catalog_concept(row: tuple[object, ...]) -> AdminCatalogConceptProjection:

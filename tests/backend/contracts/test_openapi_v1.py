@@ -18,6 +18,7 @@ EXPECTED_PATHS = {
     "/v1/admin/content",
     "/v1/admin/content/{contentId}",
     "/v1/admin/content/{contentId}/validate",
+    "/v1/admin/content/{contentId}/translations/vi",
     "/v1/admin/content/{contentId}/publish",
     "/v1/admin/content/{contentId}/retire",
     "/v1/admin/content/{contentId}/sentences/{sentenceId}/concepts/{conceptId}",
@@ -212,6 +213,27 @@ def test_success_envelopes_and_reusable_errors_are_consistent() -> None:
         "message",
         "requestId",
     }
+
+
+def test_admin_vietnamese_translation_contract_is_complete_set_and_nullable_preview() -> None:
+    spec = load_yaml(OPENAPI_PATH)
+    path = spec["paths"]["/v1/admin/content/{contentId}/translations/vi"]["put"]
+    assert path["operationId"] == "putAdminVietnameseTranslations"
+    assert "409" in path["responses"]
+    request_schema = spec["components"]["schemas"]["PutAdminVietnameseTranslationsRequest"]
+    assert [variant["$ref"].rsplit("/", 1)[1] for variant in request_schema["oneOf"]] == [
+        "PutAdminVietnameseTranslationsComplete",
+        "PutAdminVietnameseTranslationsClear",
+    ]
+    schemas = spec["components"]["schemas"]
+    assert set(schemas["PutAdminVietnameseTranslationsComplete"]["required"]) == {
+        "entries",
+        "source",
+    }
+    assert schemas["PutAdminVietnameseTranslationsClear"]["properties"]["entries"]["maxItems"] == 0
+    assert "source" not in schemas["PutAdminVietnameseTranslationsClear"]["properties"]
+    assert "translationVi" in schemas["AdminSentencePreview"]["required"]
+    assert "translationSource" in schemas["AdminContent"]["required"]
 
 
 def test_error_registry_matches_openapi_and_covers_required_categories() -> None:

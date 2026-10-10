@@ -89,6 +89,10 @@ export function deriveActivityBadgeVariant(
 
 export function mapTodayActivityToViewModel(activity: TodayActivityDto): TodayActivityViewModel {
   const isComplete = activity.status === 'completed';
+  const defaultTargetUrl = activityRoutes[activity.activityType] ?? '/today';
+  const targetUrl = activity.contentId && (activity.activityType === 'read' || activity.activityType === 'listen')
+    ? `/read?contentId=${encodeURIComponent(activity.contentId)}`
+    : defaultTargetUrl;
   return {
     id: activity.id,
     position: activity.position,
@@ -100,7 +104,7 @@ export function mapTodayActivityToViewModel(activity: TodayActivityDto): TodayAc
     badgeVariant: deriveActivityBadgeVariant(activity),
     reasonCodes: activity.reasonCodes,
     reasonText: activity.reasonText,
-    targetUrl: activityRoutes[activity.activityType] ?? '/today',
+    targetUrl,
     status: activity.status,
     completed: isComplete,
     ...(activity.targetCount !== undefined ? { targetCount: activity.targetCount } : {}),

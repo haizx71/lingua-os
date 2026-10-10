@@ -60,8 +60,9 @@ describe('K2 hosted acceptance response shapes', () => {
     expect(() => resolveK2HostedRunMode('typo')).toThrow('run mode is invalid');
   });
 
-  it('accepts only the implemented K2-07 through K2-10 selectors', () => {
+  it('accepts only the implemented K2 waves and the fixed Reader pilot selector', () => {
     expect(resolveK2HostedWaveSelector(undefined)).toBe('K2-07');
+    expect(resolveK2HostedWaveSelector('PILOT-READER')).toBe('PILOT-READER');
     expect(resolveK2HostedWaveSelector('K2-07')).toBe('K2-07');
     expect(resolveK2HostedWaveSelector('K2-08-DUE-ONLY')).toBe('K2-08-DUE-ONLY');
     expect(resolveK2HostedWaveSelector('K2-08')).toBe('K2-08');

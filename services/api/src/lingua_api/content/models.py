@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from pydantic.json_schema import SkipJsonSchema
 
 
@@ -134,9 +134,10 @@ class SentenceConceptAnnotationDto(ApiModel):
 class ReaderSentenceDto(ApiModel):
     id: UUID
     text: str = Field(min_length=1, max_length=5000)
-    translation: Annotated[str, Field(max_length=5000)] | SkipJsonSchema[None] = Field(
-        default=None, exclude_if=lambda value: value is None
-    )
+    translation: (
+        Annotated[str, StringConstraints(strip_whitespace=False), Field(max_length=5000)]
+        | SkipJsonSchema[None]
+    ) = Field(default=None, exclude_if=lambda value: value is None)
     audio_url: str | SkipJsonSchema[None] = Field(
         default=None, exclude_if=lambda value: value is None
     )

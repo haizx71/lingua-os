@@ -22,6 +22,7 @@ const created: AdminContentResponseDto = {
     rightsStatement: 'Owner-authored first-party text.',
     sourceRecordKey: 'admin:10000000-0000-4000-8000-000000000001',
     rawHash: 'a'.repeat(64),
+    translationSource: null,
     sentences: [],
     createdAt: '2026-09-13T00:00:00Z',
     updatedAt: '2026-09-13T00:00:00Z',

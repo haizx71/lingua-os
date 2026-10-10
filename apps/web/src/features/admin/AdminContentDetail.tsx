@@ -6,6 +6,7 @@ import { mapApiErrorToUi, type ApiClient } from '@lingua/types';
 import { getApiClient } from '../../lib/api/client';
 import {
   getAdminContent,
+  putAdminVietnameseTranslations,
   publishAdminContent,
   retireAdminContent,
   validateAdminContent,
@@ -13,6 +14,7 @@ import {
   type AdminValidationViewModel,
 } from './adapters';
 import { AdminSentenceConceptEditor } from './AdminSentenceConceptEditor';
+import { AdminVietnameseTranslationEditor } from './AdminVietnameseTranslationEditor';
 
 export function AdminContentDetail({ contentId, apiClient = getApiClient() }: { contentId: string; apiClient?: ApiClient }) {
   const [content, setContent] = useState<AdminContentViewModel | null>(null);
@@ -25,10 +27,13 @@ export function AdminContentDetail({ contentId, apiClient = getApiClient() }: { 
   }, [apiClient, contentId]);
   useEffect(() => { void load(); }, [load]);
 
-  async function action(work: () => Promise<AdminContentViewModel>) {
+  async function action(work: () => Promise<AdminContentViewModel>, invalidateValidation = false) {
     if (busy) return;
     setBusy(true); setError(null);
-    try { setContent(await work()); }
+    try {
+      setContent(await work());
+      if (invalidateValidation) setValidation(null);
+    }
     catch (reason) { setError(mapApiErrorToUi(reason).message); }
     finally { setBusy(false); }
   }
@@ -44,6 +49,7 @@ export function AdminContentDetail({ contentId, apiClient = getApiClient() }: { 
   if (!content) return <InlineAlert variant="danger" title="Không thể tải nội dung">{error}</InlineAlert>;
   const statusLabel = ({
     draft: 'Bản nháp',
+    normalized: 'Đã chuẩn hóa',
     reviewed: 'Đã kiểm tra',
     published: 'Đã phát hành',
     retired: 'Đã ngừng phát hành',
@@ -58,6 +64,13 @@ export function AdminContentDetail({ contentId, apiClient = getApiClient() }: { 
       {validation && !validation.isValid && <InlineAlert variant="danger" title="Chưa thể xuất bản"><ul className="list-disc pl-5">{validation.issues.map((issue) => <li key={`${issue.field}:${issue.reason}`}>{issue.reason}</li>)}</ul></InlineAlert>}
       {validation?.isValid && <InlineAlert variant="success" title="Đã kiểm tra">Nội dung đáp ứng yêu cầu phát hành hiện tại.</InlineAlert>}
       <Card padding="md" className="space-y-2"><h2 className="font-semibold text-[var(--text-primary)]">Nguồn và quyền sử dụng</h2><p className="text-sm text-[var(--text-primary)]">{content.authorName} · {content.sourceName} · {content.sourceVersion}</p><p className="text-sm leading-6 text-[var(--text-secondary)]">{content.attributionText}</p><p className="text-sm leading-6 text-[var(--text-secondary)]">{content.rightsStatement}</p><p className="break-all font-mono text-[11px] text-[var(--text-muted)]">SHA-256: {content.rawHash}</p></Card>
+      <AdminVietnameseTranslationEditor
+        content={content}
+        busy={busy}
+        readOnly={content.status === 'published' || content.status === 'retired'}
+        onSave={(body) => { void action(() => putAdminVietnameseTranslations(apiClient, contentId, body), true); }}
+        onClear={() => { void action(() => putAdminVietnameseTranslations(apiClient, contentId, { entries: [] }), true); }}
+      />
       <section className="space-y-3">
         <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Khái niệm trong câu</h2>

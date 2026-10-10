@@ -7,7 +7,14 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from pydantic.json_schema import SkipJsonSchema
 
 
@@ -107,10 +114,60 @@ class UpdateAdminContentRequestDto(ApiModel):
         return self
 
 
+class AdminVietnameseTranslationEntryDto(ApiModel):
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        extra="forbid",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        str_strip_whitespace=False,
+    )
+
+    ordinal: int = Field(ge=1, le=100)
+    source_text: str = Field(min_length=1, max_length=5_000)
+    translation_text: str = Field(min_length=1, max_length=5_000)
+
+    @field_validator("translation_text")
+    @classmethod
+    def require_nonblank_translation(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("translation text must contain visible text")
+        return value
+
+
+class AdminVietnameseTranslationSourceRequestDto(ApiModel):
+    author_name: str = Field(min_length=1, max_length=200)
+    source_name: str = Field(min_length=1, max_length=200)
+    source_version: str = Field(min_length=1, max_length=100)
+    attribution_text: str = Field(min_length=1, max_length=1_000)
+    rights_statement: str = Field(min_length=1, max_length=1_000)
+
+
+class PutAdminVietnameseTranslationsRequestDto(ApiModel):
+    entries: list[AdminVietnameseTranslationEntryDto] = Field(max_length=100)
+    source: AdminVietnameseTranslationSourceRequestDto | None = None
+
+    @model_validator(mode="after")
+    def require_complete_set_or_explicit_clear(self) -> PutAdminVietnameseTranslationsRequestDto:
+        if self.entries and self.source is None:
+            raise ValueError("source provenance is required for a non-empty translation set")
+        if not self.entries and "source" in self.model_fields_set:
+            raise ValueError("source provenance must be omitted when clearing translations")
+        return self
+
+
 class AdminSentencePreviewDto(ApiModel):
     id: UUID
     order: int = Field(ge=0)
     text: str = Field(min_length=1, max_length=5_000)
+    translation_vi: (
+        Annotated[
+            str,
+            StringConstraints(strip_whitespace=False),
+            Field(min_length=1, max_length=5_000),
+        ]
+        | None
+    )
     concept_count: int = Field(ge=0)
     concepts: list[AdminSentenceConceptDto] = Field(max_length=100)
 
@@ -142,6 +199,18 @@ class AdminConceptSearchResponseDto(ApiModel):
     meta: ResponseMetaDto
 
 
+class AdminVietnameseTranslationSourceDto(ApiModel):
+    target_language_code: Literal["vi"]
+    author_name: str = Field(min_length=1, max_length=200)
+    source_name: str = Field(min_length=1, max_length=200)
+    source_version: str = Field(min_length=1, max_length=100)
+    license_code: Literal["LINGUA-FIRST-PARTY"]
+    attribution_text: str = Field(min_length=1, max_length=1_000)
+    rights_statement: str = Field(min_length=1, max_length=1_000)
+    source_record_key: str = Field(min_length=1, max_length=200)
+    raw_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class AdminContentDto(ApiModel):
     id: UUID
     title: str = Field(min_length=1, max_length=500)
@@ -158,6 +227,7 @@ class AdminContentDto(ApiModel):
     rights_statement: str = Field(min_length=1, max_length=1_000)
     source_record_key: str = Field(min_length=1, max_length=200)
     raw_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    translation_source: AdminVietnameseTranslationSourceDto | None
     sentences: list[AdminSentencePreviewDto] = Field(max_length=100)
     published_at: datetime | None = None
     created_at: datetime

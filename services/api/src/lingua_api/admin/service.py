@@ -35,6 +35,16 @@ class AdminContentApplication:
     def update_content(self, content_id: UUID, updates: dict[str, str]) -> AdminContentProjection:
         return self._store.update(content_id, updates, now=self._clock.now())
 
+    def put_vietnamese_translations(
+        self,
+        content_id: UUID,
+        entries: list[tuple[int, str, str]],
+        source: dict[str, str] | None,
+    ) -> AdminContentProjection:
+        return self._store.put_vietnamese_translations(
+            content_id, entries, source, now=self._clock.now()
+        )
+
     def validate_content(self, content_id: UUID) -> AdminContentValidationProjection:
         content, issues = self._store.validate(content_id, now=self._clock.now())
         return AdminContentValidationProjection(content, not issues, issues)

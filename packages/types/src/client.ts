@@ -23,6 +23,7 @@ import type {
   OperationHeaders,
   OperationQuery,
   ProgressOverviewResponseDto,
+  PutAdminVietnameseTranslationsRequestDto,
   ReaderAnalyzeRequestDto,
   ReaderAnalyzeResponseDto,
   ReaderExposureRequestDto,
@@ -69,6 +70,7 @@ export interface ApiClient {
   createAdminContent(body: CreateAdminContentRequestDto): Promise<AdminContentResponseDto>;
   getAdminContent(contentId: string): Promise<AdminContentResponseDto>;
   updateAdminContent(input: { contentId: string; body: UpdateAdminContentRequestDto }): Promise<AdminContentResponseDto>;
+  putAdminVietnameseTranslations(input: { contentId: string; body: PutAdminVietnameseTranslationsRequestDto }): Promise<AdminContentResponseDto>;
   validateAdminContent(contentId: string): Promise<AdminContentValidationResponseDto>;
   publishAdminContent(contentId: string): Promise<AdminContentResponseDto>;
   retireAdminContent(contentId: string): Promise<AdminContentResponseDto>;
@@ -353,6 +355,7 @@ export class HttpApiClient implements ApiClient {
   createAdminContent(body: CreateAdminContentRequestDto) { return this.request<AdminContentResponseDto>({ method: 'POST', path: '/v1/admin/content', body }); }
   getAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'GET', path: `/v1/admin/content/${encodeURIComponent(contentId)}` }); }
   updateAdminContent(input: Parameters<ApiClient['updateAdminContent']>[0]) { return this.request<AdminContentResponseDto>({ method: 'PATCH', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}`, body: input.body }); }
+  putAdminVietnameseTranslations(input: Parameters<ApiClient['putAdminVietnameseTranslations']>[0]) { return this.request<AdminContentResponseDto>({ method: 'PUT', path: `/v1/admin/content/${encodeURIComponent(input.contentId)}/translations/vi`, body: input.body }); }
   validateAdminContent(contentId: string) { return this.request<AdminContentValidationResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/validate` }); }
   publishAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/publish` }); }
   retireAdminContent(contentId: string) { return this.request<AdminContentResponseDto>({ method: 'POST', path: `/v1/admin/content/${encodeURIComponent(contentId)}/retire` }); }
@@ -455,6 +458,7 @@ export class MockApiClient implements ApiClient {
   createAdminContent(_body: CreateAdminContentRequestDto): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   getAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   updateAdminContent(_input: Parameters<ApiClient['updateAdminContent']>[0]): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
+  putAdminVietnameseTranslations(_input: Parameters<ApiClient['putAdminVietnameseTranslations']>[0]): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   validateAdminContent(_contentId: string): Promise<AdminContentValidationResponseDto> { return this.adminForbidden(); }
   publishAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }
   retireAdminContent(_contentId: string): Promise<AdminContentResponseDto> { return this.adminForbidden(); }

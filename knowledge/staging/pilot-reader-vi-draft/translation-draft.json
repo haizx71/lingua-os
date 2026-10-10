@@ -1,0 +1,483 @@
+{
+  "candidate_id": "pilot-reader-tea-vi-v1",
+  "status": "draft_awaiting_owner_editorial_rights_and_scope_approval",
+  "publication_authorized": false,
+  "scope": "proposed_staging_only_content_correction",
+  "title": "A Quiet Cup of Tea",
+  "vietnamese_title_draft": "Một tách trà yên bình",
+  "language": "en",
+  "translation_language": "vi",
+  "curated_level_candidate": "A1",
+  "original_body_sha256": "7f91d20d0fe2b13816f1fd1b79924cf24ea3d8d828f9023bfca48196a1339627",
+  "candidate_body_sha256": "180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e",
+  "body": "Mina visits her grandmother every Sunday for tea. Grandmother lives in a small house beside the park. The kitchen opens onto a bright room with a blue table. This Sunday, Grandmother plans to share tea with her old neighbor Lan. Lan lives across town now, but she still loves their tea talks. Mina hangs her coat on a hook and joins Grandmother in the kitchen. Grandmother takes a blue tin from the shelf and sets it on the table. \"Lan likes plain tea,\" she says. \"She takes no milk or sugar with her tea.\" Mina reads the label on the tin, though she knows the tea by its smell. They wash two cups and place them on a tray. Grandmother fills a kettle and puts it on the stove. Mina asks how many leaves fit in each tea cup. \"A small spoon works well for one tea cup,\" Grandmother says. Mina takes the spoon and counts two small heaps of tea. A few leaves fall on the table. She laughs as tea leaves fall around the cup. Mina sweeps the dry leaves into a bin on the floor. As the kettle warms, they talk about Lan and the old tea stall. Grandmother met Lan at that stall by the school gate over tea. They sat at the stall after class and shared one cup of tea. After many years apart, Lan visits again for tea. Mina wonders if Lan remembers their long talks over tea. A clock on the wall says eleven. The water for tea is hot, so Grandmother lifts the kettle from the stove. She waits a short time before pouring, because a rolling boil can make green tea bitter. Mina watches tea fill each cup, one at a time. The pale tea smells fresh and light. Grandmother asks Mina to carry the tray into the front room. Mina holds the tray with both hands and walks slowly across the room. A soft knock sounds on the door. Lan stands at the door with an umbrella and a bag of tea. Her hair is wet, but the tea stays warm on the tray. Lan smiles when she sees Grandmother in the front room. They hug by the door, then sit at the table and pour tea. Lan puts her bag on the chair and opens it. Lan takes a small photo of the old tea stall from her bag and puts it on the table. \"I found it in my desk last week,\" Lan says. Mina looks at the photo on the table. Two young women sit at a tea stall and laugh. Grandmother and Lan look just as happy in the picture. Mina pours tea for Lan, then takes a seat by the window. Lan lifts the cup and smells the tea before she drinks. \"The tea has the same soft taste,\" she says. Grandmother asks what tea Lan makes in her new flat. Lan tells them about her garden and tea with a neighbor. Mina listens while she drinks her tea. The story makes the room feel bright, even as rain taps on the window. Lan asks Mina which books she reads, and Mina answers over tea. Mina tells her about a book while the tea cools on the table. Lan knows that story, too, and names the next book while rain taps on the window. Mina writes the title on a paper strip beside her tea cup. The women share tea and talk about small things for a long time. No one checks the clock on the wall. When the tea is gone, Grandmother offers another cup. Lan says yes to another cup of tea, and Mina prepares it. She measures the tea leaves, waits for the kettle, and pours slowly. The tea is not too strong this time. Lan says Mina makes a fine cup of tea. Mina feels proud of the tea, but she knows she can learn more. Before Lan leaves, they set a day for the next tea visit. Lan takes her bag but leaves the photo on the table for Mina. Mina puts the photo in her school bag beside the paper strip with the book title. The rain ends, and sun comes into the room. Lan waves from the gate as Mina stands in the doorway. Mina clears the cups and washes the tea pot. Grandmother says the visit and shared tea make the day special. Mina asks if she can make tea again next Sunday. Grandmother nods and saves the blue tin on the shelf. On Mina's walk across town, she thinks about Lan's stories and tea. She knows how to make the tea now, but she likes the talk best. After the visit, she tells her mother about Lan over one more cup of tea.",
+  "provenance": {
+    "source": "LINGUA first-party original article with four disclosed draft corrections",
+    "translation": "AI-assisted Vietnamese draft; no external text used",
+    "owner_review": "pending",
+    "rights_review": "pending",
+    "original_PR38_approval_covers_this_revision": false
+  },
+  "source_changes": [
+    {
+      "ordinal": 25,
+      "before": "The tea is hot, but Grandmother lifts the kettle from the stove.",
+      "after": "The water for tea is hot, so Grandmother lifts the kettle from the stove."
+    },
+    {
+      "ordinal": 37,
+      "before": "Inside, Lan keeps a small photo of the old stall on the table.",
+      "after": "Lan takes a small photo of the old tea stall from her bag and puts it on the table."
+    },
+    {
+      "ordinal": 39,
+      "before": "Mina looks at the first photo on top.",
+      "after": "Mina looks at the photo on the table."
+    },
+    {
+      "ordinal": 62,
+      "before": "She takes the old photos but leaves one on the table for Mina.",
+      "after": "Lan takes her bag but leaves the photo on the table for Mina."
+    }
+  ],
+  "sentences": [
+    {
+      "ordinal": 1,
+      "english": "Mina visits her grandmother every Sunday for tea.",
+      "english_sha256": "5ed1c04a465322db00b548a036dedee732807334c9440d2b39e4ca10f6971239",
+      "vietnamese": "Mina đến thăm bà vào mỗi Chủ nhật để uống trà."
+    },
+    {
+      "ordinal": 2,
+      "english": "Grandmother lives in a small house beside the park.",
+      "english_sha256": "5d8320f35ac2df7315ea70a5c77ec17daad2ec4b37a53a8a08792c000d8f5725",
+      "vietnamese": "Bà sống trong một căn nhà nhỏ cạnh công viên."
+    },
+    {
+      "ordinal": 3,
+      "english": "The kitchen opens onto a bright room with a blue table.",
+      "english_sha256": "f7ba259f3c001ca83b72f8d1bec492c48d0a9599ddf2a2e6c8755d8717eedd78",
+      "vietnamese": "Bếp thông ra một căn phòng sáng sủa có chiếc bàn màu xanh."
+    },
+    {
+      "ordinal": 4,
+      "english": "This Sunday, Grandmother plans to share tea with her old neighbor Lan.",
+      "english_sha256": "71df95d33e127f1ec007efafcfe9573142dcc6a1f167599ba461a3d419e480fb",
+      "vietnamese": "Chủ nhật này, bà định uống trà cùng người hàng xóm cũ tên Lan."
+    },
+    {
+      "ordinal": 5,
+      "english": "Lan lives across town now, but she still loves their tea talks.",
+      "english_sha256": "c9c8f7a8cdeade98364edcf9c46d19a139c65b5572fd659e8e02dc61720f1f79",
+      "vietnamese": "Giờ Lan sống ở phía bên kia thị trấn, nhưng Lan vẫn thích những buổi trò chuyện bên tách trà với bà."
+    },
+    {
+      "ordinal": 6,
+      "english": "Mina hangs her coat on a hook and joins Grandmother in the kitchen.",
+      "english_sha256": "31ad0ffc13440b8473e9df6841139175520647a3ef91620ca28658ce7c335c4b",
+      "vietnamese": "Mina treo áo khoác lên móc rồi vào bếp cùng bà."
+    },
+    {
+      "ordinal": 7,
+      "english": "Grandmother takes a blue tin from the shelf and sets it on the table.",
+      "english_sha256": "514f81f5c4cd7417d5066d8b807cf1d384c75ffd116564001d907aee1b05dd43",
+      "vietnamese": "Bà lấy một hộp thiếc màu xanh từ trên kệ xuống và đặt lên bàn."
+    },
+    {
+      "ordinal": 8,
+      "english": "\"Lan likes plain tea,\" she says.",
+      "english_sha256": "95215b221eb2911f738e30c7bae454e1d68142c19b1f8e215205bac302411328",
+      "vietnamese": "“Lan thích trà không pha thêm gì,” bà nói."
+    },
+    {
+      "ordinal": 9,
+      "english": "\"She takes no milk or sugar with her tea.\"",
+      "english_sha256": "26be3c7744fd797be9b1823fa2d48cfa050b9a1041ba78597a3c1abb06b66832",
+      "vietnamese": "“Lan không cho sữa hay đường vào trà.”"
+    },
+    {
+      "ordinal": 10,
+      "english": "Mina reads the label on the tin, though she knows the tea by its smell.",
+      "english_sha256": "bf61c55e18415b6b6c99dd7cd9d15c25e1a11d697f1e2335213a7fa1bc42c522",
+      "vietnamese": "Mina đọc nhãn trên hộp, dù đã nhận ra loại trà qua mùi hương."
+    },
+    {
+      "ordinal": 11,
+      "english": "They wash two cups and place them on a tray.",
+      "english_sha256": "7a4c90d8626b2fcc9c835c44c3c61a3e99c992adc9765ede737194623fec8baf",
+      "vietnamese": "Hai bà cháu rửa hai chiếc tách rồi đặt lên khay."
+    },
+    {
+      "ordinal": 12,
+      "english": "Grandmother fills a kettle and puts it on the stove.",
+      "english_sha256": "16600f89820f7fda35579a92c91cc59f5491647888b46185a6824fefa4e52664",
+      "vietnamese": "Bà đổ nước vào ấm rồi đặt ấm lên bếp."
+    },
+    {
+      "ordinal": 13,
+      "english": "Mina asks how many leaves fit in each tea cup.",
+      "english_sha256": "872b9d8a4a19dd43d83d9f0719c8b0b09f230fb5499b2c378f25aff2938714e6",
+      "vietnamese": "Mina hỏi mỗi tách trà chứa được bao nhiêu lá trà."
+    },
+    {
+      "ordinal": 14,
+      "english": "\"A small spoon works well for one tea cup,\" Grandmother says.",
+      "english_sha256": "c1cedf09ed6719e6870bc2f744ad84e39360929f0c3c08f6e4e2bc8116117ecd",
+      "vietnamese": "“Một thìa nhỏ là vừa cho một tách trà,” bà nói."
+    },
+    {
+      "ordinal": 15,
+      "english": "Mina takes the spoon and counts two small heaps of tea.",
+      "english_sha256": "aaaa094fbbf410f10ada7fefdb3beebec8eb18c980e34ddd9b9ad97355597d22",
+      "vietnamese": "Mina cầm thìa và đong hai phần trà nhỏ vun đầy."
+    },
+    {
+      "ordinal": 16,
+      "english": "A few leaves fall on the table.",
+      "english_sha256": "8485fca4cbc7e0d2081de0a208a88635aa517e0d4b2cfb5e7a65ece713ff48b7",
+      "vietnamese": "Vài lá trà rơi xuống bàn."
+    },
+    {
+      "ordinal": 17,
+      "english": "She laughs as tea leaves fall around the cup.",
+      "english_sha256": "145c8a1bfbb8cdbd52adb27bbd0085dbe5d2e9ee8395295497e86eecb587b7a1",
+      "vietnamese": "Mina cười khi lá trà rơi quanh chiếc tách."
+    },
+    {
+      "ordinal": 18,
+      "english": "Mina sweeps the dry leaves into a bin on the floor.",
+      "english_sha256": "d81dc76a8186b4410aa96b785fcfe4e9a80a758974a03715747a03a54d0fb752",
+      "vietnamese": "Mina quét những lá trà khô vào thùng rác đặt trên sàn."
+    },
+    {
+      "ordinal": 19,
+      "english": "As the kettle warms, they talk about Lan and the old tea stall.",
+      "english_sha256": "22935361085d7d26fc64ec941d4e0207a0c978c5cba614c40ac40e0d504eca69",
+      "vietnamese": "Trong lúc ấm nóng lên, hai bà cháu nói chuyện về Lan và quán trà cũ."
+    },
+    {
+      "ordinal": 20,
+      "english": "Grandmother met Lan at that stall by the school gate over tea.",
+      "english_sha256": "51106f6dd1bb22dbb5252070550832ea603cbbd4a4e6353451d3a6a78ec90663",
+      "vietnamese": "Bà gặp Lan ở quán đó cạnh cổng trường khi hai người cùng uống trà."
+    },
+    {
+      "ordinal": 21,
+      "english": "They sat at the stall after class and shared one cup of tea.",
+      "english_sha256": "7e300e9e7273b62c2ccbdf427012bd9fc85d368118f1073c34035546b437b64c",
+      "vietnamese": "Sau giờ học, họ ngồi ở quán và uống chung một tách trà."
+    },
+    {
+      "ordinal": 22,
+      "english": "After many years apart, Lan visits again for tea.",
+      "english_sha256": "7f85fa554b4f23e0c278c8d939835b763a9554ed338bda7b3446d24ec897338a",
+      "vietnamese": "Sau nhiều năm xa cách, Lan lại đến thăm để uống trà."
+    },
+    {
+      "ordinal": 23,
+      "english": "Mina wonders if Lan remembers their long talks over tea.",
+      "english_sha256": "51df6f9fe776d0c5dab29eadedb4db380655c8a34a081630d8aa6f25940bc785",
+      "vietnamese": "Mina tự hỏi liệu Lan có còn nhớ những cuộc trò chuyện dài bên tách trà của hai người không."
+    },
+    {
+      "ordinal": 24,
+      "english": "A clock on the wall says eleven.",
+      "english_sha256": "e4b3382734bca91f4dda8d6904f22dd817323465b29bdbde77e66e0b229cdf6b",
+      "vietnamese": "Đồng hồ trên tường chỉ mười một giờ."
+    },
+    {
+      "ordinal": 25,
+      "english": "The water for tea is hot, so Grandmother lifts the kettle from the stove.",
+      "english_sha256": "62e5ed98391e3ea4999d066e230d668470b0604ca45e3fc320560ec7467f2127",
+      "vietnamese": "Nước pha trà đã nóng, nên bà nhấc ấm khỏi bếp."
+    },
+    {
+      "ordinal": 26,
+      "english": "She waits a short time before pouring, because a rolling boil can make green tea bitter.",
+      "english_sha256": "a5449af782ccd26888c16959035b075d90193c48bc635bced8217a29b1d8a8c7",
+      "vietnamese": "Bà đợi một lát rồi mới rót, vì nước sôi sùng sục có thể làm trà xanh bị đắng."
+    },
+    {
+      "ordinal": 27,
+      "english": "Mina watches tea fill each cup, one at a time.",
+      "english_sha256": "1ba9336a25683b92df8fc757a030b0f1dcf87245e7f5abe66f2545e9f37767d7",
+      "vietnamese": "Mina nhìn trà được rót lần lượt vào từng tách."
+    },
+    {
+      "ordinal": 28,
+      "english": "The pale tea smells fresh and light.",
+      "english_sha256": "efe4aadc13724dcf81ee7169200ae24b8036dd030024a537048a96e6041c296f",
+      "vietnamese": "Trà màu nhạt có mùi thơm thanh nhẹ."
+    },
+    {
+      "ordinal": 29,
+      "english": "Grandmother asks Mina to carry the tray into the front room.",
+      "english_sha256": "838226cf827f2fcdca9ab2331166ecd306574eadc907aa6bc5f105d9df5a63b2",
+      "vietnamese": "Bà nhờ Mina mang khay vào căn phòng phía trước."
+    },
+    {
+      "ordinal": 30,
+      "english": "Mina holds the tray with both hands and walks slowly across the room.",
+      "english_sha256": "3948fcfe1dbd8340729ed6a57afeb2f9cef9a761d4c66c16a1d9d58053927548",
+      "vietnamese": "Mina giữ khay bằng cả hai tay rồi bước chậm qua phòng."
+    },
+    {
+      "ordinal": 31,
+      "english": "A soft knock sounds on the door.",
+      "english_sha256": "4eaad30c6da867cb4f44b20b599a1cbf4561a0c5303321fde7def54736569d05",
+      "vietnamese": "Có tiếng gõ cửa khẽ."
+    },
+    {
+      "ordinal": 32,
+      "english": "Lan stands at the door with an umbrella and a bag of tea.",
+      "english_sha256": "fe6a037b27d034e43fb16d03afe6fd90ab6f91001def5584a347f8675ff8a96b",
+      "vietnamese": "Lan đứng ngoài cửa, cầm ô và một túi trà."
+    },
+    {
+      "ordinal": 33,
+      "english": "Her hair is wet, but the tea stays warm on the tray.",
+      "english_sha256": "47a4a55754857da080608e9de46d14fe02de1b60b05badd5a7d4934d45e52bf5",
+      "vietnamese": "Tóc Lan ướt, nhưng trà trên khay vẫn còn ấm."
+    },
+    {
+      "ordinal": 34,
+      "english": "Lan smiles when she sees Grandmother in the front room.",
+      "english_sha256": "6587aac9862d9d6fe95757d48b0986acdaaccb14d60895bd6e13a064955825ad",
+      "vietnamese": "Lan mỉm cười khi thấy bà trong phòng phía trước."
+    },
+    {
+      "ordinal": 35,
+      "english": "They hug by the door, then sit at the table and pour tea.",
+      "english_sha256": "89c31882224c30c68fddc32f9ea43a165061fad5e73dc9be6a001922b3786a20",
+      "vietnamese": "Họ ôm nhau bên cửa, rồi ngồi vào bàn và rót trà."
+    },
+    {
+      "ordinal": 36,
+      "english": "Lan puts her bag on the chair and opens it.",
+      "english_sha256": "0a46820fad7248d94aaa49d73069cdda17aa41d2fd23cccfef61b6c06c34870f",
+      "vietnamese": "Lan đặt túi lên ghế rồi mở ra."
+    },
+    {
+      "ordinal": 37,
+      "english": "Lan takes a small photo of the old tea stall from her bag and puts it on the table.",
+      "english_sha256": "fae1a4a0962f647f0bfa9d77deb65365c263e4019de33ac0720921e9d74a78e5",
+      "vietnamese": "Lan lấy một tấm ảnh nhỏ chụp quán trà cũ từ trong túi ra và đặt lên bàn."
+    },
+    {
+      "ordinal": 38,
+      "english": "\"I found it in my desk last week,\" Lan says.",
+      "english_sha256": "a0043a43b17e3e526679fced29e98ea1370376e75d865515d7f47b58f010dfa4",
+      "vietnamese": "“Tuần trước, tôi tìm thấy nó trong bàn làm việc,” Lan nói."
+    },
+    {
+      "ordinal": 39,
+      "english": "Mina looks at the photo on the table.",
+      "english_sha256": "39490f2bfb7c12c140ecb5f926a88b23f3a826c22cbcc71654745c76ecb4b9c0",
+      "vietnamese": "Mina nhìn tấm ảnh trên bàn."
+    },
+    {
+      "ordinal": 40,
+      "english": "Two young women sit at a tea stall and laugh.",
+      "english_sha256": "3e045e643255990d49a5a0f534c430a8258aaf0255e121fe865681d2af9fffa9",
+      "vietnamese": "Hai người phụ nữ trẻ ngồi ở quán trà và cười."
+    },
+    {
+      "ordinal": 41,
+      "english": "Grandmother and Lan look just as happy in the picture.",
+      "english_sha256": "bd4a1f18e1ab80703e7dd16de429f0c5c0ec18109f44342ad3913a5143e25363",
+      "vietnamese": "Trong ảnh, bà và Lan trông cũng vui vẻ như vậy."
+    },
+    {
+      "ordinal": 42,
+      "english": "Mina pours tea for Lan, then takes a seat by the window.",
+      "english_sha256": "4493e5dd8a339925b0e1f7d4fd0a429e5c395f45cdc2a4c665a7f26588c97ad1",
+      "vietnamese": "Mina rót trà cho Lan rồi ngồi xuống cạnh cửa sổ."
+    },
+    {
+      "ordinal": 43,
+      "english": "Lan lifts the cup and smells the tea before she drinks.",
+      "english_sha256": "99ea2e8ad01753c4609cf73035984f83ec8d736e8482ff4230912b119ee4e1e5",
+      "vietnamese": "Lan nâng tách lên và ngửi mùi trà trước khi uống."
+    },
+    {
+      "ordinal": 44,
+      "english": "\"The tea has the same soft taste,\" she says.",
+      "english_sha256": "b23e4e8ecd542a7fc9224d5bdc0d0a0b0d7cecf2f8c2b8ebe9d1d7c370417fa1",
+      "vietnamese": "“Trà vẫn có vị dịu nhẹ như xưa,” Lan nói."
+    },
+    {
+      "ordinal": 45,
+      "english": "Grandmother asks what tea Lan makes in her new flat.",
+      "english_sha256": "6a1b26b0b93a4862096991ff062f36b2029e0a91d1b3b082a722dc7e55e4e594",
+      "vietnamese": "Bà hỏi Lan pha loại trà nào trong căn hộ mới."
+    },
+    {
+      "ordinal": 46,
+      "english": "Lan tells them about her garden and tea with a neighbor.",
+      "english_sha256": "17853447011b49f4226028eeae9f3c84d5d25748ba4722b1800f1a74f427cdeb",
+      "vietnamese": "Lan kể cho hai bà cháu nghe về khu vườn của mình và những lần uống trà với một người hàng xóm."
+    },
+    {
+      "ordinal": 47,
+      "english": "Mina listens while she drinks her tea.",
+      "english_sha256": "47ac1cf970b30a52152f57231fd63a175ef812778c0161a8c84db03abb3df806",
+      "vietnamese": "Mina vừa nghe vừa uống trà."
+    },
+    {
+      "ordinal": 48,
+      "english": "The story makes the room feel bright, even as rain taps on the window.",
+      "english_sha256": "e63d89dd1aabd8a8e79c88c7f8b8c76d2001d8f013e79124460d99ce828511e6",
+      "vietnamese": "Câu chuyện khiến căn phòng như sáng bừng lên, dù mưa đang gõ nhẹ lên cửa sổ."
+    },
+    {
+      "ordinal": 49,
+      "english": "Lan asks Mina which books she reads, and Mina answers over tea.",
+      "english_sha256": "a5c13ec7a3c58217fe36cd0fd91cb47e75ec04aa2f5396fd521cd0aa21e78fee",
+      "vietnamese": "Lan hỏi Mina đọc những cuốn sách nào, và Mina trả lời trong lúc uống trà."
+    },
+    {
+      "ordinal": 50,
+      "english": "Mina tells her about a book while the tea cools on the table.",
+      "english_sha256": "e2f542c91fccb308623208eab56ebd479011287ae7826675d9b1454353972779",
+      "vietnamese": "Mina kể cho Lan nghe về một cuốn sách khi trà nguội dần trên bàn."
+    },
+    {
+      "ordinal": 51,
+      "english": "Lan knows that story, too, and names the next book while rain taps on the window.",
+      "english_sha256": "4a6c00654f47a79fd24d037353ce2fc77cb430ee2d57f46bab2fdb375c6f7198",
+      "vietnamese": "Lan cũng biết câu chuyện đó và nói tên cuốn sách tiếp theo trong khi mưa gõ lên cửa sổ."
+    },
+    {
+      "ordinal": 52,
+      "english": "Mina writes the title on a paper strip beside her tea cup.",
+      "english_sha256": "a835a91457ab14ca711b485aef51c1e04296636527a4a276ca3d5f14957d8e4a",
+      "vietnamese": "Mina viết tên sách lên một mảnh giấy cạnh tách trà."
+    },
+    {
+      "ordinal": 53,
+      "english": "The women share tea and talk about small things for a long time.",
+      "english_sha256": "d86bd8761f92835351eb1dbe417c2beeee5e01906754efeec27b438ec5bd4380",
+      "vietnamese": "Hai người phụ nữ cùng uống trà và trò chuyện rất lâu về những điều nhỏ nhặt."
+    },
+    {
+      "ordinal": 54,
+      "english": "No one checks the clock on the wall.",
+      "english_sha256": "fcb8ce79c2e8e7a709bbae906e75e02587d49c8bf3c3afcc9b5e0052ae9f1276",
+      "vietnamese": "Không ai nhìn đồng hồ trên tường."
+    },
+    {
+      "ordinal": 55,
+      "english": "When the tea is gone, Grandmother offers another cup.",
+      "english_sha256": "f1572da91285dc5d916a68afb5f06e25249031ef60daaeb2b13a8e0d2d373038",
+      "vietnamese": "Khi trà đã hết, bà mời thêm một tách nữa."
+    },
+    {
+      "ordinal": 56,
+      "english": "Lan says yes to another cup of tea, and Mina prepares it.",
+      "english_sha256": "f41c879c6839e3e52eab8df777d0c44b5c3c4d625ceddd34c1464a39c09f702b",
+      "vietnamese": "Lan đồng ý uống thêm một tách trà, rồi Mina chuẩn bị."
+    },
+    {
+      "ordinal": 57,
+      "english": "She measures the tea leaves, waits for the kettle, and pours slowly.",
+      "english_sha256": "50ba43788fece86d5488b8f1978ab2875bb2378e8b7db2542302958ff231989d",
+      "vietnamese": "Mina đong lá trà, đợi nước trong ấm nóng lên rồi rót thật chậm."
+    },
+    {
+      "ordinal": 58,
+      "english": "The tea is not too strong this time.",
+      "english_sha256": "6e22a8ea5712a1e446852a98b1aac51502eca8885c250093fe8855b7fcbe90a9",
+      "vietnamese": "Lần này trà không quá đậm."
+    },
+    {
+      "ordinal": 59,
+      "english": "Lan says Mina makes a fine cup of tea.",
+      "english_sha256": "6c2a4a7bc1b78f719d30e36ccf83b4c6535a5593c35c517488afdc5735e892f3",
+      "vietnamese": "Lan nói Mina pha được một tách trà ngon."
+    },
+    {
+      "ordinal": 60,
+      "english": "Mina feels proud of the tea, but she knows she can learn more.",
+      "english_sha256": "eb29c5a63139f526c47318d8995e6eb06dbd916ced9b3d338f539a00d1eecf5d",
+      "vietnamese": "Mina tự hào về tách trà mình pha, nhưng biết mình vẫn có thể học thêm."
+    },
+    {
+      "ordinal": 61,
+      "english": "Before Lan leaves, they set a day for the next tea visit.",
+      "english_sha256": "f5ebb86bec30ef2f33ebd2de0c9c5f77726e607d54df14547ea207c1914d133e",
+      "vietnamese": "Trước khi Lan về, họ hẹn ngày gặp nhau uống trà lần tới."
+    },
+    {
+      "ordinal": 62,
+      "english": "Lan takes her bag but leaves the photo on the table for Mina.",
+      "english_sha256": "3de7badd49070c394a683e9c41e8bd014fae53caf8aa9f60e3b4f8a7db79d98d",
+      "vietnamese": "Lan mang túi đi nhưng để lại tấm ảnh trên bàn cho Mina."
+    },
+    {
+      "ordinal": 63,
+      "english": "Mina puts the photo in her school bag beside the paper strip with the book title.",
+      "english_sha256": "24fb2ea8e6bb068d1c6b5d796701b28ecf920e17b4fcfb0d55f82c28ebf70e59",
+      "vietnamese": "Mina bỏ tấm ảnh vào cặp đi học, cạnh mảnh giấy ghi tên sách."
+    },
+    {
+      "ordinal": 64,
+      "english": "The rain ends, and sun comes into the room.",
+      "english_sha256": "4c737bedb12a22772edb71364ed498ca4a6737979dfbfd0ff8871c0371611a70",
+      "vietnamese": "Mưa tạnh, nắng tràn vào phòng."
+    },
+    {
+      "ordinal": 65,
+      "english": "Lan waves from the gate as Mina stands in the doorway.",
+      "english_sha256": "96c08dfdf220595e14c41eadade79919b4f8aa00424bc46ffb3569cd136a90a8",
+      "vietnamese": "Lan vẫy tay ở cổng khi Mina đứng nơi cửa ra vào."
+    },
+    {
+      "ordinal": 66,
+      "english": "Mina clears the cups and washes the tea pot.",
+      "english_sha256": "5c01d1822cd1928970f0dbf67e4920b2ec593ec805ec8f0c8927f2ffc94fc232",
+      "vietnamese": "Mina dọn các tách rồi rửa ấm trà."
+    },
+    {
+      "ordinal": 67,
+      "english": "Grandmother says the visit and shared tea make the day special.",
+      "english_sha256": "58eb060a9ab552a220971427baafee17d69d0af3f2c687d0730d46a476f5a5e0",
+      "vietnamese": "Bà nói chuyến thăm và việc cùng uống trà khiến ngày hôm đó trở nên đặc biệt."
+    },
+    {
+      "ordinal": 68,
+      "english": "Mina asks if she can make tea again next Sunday.",
+      "english_sha256": "2bcfc18eae88436b414bccc571acafac69372bbc3251326b1c227e8853a7b6ac",
+      "vietnamese": "Mina hỏi liệu Chủ nhật tới mình có thể pha trà lần nữa không."
+    },
+    {
+      "ordinal": 69,
+      "english": "Grandmother nods and saves the blue tin on the shelf.",
+      "english_sha256": "60b95f5a90826f25c678fd60b7a788c0f9c60a417b3285d20f2837d6725653a3",
+      "vietnamese": "Bà gật đầu rồi cất hộp thiếc xanh lên kệ."
+    },
+    {
+      "ordinal": 70,
+      "english": "On Mina's walk across town, she thinks about Lan's stories and tea.",
+      "english_sha256": "f67fce88f71d4e4f9712423b0444170f0434fec91f9771a54362b3f1edc589ad",
+      "vietnamese": "Trên đường đi bộ qua thị trấn, Mina nghĩ về những câu chuyện của Lan và trà."
+    },
+    {
+      "ordinal": 71,
+      "english": "She knows how to make the tea now, but she likes the talk best.",
+      "english_sha256": "5d892b907e70d62f58994373ff4863f2f2245bd4205d36c9be8808cc0d0f9862",
+      "vietnamese": "Giờ Mina đã biết cách pha trà, nhưng thích trò chuyện nhất."
+    },
+    {
+      "ordinal": 72,
+      "english": "After the visit, she tells her mother about Lan over one more cup of tea.",
+      "english_sha256": "4e9148ffe69c015e8936931f3390251b31848ca3403ee65a582451bcba889842",
+      "vietnamese": "Sau chuyến thăm, Mina kể với mẹ về Lan bên một tách trà nữa."
+    }
+  ],
+  "limitations": [
+    "Not an Admin API payload; current Admin request contract cannot ingest these translations.",
+    "No new live content identity has been created.",
+    "Original published content and learner references must remain untouched; no retirement is authorized.",
+    "A1 is an existing curated label, not a newly verified level-fit claim."
+  ]
+}

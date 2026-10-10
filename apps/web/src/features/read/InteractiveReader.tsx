@@ -22,6 +22,7 @@ import { getApiClient } from '../../lib/api/client';
 export interface InteractiveReaderProps {
   readonly apiClient?: ApiClient;
   readonly passage?: ReaderPassage;
+  readonly requestedContentId?: string | null;
   readonly forcedState?: 'loading' | 'empty' | 'error' | 'success';
   readonly forcedErrorCode?: ApiErrorCode;
   readonly onSaveWord?: (token: TokenItem) => void;
@@ -30,6 +31,7 @@ export interface InteractiveReaderProps {
 export function InteractiveReader({
   apiClient,
   passage: initialPassage,
+  requestedContentId,
   forcedState = 'success',
   forcedErrorCode = 'INTERNAL_ERROR',
   onSaveWord,
@@ -39,6 +41,7 @@ export function InteractiveReader({
   const [savedWordNotice, setSavedWordNotice] = useState<string | null>(null);
   const [revealedSentenceIds, setRevealedSentenceIds] = useState<ReadonlySet<string>>(() => new Set());
   const [usesSampleTransport, setUsesSampleTransport] = useState(false);
+  const lastNotifiedSaveRef = useRef<string | null>(null);
   const inspectorCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const inspectorWasOpenRef = useRef(false);
@@ -47,6 +50,7 @@ export function InteractiveReader({
   const reader = useReaderSession({
     ...(apiClient ? { apiClient } : {}),
     ...(initialPassage ? { initialPassage } : {}),
+    ...(requestedContentId !== undefined ? { requestedContentId } : {}),
     enabled: presentationState === 'success',
   });
 
@@ -55,7 +59,19 @@ export function InteractiveReader({
 
   useEffect(() => {
     setRevealedSentenceIds(new Set());
+    setSavedWordNotice(null);
+    lastNotifiedSaveRef.current = null;
   }, [passage?.id]);
+
+  useEffect(() => {
+    const token = reader.selectedToken;
+    if (!passage || !token?.conceptId || !reader.savedConceptIds.has(token.conceptId)) return;
+    const noticeIdentity = `${passage.id}:${token.conceptId}`;
+    if (lastNotifiedSaveRef.current === noticeIdentity) return;
+    lastNotifiedSaveRef.current = noticeIdentity;
+    setSavedWordNotice(`Đã lưu “${token.raw}” để học`);
+    onSaveWord?.(token);
+  }, [onSaveWord, passage, reader.savedConceptIds, reader.selectedToken]);
 
   useEffect(() => {
     if (!initialPassage) setUsesSampleTransport((apiClient ?? getApiClient()) instanceof MockApiClient);
@@ -94,7 +110,9 @@ export function InteractiveReader({
       <ErrorState
         code={reader.error?.code ?? forcedErrorCode}
         title="Không thể tải bài đọc"
-        description="Không thể kết nối kho nội dung lúc này. Vui lòng thử lại."
+        description={requestedContentId !== undefined
+          ? 'Bài đọc này không khả dụng hoặc không thể tải lúc này. Vui lòng thử lại.'
+          : 'Không thể kết nối kho nội dung lúc này. Vui lòng thử lại.'}
         onRetry={() => {
           if (presentationState !== 'success') setPresentationState('success');
           else reader.retry();
@@ -140,6 +158,10 @@ export function InteractiveReader({
         </div>
         <Image src="/assets/reader-tea-book.png" alt="" aria-hidden="true" width={270} height={190} className="h-auto w-[34%] max-w-[175px] shrink-0 object-contain" />
       </header>
+
+      <p role="note" className="rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-sm leading-5 text-[var(--text-secondary)]">
+        Chạm từ được gạch dưới để tra từ. Muốn chủ động học một từ, chọn “Lưu vào ôn tập”; lưu câu hoặc bài chỉ là dấu trang.
+      </p>
 
       {passage.progress && (
         <div className="flex min-w-0 items-center gap-3 px-1">
@@ -191,7 +213,13 @@ export function InteractiveReader({
 
       {savedWordNotice && (
         <InlineAlert variant="success" title={savedWordNotice}>
-          Mở Brain để xem trạng thái của từ.
+          <Link
+            href="/review"
+            prefetch={false}
+            className="inline-flex min-h-11 items-center rounded-lg font-semibold text-[var(--action-primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          >
+            Xem từ đến hạn ôn
+          </Link>
         </InlineAlert>
       )}
 
@@ -290,6 +318,19 @@ export function InteractiveReader({
           })}
         </div>
 
+        {passage.progress?.isCompleted && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 px-4 py-3">
+            <p className="text-sm text-[var(--text-secondary)]">Bài đọc đã hoàn thành. Bạn có thể xem hoạt động trong kế hoạch hôm nay.</p>
+            <Link
+              href="/today"
+              prefetch={false}
+              className="inline-flex min-h-11 items-center rounded-lg font-semibold text-[var(--action-primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            >
+              Xem kế hoạch hôm nay
+            </Link>
+          </div>
+        )}
+
         {passage.attribution && (
           <footer className="border-t border-[var(--border-subtle)] bg-[var(--surface-subtle)]/45 px-4 py-4 text-xs leading-5 text-[var(--text-muted)] sm:px-7">
             <p>{passage.attribution.attributionText}</p>
@@ -348,12 +389,7 @@ export function InteractiveReader({
                 size="sm"
                 leftIcon={<Plus className="h-3.5 w-3.5" />}
                 disabled={!selectedToken.conceptId || reader.inspecting || reader.busyKeys.has(`concept:${selectedToken.conceptId}`)}
-                onClick={() => void reader.saveConcept(selectedToken).then((saved) => {
-                  if (saved) {
-                    setSavedWordNotice(`Đã lưu “${selectedToken.raw}” để học`);
-                    onSaveWord?.(selectedToken);
-                  }
-                })}
+                onClick={() => void reader.saveConcept(selectedToken)}
               >
                 Lưu vào ôn tập
               </Button>

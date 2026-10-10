@@ -60,6 +60,7 @@ jobs:
           tests/acceptance/support/browser_actor_switch.test.ts
           tests/acceptance/support/k2_playwright_network.test.ts
           tests/acceptance/support/k2_hosted_workflow_security.test.ts
+          tests/acceptance/support/pilot_reader_hosted_runner.test.ts
           tests/frontend/k2-vercel-attestation.test.ts
           --maxWorkers=1
       - name: Typecheck hosted acceptance harness
@@ -67,4 +68,9 @@ jobs:
       - name: Typecheck workspace contracts and packages
         run: pnpm typecheck
       - name: Run read-only hosted probe tests
-        run: python -m pytest -q tests/acceptance/support/test_k2_hosted_probe.py
+        env:
+          DB_LOCALONLY: '1'
+        run: >-
+          python -m pytest -q
+          tests/acceptance/support/test_k2_hosted_probe.py
+          tests/backend/database/test_pilot_reader_catalog_probe.py

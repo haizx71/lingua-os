@@ -50,8 +50,22 @@ class AdminSentenceProjection:
     id: UUID
     order: int
     text: str
+    translation_vi: str | None
     concept_count: int
     concepts: tuple[AdminSentenceConceptProjection, ...]
+
+
+@dataclass(frozen=True)
+class AdminVietnameseTranslationSourceProjection:
+    target_language_code: str
+    author_name: str
+    source_name: str
+    source_version: str
+    license_code: str
+    attribution_text: str
+    rights_statement: str
+    source_record_key: str
+    raw_hash: str
 
 
 @dataclass(frozen=True)
@@ -71,6 +85,7 @@ class AdminContentProjection:
     rights_statement: str
     source_record_key: str
     raw_hash: str
+    translation_source: AdminVietnameseTranslationSourceProjection | None
     sentences: tuple[AdminSentenceProjection, ...]
     published_at: datetime | None
     created_at: datetime

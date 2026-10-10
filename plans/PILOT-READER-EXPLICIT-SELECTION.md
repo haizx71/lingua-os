@@ -1,0 +1,34 @@
+# PILOT-005 — Explicit Reader Content Selection
+
+**Prepared:** 2026-10-10 (Asia/Saigon)  
+**State:** source-confirmed and reproduced in an isolated pre-fix regression; bounded plan review passed. Final severity is P2 product scope. The owner authorized this narrow P2 exception on 2026-10-10 after a specific request. An isolated implementation worker is assigned; no source change is yet verified. Normal independent source review, exact-head CI/Preview and promotion gates still apply.
+
+## Finding
+
+The Reader route currently ignores a requested content identity. `apps/web/src/app/read/page.tsx` renders `InteractiveReader` without reading the page query. `useReaderSession` loads the active English profile, requests recommendations, and always selects `recommendations.data[0]` before calling the existing `getContent(id)` method. Therefore `/read?contentId=…` does not currently select that item; it can silently open the first recommendation instead. The Library's per-item “Mở trong Reader” link points to `/read` without an ID. Today retains an optional `contentId` in its view model, but its read/listen target is the static `/read` route and drops that ID. Existing recommendation order is learner-state-derived; it does not guarantee that a newly published same-level article is first.
+
+An isolated pre-fix regression using the real `/read` page and a synthetic authenticated actor reproduced the mismatch: with a second article requested, the page rendered the first recommendation. This confirms the implementation gap, not a production learner outcome or severity. The final Max scope decision classifies this as a **P2 product gap** in the explicit-selection slice. The owner authorized this narrow P2 exception on 2026-10-10 after a specific request. An isolated implementation worker is assigned; no source change or learner benefit is verified yet.
+
+## Bounded proposal
+
+Add optional requested-content selection to the existing Reader route and session hook. Pass `requestedContentId?: string | null` as an ephemeral route prop: `undefined` is reserved for an absent query and preserves recommendation mode; a supplied value remains a string for validation, including blank values; `null` represents a duplicate `contentId` selector and fails closed. `ReadPage` should await the existing Next.js 15 `searchParams` promise, map duplicate values to `null`, and never trim malformed or blank input into a valid ID. Accept one bounded UUID shape only; normalize valid hex case only if needed for server UUID consistency, and require the returned `summary.id` to match the canonical requested identity. When a valid `contentId` query is present, fetch that identity through the existing `ApiClient.getContent(id)` / `GET /v1/content/{contentId}` path. Keep the server's current active-profile and published-content checks unchanged. If the query is absent, preserve the current recommendation-first flow exactly.
+
+For a requested identity, malformed, duplicate, inaccessible, unpublished, retired, or mismatched content must show a clear unavailable/error state with retry; never fall back to a different recommendation. Include selected content identity, actor epoch/identity, active language profile and a per-operation sequence in the identity guard for the load and every asynchronous lookup, bookmark/save, exposure and progress action. Each action captures the displayed passage ID and active profile at invocation and keeps those values unchanged in its request. Every success, error and `finally` path that writes view state—including passage/progress, action error, inspector and busy-key state—must verify the captured actor, profile, content and operation identity. If an A request was already sent when the route changes to B, it may complete only against captured A; its late result must not update B, and its cleanup must not clear B's busy state. Do not cancel or resend a learner mutation in a way that changes existing persistence or idempotency behavior. Route changes, retry, logout, actor switch and profile changes invalidate the relevant stale responses. Preserve existing saved-content/bookmark behavior.
+
+Pass the selected `contentId` through existing Library content “open in Reader” and Today read/listen actions only when the source action already has an ID. Leave generic `/read` and actions without an ID in recommendation mode. Encode the ID as a URL query value. Add no controls, API fields/endpoints, contract/schema/RLS/role changes, recommendation ranking changes, or persistent learning behavior.
+
+## Regression and review gates
+
+The isolated pre-fix regression and bounded plan review are recorded in [the independent plan review](../reviews/PILOT-READER-EXPLICIT-SELECTION-PLAN-REVIEW.md). Implementation may begin only after the owner grants the specific P2 exception and the implementation interface is separately approved. Focused tests should cover:
+
+1. Requested content bypasses recommendations and loads through `getContent`; absent query preserves the exact default recommendation behavior.
+2. Malformed/duplicate ID, inaccessible or unpublished/retired content, and response identity mismatch fail closed without recommendation fallback.
+3. Route change, retry, same-actor language change, actor switch or logout cannot apply stale load or any lookup/save/exposure/progress success/error/finally state. Exercise an in-flight lookup and content/sentence save plus progress/exposure across A→B: requests remain bound to captured A; late responses, inspector/error/progress/saved-state updates, and cleanup cannot alter B or clear B busy state.
+4. Library and Today links encode the existing content ID where available; actions without one remain generic. Bookmark/progress actions target the displayed article.
+5. An isolated end-to-end route test verifies the requested item through the current page query and UI, without hosted services or a real learner.
+
+Relevant existing seams: `tests/frontend/task-read-001-reader-live.test.tsx` covers recommendation-first loading, empty state, retry, and actor-stale responses; extend its existing test harness rather than creating hosted or real-learner activity. The existing `getContent` client and published detail endpoint are sufficient; no API or data change is proposed.
+
+## Scope boundary
+
+This proposal is independent of PILOT-003 content translation/publication. It becomes useful when a user explicitly chooses an item, including a newly published 72-sentence Vietnamese translation, but does not claim that item will become the default recommendation. No hosted UI, learner read/write, or production latency/learning outcome was observed for this finding. Existing accepted Reader/Library boundaries treat content browsing/selection as a separate product slice; this plan does not reopen those accepted tasks or change K2.

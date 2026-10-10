@@ -65,7 +65,7 @@ function createMockSupabase(initialSession: Session | null = session(userA, 'a')
   return client as unknown as SupabaseClient & { switchUser(next: Session | null): void };
 }
 
-function makeContent(title = 'Live Reader Story', withProgress = false): ContentResponseDto {
+function makeContent(title = 'Live Reader Story', withProgress = false, isCompleted = false): ContentResponseDto {
   const base = structuredClone(mockContentResponse) as ContentResponseDto;
   return {
     ...base,
@@ -83,7 +83,7 @@ function makeContent(title = 'Live Reader Story', withProgress = false): Content
                 currentSegmentId: IDS.segment2,
                 furthestSegmentId: IDS.segment2,
                 progressPercent: 50,
-                isCompleted: false,
+                isCompleted,
                 startedAt: '2026-09-14T01:00:00Z',
                 lastOpenedAt: '2026-09-14T01:05:00Z',
               },
@@ -185,6 +185,8 @@ describe('TASK-READ-001 Reader live integration', () => {
     await renderLive(api);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Live Reader Story' })).toBeInTheDocument();
+    expect(screen.getByText(/Chạm từ được gạch dưới để tra từ/)).toBeInTheDocument();
+    expect(screen.getByText(/lưu câu hoặc bài chỉ là dấu trang/)).toBeInTheDocument();
     const segments = screen.getAllByTestId('reader-segment');
     expect(segments.map((node) => node.getAttribute('data-segment-id'))).toEqual([
       IDS.segment1,
@@ -293,11 +295,14 @@ describe('TASK-READ-001 Reader live integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Lưu bài đọc' }));
     await waitFor(() => expect(saveContent).toHaveBeenCalledWith(IDS.content));
+    expect(screen.queryByRole('link', { name: 'Xem từ đến hạn ôn' })).not.toBeInTheDocument();
   });
 
   it('READ-LIVE-07 explicit concept Save/Learn uses only the canonical Library concept endpoint', async () => {
     const api = new MockApiClient();
     installHappyPath(api);
+    const getTodayPlan = vi.spyOn(api, 'getTodayPlan');
+    const listReviewQueue = vi.spyOn(api, 'listReviewQueue');
     vi.spyOn(api, 'recordReaderExposure').mockResolvedValue(mockApiResponses.readerExposure);
     const saveConcept = vi.spyOn(api, 'saveConceptToLibrary').mockResolvedValue({
       ...mockApiResponses.libraryMutation,
@@ -307,6 +312,105 @@ describe('TASK-READ-001 Reader live integration', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'appointment' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Lưu vào ôn tập' }));
     await waitFor(() => expect(saveConcept).toHaveBeenCalledWith(IDS.conceptA));
+    const reviewLink = await screen.findByRole('link', { name: 'Xem từ đến hạn ôn' });
+    expect(reviewLink).toHaveAttribute('href', '/review');
+    expect(getTodayPlan).not.toHaveBeenCalled();
+    expect(listReviewQueue).not.toHaveBeenCalled();
+  });
+
+  it('READ-LIVE-07A does not offer review progression when concept Save/Learn fails', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api);
+    const getTodayPlan = vi.spyOn(api, 'getTodayPlan');
+    const listReviewQueue = vi.spyOn(api, 'listReviewQueue');
+    vi.spyOn(api, 'recordReaderExposure').mockResolvedValue(mockApiResponses.readerExposure);
+    const saveConcept = vi.spyOn(api, 'saveConceptToLibrary').mockRejectedValue(new Error('save failed'));
+    const updateProgress = vi.spyOn(api, 'updateReaderProgress');
+    await renderLive(api);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'appointment' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Lưu vào ôn tập' }));
+    expect(await screen.findByText('Không thể lưu từ vựng')).toBeInTheDocument();
+    expect(saveConcept).toHaveBeenCalledWith(IDS.conceptA);
+    expect(screen.queryByRole('link', { name: 'Xem từ đến hạn ôn' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Đã lưu “appointment” để học/)).not.toBeInTheDocument();
+    expect(updateProgress).not.toHaveBeenCalled();
+    expect(getTodayPlan).not.toHaveBeenCalled();
+    expect(listReviewQueue).not.toHaveBeenCalled();
+  });
+
+  it('READ-LIVE-07B shows the Today link only for server-confirmed reading completion', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api);
+    const getTodayPlan = vi.spyOn(api, 'getTodayPlan');
+    const listReviewQueue = vi.spyOn(api, 'listReviewQueue');
+    vi.spyOn(api, 'recordReaderExposure').mockResolvedValue(mockApiResponses.readerExposure);
+    const updateProgress = vi.spyOn(api, 'updateReaderProgress').mockResolvedValue({
+      ...mockApiResponses.readingProgress,
+      data: {
+        ...mockApiResponses.readingProgress.data,
+        contentId: IDS.content,
+        currentSegmentId: IDS.segment2,
+        furthestSegmentId: IDS.segment2,
+        progressPercent: 100,
+        isCompleted: true,
+      },
+    });
+    await renderLive(api);
+
+    expect(screen.queryByRole('link', { name: 'Xem kế hoạch hôm nay' })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Hoàn thành bài đọc' }));
+    const todayLink = await screen.findByRole('link', { name: 'Xem kế hoạch hôm nay' });
+    expect(todayLink).toHaveAttribute('href', '/today');
+    expect(updateProgress).toHaveBeenCalledWith(expect.objectContaining({
+      contentId: IDS.content,
+      body: expect.objectContaining({ currentSegmentId: IDS.segment2, isCompleted: true }),
+    }));
+    expect(getTodayPlan).not.toHaveBeenCalled();
+    expect(listReviewQueue).not.toHaveBeenCalled();
+  });
+
+  it('READ-LIVE-07C does not show Today guidance for unread or incomplete server progress', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api, makeContent('Unfinished Story', true, false));
+    const getTodayPlan = vi.spyOn(api, 'getTodayPlan');
+    await renderLive(api);
+
+    expect(await screen.findByRole('heading', { name: 'Unfinished Story' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Xem kế hoạch hôm nay' })).not.toBeInTheDocument();
+    expect(getTodayPlan).not.toHaveBeenCalled();
+  });
+
+  it('READ-LIVE-07D revealing a supplied sentence translation does not activate learning', async () => {
+    const api = new MockApiClient();
+    const original = makeContent();
+    const content: ContentResponseDto = {
+      ...original,
+      data: {
+        ...original.data,
+        segments: original.data.segments.map((segment, index) => index === 1
+          ? {
+              ...segment,
+              sentences: segment.sentences.map((sentence, sentenceIndex) => sentenceIndex === 0
+                ? { ...sentence, translation: '' }
+                : sentence),
+            }
+          : segment),
+      },
+    };
+    installHappyPath(api, content);
+    const exposure = vi.spyOn(api, 'recordReaderExposure');
+    const getConcept = vi.spyOn(api, 'getConcept');
+    const saveConcept = vi.spyOn(api, 'saveConceptToLibrary');
+    await renderLive(api);
+
+    expect(screen.getAllByRole('button', { name: 'Xem nghĩa câu' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Xem nghĩa câu' }));
+    expect(await screen.findByText('cuộc hẹn đầu tiên')).toBeInTheDocument();
+    expect(screen.queryByText('rảnh ở đoạn thứ hai')).not.toBeInTheDocument();
+    expect(exposure).not.toHaveBeenCalled();
+    expect(getConcept).not.toHaveBeenCalled();
+    expect(saveConcept).not.toHaveBeenCalled();
   });
 
   it('READ-LIVE-08 restores server progress after remount without local persistence', async () => {

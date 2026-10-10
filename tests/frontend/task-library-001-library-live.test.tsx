@@ -82,6 +82,11 @@ describe('TASK-LIBRARY-001 Library live integration', () => {
     expect(screen.getByText('I made an appointment.')).toBeInTheDocument();
     expect(screen.getByText('Tôi đã đặt một cuộc hẹn.')).toBeInTheDocument();
     expect(screen.getByText('A real saved article')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Mở trong Reader' })).toHaveAttribute(
+      'href',
+      `/read?contentId=${encodeURIComponent(items()[2]!.content.id)}`,
+    );
+    expect(screen.getByRole('link', { name: 'Đọc bài mới' })).toHaveAttribute('href', '/read');
   });
 
   it('LIB-LIVE-02 traverses every opaque cursor page without sorting it', async () => {

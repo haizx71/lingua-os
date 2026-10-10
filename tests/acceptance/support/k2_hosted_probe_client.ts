@@ -37,6 +37,8 @@ export type K2RetainedTableName = (typeof EXPECTED_TABLES)[number];
 export type K2ProbeAction =
   | 'retained_snapshot'
   | 'actor_snapshot'
+  | 'pilot_reader_catalog_manifest'
+  | 'pilot_reader_completion'
   | 'actor_lineage'
   | 'today_review_targets'
   | 'migrations'
@@ -83,6 +85,76 @@ export type K2HostedTodayReviewTargets = Readonly<{
   reviewActivityCount: number;
   targetCount: number;
   reviewItemIds: readonly string[];
+}>;
+export type PilotReaderCatalogManifestProof = Readonly<{
+  contentId: string;
+  contentCount: 1;
+  segmentCount: 72;
+  sentenceCount: 72;
+  translationCount: 72;
+  conceptCount: number;
+  candidateSha256: '25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f';
+  bodySha256: '180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e';
+  translationSha256: string;
+  pairSha256: string;
+  contentProvenance: Readonly<{
+    authorMatched: true;
+    sourceNameMatched: true;
+    sourceVersionMatched: true;
+    attributionMatched: true;
+    rightsStatementMatched: true;
+    approved: true;
+    firstPartySource: true;
+    firstPartyLicense: true;
+  }>;
+  translationProvenance: Readonly<{
+    sourceRecordCount: 1;
+    authorMatched: true;
+    sourceNameMatched: true;
+    sourceVersionMatched: true;
+    attributionMatched: true;
+    rightsStatementMatched: true;
+    approved: true;
+    firstPartySource: true;
+    firstPartyLicense: true;
+  }>;
+}>;
+export type PilotReaderCompletionBinding = Readonly<{
+  phase: 'before' | 'after';
+  contentId: string;
+  segmentId: string;
+  exposureId?: string;
+  projectionHeadBefore?: Readonly<{ stateVersion: number; nextIngestionSequence: number }>;
+}>;
+export type PilotReaderCompletionProof = Readonly<{
+  phase: 'before' | 'after';
+  eligibleConceptIds: readonly string[];
+  exposureEventIds: readonly string[];
+  linkedConceptIds: readonly string[];
+  learningConceptIds: readonly string[];
+  conceptStates: readonly Readonly<{
+    conceptId: string;
+    status: 'discovered';
+    exposureCount: 1;
+    passiveOnly: true;
+  }>[];
+  skillStateCount: 3;
+  skillNames: readonly ['listening', 'production', 'recognition'];
+  skillStatesPassiveOnly: true;
+  projectionHead: Readonly<{
+    rowCount: 1;
+    stateVersion: number;
+    nextIngestionSequence: number;
+    parameterVersion: string;
+    immutableSha256: string;
+    updatedAtMatchesCompletion: boolean | null;
+  }>;
+  stableRows: Readonly<{
+    exposure_events: Readonly<{ rows: number; sha256: string }>;
+    learning_events: Readonly<{ rows: number; sha256: string }>;
+    reader_exposure_concepts: Readonly<{ rows: number; sha256: string }>;
+    user_concept_states: Readonly<{ rows: number; sha256: string }>;
+  }>;
 }>;
 export type K2FrllDimensionProof = Readonly<{
   score: string | null;
@@ -199,6 +271,8 @@ export const K2_APPROVED_APP_MIGRATION_HEAD = '0021' as const;
 const K2_APPROVED_APP_MIGRATION_COUNT = 21 as const;
 export type K2HostedProbeResult =
   | K2RetainedSnapshot
+  | PilotReaderCatalogManifestProof
+  | PilotReaderCompletionProof
   | K2HostedAnchorMaterial
   | K2HostedActorLineageProof
   | K2HostedTodayReviewTargets
@@ -530,6 +604,112 @@ export function parseK2HostedCatalogPreflight(value: unknown) {
   };
 }
 
+export function parsePilotReaderCatalogManifestProof(value: unknown): PilotReaderCatalogManifestProof {
+  const message = 'K2 hosted acceptance Reader catalog manifest proof was invalid.';
+  const root = exactRecord(value, [
+    'bodySha256', 'candidateSha256', 'conceptCount', 'contentCount', 'contentId', 'contentProvenance',
+    'pairSha256', 'segmentCount', 'sentenceCount', 'translationCount', 'translationProvenance',
+    'translationSha256',
+  ], message);
+  if (typeof root.contentId !== 'string' || !UUID_RE.test(root.contentId) ||
+      root.contentCount !== 1 || root.segmentCount !== 72 || root.sentenceCount !== 72 ||
+      root.translationCount !== 72 || !isSafeCount(root.conceptCount) || root.conceptCount < 1 ||
+      root.candidateSha256 !== '25bad1e7e228211508477937752fb647696dc3cf1c76cd2fce53a7f81609b19f' ||
+      root.bodySha256 !== '180a51f21f5e26e43d49abcf2a828ae3b6b72a04671c101fbf1dfb5d7cd93e5e' ||
+      typeof root.translationSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(root.translationSha256) ||
+      typeof root.pairSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(root.pairSha256)) {
+    throw new Error(message);
+  }
+  const contentProvenance = exactRecord(root.contentProvenance, [
+    'approved', 'attributionMatched', 'authorMatched', 'firstPartyLicense', 'firstPartySource',
+    'rightsStatementMatched', 'sourceNameMatched', 'sourceVersionMatched',
+  ], message);
+  const translationProvenance = exactRecord(root.translationProvenance, [
+    'approved', 'attributionMatched', 'authorMatched', 'firstPartyLicense', 'firstPartySource',
+    'rightsStatementMatched', 'sourceNameMatched', 'sourceRecordCount', 'sourceVersionMatched',
+  ], message);
+  const { sourceRecordCount, ...translationFlags } = translationProvenance;
+  if (Object.values(contentProvenance).some(value => value !== true) ||
+      sourceRecordCount !== 1 || Object.values(translationFlags).some(value => value !== true)) {
+    throw new Error(message);
+  }
+  return value as PilotReaderCatalogManifestProof;
+}
+
+export function parsePilotReaderCompletionProof(value: unknown): PilotReaderCompletionProof {
+  const message = 'K2 hosted acceptance Reader completion proof was invalid.';
+  const root = exactRecord(value, [
+    'conceptStates', 'eligibleConceptIds', 'exposureEventIds', 'learningConceptIds',
+    'linkedConceptIds', 'phase', 'projectionHead', 'skillNames', 'skillStateCount',
+    'skillStatesPassiveOnly', 'stableRows',
+  ], message);
+  const uuidList = (candidate: unknown): candidate is string[] => Array.isArray(candidate) &&
+    candidate.length <= 1000 && candidate.every(id => typeof id === 'string' && UUID_RE.test(id)) &&
+    new Set(candidate).size === candidate.length;
+  if ((root.phase !== 'before' && root.phase !== 'after') ||
+      !uuidList(root.eligibleConceptIds) || root.eligibleConceptIds.length < 1 ||
+      !uuidList(root.exposureEventIds) || !uuidList(root.linkedConceptIds) ||
+      !uuidList(root.learningConceptIds) || !Array.isArray(root.conceptStates) ||
+      root.conceptStates.length > 1000 || root.skillStateCount !== 3 ||
+      JSON.stringify(root.skillNames) !== JSON.stringify(['listening', 'production', 'recognition']) ||
+      root.skillStatesPassiveOnly !== true) {
+    throw new Error(message);
+  }
+  const head = exactRecord(root.projectionHead, [
+    'immutableSha256', 'nextIngestionSequence', 'parameterVersion', 'rowCount',
+    'stateVersion', 'updatedAtMatchesCompletion',
+  ], message);
+  if (head.rowCount !== 1 || !isSafeCount(head.stateVersion) || head.stateVersion < 1 ||
+      !isSafeCount(head.nextIngestionSequence) || head.nextIngestionSequence < 1 ||
+      typeof head.parameterVersion !== 'string' || head.parameterVersion.length < 1 ||
+      head.parameterVersion.length > 64 ||
+      typeof head.immutableSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(head.immutableSha256) ||
+      (root.phase === 'before' ? head.updatedAtMatchesCompletion !== null :
+        head.updatedAtMatchesCompletion !== true)) {
+    throw new Error(message);
+  }
+  const stable = exactRecord(root.stableRows, [
+    'exposure_events', 'learning_events', 'reader_exposure_concepts', 'user_concept_states',
+  ], message);
+  let stableTotalRows = 0;
+  for (const table of [
+    'exposure_events', 'learning_events', 'reader_exposure_concepts', 'user_concept_states',
+  ] as const) {
+    const summary = exactRecord(stable[table], ['rows', 'sha256'], message);
+    if (!isSafeCount(summary.rows) || summary.rows > 100_000 ||
+        typeof summary.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(summary.sha256)) {
+      throw new Error(message);
+    }
+    stableTotalRows += summary.rows as number;
+  }
+  if (stableTotalRows > 300_000) throw new Error(message);
+  for (const raw of root.conceptStates) {
+    const state = exactRecord(raw, ['conceptId', 'exposureCount', 'passiveOnly', 'status'], message);
+    if (typeof state.conceptId !== 'string' || !UUID_RE.test(state.conceptId) ||
+        state.status !== 'discovered' || state.exposureCount !== 1 || state.passiveOnly !== true) {
+      throw new Error(message);
+    }
+  }
+  if (root.phase === 'before') {
+    if (root.exposureEventIds.length !== 0 || root.linkedConceptIds.length !== 0 ||
+        root.learningConceptIds.length !== 0 || root.conceptStates.length !== 0) {
+      throw new Error(message);
+    }
+  } else {
+    const expectedIds = [...root.eligibleConceptIds as string[]].sort();
+    for (const ids of [root.linkedConceptIds, root.learningConceptIds,
+      root.conceptStates.map(state => (state as Record<string, unknown>).conceptId)]) {
+      if (JSON.stringify([...ids as string[]].sort()) !== JSON.stringify(expectedIds)) {
+        throw new Error(message);
+      }
+    }
+    if (root.exposureEventIds.length !== 1 || new Set(root.exposureEventIds).size !== 1) {
+      throw new Error(message);
+    }
+  }
+  return value as PilotReaderCompletionProof;
+}
+
 function parseSnapshot(value: unknown, requireVisibleRetainedLearners: boolean): K2RetainedSnapshot {
   if (!value || typeof value !== 'object' || !('tables' in value) || !('totalRows' in value)) {
     throw new Error('K2 hosted acceptance retained-state probe returned an invalid snapshot.');
@@ -696,9 +876,13 @@ export function buildK2ProbeChildEnvironment(
   profileId?: string,
   conceptIds?: readonly string[],
   idempotencyKeySha256?: string,
+  pilotReaderBinding?: PilotReaderCompletionBinding,
 ): NodeJS.ProcessEnv {
+  if (action === 'pilot_reader_catalog_manifest' && actorId !== undefined) {
+    throw new Error('K2 hosted acceptance Reader catalog probe is actorless.');
+  }
   const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap' ||
-    action === 'frll_anchor_semantic_proof';
+    action === 'frll_anchor_semantic_proof' || action === 'pilot_reader_completion';
   if ((exactActorProfileAction && (!UUID_RE.test(actorId ?? '') || !UUID_RE.test(profileId ?? ''))) ||
       (!exactActorProfileAction && (profileId !== undefined || conceptIds !== undefined))) {
     throw new Error('K2 hosted acceptance candidate probe requires the exact fresh actor and profile binding.');
@@ -708,12 +892,31 @@ export function buildK2ProbeChildEnvironment(
         new Set(conceptIds).size !== 20) {
       throw new Error('K2 hosted acceptance due membership probe requires exactly twenty unique concepts.');
     }
-  } else if (conceptIds !== undefined) {
+  } else if (action === 'pilot_reader_completion') {
+    if (!conceptIds || conceptIds.length < 1 || conceptIds.length > 1000 ||
+        conceptIds.some(id => !UUID_RE.test(id)) || new Set(conceptIds).size !== conceptIds.length ||
+        !pilotReaderBinding || !UUID_RE.test(pilotReaderBinding.contentId) ||
+        !UUID_RE.test(pilotReaderBinding.segmentId) ||
+        (pilotReaderBinding.phase === 'before' &&
+          (pilotReaderBinding.exposureId !== undefined ||
+           pilotReaderBinding.projectionHeadBefore !== undefined || idempotencyKeySha256 !== undefined)) ||
+        (pilotReaderBinding.phase === 'after' &&
+          (!UUID_RE.test(pilotReaderBinding.exposureId ?? '') ||
+           !pilotReaderBinding.projectionHeadBefore ||
+           !Number.isSafeInteger(pilotReaderBinding.projectionHeadBefore.stateVersion) ||
+           pilotReaderBinding.projectionHeadBefore.stateVersion < 1 ||
+           !Number.isSafeInteger(pilotReaderBinding.projectionHeadBefore.nextIngestionSequence) ||
+           pilotReaderBinding.projectionHeadBefore.nextIngestionSequence < 1 ||
+           !/^[a-f0-9]{64}$/.test(idempotencyKeySha256 ?? '')))) {
+      throw new Error('K2 hosted acceptance Reader completion probe requires a bounded exact actor/profile binding.');
+    }
+  } else if (conceptIds !== undefined || pilotReaderBinding !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected concept set.');
   }
   if ((action === 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined &&
        !/^[a-f0-9]{64}$/.test(idempotencyKeySha256)) ||
-      (action !== 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined)) {
+      (action !== 'frll_anchor_semantic_proof' && action !== 'pilot_reader_completion' &&
+       idempotencyKeySha256 !== undefined)) {
     throw new Error('K2 hosted acceptance FRLL probe requires only an SHA-256 key digest.');
   }
   return {
@@ -725,6 +928,7 @@ export function buildK2ProbeChildEnvironment(
     ...(profileId ? { K2_ACCEPTANCE_PROFILE_ID: profileId } : {}),
     ...(conceptIds ? { K2_ACCEPTANCE_CONCEPT_IDS: JSON.stringify(conceptIds) } : {}),
     ...(idempotencyKeySha256 ? { K2_ACCEPTANCE_IDEMPOTENCY_KEY_SHA256: idempotencyKeySha256 } : {}),
+    ...(pilotReaderBinding ? { K2_ACCEPTANCE_PILOT_READER_BINDING: JSON.stringify(pilotReaderBinding) } : {}),
     ...(process.platform === 'win32' && systemEnv.SystemRoot
       ? { SystemRoot: systemEnv.SystemRoot }
       : {}),
@@ -738,9 +942,13 @@ export async function runK2HostedProbe(
   profileId?: string,
   conceptIds?: readonly string[],
   idempotencyKeySha256?: string,
+  pilotReaderBinding?: PilotReaderCompletionBinding,
 ): Promise<K2HostedProbeResult> {
   if (!databaseUrl.trim()) {
     throw new Error('K2 hosted acceptance read-only probe configuration is missing.');
+  }
+  if (action === 'pilot_reader_catalog_manifest' && actorId !== undefined) {
+    throw new Error('K2 hosted acceptance Reader catalog probe is actorless.');
   }
   if ((action === 'actor_snapshot' || action === 'actor_lineage' || action === 'actor_absent' ||
        action === 'today_review_targets') &&
@@ -748,7 +956,7 @@ export async function runK2HostedProbe(
     throw new Error('K2 hosted acceptance actor probe requires a canonical actor identity.');
   }
   const exactActorProfileAction = action === 'k208_candidate_base' || action === 'k208_due_candidate_overlap' ||
-    action === 'frll_anchor_semantic_proof';
+    action === 'frll_anchor_semantic_proof' || action === 'pilot_reader_completion';
   if ((exactActorProfileAction &&
        (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorId ?? '') ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(profileId ?? ''))) ||
@@ -760,12 +968,31 @@ export async function runK2HostedProbe(
         conceptIds.some(id => !UUID_RE.test(id)) || new Set(conceptIds).size !== 20) {
       throw new Error('K2 hosted acceptance due membership probe requires exactly twenty unique concepts.');
     }
-  } else if (conceptIds !== undefined) {
+  } else if (action === 'pilot_reader_completion') {
+    if (!conceptIds || conceptIds.length < 1 || conceptIds.length > 1000 ||
+        conceptIds.some(id => !UUID_RE.test(id)) || new Set(conceptIds).size !== conceptIds.length ||
+        !pilotReaderBinding || !UUID_RE.test(pilotReaderBinding.contentId) ||
+        !UUID_RE.test(pilotReaderBinding.segmentId) ||
+        (pilotReaderBinding.phase === 'before' &&
+          (pilotReaderBinding.exposureId !== undefined ||
+           pilotReaderBinding.projectionHeadBefore !== undefined || idempotencyKeySha256 !== undefined)) ||
+        (pilotReaderBinding.phase === 'after' &&
+          (!UUID_RE.test(pilotReaderBinding.exposureId ?? '') ||
+           !pilotReaderBinding.projectionHeadBefore ||
+           !Number.isSafeInteger(pilotReaderBinding.projectionHeadBefore.stateVersion) ||
+           pilotReaderBinding.projectionHeadBefore.stateVersion < 1 ||
+           !Number.isSafeInteger(pilotReaderBinding.projectionHeadBefore.nextIngestionSequence) ||
+           pilotReaderBinding.projectionHeadBefore.nextIngestionSequence < 1 ||
+           !/^[a-f0-9]{64}$/.test(idempotencyKeySha256 ?? '')))) {
+      throw new Error('K2 hosted acceptance Reader completion probe requires a bounded exact actor/profile binding.');
+    }
+  } else if (conceptIds !== undefined || pilotReaderBinding !== undefined) {
     throw new Error('K2 hosted acceptance probe refused an unexpected concept set.');
   }
   if ((action === 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined &&
        !/^[a-f0-9]{64}$/.test(idempotencyKeySha256)) ||
-      (action !== 'frll_anchor_semantic_proof' && idempotencyKeySha256 !== undefined)) {
+      (action !== 'frll_anchor_semantic_proof' && action !== 'pilot_reader_completion' &&
+       idempotencyKeySha256 !== undefined)) {
     throw new Error('K2 hosted acceptance FRLL probe requires only an SHA-256 key digest.');
   }
   if (action !== 'actor_snapshot' && action !== 'actor_lineage' && action !== 'actor_absent' &&
@@ -777,6 +1004,7 @@ export async function runK2HostedProbe(
   const probeScript = path.resolve(__dirname, 'k2_hosted_probe.py');
   const childEnv = buildK2ProbeChildEnvironment(
     action, databaseUrl, actorId, process.env, profileId, conceptIds, idempotencyKeySha256,
+    pilotReaderBinding,
   );
 
   let stdout: string;
@@ -806,6 +1034,8 @@ export async function runK2HostedProbe(
   if (action === 'k208_due_candidate_overlap') return parseK2HostedDueCandidateOverlap(value);
   if (action === 'k208_fixture_privilege_preflight') return parseK2HostedFixtureCapability(value);
   if (action === 'k208_catalog_preflight') return parseK2HostedCatalogPreflight(value);
+  if (action === 'pilot_reader_catalog_manifest') return parsePilotReaderCatalogManifestProof(value);
+  if (action === 'pilot_reader_completion') return parsePilotReaderCompletionProof(value);
   return parseK2HostedMigrationProof(value);
 }
 

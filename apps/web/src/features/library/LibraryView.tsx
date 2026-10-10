@@ -139,7 +139,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
 
                 <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-2">
                   {item.itemType === 'content'
-                    ? <Link className="min-h-11 min-w-0 flex-1 rounded-xl px-2 py-3 text-sm font-bold text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" href="/read">Mở trong Reader</Link>
+                    ? <Link className="min-h-11 min-w-0 flex-1 rounded-xl px-2 py-3 text-sm font-bold text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" href={`/read?contentId=${encodeURIComponent(item.id)}`}>Mở trong Reader</Link>
                     : <span className="flex-1" />}
                   <Button
                     variant="ghost"
