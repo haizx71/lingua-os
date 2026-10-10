@@ -29,4 +29,3 @@
 ## Limits
 
 No hosted or learner data was queried in this review. The zero-translation count cited by the plan is the prior actorless observation, not a new check. No API, exact concept-matching, rollback, publication, or browser test was run; those are later implementation/verification gates. No translations have been published by this review, and no rights or legal conclusion is made.
-
