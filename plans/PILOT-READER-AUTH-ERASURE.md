@@ -1,6 +1,8 @@
 # PILOT-READER Auth Erasure Remediation Plan
 
-**Status:** Local reproduction and counterfactual proof complete; migration and hosted cleanup are not authorized by this plan. The existing 0021 migration remains frozen. Any production migration requires a separate bounded owner exception and independent review.
+**Current authorization (2026-10-10):** The owner approved the exact bounded exception to the 0021 freeze described below. Function-only 0022 implementation, separate Max SQL/source review, exact-head CI, normal root merge and staging apply, and then strict marked-actor recovery are authorized in that order. Recovery requires a fresh pre/post 27-table retained comparison, Auth absence, and zero actor rows across all 27 learner tables before a later Reader acceptance. This approval does not claim implementation, apply, cleanup, or recovery proof has occurred. No further owner approval is required within this exact scope; no new actor may be created before the recovery proofs pass. K2 wave expectations and all non-function schema/security behavior remain frozen.
+
+**Reviewed technical-plan body:** Independent exact-pin review PASS / 0 HIGH-BLOCKER at plan SHA-256 `2fda76146f80d8b20ed72af64f3839491e9fc7d59c394275b08c2406f6fbc04c` (review SHA-256 `b200291503013806c7655f0d2fcf48bc3454a9d97db288e27dccd2ef6d7896a2`). This authorization text is a current status addendum; it does not change that reviewed technical plan. Local focused regression: 1 passed in 9.88s. PR69 plan/test exact-head CI passed 9/9 at `799940b`; runtime CI remains pending.
 
 **Authoring runtime:** GPT-6 Luna, Max reasoning.
 
