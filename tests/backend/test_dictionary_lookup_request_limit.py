@@ -11,7 +11,7 @@ import uuid
 from collections.abc import Iterable
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 import uvicorn
 from fastapi import FastAPI
 from lingua_api.dictionary.lookup import LOOKUP_PATH, MAX_LOOKUP_REQUEST_BYTES

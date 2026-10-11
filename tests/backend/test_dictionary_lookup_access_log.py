@@ -9,7 +9,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
-import httpx
+import httpx2 as httpx
 import uvicorn
 from fastapi import FastAPI
 from lingua_api.main import create_app
