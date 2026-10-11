@@ -56,7 +56,7 @@ on:
       - 'apps/web/src/features/library/LibraryView.tsx'
       - 'apps/web/src/features/read/InteractiveReader.tsx'
       - 'apps/web/src/features/read/useReaderSession.ts'
-      - 'apps/web/src/app/api/[...path]/route.ts'
+      - 'apps/web/src/app/api/\[...path\]/route.ts'
       - 'apps/web/src/features/today/adapters.ts'
       - 'tests/frontend/task009-concept-discovery-save.test.tsx'
       - 'tests/frontend/e2e/f10-library-dictionary.test.tsx'
