@@ -56,6 +56,7 @@ Knowledge V2 material lives under `knowledge-v2/`. Active K2 execution plans are
 ## Real learner pilot and V2 freeze
 
 - `../PILOT_FINDINGS.md` — de-identified, evidence-led learner observations; no verified observations at kickoff
+- PILOT-006 local synthetic prototype and independent runtime review are verified; [dataset rights/quality HOLD](../reviews/PILOT-READER-DICTIONARY-SOURCE-CANDIDATE-REVIEW.md), [runtime source PASS](../reviews/PILOT-READER-DICTIONARY-SOURCE-REVIEW.md#final-frozen-source-review), and corpus activation remain HOLD. Draft-only integration; merge and production activation remain HOLD.
 - `../PILOT_HARDENING.md` — separate nonblocking follow-ups and current evidence limits
 - `../plans/REAL-LEARNER-PILOT-V2-FREEZE.md` — bounded 7–14 day observation plan, safety boundaries, triage, and day 7/day 14 decisions
 

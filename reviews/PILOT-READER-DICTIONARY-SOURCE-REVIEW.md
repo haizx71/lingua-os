@@ -1,3 +1,7 @@
+## Current disposition — 2026-10-11
+
+**Final frozen-source review: PASS for the bounded local synthetic/first-party prototype; 0 HIGH/BLOCKER.** Corpus rights/activation, public release, and deployment remain HOLD. This supersedes the preliminary status below.
+
 # PILOT Reader Dictionary Independent Source Review — Preliminary
 
 Review date: 2026-10-11 (Asia/Saigon)
