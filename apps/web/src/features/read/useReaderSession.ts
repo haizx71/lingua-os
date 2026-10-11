@@ -5,10 +5,12 @@ import {
   isLinguaActorAbortedError,
   mapApiErrorToUi,
   mapContentToReaderPassage,
+  mapDictionaryLookupToReaderViewModel,
   type ApiClient,
   type ConceptDetailDto,
   type ReaderPassageViewModel,
   type ReaderProgressViewModel,
+  type ReaderLookupViewModel,
   type ReaderTokenViewModel,
   type UiErrorState,
 } from '@lingua/types';
@@ -35,6 +37,8 @@ export interface ReaderSessionState {
   readonly error: UiErrorState | null;
   readonly languageProfileId: string | null;
   readonly selectedToken: ReaderTokenViewModel | null;
+  readonly lookupResult: ReaderLookupViewModel | null;
+  readonly lookupStatus: 'idle' | 'loading' | 'found' | 'not_found' | 'error' | 'timeout';
   readonly inspecting: boolean;
   readonly actionError: ReaderActionError | null;
   readonly busyKeys: ReadonlySet<string>;
@@ -42,6 +46,8 @@ export interface ReaderSessionState {
   readonly savedConceptIds: ReadonlySet<string>;
   retry(): void;
   inspectToken(token: ReaderTokenViewModel): Promise<void>;
+  lookupToken(token: ReaderTokenViewModel): Promise<void>;
+  retryLookup(): Promise<void>;
   closeInspector(): void;
   saveConcept(token: ReaderTokenViewModel): Promise<boolean>;
   saveSentence(sentenceId: string): Promise<void>;
@@ -114,6 +120,8 @@ export function useReaderSession({
   const [error, setError] = useState<UiErrorState | null>(null);
   const [languageProfileId, setLanguageProfileId] = useState<string | null>(null);
   const [selectedToken, setSelectedToken] = useState<ReaderTokenViewModel | null>(null);
+  const [lookupResult, setLookupResult] = useState<ReaderLookupViewModel | null>(null);
+  const [lookupStatus, setLookupStatus] = useState<ReaderSessionState['lookupStatus']>('idle');
   const [inspecting, setInspecting] = useState(false);
   const [actionError, setActionError] = useState<ReaderActionError | null>(null);
   const [busyKeys, setBusyKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -121,6 +129,9 @@ export function useReaderSession({
   const [savedConceptIds, setSavedConceptIds] = useState<ReadonlySet<string>>(() => new Set());
   const loadSequenceRef = useRef(0);
   const inspectSequenceRef = useRef(0);
+  const lookupAbortRef = useRef<AbortController | null>(null);
+  const lookupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lookupTokenRef = useRef<ReaderTokenViewModel | null>(null);
   const operationSequencesRef = useRef(new Map<string, number>());
   const previousActorIdRef = useRef<string | null>(auth?.user?.id ?? null);
   const idempotencyKeysRef = useRef(new Map<string, string>());
@@ -132,9 +143,32 @@ export function useReaderSession({
   const passageIdRef = useRef(passage?.id ?? null);
   passageIdRef.current = passage?.id ?? null;
 
+  const cancelLookup = useCallback(() => {
+    if (lookupTimeoutRef.current !== null) {
+      clearTimeout(lookupTimeoutRef.current);
+      lookupTimeoutRef.current = null;
+    }
+    lookupAbortRef.current?.abort();
+    lookupAbortRef.current = null;
+  }, []);
+
   const actorEpoch = auth?.getActorEpoch?.() ?? api.getActorGeneration?.() ?? 0;
   const actorId = auth?.user?.id ?? api.getCurrentActorId?.() ?? null;
   const authState = auth?.authState;
+  const lookupActorIdentityRef = useRef({ actorEpoch, actorId });
+
+  useEffect(() => {
+    const previous = lookupActorIdentityRef.current;
+    if (previous.actorEpoch === actorEpoch && previous.actorId === actorId) return;
+    lookupActorIdentityRef.current = { actorEpoch, actorId };
+    cancelLookup();
+    inspectSequenceRef.current += 1;
+    lookupTokenRef.current = null;
+    setLookupResult(null);
+    setLookupStatus('idle');
+    setSelectedToken(null);
+    setInspecting(false);
+  }, [actorEpoch, actorId, cancelLookup]);
 
   const isCurrent = useCallback((epoch: number, operationActorId: string | null) => {
     if (initialPassage) return true;
@@ -184,6 +218,7 @@ export function useReaderSession({
   }, [actorEpoch, actorId, requestIdentity]);
 
   const clearActorState = useCallback(() => {
+    cancelLookup();
     loadSequenceRef.current += 1;
     inspectSequenceRef.current += 1;
     operationSequencesRef.current.clear();
@@ -193,6 +228,8 @@ export function useReaderSession({
     setError(null);
     setLanguageProfileId(null);
     setSelectedToken(null);
+    setLookupResult(null);
+    setLookupStatus('idle');
     setInspecting(false);
     setActionError(null);
     setBusyKeys(new Set());
@@ -200,7 +237,19 @@ export function useReaderSession({
     setSavedConceptIds(new Set());
     setStatus('loading');
     setSettledRequestIdentity(null);
-  }, []);
+  }, [cancelLookup]);
+
+  useEffect(() => () => cancelLookup(), [cancelLookup]);
+
+  useEffect(() => {
+    cancelLookup();
+    inspectSequenceRef.current += 1;
+    lookupTokenRef.current = null;
+    setLookupResult(null);
+    setLookupStatus('idle');
+    setSelectedToken(null);
+    setInspecting(false);
+  }, [cancelLookup, requestIdentity, passage?.id]);
 
   useEffect(() => {
     if (initialPassage) return;
@@ -334,6 +383,10 @@ export function useReaderSession({
 
   const inspectToken = useCallback(async (token: ReaderTokenViewModel) => {
     if (!token.conceptId || !passage) return;
+    cancelLookup();
+    setLookupResult(null);
+    setLookupStatus('idle');
+    lookupTokenRef.current = null;
     if (initialPassage && !languageProfileId) {
       setSelectedToken(token);
       setInspecting(false);
@@ -382,14 +435,76 @@ export function useReaderSession({
       await exposure;
       if (operationIsCurrent()) setInspecting(false);
     }
-  }, [api, captureOperation, initialPassage, isOperationCurrent, keyFor, languageProfileId, passage]);
+  }, [api, cancelLookup, captureOperation, initialPassage, isOperationCurrent, keyFor, languageProfileId, passage]);
+
+  const lookupToken = useCallback(async (token: ReaderTokenViewModel) => {
+    if (!token.isLookupable || !passage) return;
+    cancelLookup();
+    const sequence = ++inspectSequenceRef.current;
+    const logical = `dictionary:${passage.id}:${token.segmentId ?? ''}:${token.sentenceId ?? ''}:${token.startOffset ?? -1}:${token.endOffset ?? -1}`;
+    const operation = captureOperation(logical, languageProfileId, passage.id);
+    const controller = new AbortController();
+    let timedOut = false;
+    const operationIsCurrent = () => {
+      const actorCurrent = auth?.isCurrentActor
+        ? auth.isCurrentActor(operation.actorEpoch, operation.actorId)
+        : (!api.getActorGeneration || api.getActorGeneration() === operation.actorEpoch)
+          && (!api.getCurrentActorId || api.getCurrentActorId() === operation.actorId);
+      return sequence === inspectSequenceRef.current
+        && isOperationCurrent(operation)
+        && actorCurrent;
+    };
+    lookupAbortRef.current = controller;
+    lookupTokenRef.current = token;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 5000);
+    lookupTimeoutRef.current = timeout;
+    setSelectedToken(token);
+    setLookupResult(null);
+    setLookupStatus('loading');
+    setInspecting(true);
+    setActionError(null);
+
+    try {
+      const response = await api.lookupDictionaryWord(
+        { surface: token.raw },
+        { signal: controller.signal }
+      );
+      if (!operationIsCurrent()) return;
+      if (response.data.surface !== token.raw) throw new Error('Reader lookup surface mismatch');
+      const result = mapDictionaryLookupToReaderViewModel(response.data);
+      setLookupResult(result);
+      setLookupStatus(result.matchStatus);
+    } catch (cause) {
+      if (!operationIsCurrent() || isLinguaActorAbortedError(cause)) return;
+      setLookupStatus(timedOut ? 'timeout' : 'error');
+    } finally {
+      if (lookupTimeoutRef.current === timeout) {
+        clearTimeout(timeout);
+        lookupTimeoutRef.current = null;
+      }
+      if (lookupAbortRef.current === controller) lookupAbortRef.current = null;
+      if (operationIsCurrent()) setInspecting(false);
+    }
+  }, [api, auth, cancelLookup, captureOperation, isOperationCurrent, languageProfileId, passage]);
+
+  const retryLookup = useCallback(async () => {
+    const token = lookupTokenRef.current;
+    if (token) await lookupToken(token);
+  }, [lookupToken]);
 
   const closeInspector = useCallback(() => {
+    cancelLookup();
     inspectSequenceRef.current += 1;
+    lookupTokenRef.current = null;
     setSelectedToken(null);
+    setLookupResult(null);
+    setLookupStatus('idle');
     setInspecting(false);
     setActionError(null);
-  }, []);
+  }, [cancelLookup]);
 
   const saveConcept = useCallback(async (token: ReaderTokenViewModel) => {
     if (!token.conceptId) return false;
@@ -529,6 +644,8 @@ export function useReaderSession({
     error: currentRequestIsSettled ? error : null,
     languageProfileId: currentRequestIsSettled ? languageProfileId : null,
     selectedToken: currentRequestIsSettled ? selectedToken : null,
+    lookupResult: currentRequestIsSettled ? lookupResult : null,
+    lookupStatus: currentRequestIsSettled ? lookupStatus : 'idle',
     inspecting: currentRequestIsSettled && inspecting,
     actionError: currentRequestIsSettled ? actionError : null,
     busyKeys: currentRequestIsSettled ? busyKeys : new Set<string>(),
@@ -536,6 +653,8 @@ export function useReaderSession({
     savedConceptIds: currentRequestIsSettled ? savedConceptIds : new Set<string>(),
     retry,
     inspectToken,
+    lookupToken,
+    retryLookup,
     closeInspector,
     saveConcept,
     saveSentence,

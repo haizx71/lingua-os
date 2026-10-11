@@ -382,6 +382,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/v1/dictionary/lookup": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * Look up one exact word without learner-state data
+         * @description Looks up one exact Unicode word surface using NFKC and case-fold normalization. The request body must contain only one lexical word, never sentence or passage text. Returns every approved exact sense within the documented bounds. Oversized complete results fail closed with SERVICE_UNAVAILABLE instead of being truncated. This endpoint does not read or mutate learner state. A missing or invalid approved artifact receives SERVICE_UNAVAILABLE. The selected word is not placed in the URL and request bodies are not logged.
+         */
+        readonly post: operations["lookupDictionaryWord"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/v1/reader/analyze": {
         readonly parameters: {
             readonly query?: never;
@@ -1194,6 +1214,41 @@ export interface components {
             readonly meta: components["schemas"]["CursorResponseMeta"];
             /** @description Complete approved lemma groups associated with the concepts on this page. Groups do not alter flat result ordering or cursor advancement and may repeat, complete, on later pages. */
             readonly lemmaGroups?: readonly components["schemas"]["DictionaryLemmaGroup"][];
+        };
+        readonly DictionaryLookupRequest: {
+            /** @description One selected lexical word surface; never sentence or passage text. */
+            readonly surface: string;
+        };
+        readonly DictionaryLookupAttribution: {
+            readonly sourceName: string;
+            /** Format: uri */
+            readonly sourceUrl: string;
+            readonly licenseCode: string;
+            /** Format: uri */
+            readonly licenseUrl: string;
+            readonly attributionText: string;
+            readonly changeNotice?: string;
+        };
+        readonly DictionaryLookupSense: {
+            readonly senseOrder: number;
+            readonly glossVi: string;
+        };
+        readonly DictionaryLookupEntry: {
+            readonly matchedSurface: string;
+            readonly partOfSpeech?: string;
+            readonly formOf?: string;
+            readonly senses: readonly components["schemas"]["DictionaryLookupSense"][];
+            readonly attributions: readonly components["schemas"]["DictionaryLookupAttribution"][];
+        };
+        readonly DictionaryLookupData: {
+            readonly surface: string;
+            /** @enum {string} */
+            readonly matchStatus: "found" | "not_found";
+            readonly entries: readonly components["schemas"]["DictionaryLookupEntry"][];
+        };
+        readonly DictionaryLookupResponse: {
+            readonly data: components["schemas"]["DictionaryLookupData"];
+            readonly meta: components["schemas"]["ResponseMeta"];
         };
         readonly ReaderAnalyzeRequest: {
             readonly title?: string;
@@ -2558,6 +2613,35 @@ export interface operations {
             readonly 422: components["responses"]["ValidationError"];
             readonly 429: components["responses"]["RateLimited"];
             readonly 500: components["responses"]["InternalError"];
+        };
+    };
+    readonly lookupDictionaryWord: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["DictionaryLookupRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Exact approved lookup or a clear no-match result; at most 64 senses and 64 KiB. */
+            readonly 200: {
+                headers: {
+                    readonly "Cache-Control": components["headers"]["PrivateNoStore"];
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["DictionaryLookupResponse"];
+                };
+            };
+            readonly 401: components["responses"]["Unauthenticated"];
+            readonly 422: components["responses"]["ValidationError"];
+            readonly 500: components["responses"]["InternalError"];
+            readonly 503: components["responses"]["ServiceUnavailable"];
         };
     };
     readonly analyzeReaderText: {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import {
@@ -164,6 +164,32 @@ function installHappyPath(api: ApiClient, content = makeContent()) {
   }));
 }
 
+function lookupResponse(
+  surface: string,
+  glosses: readonly string[]
+): Awaited<ReturnType<ApiClient['lookupDictionaryWord']>> {
+  return {
+    data: {
+      surface,
+      matchStatus: glosses.length ? 'found' : 'not_found',
+      entries: glosses.length ? [{
+        matchedSurface: surface,
+        partOfSpeech: 'adjective',
+        senses: glosses.map((glossVi, index) => ({ senseOrder: index + 1, glossVi })),
+        attributions: [{
+          sourceName: 'Synthetic local test fixture',
+          sourceUrl: 'https://example.test/reader-lookup',
+          licenseCode: 'CC0-1.0',
+          licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+          attributionText: 'First-party synthetic test data; no external source used.',
+          changeNotice: 'Authored for local testing.',
+        }],
+      }] : [],
+    },
+    meta: { requestId: 'dictionary-test', apiVersion: '1.0' },
+  };
+}
+
 async function renderLive(api: ApiClient, supabase = createMockSupabase()) {
   setApiClient(api);
   const result = render(
@@ -185,8 +211,8 @@ describe('TASK-READ-001 Reader live integration', () => {
     await renderLive(api);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Live Reader Story' })).toBeInTheDocument();
-    expect(screen.getByText(/Chạm từ được gạch dưới để tra từ/)).toBeInTheDocument();
-    expect(screen.getByText(/lưu câu hoặc bài chỉ là dấu trang/)).toBeInTheDocument();
+    expect(screen.getByText(/Chạm từ được gạch chân để xem nghĩa tiếng Việt/)).toBeInTheDocument();
+    expect(screen.getByText(/lưu câu hoặc bài chỉ là dấu trang/i)).toBeInTheDocument();
     const segments = screen.getAllByTestId('reader-segment');
     expect(segments.map((node) => node.getAttribute('data-segment-id'))).toEqual([
       IDS.segment1,
@@ -252,6 +278,162 @@ describe('TASK-READ-001 Reader live integration', () => {
     })));
     expect(exposure.mock.calls[0]?.[0].body).not.toHaveProperty('conceptId');
     expect(saveConcept).not.toHaveBeenCalled();
+  });
+
+  it('READ-DICTIONARY-01 looks up an unannotated exact word without exposure or Save/Learn', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api);
+    const lookup = vi.spyOn(api, 'lookupDictionaryWord').mockResolvedValue({
+      data: {
+        surface: 'first',
+        matchStatus: 'found',
+        entries: [{
+          matchedSurface: 'first',
+          partOfSpeech: 'adjective',
+          senses: [
+            { senseOrder: 1, glossVi: 'đầu tiên' },
+            { senseOrder: 2, glossVi: 'trước hết' },
+          ],
+          attributions: [{
+            sourceName: 'Synthetic local test fixture',
+            sourceUrl: 'https://example.test/first',
+            licenseCode: 'CC0-1.0',
+            licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+            attributionText: 'First-party synthetic test data; no external source used.',
+            changeNotice: 'Authored for local testing.',
+          }],
+        }],
+      },
+      meta: { requestId: 'dictionary-test', apiVersion: '1.0' },
+    });
+    const exposure = vi.spyOn(api, 'recordReaderExposure');
+    const saveConcept = vi.spyOn(api, 'saveConceptToLibrary');
+    await renderLive(api);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'first' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Chi tiết từ vựng' });
+    expect(await within(dialog).findByText('đầu tiên')).toBeInTheDocument();
+    expect(within(dialog).getByText('trước hết')).toBeInTheDocument();
+    expect(within(dialog).getByText('Synthetic local test fixture')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Lưu vào ôn tập' })).not.toBeInTheDocument();
+    expect(lookup.mock.calls[0]?.[0]).toEqual({ surface: 'first' });
+    expect(lookup.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(exposure).not.toHaveBeenCalled();
+    expect(saveConcept).not.toHaveBeenCalled();
+  });
+
+  it('READ-DICTIONARY-02 shows static errors, retries, and an explicit no-match state', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api);
+    const lookup = vi.spyOn(api, 'lookupDictionaryWord')
+      .mockRejectedValueOnce(new Error('private dictionary backend detail'))
+      .mockResolvedValueOnce(lookupResponse('first', []));
+    await renderLive(api);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'first' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Chi tiết từ vựng' });
+    expect(await within(dialog).findByText('Không thể tải nghĩa từ này lúc này.')).toBeInTheDocument();
+    expect(within(dialog).queryByText('private dictionary backend detail')).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Thử tra lại' }));
+    expect(await within(dialog).findByText('Chưa có nghĩa tiếng Việt đã duyệt cho từ này.')).toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledTimes(2);
+  });
+
+  it('READ-DICTIONARY-03 cancels a prior word lookup and drops its late result', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api);
+    let resolveFirst: ((value: Awaited<ReturnType<ApiClient['lookupDictionaryWord']>>) => void) | null = null;
+    const lookup = vi.spyOn(api, 'lookupDictionaryWord').mockImplementation((query) => {
+      if (query.surface === 'first') {
+        return new Promise((resolve) => { resolveFirst = resolve; });
+      }
+      return Promise.resolve(lookupResponse(query.surface, ['thứ hai']));
+    });
+    await renderLive(api);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'first' }));
+    const firstSignal = lookup.mock.calls[0]?.[1]?.signal;
+    fireEvent.click(screen.getByRole('button', { name: 'second' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Chi tiết từ vựng' });
+    expect(await within(dialog).findByText('thứ hai')).toBeInTheDocument();
+    expect(firstSignal?.aborted).toBe(true);
+    await act(async () => {
+      resolveFirst?.(lookupResponse('first', ['kết quả cũ']));
+    });
+    expect(within(dialog).queryByText('kết quả cũ')).not.toBeInTheDocument();
+    expect(within(dialog).getByText('thứ hai')).toBeInTheDocument();
+  });
+
+  it('READ-DICTIONARY-04 displays a bounded timeout state and retry action', async () => {
+    const api = new MockApiClient();
+    installHappyPath(api);
+    const lookup = vi.spyOn(api, 'lookupDictionaryWord').mockImplementation((_query, options) =>
+      new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        }, { once: true });
+      })
+    );
+    await renderLive(api);
+    vi.useFakeTimers();
+
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'first' }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      const dialog = screen.getByRole('dialog', { name: 'Chi tiết từ vựng' });
+      expect(within(dialog).getByText('Tra từ quá thời gian chờ.')).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'Thử tra lại' })).toBeInTheDocument();
+      expect(lookup).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('READ-DICTIONARY-05 drops Actor A lookup results after switching to Actor B without writes', async () => {
+    const api = new MockApiClient();
+    const supabase = createMockSupabase();
+    let resolveLookup!: (value: Awaited<ReturnType<ApiClient['lookupDictionaryWord']>>) => void;
+    const lookupPending = new Promise<Awaited<ReturnType<ApiClient['lookupDictionaryWord']>>>(
+      (resolve) => { resolveLookup = resolve; },
+    );
+    const lookup = vi.spyOn(api, 'lookupDictionaryWord').mockReturnValue(lookupPending);
+    const exposure = vi.spyOn(api, 'recordReaderExposure');
+    const saveConcept = vi.spyOn(api, 'saveConceptToLibrary');
+    const saveSentence = vi.spyOn(api, 'saveReaderSentence');
+    const progress = vi.spyOn(api, 'updateReaderProgress');
+    const aContent = makeContent('Actor A Story');
+    const bContent = makeContent('Actor B Story');
+    vi.spyOn(api, 'listRecommendedContent').mockResolvedValue({
+      data: [makeContent().data.summary],
+      meta: { requestId: 'actors', apiVersion: '1.0', nextCursor: null, hasMore: false, pageSize: 1 },
+    });
+    vi.spyOn(api, 'getContent')
+      .mockResolvedValueOnce(aContent)
+      .mockResolvedValueOnce(bContent);
+    await renderLive(api, supabase);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'first' }));
+    const oldActorSignal = lookup.mock.calls[0]?.[1]?.signal;
+    expect(await screen.findByRole('dialog', { name: 'Chi tiết từ vựng' })).toBeInTheDocument();
+
+    act(() => supabase.switchUser(session(userB, 'b')));
+    expect(await screen.findByRole('heading', { name: 'Actor B Story' })).toBeInTheDocument();
+    expect(oldActorSignal?.aborted).toBe(true);
+    await act(async () => {
+      resolveLookup(lookupResponse('first', ['Actor A late meaning']));
+    });
+
+    expect(screen.queryByRole('dialog', { name: 'Chi tiết từ vựng' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Actor A late meaning')).not.toBeInTheDocument();
+    expect(exposure).not.toHaveBeenCalled();
+    expect(saveConcept).not.toHaveBeenCalled();
+    expect(saveSentence).not.toHaveBeenCalled();
+    expect(progress).not.toHaveBeenCalled();
+
   });
 
   it('READ-LIVE-05 records an explicit read exposure and authoritative progress', async () => {

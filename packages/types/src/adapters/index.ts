@@ -6,6 +6,7 @@ import type {
   BrainSummaryDto,
   ConceptDetailDto,
   ContentDetailDto,
+  DictionaryLookupDataDto,
   LibraryItemDto,
   MeProfileDto,
   LanguageProfileDto,
@@ -22,12 +23,39 @@ import type {
   DictionaryConceptViewModel,
   ProgressSummaryViewModel,
   ReaderPassageViewModel,
+  ReaderLookupViewModel,
   LibraryItemViewModel,
   ReaderTokenViewModel,
   ReviewCardViewModel,
   TodayActivityViewModel,
   UserProfileViewModel,
 } from '../view-models';
+
+export function mapDictionaryLookupToReaderViewModel(
+  result: DictionaryLookupDataDto
+): ReaderLookupViewModel {
+  return {
+    surface: result.surface,
+    matchStatus: result.matchStatus,
+    entries: result.entries.map((entry) => ({
+      matchedSurface: entry.matchedSurface,
+      ...(entry.partOfSpeech ? { partOfSpeech: entry.partOfSpeech } : {}),
+      ...(entry.formOf ? { formOf: entry.formOf } : {}),
+      senses: entry.senses.map((sense) => ({
+        senseOrder: sense.senseOrder,
+        glossVi: sense.glossVi,
+      })),
+      attributions: entry.attributions.map((attribution) => ({
+        sourceName: attribution.sourceName,
+        sourceUrl: attribution.sourceUrl,
+        licenseCode: attribution.licenseCode,
+        licenseUrl: attribution.licenseUrl,
+        attributionText: attribution.attributionText,
+        ...(attribution.changeNotice ? { changeNotice: attribution.changeNotice } : {}),
+      })),
+    })),
+  };
+}
 
 const activityRoutes = {
   review: '/review',
@@ -282,6 +310,50 @@ export function mapBrainConceptDetailToViewModel(
   };
 }
 
+const READER_WORD_PATTERN = /[\p{L}][\p{L}\p{M}]*(?:['’‐‑‒–-][\p{L}][\p{L}\p{M}]*)*/gu;
+
+function appendGapTokens(
+  tokens: ReaderTokenViewModel[],
+  text: string,
+  sentenceOffset: number,
+  segmentId: string,
+  sentenceId: string
+): void {
+  let cursor = 0;
+  for (const match of text.matchAll(READER_WORD_PATTERN)) {
+    const word = match[0];
+    const wordStart = match.index;
+    const wordEnd = wordStart + word.length;
+    if (wordStart > cursor) {
+      tokens.push({
+        raw: text.slice(cursor, wordStart),
+        segmentId,
+        sentenceId,
+        startOffset: sentenceOffset + cursor,
+        endOffset: sentenceOffset + wordStart,
+      });
+    }
+    tokens.push({
+      raw: word,
+      isLookupable: true,
+      segmentId,
+      sentenceId,
+      startOffset: sentenceOffset + wordStart,
+      endOffset: sentenceOffset + wordEnd,
+    });
+    cursor = wordEnd;
+  }
+  if (cursor < text.length) {
+    tokens.push({
+      raw: text.slice(cursor),
+      segmentId,
+      sentenceId,
+      startOffset: sentenceOffset + cursor,
+      endOffset: sentenceOffset + text.length,
+    });
+  }
+}
+
 function tokensForSentence(
   sentence: ContentDetailDto['segments'][number]['sentences'][number],
   segmentId: string,
@@ -292,7 +364,15 @@ function tokensForSentence(
   let cursor = 0;
 
   for (const annotation of annotations) {
-    if (annotation.startOffset > cursor) tokens.push({ raw: sentence.text.slice(cursor, annotation.startOffset) });
+    if (annotation.startOffset > cursor) {
+      appendGapTokens(
+        tokens,
+        sentence.text.slice(cursor, annotation.startOffset),
+        cursor,
+        segmentId,
+        sentence.id
+      );
+    }
     const detail = conceptDetails.get(annotation.conceptId);
     tokens.push({
       raw: sentence.text.slice(annotation.startOffset, annotation.endOffset),
@@ -311,7 +391,15 @@ function tokensForSentence(
     });
     cursor = annotation.endOffset;
   }
-  if (cursor < sentence.text.length) tokens.push({ raw: sentence.text.slice(cursor) });
+  if (cursor < sentence.text.length) {
+    appendGapTokens(
+      tokens,
+      sentence.text.slice(cursor),
+      cursor,
+      segmentId,
+      sentence.id
+    );
+  }
   return tokens;
 }
 

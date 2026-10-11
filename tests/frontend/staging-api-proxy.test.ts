@@ -27,6 +27,57 @@ function request(method: string, url = 'https://staging.example.test/api/v1/me?c
   });
 }
 
+function lookupRequest(
+  body: BodyInit,
+  options: { headers?: HeadersInit; signal?: AbortSignal } = {},
+): Request {
+  const headers = new Headers({
+    Accept: 'application/json',
+    Authorization: 'Bearer actor-token',
+    'Content-Type': 'application/json',
+  });
+  new Headers(options.headers).forEach((value, name) => headers.set(name, value));
+  return new Request('https://staging.example.test/api/v1/dictionary/lookup', {
+    method: 'POST',
+    headers,
+    body,
+    signal: options.signal,
+    duplex: 'half',
+  } as RequestInit & { duplex: 'half' });
+}
+
+function controlledSignal(initiallyAborted = false): { signal: AbortSignal; abort: () => void } {
+  let aborted = initiallyAborted;
+  const listeners = new Set<() => void>();
+  const signal = {
+    get aborted() { return aborted; },
+    get reason() { return aborted ? new Error('synthetic abort') : undefined; },
+    addEventListener(_type: string, listener: EventListenerOrEventListenerObject) {
+      listeners.add(typeof listener === 'function'
+        ? () => listener(new Event('abort'))
+        : () => listener.handleEvent(new Event('abort')));
+    },
+    removeEventListener() { listeners.clear(); },
+  } as unknown as AbortSignal;
+  return {
+    signal,
+    abort() {
+      if (aborted) return;
+      aborted = true;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
+
+function overrideRequestSignal(request: Request, signal: AbortSignal): Request {
+  return new Proxy(request, {
+    get(target, property) {
+      if (property === 'signal') return signal;
+      return Reflect.get(target, property, target) as unknown;
+    },
+  });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
@@ -142,6 +193,116 @@ describe('production same-origin API proxy', () => {
     const invalid = await GET(request('GET'), context('v1', 'me'));
     expect(invalid.status).toBe(503);
     expect(await invalid.text()).not.toContain('api.internal.example.test');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('streams at most 1,024 lookup bytes and forwards the accepted body exactly', async () => {
+    vi.stubEnv('API_INTERNAL_URL', 'https://api.internal.example.test');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+    const prefix = '{"surface":"tea"}';
+    const body = prefix + ' '.repeat(1024 - new TextEncoder().encode(prefix).byteLength);
+
+    const response = await POST(lookupRequest(body), context('v1', 'dictionary', 'lookup'));
+
+    expect(response.status).toBe(200);
+    const [target, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(target)).toBe('https://api.internal.example.test/v1/dictionary/lookup');
+    expect(new TextEncoder().encode(await new Response(init?.body).text()).byteLength).toBe(1024);
+  });
+
+  it('rejects oversized streamed lookup bodies before forwarding or echoing them', async () => {
+    vi.stubEnv('API_INTERNAL_URL', 'https://api.internal.example.test');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const sentinel = 'lookup-body-secret-sentinel';
+    const chunks = [
+      new TextEncoder().encode('{"surface":"tea","padding":"'),
+      new TextEncoder().encode('x'.repeat(1024)),
+      new TextEncoder().encode(`${sentinel}"}`),
+    ];
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        const next = chunks.shift();
+        if (next) controller.enqueue(next);
+        else controller.close();
+      },
+      cancel,
+    });
+
+    const response = await POST(lookupRequest(stream), context('v1', 'dictionary', 'lookup'));
+
+    expect(response.status).toBe(422);
+    const responseText = await response.text();
+    expect(JSON.parse(responseText) as { error: { code: string; message: string } }).toMatchObject({
+      error: { code: 'VALIDATION_ERROR', message: 'The request is invalid.' },
+    });
+    expect(responseText).not.toContain(sentinel);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it('rejects false, duplicate, and oversized declared lengths without forwarding', async () => {
+    vi.stubEnv('API_INTERNAL_URL', 'https://api.internal.example.test');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const cases = [
+      { headers: { 'content-length': '1' }, bytes: '{"surface":"tea"}' },
+      { headers: { 'content-length': 'not-a-number' }, bytes: '{}' },
+      { headers: { 'content-length': '1025' }, bytes: '{}' },
+      { headers: [['content-length', '1'], ['content-length', '2']] as HeadersInit, bytes: '{}' },
+    ];
+
+    for (const item of cases) {
+      const response = await POST(
+        lookupRequest(item.bytes, { headers: item.headers }),
+        context('v1', 'dictionary', 'lookup'),
+      );
+      expect(response.status).toBe(422);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+    }
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('cancels pre-aborted and mid-read lookup streams without forwarding', async () => {
+    vi.stubEnv('API_INTERNAL_URL', 'https://api.internal.example.test');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const preAborted = controlledSignal(true);
+    const preAbortedCancel = vi.fn();
+    const preAbortedStream = new ReadableStream<Uint8Array>({ cancel: preAbortedCancel });
+    const preAbortedResponse = await POST(
+      overrideRequestSignal(lookupRequest(preAbortedStream), preAborted.signal),
+      context('v1', 'dictionary', 'lookup'),
+    );
+    expect(preAbortedResponse.status).toBe(422);
+    expect(preAbortedCancel).toHaveBeenCalled();
+
+    let pulledResolve!: () => void;
+    const pulled = new Promise<void>((resolve) => { pulledResolve = resolve; });
+    let pullCount = 0;
+    const midReadCancel = vi.fn();
+    const midReadStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"surface":"'));
+      },
+      pull() {
+        pullCount += 1;
+        pulledResolve();
+        return new Promise<void>(() => undefined);
+      },
+      cancel: midReadCancel,
+    });
+    const midRead = controlledSignal();
+    const midReadResponsePromise = POST(
+      overrideRequestSignal(lookupRequest(midReadStream), midRead.signal),
+      context('v1', 'dictionary', 'lookup'),
+    );
+    await pulled;
+    midRead.abort();
+    const midReadResponse = await midReadResponsePromise;
+
+    expect(pullCount).toBeGreaterThan(0);
+    expect(midReadResponse.status).toBe(422);
+    expect(midReadCancel).toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

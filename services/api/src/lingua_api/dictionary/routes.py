@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Annotated, Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Path, Query, Request, Response, Security
-from pydantic import StringConstraints
+from fastapi import APIRouter, Body, Path, Query, Request, Response, Security
+from pydantic import StringConstraints, ValidationError
 from pydantic.json_schema import SkipJsonSchema
 
 from lingua_api.brain.models import ConceptDetailDto
@@ -14,6 +14,19 @@ from lingua_api.brain.routes import brain_concept_detail_dto, brain_concept_summ
 from lingua_api.dictionary.domain import (
     DictionaryLemmaGroupProjection,
     DictionarySummaryProjection,
+)
+from lingua_api.dictionary.lookup import (
+    MAX_LOOKUP_RESPONSE_BYTES,
+    MAX_LOOKUP_TOTAL_SENSES,
+    DictionaryLookupResultTooLarge,
+    DictionaryLookupUnavailable,
+    normalize_dictionary_surface,
+)
+from lingua_api.dictionary.lookup_models import (
+    DictionaryLookupDataDto,
+    DictionaryLookupRequestDto,
+    DictionaryLookupResponseDto,
+    DictionaryLookupResultDto,
 )
 from lingua_api.dictionary.models import (
     ConceptResponseDto,
@@ -44,6 +57,12 @@ DETAIL_ERRORS: dict[int | str, dict[str, Any]] = {
 SEARCH_ERRORS: dict[int | str, dict[str, Any]] = {
     **DETAIL_ERRORS,
     429: {"model": ErrorEnvelopeDto},
+}
+LOOKUP_ERRORS: dict[int | str, dict[str, Any]] = {
+    401: {"model": ErrorEnvelopeDto},
+    422: {"model": ErrorEnvelopeDto},
+    500: {"model": ErrorEnvelopeDto},
+    503: {"model": ErrorEnvelopeDto},
 }
 
 
@@ -115,6 +134,50 @@ def search_dictionary(
             else [_lemma_group(item) for item in page.lemma_groups]
         ),
     )
+
+
+@router.post(
+    "/dictionary/lookup",
+    operation_id="lookupDictionaryWord",
+    response_model=DictionaryLookupResponseDto,
+    responses=LOOKUP_ERRORS,
+)
+def lookup_dictionary_word(
+    request: Request,
+    response: Response,
+    body: Annotated[DictionaryLookupRequestDto, Body()],
+    actor: Annotated[AuthenticatedActor, Security(authenticated_actor)],
+) -> DictionaryLookupResponseDto:
+    del actor
+    surface = body.surface
+    normalized_surface = normalize_dictionary_surface(surface)
+    provider = getattr(request.app.state, "dictionary_lookup_provider", None)
+    if provider is None:
+        raise DictionaryLookupUnavailable
+
+    try:
+        result = DictionaryLookupResultDto.model_validate(provider.lookup(normalized_surface))
+    except ValidationError as error:
+        raise DictionaryLookupUnavailable from error
+    if (result.match_status == "found") != bool(result.entries):
+        raise DictionaryLookupUnavailable
+    if sum(len(entry.senses) for entry in result.entries) > MAX_LOOKUP_TOTAL_SENSES:
+        raise DictionaryLookupResultTooLarge
+    response_body = DictionaryLookupResponseDto(
+        data=DictionaryLookupDataDto(
+            surface=surface,
+            match_status=result.match_status,
+            entries=result.entries,
+        ),
+        meta=ResponseMetaDto(request_id=request.state.request_id),
+    )
+    if (
+        len(response_body.model_dump_json(by_alias=True).encode("utf-8"))
+        > MAX_LOOKUP_RESPONSE_BYTES
+    ):
+        raise DictionaryLookupResultTooLarge
+    response.headers["Cache-Control"] = "private, no-store"
+    return response_body
 
 
 def _summary(value: DictionarySummaryProjection) -> ConceptSummaryDto:

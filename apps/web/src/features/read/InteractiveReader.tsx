@@ -160,7 +160,7 @@ export function InteractiveReader({
       </header>
 
       <p role="note" className="rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-sm leading-5 text-[var(--text-secondary)]">
-        Chạm từ được gạch dưới để tra từ. Muốn chủ động học một từ, chọn “Lưu vào ôn tập”; lưu câu hoặc bài chỉ là dấu trang.
+        Chạm từ được gạch chân để xem nghĩa tiếng Việt; từ trong danh mục có thể lưu để học. Lưu câu hoặc bài chỉ là dấu trang.
       </p>
 
       {passage.progress && (
@@ -249,16 +249,19 @@ export function InteractiveReader({
                       className="min-w-0 space-y-1.5 py-1"
                     >
                       <p className="reader-copy break-words text-[1.18rem] text-[var(--text-primary)] sm:text-[1.3rem]">
-                        {sentence.tokens.map((token, tokenIndex) => token.conceptId ? (
+                        {sentence.tokens.map((token, tokenIndex) => token.conceptId || token.isLookupable ? (
                           <React.Fragment key={`${sentence.id}:${tokenIndex}`}>
                             <button
                               type="button"
                               aria-describedby={token.status ? `reader-token-status-${sentence.id}-${tokenIndex}` : undefined}
                               onClick={(event) => {
                                 inspectorTriggerRef.current = event.currentTarget;
-                                void reader.inspectToken(token);
+                                if (token.conceptId) void reader.inspectToken(token);
+                                else void reader.lookupToken(token);
                               }}
-                              className="mx-0.5 inline break-words rounded-md border-b-2 border-[var(--action-primary)]/55 bg-[var(--surface-lilac)] px-1 font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--action-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                              className={token.conceptId
+                                ? 'mx-0.5 inline break-words rounded-md border-b-2 border-[var(--action-primary)]/55 bg-[var(--surface-lilac)] px-1 font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--action-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]'
+                                : 'mx-0.5 inline break-words border-b border-dotted border-[var(--action-primary)]/45 text-inherit transition-colors hover:border-[var(--action-primary)] hover:text-[var(--action-primary)] focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]'}
                             >
                               {token.raw}
                             </button>
@@ -358,7 +361,7 @@ export function InteractiveReader({
 
           <div className="mt-2 rounded-2xl bg-[var(--surface-subtle)] px-3 py-2.5 text-sm leading-5 text-[var(--text-secondary)]" aria-busy={reader.inspecting}>
             {reader.inspecting && <p className="text-xs text-[var(--text-muted)]">Đang tải nghĩa từ...</p>}
-            {selectedSentence?.translationVi.trim() && (
+            {selectedToken.conceptId && selectedSentence?.translationVi.trim() && (
               <div className="mb-2 border-b border-[var(--border-subtle)] pb-2">
                 <p className="mb-0.5 text-[10px] font-semibold text-[var(--text-muted)]">Nghĩa câu</p>
                 <p className="reader-copy text-sm leading-5 text-[var(--text-primary)]">{selectedSentence.translationVi}</p>
@@ -376,9 +379,53 @@ export function InteractiveReader({
               </p>
             )}
             {selectedToken.explanationEn && <details className="mt-1 text-xs text-[var(--text-muted)]"><summary className="cursor-pointer">Định nghĩa tiếng Anh</summary><p className="mt-1 leading-4">{selectedToken.explanationEn}</p></details>}
+            {selectedToken.isLookupable && reader.lookupStatus === 'found' && reader.lookupResult && (
+              <div className="mt-2 space-y-3">
+                {reader.lookupResult.entries.map((entry, entryIndex) => (
+                  <section key={`${entry.matchedSurface}:${entryIndex}`} className="space-y-2 border-t border-[var(--border-subtle)] pt-2">
+                    {(entry.partOfSpeech || entry.formOf) && (
+                      <p className="text-xs font-semibold text-[var(--text-muted)]">
+                        {[entry.partOfSpeech, entry.formOf ? `dạng của ${entry.formOf}` : undefined].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    <ol className="list-decimal space-y-1 pl-5">
+                      {entry.senses.map((sense) => (
+                        <li key={sense.senseOrder} className="break-words font-semibold text-[var(--text-primary)]">{sense.glossVi}</li>
+                      ))}
+                    </ol>
+                    {entry.attributions.map((attribution, attributionIndex) => (
+                      <div key={`${attribution.sourceUrl}:${attributionIndex}`} className="space-y-0.5 text-[11px] leading-4 text-[var(--text-muted)]">
+                        <p>
+                          <a href={attribution.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">{attribution.sourceName}</a>
+                          {' · '}
+                          <a href={attribution.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">{attribution.licenseCode}</a>
+                        </p>
+                        <p>{attribution.attributionText}</p>
+                        {attribution.changeNotice && <p>{attribution.changeNotice}</p>}
+                      </div>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            )}
+            {selectedToken.isLookupable && reader.lookupStatus === 'not_found' && (
+              <p className="text-sm text-[var(--text-secondary)]">Chưa có nghĩa tiếng Việt đã duyệt cho từ này.</p>
+            )}
+            {selectedToken.isLookupable && reader.lookupStatus === 'timeout' && (
+              <div className="space-y-2">
+                <p className="text-sm text-[var(--text-secondary)]">Tra từ quá thời gian chờ.</p>
+                <button type="button" onClick={() => void reader.retryLookup()} className="min-h-11 rounded-lg px-2 font-semibold text-[var(--action-primary)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">Thử tra lại</button>
+              </div>
+            )}
+            {selectedToken.isLookupable && reader.lookupStatus === 'error' && (
+              <div className="space-y-2">
+                <p className="text-sm text-[var(--text-secondary)]">Không thể tải nghĩa từ này lúc này.</p>
+                <button type="button" onClick={() => void reader.retryLookup()} className="min-h-11 rounded-lg px-2 font-semibold text-[var(--action-primary)] underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">Thử tra lại</button>
+              </div>
+            )}
           </div>
 
-          <div className="mt-2 flex justify-end border-t border-[var(--border-subtle)] pt-2">
+          {selectedToken.conceptId && <div className="mt-2 flex justify-end border-t border-[var(--border-subtle)] pt-2">
             {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
               <Button variant="secondary" size="sm" leftIcon={<Check className="h-3.5 w-3.5" />} disabled>
                 Đã lưu vào Brain
@@ -394,7 +441,7 @@ export function InteractiveReader({
                 Lưu vào ôn tập
               </Button>
             )}
-          </div>
+          </div>}
         </div>
       )}
     </div>
