@@ -56,6 +56,7 @@ on:
       - 'apps/web/src/features/library/LibraryView.tsx'
       - 'apps/web/src/features/read/InteractiveReader.tsx'
       - 'apps/web/src/features/read/useReaderSession.ts'
+      - 'apps/web/src/app/api/\[...path\]/route.ts'
       - 'apps/web/src/features/today/adapters.ts'
       - 'tests/frontend/task009-concept-discovery-save.test.tsx'
       - 'tests/frontend/e2e/f10-library-dictionary.test.tsx'
@@ -68,6 +69,8 @@ on:
       - 'tests/frontend/admin-content-form.test.tsx'
       - 'tests/frontend/reader-explicit-selection.test.tsx'
       - 'tests/frontend/task-read-001-reader-live.test.tsx'
+      - 'tests/frontend/staging-api-proxy.test.ts'
+      - 'tests/frontend/dictionary-lookup-client.test.ts'
       - 'tests/frontend/task011-today-live.test.tsx'
       - 'tests/acceptance/pilot_reader_hosted_acceptance.spec.ts'
       - 'tests/acceptance/support/pilot_reader_hosted_runner.ts'
@@ -255,27 +258,45 @@ jobs:
             services/api/src/lingua_api/brain/routes.py \
             services/api/src/lingua_api/brain/store.py \
             services/api/src/lingua_api/dictionary/domain.py \
+            services/api/src/lingua_api/dictionary/lookup.py \
+            services/api/src/lingua_api/dictionary/lookup_models.py \
+            services/api/src/lingua_api/dictionary/request_limit.py \
             services/api/src/lingua_api/dictionary/models.py \
             services/api/src/lingua_api/dictionary/routes.py \
             services/api/src/lingua_api/dictionary/service.py \
             services/api/src/lingua_api/dictionary/store.py \
             tests/backend/contracts/test_openapi_v1.py \
-            tests/backend/database/test_dictionary_reader_analyze_api.py
+            tests/backend/database/test_dictionary_reader_analyze_api.py \
+            tests/backend/test_dictionary_lookup_api.py \
+            tests/backend/test_dictionary_lookup_provider.py \
+            tests/backend/test_dictionary_lookup_access_log.py \
+            tests/backend/test_dictionary_lookup_request_limit.py
           python -m ruff check \
             services/api/src/lingua_api/brain/routes.py \
             services/api/src/lingua_api/brain/store.py \
             services/api/src/lingua_api/dictionary/domain.py \
+            services/api/src/lingua_api/dictionary/lookup.py \
+            services/api/src/lingua_api/dictionary/lookup_models.py \
+            services/api/src/lingua_api/dictionary/request_limit.py \
             services/api/src/lingua_api/dictionary/models.py \
             services/api/src/lingua_api/dictionary/routes.py \
             services/api/src/lingua_api/dictionary/service.py \
             services/api/src/lingua_api/dictionary/store.py \
             tests/backend/contracts/test_openapi_v1.py \
-            tests/backend/database/test_dictionary_reader_analyze_api.py
+            tests/backend/database/test_dictionary_reader_analyze_api.py \
+            tests/backend/test_dictionary_lookup_api.py \
+            tests/backend/test_dictionary_lookup_provider.py \
+            tests/backend/test_dictionary_lookup_access_log.py \
+            tests/backend/test_dictionary_lookup_request_limit.py
       - name: Verify Dictionary contract and bridge behavior against PostgreSQL
         run: >-
           python -m pytest -q
           tests/backend/database/test_dictionary_reader_analyze_api.py
           tests/backend/contracts/test_openapi_v1.py
+          tests/backend/test_dictionary_lookup_api.py
+          tests/backend/test_dictionary_lookup_provider.py
+          tests/backend/test_dictionary_lookup_access_log.py
+          tests/backend/test_dictionary_lookup_request_limit.py
 
   today-postgres-integration:
     runs-on: ubuntu-latest
@@ -435,12 +456,14 @@ jobs:
             tests/frontend/admin-content-form.test.tsx \
             tests/frontend/reader-explicit-selection.test.tsx \
             tests/frontend/task-read-001-reader-live.test.tsx \
+            tests/frontend/staging-api-proxy.test.ts \
             tests/frontend/task011-today-live.test.tsx
           pnpm --filter @lingua/web typecheck
       - name: Verify Dictionary, Library, and Brain frontend regressions
         run: >-
           pnpm exec vitest run
           tests/frontend/task009-concept-discovery-save.test.tsx
+          tests/frontend/dictionary-lookup-client.test.ts
           tests/frontend/e2e/f10-library-dictionary.test.tsx
           tests/frontend/e2e/f08-language-brain.test.tsx
           tests/frontend/p1-brain-live.test.tsx

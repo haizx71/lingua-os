@@ -14,6 +14,8 @@ import type {
   ContentResponseDto,
   CreateAdminContentRequestDto,
   CreateLanguageProfileRequestDto,
+  DictionaryLookupRequestDto,
+  DictionaryLookupResponseDto,
   DictionarySearchResponseDto,
   LanguageProfileResponseDto,
   LanguageProfilesResponseDto,
@@ -89,6 +91,10 @@ export interface ApiClient {
   answerReviewItem(input: { reviewItemId: string; body: ReviewAnswerRequestDto; headers: OperationHeaders<'answerReviewItem'> }): Promise<ReviewAnswerResponseDto>;
   getConcept(conceptId: string): Promise<ConceptResponseDto>;
   searchDictionary(query: OperationQuery<'searchDictionary'>): Promise<DictionarySearchResponseDto>;
+  lookupDictionaryWord(
+    body: DictionaryLookupRequestDto,
+    options?: { readonly signal?: AbortSignal }
+  ): Promise<DictionaryLookupResponseDto>;
   analyzeReaderText(body: ReaderAnalyzeRequestDto): Promise<ReaderAnalyzeResponseDto>;
   recordReaderExposure(input: { body: ReaderExposureRequestDto; headers: OperationHeaders<'recordReaderExposure'> }): Promise<ReaderExposureResponseDto>;
   updateReaderProgress(input: { contentId: string; body: UpdateReaderProgressRequestDto; headers: OperationHeaders<'updateReaderProgress'> }): Promise<ReadingProgressResponseDto>;
@@ -376,6 +382,14 @@ export class HttpApiClient implements ApiClient {
   answerReviewItem(input: Parameters<ApiClient['answerReviewItem']>[0]) { return this.request<ReviewAnswerResponseDto>({ method: 'POST', path: `/v1/review/${encodeURIComponent(input.reviewItemId)}/answer`, body: input.body, headers: input.headers }); }
   getConcept(conceptId: string) { return this.request<ConceptResponseDto>({ method: 'GET', path: `/v1/concepts/${encodeURIComponent(conceptId)}` }); }
   searchDictionary(query: OperationQuery<'searchDictionary'>) { return this.request<DictionarySearchResponseDto>({ method: 'GET', path: '/v1/dictionary/search', query: query as Record<string, QueryValue> }); }
+  lookupDictionaryWord(body: DictionaryLookupRequestDto, options?: { readonly signal?: AbortSignal }) {
+    return this.request<DictionaryLookupResponseDto>({
+      method: 'POST',
+      path: '/v1/dictionary/lookup',
+      body,
+      signal: options?.signal,
+    });
+  }
   analyzeReaderText(body: ReaderAnalyzeRequestDto) { return this.request<ReaderAnalyzeResponseDto>({ method: 'POST', path: '/v1/reader/analyze', body }); }
   recordReaderExposure(input: Parameters<ApiClient['recordReaderExposure']>[0]) { return this.request<ReaderExposureResponseDto>({ method: 'POST', path: '/v1/reader/exposures', body: input.body, headers: input.headers }); }
   updateReaderProgress(input: Parameters<ApiClient['updateReaderProgress']>[0]) { return this.request<ReadingProgressResponseDto>({ method: 'PUT', path: `/v1/reader/progress/${encodeURIComponent(input.contentId)}`, body: input.body, headers: input.headers }); }
@@ -476,6 +490,17 @@ export class MockApiClient implements ApiClient {
   answerReviewItem(_input: Parameters<ApiClient['answerReviewItem']>[0]) { return this.fixture(mockApiResponses.reviewAnswer); }
   getConcept(_conceptId: string) { return this.fixture(mockApiResponses.concept); }
   searchDictionary(_query: OperationQuery<'searchDictionary'>) { return this.fixture(this.returnEmpty ? emptyCursorResponse<DictionarySearchResponseDto['data']>() : mockApiResponses.dictionary); }
+  async lookupDictionaryWord(
+    body: DictionaryLookupRequestDto,
+    options?: { readonly signal?: AbortSignal }
+  ): Promise<DictionaryLookupResponseDto> {
+    await awaitWithAbort(this.ready(), options?.signal);
+    throwIfAborted(options?.signal);
+    return {
+      data: { surface: body.surface, matchStatus: 'not_found', entries: [] },
+      meta: mockResponseMeta,
+    };
+  }
   analyzeReaderText(_body: ReaderAnalyzeRequestDto) { return this.fixture(mockApiResponses.readerAnalysis); }
   recordReaderExposure(_input: Parameters<ApiClient['recordReaderExposure']>[0]) { return this.fixture(mockApiResponses.readerExposure); }
   updateReaderProgress(_input: Parameters<ApiClient['updateReaderProgress']>[0]) { return this.fixture(mockApiResponses.readingProgress); }
