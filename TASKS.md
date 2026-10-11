@@ -2,6 +2,8 @@
 
 ## PILOT-006 — Reader any-word Vietnamese dictionary
 
+**Artifact continuation — 2026-10-11:** Separate Luna Max architecture review PASS / 0 HIGH/BLOCKER. Root released local synthetic/test-only builder, non-root packaging and harness regressions under the [artifact plan](plans/PILOT-READER-DICTIONARY-ARTIFACT.md). Exact lexical records, production artifact/image, hosted privacy/actor acceptance and activation remain HOLD; keep the existing Render Free service. See [plan review](reviews/PILOT-READER-DICTIONARY-ARTIFACT-PLAN-REVIEW.md).
+
 Status: DOING — owner-approved P2 exception; local synthetic Reader lookup prototype is verified. Backend suite: 57 passed; full frontend suite: 1,109 passed, 1 skipped. Workspace typecheck, lint, Next build, and built-proxy loopback proof passed. Independent Luna Max runtime review: PASS, 0 HIGH/BLOCKER; [final runtime review](reviews/PILOT-READER-DICTIONARY-SOURCE-REVIEW.md#final-frozen-source-review). The untouched-base `pnpm backend:typecheck` fails before analysis on duplicate conftest module mapping; touched-source mypy passed. Dataset rights/quality and corpus activation remain HOLD. Draft-only integration; merge and production activation remain HOLD; no hosted change or learner outcome is claimed.
 
 Scope gates: keep the exact indexed POST lookup read-only, with no exposure/save/FSRS/progress writes. No corpus/provider activation, migration, hosted actor, or real-learner mutation. See [plan](plans/PILOT-READER-ANY-WORD-DICTIONARY.md), [plan review](reviews/PILOT-READER-DICTIONARY-PLAN-REVIEW.md), [dataset rights/quality HOLD](reviews/PILOT-READER-DICTIONARY-SOURCE-CANDIDATE-REVIEW.md), and [runtime source PASS](reviews/PILOT-READER-DICTIONARY-SOURCE-REVIEW.md#final-frozen-source-review).
