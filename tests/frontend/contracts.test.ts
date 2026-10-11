@@ -334,6 +334,33 @@ describe('TASK-005 adapters', () => {
     expect(mockContentResponse.data.segments[0].sentences[0].concepts[0].startOffset).toBe(24);
   });
 
+  it('splits unannotated Reader text into Unicode word spans and preserves UTF-16 offsets', () => {
+    const content = structuredClone(mockContentResponse.data);
+    const segment = content.segments[0];
+    const sentence = segment.sentences[0];
+    sentence.text = '🍵 Her grandmother’s café—tea-time 24/7. e\u0301at';
+    sentence.concepts = [];
+    segment.text = sentence.text;
+
+    const view = mapContentToReaderPassage(content);
+    const tokens = view.sentences[0].tokens;
+    const lookupTokens = tokens.filter((token) => token.isLookupable);
+
+    expect(tokens.map((token) => token.raw).join('')).toBe(sentence.text);
+    expect(lookupTokens.map((token) => token.raw)).toEqual([
+      'Her',
+      'grandmother’s',
+      'café',
+      'tea-time',
+      'e\u0301at',
+    ]);
+    expect(lookupTokens.every((token) => token.startOffset !== undefined
+      && token.endOffset !== undefined
+      && sentence.text.slice(token.startOffset, token.endOffset) === token.raw)).toBe(true);
+    expect(lookupTokens[0]).toMatchObject({ startOffset: 3, endOffset: 6 });
+    expect(lookupTokens.some((token) => /^\d+$/.test(token.raw))).toBe(false);
+  });
+
   it('keeps competence as three separate presentation signals', () => {
     const view = mapBrainConceptToViewModel(mockBrainConceptSummary, 'Cuộc hẹn');
     expect(view.recognitionScore).toBe(78);
@@ -428,7 +455,7 @@ describe('TASK-005 transport, cursor, and algorithm boundaries', () => {
     expect('updateSettings' in client).toBe(false);
   });
 
-  it('implements all 31 authoritative OpenAPI operations at the mock boundary', () => {
+  it('implements all 32 authoritative OpenAPI operations at the mock boundary', () => {
     const client = new MockApiClient() as unknown as Record<string, unknown>;
     const methods = [
       'getMe', 'updateMe', 'listMyLanguageProfiles', 'createMyLanguageProfile',
@@ -440,9 +467,9 @@ describe('TASK-005 transport, cursor, and algorithm boundaries', () => {
       'saveContentToLibrary', 'removeContentFromLibrary', 'saveSentenceToLibrary',
       'removeSentenceFromLibrary', 'startStartingLevelAssessment',
       'getStartingLevelAssessment', 'submitStartingLevelResponse', 'getBrainSummary',
-      'listBrainConcepts', 'getBrainConcept', 'getProgressOverview',
+      'listBrainConcepts', 'getBrainConcept', 'getProgressOverview', 'lookupDictionaryWord',
     ];
-    expect(methods).toHaveLength(31);
+    expect(methods).toHaveLength(32);
     for (const method of methods) expect(client[method], method).toEqual(expect.any(Function));
   });
 

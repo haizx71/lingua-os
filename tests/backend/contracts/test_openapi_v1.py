@@ -31,6 +31,7 @@ EXPECTED_PATHS = {
     "/v1/review/{reviewItemId}/answer",
     "/v1/concepts/{conceptId}",
     "/v1/dictionary/search",
+    "/v1/dictionary/lookup",
     "/v1/reader/analyze",
     "/v1/reader/exposures",
     "/v1/reader/progress/{contentId}",
@@ -168,6 +169,25 @@ def test_openapi_is_nonempty_v32_and_spec_valid() -> None:
 
     validator = importlib.import_module("openapi_spec_validator")
     validator.validate(spec)
+
+
+def test_dictionary_lookup_is_bounded_body_only_and_lexical_only() -> None:
+    spec = load_yaml(OPENAPI_PATH)
+    path = "/v1/dictionary/lookup"
+    operation = spec["paths"][path]["post"]
+    request_schema = local_ref_target(
+        spec,
+        operation["requestBody"]["content"]["application/json"]["schema"]["$ref"],
+    )
+
+    assert parameter_names(spec, path, "post") == set()
+    assert request_schema["additionalProperties"] is False
+    assert request_schema["required"] == ["surface"]
+    assert request_schema["properties"]["surface"]["minLength"] == 1
+    assert request_schema["properties"]["surface"]["maxLength"] == 80
+    assert "learner state" in operation["description"].lower()
+    assert "503" in operation["responses"]
+    assert "413" not in operation["responses"]
 
 
 def test_operation_ids_are_stable_unique_and_every_operation_is_secured() -> None:

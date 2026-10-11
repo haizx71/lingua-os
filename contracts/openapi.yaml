@@ -635,6 +635,38 @@ paths:
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /v1/dictionary/lookup:
+    post:
+      tags: [Concepts]
+      operationId: lookupDictionaryWord
+      summary: Look up one exact word without learner-state data
+      description: >-
+        Looks up one exact Unicode word surface using NFKC and case-fold normalization. The
+        request body must contain only one lexical word, never sentence or passage text. Returns
+        every approved exact sense within the documented bounds. Oversized complete results fail
+        closed with SERVICE_UNAVAILABLE instead of being truncated. This endpoint does not read or
+        mutate learner state. A missing or invalid approved artifact receives SERVICE_UNAVAILABLE.
+        The selected word is not placed in the URL and request bodies are not logged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DictionaryLookupRequest' }
+      responses:
+        '200':
+          description: Exact approved lookup or a clear no-match result; at most 64 senses and 64 KiB.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DictionaryLookupResponse'
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
   /v1/reader/analyze:
     post:
       tags: [Reader]
@@ -1988,6 +2020,72 @@ components:
             not alter flat result ordering or cursor advancement and may repeat, complete, on
             later pages.
           items: { $ref: '#/components/schemas/DictionaryLemmaGroup' }
+    DictionaryLookupRequest:
+      type: object
+      additionalProperties: false
+      required: [surface]
+      properties:
+        surface:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: One selected lexical word surface; never sentence or passage text.
+    DictionaryLookupAttribution:
+      type: object
+      additionalProperties: false
+      required: [sourceName, sourceUrl, licenseCode, licenseUrl, attributionText]
+      properties:
+        sourceName: { type: string, minLength: 1, maxLength: 200 }
+        sourceUrl: { type: string, format: uri, maxLength: 2048 }
+        licenseCode: { type: string, minLength: 1, maxLength: 80 }
+        licenseUrl: { type: string, format: uri, maxLength: 2048 }
+        attributionText: { type: string, minLength: 1, maxLength: 500 }
+        changeNotice: { type: string, minLength: 1, maxLength: 500 }
+    DictionaryLookupSense:
+      type: object
+      additionalProperties: false
+      required: [senseOrder, glossVi]
+      properties:
+        senseOrder: { type: integer, minimum: 1 }
+        glossVi: { type: string, minLength: 1, maxLength: 500 }
+    DictionaryLookupEntry:
+      type: object
+      additionalProperties: false
+      required: [matchedSurface, senses, attributions]
+      properties:
+        matchedSurface: { type: string, minLength: 1, maxLength: 80 }
+        partOfSpeech: { type: string, minLength: 1, maxLength: 64 }
+        formOf: { type: string, minLength: 1, maxLength: 80 }
+        senses:
+          type: array
+          minItems: 1
+          maxItems: 32
+          items: { $ref: '#/components/schemas/DictionaryLookupSense' }
+        attributions:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: { $ref: '#/components/schemas/DictionaryLookupAttribution' }
+    DictionaryLookupData:
+      type: object
+      additionalProperties: false
+      required: [surface, matchStatus, entries]
+      properties:
+        surface: { type: string, minLength: 1, maxLength: 80 }
+        matchStatus:
+          type: string
+          enum: [found, not_found]
+        entries:
+          type: array
+          maxItems: 8
+          items: { $ref: '#/components/schemas/DictionaryLookupEntry' }
+    DictionaryLookupResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/DictionaryLookupData' }
+        meta: { $ref: '#/components/schemas/ResponseMeta' }
     ReaderAnalyzeRequest:
       type: object
       additionalProperties: false

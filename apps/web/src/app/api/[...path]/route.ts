@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const DICTIONARY_LOOKUP_PATH = 'v1/dictionary/lookup';
+const MAX_DICTIONARY_LOOKUP_REQUEST_BYTES = 1024;
+
 type RouteContext = {
   params: Promise<{ path: string[] }>;
 };
@@ -47,6 +50,114 @@ function unavailableResponse(): NextResponse {
       headers: { 'Cache-Control': 'no-store' },
     },
   );
+}
+
+function validationErrorResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'The request is invalid.',
+        requestId: crypto.randomUUID(),
+      },
+    },
+    {
+      status: 422,
+      headers: { 'Cache-Control': 'private, no-store' },
+    },
+  );
+}
+
+type BoundedLookupBody =
+  | { readonly kind: 'accepted'; readonly body: ArrayBuffer }
+  | { readonly kind: 'invalid' | 'cancelled' };
+
+async function cancelRequestBody(request: Request): Promise<void> {
+  try {
+    await request.body?.cancel();
+  } catch {
+    // The client may already have closed the stream.
+  }
+}
+
+async function readBoundedLookupBody(request: Request): Promise<BoundedLookupBody> {
+  if (request.signal.aborted) {
+    await cancelRequestBody(request);
+    return { kind: 'cancelled' };
+  }
+
+  const declaredLength = request.headers.get('content-length');
+  const transferEncoding = request.headers.get('transfer-encoding');
+  if (transferEncoding && declaredLength !== null) {
+    await cancelRequestBody(request);
+    return { kind: 'invalid' };
+  }
+
+  let expectedLength: number | null = null;
+  if (declaredLength !== null) {
+    const normalizedLength = declaredLength.trim();
+    if (!/^\d+$/.test(normalizedLength)) {
+      await cancelRequestBody(request);
+      return { kind: 'invalid' };
+    }
+    const significantDigits = normalizedLength.replace(/^0+/, '') || '0';
+    if (significantDigits.length > 4) {
+      await cancelRequestBody(request);
+      return { kind: 'invalid' };
+    }
+    expectedLength = Number(significantDigits);
+    if (expectedLength > MAX_DICTIONARY_LOOKUP_REQUEST_BYTES) {
+      await cancelRequestBody(request);
+      return { kind: 'invalid' };
+    }
+  }
+
+  const bodyStream = request.body;
+  if (!bodyStream) {
+    return expectedLength === null || expectedLength === 0
+      ? { kind: 'accepted', body: new ArrayBuffer(0) }
+      : { kind: 'invalid' };
+  }
+
+  const reader = bodyStream.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  const onAbort = () => {
+    void reader.cancel(request.signal.reason).catch(() => undefined);
+  };
+  request.signal.addEventListener('abort', onAbort, { once: true });
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (request.signal.aborted) return { kind: 'cancelled' };
+      if (done) break;
+      const nextBytes = value?.byteLength ?? 0;
+      if (totalBytes + nextBytes > MAX_DICTIONARY_LOOKUP_REQUEST_BYTES) {
+        await reader.cancel();
+        return { kind: 'invalid' };
+      }
+      totalBytes += nextBytes;
+      chunks.push(value);
+    }
+  } catch {
+    return request.signal.aborted ? { kind: 'cancelled' } : { kind: 'invalid' };
+  } finally {
+    request.signal.removeEventListener('abort', onAbort);
+    reader.releaseLock();
+  }
+
+  if (expectedLength !== null && totalBytes !== expectedLength) {
+    return { kind: 'invalid' };
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { kind: 'accepted', body: body.buffer };
 }
 
 function forwardRequestHeaders(request: Request): Headers {
@@ -99,7 +210,16 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
   target.search = new URL(request.url).search;
 
   const method = request.method.toUpperCase();
-  const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
+  let body: BodyInit | undefined;
+  if (method !== 'GET' && method !== 'HEAD') {
+    if (method === 'POST' && segments.join('/') === DICTIONARY_LOOKUP_PATH) {
+      const boundedBody = await readBoundedLookupBody(request);
+      if (boundedBody.kind !== 'accepted') return validationErrorResponse();
+      body = boundedBody.body;
+    } else {
+      body = await request.arrayBuffer();
+    }
+  }
 
   let upstream: Response;
   try {

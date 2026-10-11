@@ -32,6 +32,7 @@ export interface ReviewCardViewModel {
 
 export interface ReaderTokenViewModel {
   readonly raw: string;
+  readonly isLookupable?: boolean;
   readonly lemma?: string;
   readonly isTarget?: boolean;
   readonly conceptId?: string;
@@ -44,6 +45,25 @@ export interface ReaderTokenViewModel {
   readonly pos?: string;
   readonly translationVi?: string;
   readonly explanationEn?: string;
+}
+
+export interface ReaderLookupViewModel {
+  readonly surface: string;
+  readonly matchStatus: 'found' | 'not_found';
+  readonly entries: readonly Readonly<{
+    matchedSurface: string;
+    partOfSpeech?: string;
+    formOf?: string;
+    senses: readonly Readonly<{ senseOrder: number; glossVi: string }>[];
+    attributions: readonly Readonly<{
+      sourceName: string;
+      sourceUrl: string;
+      licenseCode: string;
+      licenseUrl: string;
+      attributionText: string;
+      changeNotice?: string;
+    }>[];
+  }>[];
 }
 
 export interface ReaderSentenceViewModel {
