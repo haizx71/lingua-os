@@ -87,11 +87,31 @@ export function OnboardingDiagnostic({
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [currentSelectedOption, setCurrentSelectedOption] = useState<number | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
+  const [usedBeginnerBypass, setUsedBeginnerBypass] = useState(false);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
 
   const isCompleted = currentStep >= questions.length;
   const currentQuestion = questions[currentStep];
+  const isBeginnerCalibration =
+    usedBeginnerBypass ||
+    selectedAnswers.filter((a) => a === -1).length >= Math.ceil(questions.length / 2);
+
+  const handleBeginnerBypass = useCallback(() => {
+    setUsedBeginnerBypass(true);
+    setSelectedAnswers([]);
+    setCurrentSelectedOption(null);
+    setCurrentStep(questions.length);
+    if (onComplete) {
+      onComplete({
+        estimatedLevel: 'A1',
+        confidence: 'high',
+        evidenceCount: 1,
+        assessedSkills: ['recognition'],
+        methodVersion: 'beginner-zero-to-one-bypass-v1',
+      });
+    }
+  }, [questions.length, onComplete]);
 
   const handleNextQuestion = useCallback(() => {
     if (currentSelectedOption === null) return;
@@ -104,15 +124,26 @@ export function OnboardingDiagnostic({
     setCurrentStep(nextStep);
 
     if (nextStep >= questions.length && onComplete) {
-      const estimate = mockLanguageProfile.startingLevelEstimate;
-      const count = Math.max(updatedAnswers.length, estimate.evidenceCount);
-      onComplete({
-        estimatedLevel: estimate.level.code,
-        confidence: estimate.confidenceBand,
-        evidenceCount: count,
-        assessedSkills: estimate.assessedSkills,
-        methodVersion: estimate.methodVersion,
-      });
+      const isBeginner = updatedAnswers.filter((a) => a === -1).length >= Math.ceil(questions.length / 2);
+      if (isBeginner) {
+        onComplete({
+          estimatedLevel: 'A1',
+          confidence: 'high',
+          evidenceCount: Math.max(updatedAnswers.length, 1),
+          assessedSkills: ['recognition'],
+          methodVersion: 'beginner-no-guessing-heuristic-v1',
+        });
+      } else {
+        const estimate = mockLanguageProfile.startingLevelEstimate;
+        const count = Math.max(updatedAnswers.length, estimate.evidenceCount);
+        onComplete({
+          estimatedLevel: estimate.level.code,
+          confidence: estimate.confidenceBand,
+          evidenceCount: count,
+          assessedSkills: estimate.assessedSkills,
+          methodVersion: estimate.methodVersion,
+        });
+      }
     }
   }, [currentSelectedOption, selectedAnswers, currentStep, questions.length, onComplete]);
 
@@ -123,6 +154,7 @@ export function OnboardingDiagnostic({
       setCurrentStep(0);
       setSelectedAnswers([]);
       setCurrentSelectedOption(null);
+      setUsedBeginnerBypass(false);
     }, 400);
   };
 
@@ -151,6 +183,9 @@ export function OnboardingDiagnostic({
           event.preventDefault();
           setCurrentSelectedOption(optionIndex);
         }
+      } else if (key === '0') {
+        event.preventDefault();
+        setCurrentSelectedOption(-1);
       } else if (event.key === 'Enter') {
         if (currentSelectedOption !== null) {
           event.preventDefault();
@@ -214,6 +249,31 @@ export function OnboardingDiagnostic({
         </Card>
       )}
 
+      {/* Beginner Callout */}
+      {!isCompleted && (
+        <div
+          data-testid="onboarding-beginner-callout"
+          className="flex flex-col gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-lilac)]/55 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="space-y-0.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)]">
+              Dành cho người mới bắt đầu
+            </p>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Chưa biết tiếng Anh hoặc mất gốc? Bạn không cần làm bài kiểm tra này.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="onboarding-beginner-bypass"
+            onClick={handleBeginnerBypass}
+          >
+            Bắt đầu từ Cơ bản (Mất gốc)
+          </Button>
+        </div>
+      )}
+
       {/* Active Question Card */}
       {!isCompleted && currentQuestion && (
         <Card variant="elevated" padding="lg" className="space-y-6">
@@ -263,6 +323,20 @@ export function OnboardingDiagnostic({
             ))}
           </div>
 
+          <button
+            type="button"
+            data-testid="onboarding-dont-know-option"
+            onClick={() => setCurrentSelectedOption(-1)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] ${
+              currentSelectedOption === -1
+                ? 'bg-[var(--status-info-bg)] border-[var(--action-primary)] text-[var(--action-primary)] ring-2 ring-[var(--focus-ring)]'
+                : 'bg-[var(--surface-subtle)]/70 border-dashed border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--action-primary)]/40'
+            }`}
+          >
+            <span>Mình chưa biết từ/câu này (Chọn để không đoán mò — hệ thống sẽ xếp lộ trình cơ bản)</span>
+            <kbd aria-hidden="true" className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded border border-[var(--border-subtle)] bg-[var(--surface)] px-1 font-mono text-[10px]">0</kbd>
+          </button>
+
           <p className="text-xs text-[var(--text-muted)]">
             Mẹo: Nhấn phím 1–4 (hoặc A–D) để chọn nhanh và Enter để tiếp tục
           </p>
@@ -287,20 +361,29 @@ export function OnboardingDiagnostic({
         <Card variant="elevated" padding="lg" className="space-y-6 animate-fadeIn">
           <div className="flex items-center gap-4 border-b border-[var(--border-subtle)] pb-4">
             <div className="w-16 h-16 rounded-2xl bg-[var(--status-info-bg)] flex items-center justify-center text-[var(--status-info)] text-2xl font-bold border-2 border-[var(--status-info-border)]">
-              A2
+              {isBeginnerCalibration ? 'A1' : 'A2'}
             </div>
             <div>
               <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
                 Ước lượng khởi điểm (ADR-009)
               </span>
               <h2 className="text-2xl font-bold text-[var(--text-primary)]">
-                A2 Elementary
+                {isBeginnerCalibration ? 'A1 Beginner (Lộ trình cho người mất gốc)' : 'A2 Elementary'}
               </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                Độ tin cậy: <span className="font-semibold text-[var(--status-success)]">Vừa</span> • {Math.max(selectedAnswers.length, mockLanguageProfile.startingLevelEstimate.evidenceCount)} bằng chứng
+                Độ tin cậy: <span className="font-semibold text-[var(--status-success)]">{isBeginnerCalibration ? 'Cao' : 'Vừa'}</span> • {usedBeginnerBypass ? 1 : Math.max(selectedAnswers.length, mockLanguageProfile.startingLevelEstimate.evidenceCount)} bằng chứng
               </p>
             </div>
           </div>
+
+          {isBeginnerCalibration && (
+            <div
+              data-testid="onboarding-beginner-reassurance"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-lilac)]/40 p-3.5 text-xs text-[var(--text-secondary)]"
+            >
+              Hệ thống đã bật chế độ hỗ trợ người mới: dịch tiếng Việt từng từ, đọc chậm 0.75x và gợi ý chữ cái khi ôn tập.
+            </div>
+          )}
 
           {/* Calibration Summary */}
           <div className="space-y-3">
@@ -314,7 +397,11 @@ export function OnboardingDiagnostic({
               </div>
               <div className="p-3 bg-[var(--surface-subtle)] rounded-xl border border-[var(--border-subtle)]">
                 <span className="text-[var(--text-muted)]">Phiên bản phương pháp:</span>
-                <p className="font-bold text-sm text-[var(--action-primary)] mt-0.5">starting-level-heuristic-v1</p>
+                <p className="font-bold text-sm text-[var(--action-primary)] mt-0.5">
+                  {isBeginnerCalibration
+                    ? (usedBeginnerBypass ? 'beginner-zero-to-one-bypass-v1' : 'beginner-no-guessing-heuristic-v1')
+                    : 'starting-level-heuristic-v1'}
+                </p>
               </div>
 
               <div className="p-3 bg-[var(--surface-subtle)] rounded-xl border border-[var(--border-subtle)]">

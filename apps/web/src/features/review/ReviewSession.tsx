@@ -41,6 +41,25 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(useGSAP);
 }
 
+function buildSpellingHint(term: string, meaningVi: string, level: number): string {
+  const clean = term.trim();
+  if (level === 1) {
+    const masked = clean
+      .split('')
+      .map((ch, idx) => (idx === 0 || ch === ' ' ? ch : '_'))
+      .join(' ');
+    return `${masked} (${clean.length} ký tự) • Nghĩa: ${meaningVi}`;
+  }
+  if (level >= 2) {
+    const masked = clean
+      .split('')
+      .map((ch, idx) => (idx === 0 || idx === clean.length - 1 || ch === ' ' || /[aeiou]/i.test(ch) ? ch : '_'))
+      .join(' ');
+    return `${masked} • Nghĩa: ${meaningVi}`;
+  }
+  return '';
+}
+
 export interface ReviewSessionProps {
   initialQueue?: ReviewCardItem[];
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
@@ -63,6 +82,7 @@ export function ReviewSession({
   const [focusMode, setFocusMode] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [responseText, setResponseText] = useState('');
+  const [hintLevel, setHintLevel] = useState(0);
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
 
   useEffect(() => {
@@ -107,7 +127,8 @@ export function ReviewSession({
 
   useEffect(() => {
     setResponseText('');
-  }, [currentCard?.id]);
+    setHintLevel(0);
+  }, [currentCard?.id, currentIndex]);
 
   useEffect(() => {
     setIsAudioPlaying(false);
@@ -239,6 +260,23 @@ export function ReviewSession({
         window.speechSynthesis.cancel();
         const utterance = new window.SpeechSynthesisUtterance(currentCard.term);
         utterance.lang = 'en-US';
+        setIsAudioPlaying(true);
+        utterance.onend = () => setIsAudioPlaying(false);
+        utterance.onerror = () => setIsAudioPlaying(false);
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        setIsAudioPlaying(false);
+      }
+    }
+  };
+
+  const handleSlowAudioPlay = () => {
+    if (canSynthesizeSpeech && currentCard?.term) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(currentCard.term);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.75;
         setIsAudioPlaying(true);
         utterance.onend = () => setIsAudioPlaying(false);
         utterance.onerror = () => setIsAudioPlaying(false);
@@ -392,7 +430,7 @@ export function ReviewSession({
               </p>
             )}
 
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex items-center justify-center gap-2">
               <Button
                 variant="secondary"
                 size="icon"
@@ -402,6 +440,16 @@ export function ReviewSession({
                 onClick={handleAudioPlay}
               >
                 <Volume2 className={`h-5 w-5 text-[var(--action-primary)] ${isAudioPlaying && !prefersReducedMotion ? 'animate-bounce' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Nghe phát âm chậm 0.75x"
+                title="Nghe phát âm chậm 0.75x cho người mới"
+                disabled={!canSynthesizeSpeech}
+                onClick={handleSlowAudioPlay}
+              >
+                🐢 Nghe chậm 0.75x
               </Button>
             </div>
 
@@ -445,6 +493,27 @@ export function ReviewSession({
               </label>
             )}
 
+            {hiddenAnswerMode && !isAnswerRevealed && (
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="review-hint-button"
+                  onClick={() => setHintLevel((prev) => Math.min(prev + 1, 2))}
+                >
+                  {hintLevel === 0 ? '💡 Gợi ý chữ cái (Cho người mới)' : '💡 Thêm gợi ý chữ cái'}
+                </Button>
+                {hintLevel > 0 && (
+                  <p
+                    data-testid="review-spelling-hint"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-lilac)]/60 px-4 py-2 font-mono text-xs font-semibold text-[var(--text-primary)]"
+                  >
+                    Gợi ý: {buildSpellingHint(currentCard.term, currentCard.meaningVi, hintLevel)}
+                  </p>
+                )}
+              </div>
+            )}
+
             {!isAnswerRevealed && (
               <div className="mt-7">
                 <Button variant="primary" size="md" onClick={() => setIsAnswerRevealed(true)} className="px-6">
@@ -468,6 +537,9 @@ export function ReviewSession({
               <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-blue)]" onClick={() => void submitRating('good', needsTextResponse ? responseText : undefined)}>Tốt (Good)</Button>
               <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)]" onClick={() => void submitRating('easy', needsTextResponse ? responseText : undefined)}>Dễ (Easy)</Button>
             </div>
+            <p className="mt-2.5 text-center text-[11px] text-[var(--text-muted)]">
+              Mẹo cho người mới: Chọn <strong>Quên</strong> nếu chưa nhớ • <strong>Khó</strong> nếu cần gợi ý • <strong>Tốt</strong> nếu nhớ đúng • <strong>Dễ</strong> nếu đã thuộc lòng
+            </p>
           </div>
         </Card>
       </div>

@@ -17,6 +17,12 @@ import { Bookmark, Check, Languages, Plus, Volume2, X } from 'lucide-react';
 import { MockApiClient, type ApiClient, type ApiErrorCode } from '@lingua/types';
 import type { ReaderPassage, TokenItem } from '../../fixtures/readerFixture';
 import { useReaderSession } from './useReaderSession';
+import {
+  lookupBeginnerWord,
+  formatBeginnerPosVi,
+  getVietnamesePronunciationTip,
+  getSentenceStructureTip,
+} from './beginnerLexicon';
 import { getApiClient } from '../../lib/api/client';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
 
@@ -40,6 +46,8 @@ export function InteractiveReader({
   const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
+  const [speechRate, setSpeechRate] = useState<1 | 0.75>(1);
+  const [quickLookupToken, setQuickLookupToken] = useState<TokenItem | null>(null);
   const fullAudioTimerRef = useRef<number | null>(null);
   const [savedWordNotice, setSavedWordNotice] = useState<string | null>(null);
   const [revealedSentenceIds, setRevealedSentenceIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -68,11 +76,24 @@ export function InteractiveReader({
   const status = presentationState === 'success' ? reader.status : presentationState;
   const passage = reader.passage;
 
+  const activeToken = reader.selectedToken ?? quickLookupToken;
+  const closeActiveInspector = React.useCallback(() => {
+    setQuickLookupToken(null);
+    reader.closeInspector();
+  }, [reader.closeInspector]);
+
   useEffect(() => {
     setRevealedSentenceIds(new Set());
     setSavedWordNotice(null);
+    setQuickLookupToken(null);
     lastNotifiedSaveRef.current = null;
   }, [passage?.id]);
+
+  useEffect(() => {
+    if (reader.selectedToken) {
+      setQuickLookupToken(null);
+    }
+  }, [reader.selectedToken]);
 
   useEffect(() => {
     const token = reader.selectedToken;
@@ -89,7 +110,7 @@ export function InteractiveReader({
   }, [apiClient, initialPassage]);
 
   useEffect(() => {
-    if (!reader.selectedToken) {
+    if (!activeToken) {
       if (inspectorWasOpenRef.current) {
         inspectorWasOpenRef.current = false;
         inspectorTriggerRef.current?.focus({ preventScroll: true });
@@ -105,12 +126,12 @@ export function InteractiveReader({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        reader.closeInspector();
+        closeActiveInspector();
       }
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
-  }, [reader.selectedToken, reader.closeInspector]);
+  }, [activeToken, closeActiveInspector]);
 
   if (status === 'loading') {
     return <LoadingState message="Đang tải bài đọc đã xuất bản..." count={3} />;
@@ -171,6 +192,7 @@ export function InteractiveReader({
         window.speechSynthesis.cancel();
         const utterance = new window.SpeechSynthesisUtterance(fullText);
         utterance.lang = 'en-US';
+        utterance.rate = speechRate;
         utterance.onend = () => setIsPlayingAudio(false);
         utterance.onerror = () => setIsPlayingAudio(false);
         window.speechSynthesis.speak(utterance);
@@ -181,7 +203,7 @@ export function InteractiveReader({
     fullAudioTimerRef.current = window.setTimeout(() => setIsPlayingAudio(false), 1200);
   };
 
-  const handleSpeakToken = (text: string) => {
+  const handleSpeakToken = (text: string, customRate?: number) => {
     if (
       typeof window !== 'undefined' &&
       'speechSynthesis' in window &&
@@ -191,6 +213,7 @@ export function InteractiveReader({
         window.speechSynthesis.cancel();
         const utterance = new window.SpeechSynthesisUtterance(text);
         utterance.lang = 'en-US';
+        utterance.rate = customRate ?? speechRate;
         window.speechSynthesis.speak(utterance);
       } catch {
         // Fallback for environments where speech synthesis is disabled or blocked
@@ -204,7 +227,7 @@ export function InteractiveReader({
     window.setTimeout(() => setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr)), 1000);
   };
 
-  const selectedToken = reader.selectedToken;
+  const selectedToken = activeToken;
   const selectedSentence = selectedToken?.sentenceId
     ? passage.sentences.find((sentence) => sentence.id === selectedToken.sentenceId)
     : undefined;
@@ -265,6 +288,15 @@ export function InteractiveReader({
             {isPlayingAudio ? 'Đang phát' : 'Nghe bài'}
           </Button>
         )}
+        <Button
+          variant={speechRate === 0.75 ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setSpeechRate((prev) => (prev === 1 ? 0.75 : 1))}
+          aria-label={speechRate === 0.75 ? 'Tốc độ đọc chậm 0.75x đang bật' : 'Bật tốc độ đọc chậm 0.75x'}
+          data-testid="reader-slow-audio-toggle"
+        >
+          {speechRate === 0.75 ? '🐢 Chậm 0.75x' : '1.0x Bình thường'}
+        </Button>
         {translatableSentenceIds.length > 0 && (
           <Button
             variant="ghost"
@@ -343,6 +375,7 @@ export function InteractiveReader({
                               type="button"
                               aria-describedby={token.status ? `reader-token-status-${sentence.id}-${tokenIndex}` : undefined}
                               onClick={(event) => {
+                                setQuickLookupToken(null);
                                 inspectorTriggerRef.current = event.currentTarget;
                                 void reader.inspectToken(token);
                               }}
@@ -352,6 +385,28 @@ export function InteractiveReader({
                             </button>
                             {token.status && <span id={`reader-token-status-${sentence.id}-${tokenIndex}`} className="sr-only">{conceptStateMetadata[token.status].labelVi}: {conceptStateMetadata[token.status].descriptionVi}</span>}
                           </React.Fragment>
+                        ) : /[A-Za-z]{2,}/.test(token.raw) ? (
+                          <span
+                            key={`${sentence.id}:${tokenIndex}`}
+                            data-testid="reader-helper-word"
+                            onClick={() => {
+                              reader.closeInspector();
+                              const entry = lookupBeginnerWord(token.raw);
+                              setQuickLookupToken({
+                                raw: token.raw,
+                                lemma: entry?.lemma ?? token.raw.toLowerCase().replace(/[^a-z']/g, ''),
+                                pos: entry?.posVi ?? 'Từ trong ngữ cảnh',
+                                ipa: entry?.ipa,
+                                translationVi: entry?.meaningVi ?? 'Từ tiếng Anh trong câu — bấm loa để nghe phát âm và xem nghĩa cả câu bên trên.',
+                                sentenceId: sentence.id,
+                                segmentId: segment.id,
+                              });
+                            }}
+                            title="Chạm để nghe phát âm & xem nghĩa nhanh"
+                            className="cursor-pointer rounded px-0.5 decoration-[var(--border-default)] decoration-dotted underline-offset-4 transition-colors hover:bg-[var(--surface-lilac)]/60 hover:underline"
+                          >
+                            {token.raw}
+                          </span>
                         ) : (
                           <React.Fragment key={`${sentence.id}:${tokenIndex}`}>{token.raw}</React.Fragment>
                         ))}
@@ -397,12 +452,21 @@ export function InteractiveReader({
                           </div>
                         </div>
                         {hasTranslation && meaningIsRevealed && (
-                          <p
-                            id={`reader-translation-${sentence.id}`}
-                            className="reader-copy rounded-r-xl border-l-3 border-[var(--action-primary)] bg-[var(--surface-subtle)]/70 py-2 pl-3.5 pr-3 text-sm leading-6 text-[var(--text-secondary)]"
-                          >
-                            {sentence.translationVi}
-                          </p>
+                          <>
+                            <p
+                              id={`reader-translation-${sentence.id}`}
+                              className="reader-copy rounded-r-xl border-l-3 border-[var(--action-primary)] bg-[var(--surface-subtle)]/70 py-2 pl-3.5 pr-3 text-sm leading-6 text-[var(--text-secondary)]"
+                            >
+                              {sentence.translationVi}
+                            </p>
+                            <p
+                              data-testid={`reader-grammar-tip-${sentence.id}`}
+                              className="mt-1 rounded-xl bg-[var(--surface-lilac)]/45 px-3 py-1.5 text-xs leading-5 text-[var(--text-secondary)]"
+                            >
+                              <span className="font-bold text-[var(--action-primary)]">💡 Mẹo hiểu câu: </span>
+                              {getSentenceStructureTip(sentence.tokens.map((t) => t.raw).join(''))}
+                            </p>
+                          </>
                         )}
                       </div>
                     </article>
@@ -465,10 +529,19 @@ export function InteractiveReader({
                 >
                   <Volume2 className="h-4 w-4 text-[var(--action-primary)]" />
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Phát âm chậm 0.75x"
+                  title="Phát âm chậm 0.75x cho người mới"
+                  onClick={() => handleSpeakToken(selectedToken.lemma ?? selectedToken.raw, 0.75)}
+                >
+                  🐢 0.75x
+                </Button>
               </div>
               {selectedToken.status && <ConceptChip status={selectedToken.status} size="sm" />}
             </div>
-            <Button ref={inspectorCloseButtonRef} variant="ghost" size="icon" onClick={reader.closeInspector} aria-label="Đóng bảng tra từ">
+            <Button ref={inspectorCloseButtonRef} variant="ghost" size="icon" onClick={closeActiveInspector} aria-label="Đóng bảng tra từ">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -489,28 +562,38 @@ export function InteractiveReader({
             )}
             {(selectedToken.ipa || selectedToken.pos) && (
               <p className="mt-1 break-words font-mono text-[10px] text-[var(--text-muted)]">
-                {[selectedToken.ipa, selectedToken.pos].filter(Boolean).join(' · ')}
+                {[selectedToken.ipa, formatBeginnerPosVi(selectedToken.pos)].filter(Boolean).join(' · ')}
               </p>
             )}
+            <p data-testid="inspector-pron-tip" className="mt-1.5 text-xs text-[var(--action-primary)]">
+              🗣️ {getVietnamesePronunciationTip(selectedToken.lemma ?? selectedToken.raw, selectedToken.ipa)}
+            </p>
             {selectedToken.explanationEn && <details className="mt-1 text-xs text-[var(--text-muted)]"><summary className="cursor-pointer">Định nghĩa tiếng Anh</summary><p className="mt-1 leading-4">{selectedToken.explanationEn}</p></details>}
           </div>
 
-          <div className="mt-2 flex justify-end border-t border-[var(--border-subtle)] pt-2">
-            {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
-              <Button variant="secondary" size="sm" leftIcon={<Check className="h-3.5 w-3.5" />} disabled>
-                Đã lưu vào Brain
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                size="sm"
-                leftIcon={<Plus className="h-3.5 w-3.5" />}
-                disabled={!selectedToken.conceptId || reader.inspecting || reader.busyKeys.has(`concept:${selectedToken.conceptId}`)}
-                onClick={() => void reader.saveConcept(selectedToken)}
-              >
-                Lưu vào ôn tập
-              </Button>
+          <div className="mt-2 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
+            {!selectedToken.conceptId && (
+              <span className="text-xs text-[var(--text-muted)]">
+                Từ bổ trợ trong câu · Bấm từ gạch chân để lưu vào Brain
+              </span>
             )}
+            <div className="ml-auto">
+              {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
+                <Button variant="secondary" size="sm" leftIcon={<Check className="h-3.5 w-3.5" />} disabled>
+                  Đã lưu vào Brain
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Plus className="h-3.5 w-3.5" />}
+                  disabled={!selectedToken.conceptId || reader.inspecting || reader.busyKeys.has(`concept:${selectedToken.conceptId}`)}
+                  onClick={() => void reader.saveConcept(selectedToken)}
+                >
+                  Lưu vào ôn tập
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -21,13 +21,14 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
-  const handlePlayAudio = (id: string, text?: string) => {
+  const handlePlayAudio = (id: string, text?: string, rate: number = 1) => {
     setPlayingAudioId(id);
     if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
       try {
         window.speechSynthesis.cancel();
         const utterance = new window.SpeechSynthesisUtterance(text ?? id);
         utterance.lang = 'en-US';
+        utterance.rate = rate;
         window.speechSynthesis.speak(utterance);
       } catch {
         // Safe fallback in headless/test environments
@@ -122,6 +123,15 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                     >
                       <Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === group.lexemeId ? 'animate-bounce' : ''}`} />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePlayAudio(`${group.lexemeId}:slow`, group.lemma, 0.75)}
+                      aria-label={`Nghe chậm 0.75x từ ${group.lemma}`}
+                      title="Nghe phát âm chậm 0.75x"
+                    >
+                      🐢 0.75x
+                    </Button>
                   </div>
                   {group.partOfSpeech && <span className="mt-1 block text-xs text-[var(--text-muted)]">{partOfSpeechLabels[group.partOfSpeech] ?? group.partOfSpeech}</span>}
                 </div>
@@ -203,8 +213,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                     >
                       <Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === concept.id ? 'animate-bounce' : ''}`} />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePlayAudio(`${concept.id}:slow`, concept.term, 0.75)}
+                      aria-label={`Nghe chậm 0.75x từ ${concept.term}`}
+                      title="Nghe phát âm chậm 0.75x"
+                    >
+                      🐢 0.75x
+                    </Button>
                   </div>
-                  {(concept.ipa || concept.pos) && <span className="mt-1 block font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos].filter(Boolean).join(' • ')}</span>}
+                  {(concept.ipa || concept.pos) && <span className="mt-1 block font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos ? (partOfSpeechLabels[concept.pos] ?? concept.pos) : ''].filter(Boolean).join(' • ')}</span>}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2"><Badge variant="primary" size="sm">{concept.cefrLevel}</Badge><ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" /></div>
               </div>
@@ -238,8 +257,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   <div className="flex min-w-0 items-center gap-2">
                     <h2 className="truncate text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{concept.term}</h2>
                     <Button variant="ghost" size="icon" onClick={() => handlePlayAudio(concept.id, concept.term)} aria-label={`Phát âm từ ${concept.term}`} className="h-10 w-10 shrink-0 rounded-2xl"><Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === concept.id ? 'animate-bounce' : ''}`} /></Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePlayAudio(`${concept.id}:slow`, concept.term, 0.75)}
+                      aria-label={`Nghe chậm 0.75x từ ${concept.term}`}
+                      title="Nghe phát âm chậm 0.75x"
+                    >
+                      🐢 0.75x
+                    </Button>
                   </div>
-                  {(concept.ipa || concept.pos) && <span className="mt-1 block truncate font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos].filter(Boolean).join(' • ')}</span>}
+                  {(concept.ipa || concept.pos) && <span className="mt-1 block truncate font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos ? (partOfSpeechLabels[concept.pos] ?? concept.pos) : ''].filter(Boolean).join(' • ')}</span>}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2"><Badge variant="primary" size="sm">{concept.cefrLevel}</Badge><ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" /></div>
               </div>

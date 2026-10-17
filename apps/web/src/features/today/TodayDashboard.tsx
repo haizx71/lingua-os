@@ -174,6 +174,36 @@ export function TodayDashboard({
         </aside>
       </section>
 
+      <section
+        data-testid="today-beginner-guide"
+        aria-label="Hướng dẫn 3 bước cho người mới"
+        className="rounded-[24px] border border-[var(--border-subtle)] bg-gradient-to-r from-[var(--surface)] via-[var(--surface)] to-[var(--surface-lilac)]/45 p-4 shadow-[var(--shadow-xs)] sm:p-5"
+      >
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)]">
+          Lộ trình 3 bước dễ dàng cho người mới
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5">
+            <span className="text-xs font-bold text-[var(--action-primary)]">Bước 1 · Đọc & Chạm từ</span>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+              Mở bài đọc, bật <strong>Đọc chậm 0.75x</strong> và chạm vào <strong>bất kỳ từ nào</strong> để xem nghĩa tiếng Việt.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5">
+            <span className="text-xs font-bold text-[var(--action-primary)]">Bước 2 · Lưu 3–5 từ mới</span>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+              Chọn các từ được gạch chân quan trọng và bấm <strong>Lưu vào ôn tập</strong> để đưa vào bộ nhớ.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5">
+            <span className="text-xs font-bold text-[var(--action-primary)]">Bước 3 · Ôn tập có gợi ý</span>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+              Khi ôn tập, dùng nút <strong>Gợi ý chữ cái</strong> và nghe phát âm chậm để nhớ từ tự nhiên, không áp lực.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section aria-labelledby="today-activities-heading" className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 shadow-[var(--shadow-card)] sm:p-6">
         <div className="mb-3 flex items-end justify-between gap-4">
           <div><p className="lingua-kicker">Theo thứ tự ưu tiên</p><h2 id="today-activities-heading" className="mt-1 text-xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">Các hoạt động</h2></div>

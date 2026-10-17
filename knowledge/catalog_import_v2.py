@@ -366,8 +366,8 @@ def generate_sql(base_dir: Path = ROOT) -> str:
             s_order = p_sense.get("senseOrder", 1)
             is_prim = s_order == 1
         else:
-            defn = c.get("vietnameseGloss") or c.get("vietnameseSupport") or c["canonicalForm"]
-            vi = c.get("vietnameseGloss") or defn
+            vi = c.get("vietnameseGloss") or c.get("vietnameseSupport") or c["canonicalForm"]
+            defn = c.get("vietnameseSupport") or vi
             s_order = 1
             is_prim = True
 
@@ -382,7 +382,8 @@ def generate_sql(base_dir: Path = ROOT) -> str:
             f"AND l.part_of_speech = {sql_quote(pos)} "
             f"ON CONFLICT (lexeme_id, sense_order) DO UPDATE SET "
             f"definition = EXCLUDED.definition, "
-            f"translated_definition = EXCLUDED.translated_definition;"
+            f"translated_definition = EXCLUDED.translated_definition, "
+            f"translation_language_code = EXCLUDED.translation_language_code;"
         )
         lines.append(
             f"INSERT INTO public.concept_senses (concept_id, word_sense_id, is_primary) "

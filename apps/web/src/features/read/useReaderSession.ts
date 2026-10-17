@@ -82,18 +82,24 @@ function actionMessage(kind: ReaderActionError['kind']): string {
 }
 
 function detailToken(token: ReaderTokenViewModel, detail: ConceptDetailDto): ReaderTokenViewModel {
+  const primaryDef = detail.definitions[0];
+  const rawDef = primaryDef?.definition?.trim();
+  const rawTrans = primaryDef?.translation?.trim();
+  const defIsVietnamese = primaryDef?.languageCode === 'vi'
+    || (Boolean(rawDef) && !rawTrans && /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(rawDef));
+  const translationVi = rawTrans || (defIsVietnamese ? rawDef : undefined) || token.translationVi;
+  const explanationEn = !defIsVietnamese && rawDef && rawDef !== translationVi
+    ? rawDef
+    : undefined;
+
   return {
     ...token,
     raw: token.raw,
     lemma: detail.canonicalForm,
     ...(detail.ipa ? { ipa: detail.ipa } : {}),
     ...(detail.partOfSpeech ? { pos: detail.partOfSpeech } : {}),
-    ...(detail.definitions[0]?.translation
-      ? { translationVi: detail.definitions[0].translation }
-      : {}),
-    ...(detail.definitions[0]?.definition
-      ? { explanationEn: detail.definitions[0].definition }
-      : {}),
+    ...(translationVi ? { translationVi } : {}),
+    ...(explanationEn ? { explanationEn } : {}),
   };
 }
 
