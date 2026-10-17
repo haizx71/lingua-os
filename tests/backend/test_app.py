@@ -81,6 +81,7 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/admin/content",
         "/v1/admin/content/{contentId}",
         "/v1/admin/content/{contentId}/validate",
+        "/v1/admin/content/{contentId}/translations/vi",
         "/v1/admin/content/{contentId}/publish",
         "/v1/admin/content/{contentId}/retire",
         "/v1/admin/concepts/search",
@@ -100,6 +101,7 @@ def test_application_publishes_only_the_authorized_implemented_endpoints() -> No
         "/v1/brain/summary",
         "/v1/brain/concepts",
         "/v1/brain/concepts/{conceptId}",
+        "/v1/progress/overview",
         "/v1/concepts/{conceptId}",
         "/v1/dictionary/search",
         "/v1/reader/analyze",
@@ -249,4 +251,31 @@ def test_brain_runtime_metadata_preserves_the_frozen_contract() -> None:
         "maxItems": 10,
         "title": "Examples",
         "type": "array",
+    }
+
+
+def test_progress_runtime_metadata_preserves_the_frozen_contract() -> None:
+    generated = app.openapi()
+    operation = generated["paths"]["/v1/progress/overview"]["get"]
+    assert operation["operationId"] == "getProgressOverview"
+    assert set(operation["responses"]) == {"200", "401", "404", "422", "500"}
+    assert operation["security"] == [{"bearerAuth": []}]
+
+    schemas = generated["components"]["schemas"]
+    overview = schemas["ProgressOverviewDto"]
+    assert set(overview["required"]) == {
+        "languageProfileId",
+        "windowStart",
+        "windowEnd",
+        "startingLevelEstimate",
+        "memoryHealth",
+        "competence",
+        "successfulLearningDays",
+        "targetLearningDays",
+        "conceptsExposed",
+        "conceptsStrengthened",
+        "totalMinutes",
+        "dailyActivity",
+        "retentionTrend",
+        "calculatedAt",
     }

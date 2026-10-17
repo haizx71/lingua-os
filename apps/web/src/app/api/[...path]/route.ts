@@ -18,6 +18,8 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade',
 ]);
 
+const ALLOWED_TOP_LEVEL_PREFIXES = new Set(['v1', 'health']);
+
 function configuredApiOrigin(): URL | null {
   const raw = process.env.API_INTERNAL_URL?.trim();
   if (!raw) return null;
@@ -44,7 +46,12 @@ function unavailableResponse(): NextResponse {
     },
     {
       status: 503,
-      headers: { 'Cache-Control': 'no-store' },
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
     },
   );
 }
@@ -81,7 +88,42 @@ function forwardResponseHeaders(response: Response): Headers {
   // Preserve the FastAPI strong validator separately for the client to send
   // back as the contract-required If-Match value.
   if (upstreamEtag) headers.set('X-Lingua-Upstream-ETag', upstreamEtag);
+
+  // Preserve rate-limit and request correlation headers from upstream
+  const retryAfter = response.headers.get('retry-after');
+  if (retryAfter) headers.set('Retry-After', retryAfter);
+  const requestId = response.headers.get('x-request-id');
+  if (requestId) headers.set('X-Request-Id', requestId);
+
+  // Security: Guarantee defensive security headers on all proxy responses
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
   return headers;
+}
+
+function isSafeSegment(segment: string): boolean {
+  if (!segment) return false;
+  // Reject URL-encoded directory traversal, slashes, or null bytes
+  try {
+    const decoded = decodeURIComponent(segment);
+    if (
+      decoded === '.' ||
+      decoded === '..' ||
+      decoded.includes('/') ||
+      decoded.includes('\\') ||
+      decoded.includes('\0') ||
+      decoded.includes('..')
+    ) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+  // Disallow non-printable or control characters
+  if (/[\x00-\x1f\x7f]/.test(segment)) return false;
+  return true;
 }
 
 async function proxy(request: Request, { params }: RouteContext): Promise<Response> {
@@ -90,13 +132,25 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
 
   const route = await params;
   const segments = route.path ?? [];
-  if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+  if (segments.length === 0 || !segments.every(isSafeSegment)) {
+    return unavailableResponse();
+  }
+
+  // Security: Enforce allowed top-level API prefix to block SSRF / internal service probing
+  const topSegment = segments[0]?.toLowerCase();
+  if (!ALLOWED_TOP_LEVEL_PREFIXES.has(topSegment)) {
     return unavailableResponse();
   }
 
   const target = new URL(apiOrigin.origin);
   target.pathname = `/${segments.map((segment) => encodeURIComponent(segment)).join('/')}`;
-  target.search = new URL(request.url).search;
+
+  const requestUrl = new URL(request.url);
+  // Disallow CRLF or null bytes in search parameters to prevent header splitting / smuggling
+  if (/[\r\n\0]/.test(requestUrl.search)) {
+    return unavailableResponse();
+  }
+  target.search = requestUrl.search;
 
   const method = request.method.toUpperCase();
   const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();

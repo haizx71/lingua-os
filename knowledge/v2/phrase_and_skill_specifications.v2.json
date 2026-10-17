@@ -1,0 +1,1275 @@
+{
+  "schemaVersion": "knowledge-v2-phrases-and-skills.v2",
+  "status": "APPROVED_V2_EXPANSION",
+  "updatedAt": "2026-10-14",
+  "counts": {
+    "phraseSpecifications": 40,
+    "skillSpecifications": 10
+  },
+  "phrases": [
+    {
+      "canonicalKey": "phrase:good-morning",
+      "conceptType": "phrase",
+      "canonicalForm": "good morning",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "politeness",
+      "basePattern": "good morning",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "Good morning! How are you today?"
+        }
+      ],
+      "vietnameseGloss": "chào buổi sáng",
+      "vietnameseSupport": "lời chào lịch sự từ sáng sớm đến trước 12 giờ trưa",
+      "example": {
+        "en": "Good morning! How are you today?",
+        "vi": "Chào buổi sáng! Hôm nay bạn thế nào?",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:see-you-later",
+      "conceptType": "phrase",
+      "canonicalForm": "see you later",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "politeness",
+      "basePattern": "see you {time_reference}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "time_reference",
+          "allowed": [
+            "later",
+            "soon",
+            "tomorrow",
+            "on Monday"
+          ]
+        }
+      ],
+      "vietnameseGloss": "hẹn gặp lại sau",
+      "vietnameseSupport": "cụm chào tạm biệt thân thiện",
+      "example": {
+        "en": "See you later at the cafe.",
+        "vi": "Hẹn gặp lại bạn sau ở quán cà phê nhé.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:nice-to-meet-you",
+      "conceptType": "phrase",
+      "canonicalForm": "nice to meet you",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "politeness",
+      "basePattern": "nice to meet you",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "Hello Lan, nice to meet you."
+        }
+      ],
+      "vietnameseGloss": "rất vui được gặp bạn",
+      "vietnameseSupport": "dùng khi mới làm quen lần đầu; người kia đáp lại là 'Nice to meet you, too'",
+      "example": {
+        "en": "Hello Lan, nice to meet you.",
+        "vi": "Chào Lan, rất vui được gặp bạn.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:can-you-help-me",
+      "conceptType": "phrase",
+      "canonicalForm": "can you help me",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "survival",
+      "basePattern": "can you help me {optional_action}",
+      "headwordCanonicalKey": "word:help:verb",
+      "slotTemplate": [
+        {
+          "slot": "optional_action",
+          "allowed": [
+            "with this bag",
+            "find the station",
+            "please"
+          ]
+        }
+      ],
+      "vietnameseGloss": "bạn giúp tôi được không",
+      "vietnameseSupport": "mẫu câu nhờ giúp đỡ cơ bản và lịch sự",
+      "example": {
+        "en": "Excuse me, can you help me with this form?",
+        "vi": "Xin lỗi, bạn có thể giúp tôi điền biểu mẫu này không?",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:how-do-you-say",
+      "conceptType": "phrase",
+      "canonicalForm": "how do you say ... in English",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "clarification",
+      "basePattern": "how do you say {word} in English",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "word",
+          "allowed": [
+            "this",
+            "that word"
+          ]
+        }
+      ],
+      "vietnameseGloss": "từ này trong tiếng Anh nói thế nào",
+      "vietnameseSupport": "câu hỏi cực kỳ hữu ích khi đang học ngoại ngữ",
+      "example": {
+        "en": "How do you say this word in English?",
+        "vi": "Từ này trong tiếng Anh nói như thế nào?",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:what-does-it-mean",
+      "conceptType": "phrase",
+      "canonicalForm": "what does this mean",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "clarification",
+      "basePattern": "what does {target} mean",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "target",
+          "allowed": [
+            "this",
+            "that word",
+            "this sentence"
+          ]
+        }
+      ],
+      "vietnameseGloss": "cái này nghĩa là gì",
+      "vietnameseSupport": "nhớ dùng trợ động từ does/do, không nói 'What means this?'",
+      "example": {
+        "en": "What does this sentence mean?",
+        "vi": "Câu này có nghĩa là gì?",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:a-cup-of",
+      "conceptType": "phrase",
+      "canonicalForm": "a cup of",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "food-drink",
+      "basePattern": "a {container} of {beverage}",
+      "headwordCanonicalKey": "word:cup:noun",
+      "slotTemplate": [
+        {
+          "slot": "container",
+          "allowed": [
+            "cup",
+            "glass",
+            "bottle"
+          ]
+        },
+        {
+          "slot": "beverage",
+          "allowed": [
+            "tea",
+            "coffee",
+            "water",
+            "milk"
+          ]
+        }
+      ],
+      "vietnameseGloss": "một tách / một cốc...",
+      "vietnameseSupport": "cụm định lượng chuẩn cho đồ uống không đếm được",
+      "example": {
+        "en": "I would like a cup of hot tea.",
+        "vi": "Tôi muốn một tách trà nóng.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:at-home",
+      "conceptType": "phrase",
+      "canonicalForm": "at home",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "home",
+      "basePattern": "at home",
+      "headwordCanonicalKey": "word:home:noun",
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "We usually have dinner at home."
+        }
+      ],
+      "vietnameseGloss": "ở nhà",
+      "vietnameseSupport": "cố định dùng giới từ 'at home', không có 'the'",
+      "example": {
+        "en": "We usually have dinner at home.",
+        "vi": "Chúng tôi thường ăn tối ở nhà.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:go-to-work",
+      "conceptType": "phrase",
+      "canonicalForm": "go to work",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "routine",
+      "basePattern": "go to {daily_destination}",
+      "headwordCanonicalKey": "word:go:verb",
+      "slotTemplate": [
+        {
+          "slot": "daily_destination",
+          "allowed": [
+            "work",
+            "school",
+            "bed"
+          ]
+        }
+      ],
+      "vietnameseGloss": "đi làm",
+      "vietnameseSupport": "không dùng mạo từ 'the' trước work/school/bed trong cụm này",
+      "example": {
+        "en": "He goes to work at eight every morning.",
+        "vi": "Anh ấy đi làm lúc tám giờ mỗi sáng.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:right-now",
+      "conceptType": "phrase",
+      "canonicalForm": "right now",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "time",
+      "basePattern": "right now",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "She is busy on the phone right now."
+        }
+      ],
+      "vietnameseGloss": "ngay bây giờ",
+      "vietnameseSupport": "nhấn mạnh thời điểm ngay lúc đang nói",
+      "example": {
+        "en": "She is busy on the phone right now.",
+        "vi": "Ngay bây giờ cô ấy đang bận nghe điện thoại.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:by-bus",
+      "conceptType": "phrase",
+      "canonicalForm": "by bus / by train",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "transport",
+      "basePattern": "by {transport_mode}",
+      "headwordCanonicalKey": "word:bus:noun",
+      "slotTemplate": [
+        {
+          "slot": "transport_mode",
+          "allowed": [
+            "bus",
+            "train",
+            "taxi",
+            "bike",
+            "plane"
+          ]
+        }
+      ],
+      "vietnameseGloss": "bằng xe buýt / bằng tàu",
+      "vietnameseSupport": "sau 'by' cộng trực tiếp phương tiện, KHÔNG có a/the (by bus, không nói by a bus); riêng đi bộ dùng 'on foot'",
+      "example": {
+        "en": "I commute to the office by bus.",
+        "vi": "Tôi đi làm đến văn phòng bằng xe buýt.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:on-the-left",
+      "conceptType": "phrase",
+      "canonicalForm": "on the left / right",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "directions",
+      "basePattern": "on the {side}",
+      "headwordCanonicalKey": "word:left:noun",
+      "slotTemplate": [
+        {
+          "slot": "side",
+          "allowed": [
+            "left",
+            "right"
+          ]
+        }
+      ],
+      "vietnameseGloss": "ở bên trái / bên phải",
+      "vietnameseSupport": "luôn dùng giới từ 'on' (on the left/right)",
+      "example": {
+        "en": "The pharmacy is on the left, next to the bank.",
+        "vi": "Hiệu thuốc ở bên trái, cạnh ngân hàng.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:pay-by-card",
+      "conceptType": "phrase",
+      "canonicalForm": "pay by card / in cash",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "shopping",
+      "basePattern": "pay {payment_method}",
+      "headwordCanonicalKey": "word:pay:verb",
+      "slotTemplate": [
+        {
+          "slot": "payment_method",
+          "allowed": [
+            "by card",
+            "in cash",
+            "online"
+          ]
+        }
+      ],
+      "vietnameseGloss": "thanh toán bằng thẻ / tiền mặt",
+      "vietnameseSupport": "chú ý giới từ: 'by card' nhưng 'in cash'",
+      "example": {
+        "en": "Can I pay by card at this stall?",
+        "vi": "Tôi có thể thanh toán bằng thẻ ở quầy này không?",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:have-a-look",
+      "conceptType": "phrase",
+      "canonicalForm": "have a look",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "daily-life",
+      "basePattern": "have a look at {target}",
+      "headwordCanonicalKey": "word:look:verb",
+      "slotTemplate": [
+        {
+          "slot": "target",
+          "allowed": [
+            "the menu",
+            "this schedule",
+            "your ticket"
+          ]
+        }
+      ],
+      "vietnameseGloss": "xem qua",
+      "vietnameseSupport": "cách nói tự nhiên thay cho động từ look đơn lẻ",
+      "example": {
+        "en": "Let me have a look at the train schedule.",
+        "vi": "Để tôi xem qua lịch tàu chạy.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:of-course",
+      "conceptType": "phrase",
+      "canonicalForm": "of course",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "communication",
+      "basePattern": "of course",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "Of course, I can send you the file right away."
+        }
+      ],
+      "vietnameseGloss": "tất nhiên rồi",
+      "vietnameseSupport": "dùng để đồng ý lịch sự và nhiệt tình",
+      "example": {
+        "en": "Of course, I can send you the file right away.",
+        "vi": "Tất nhiên rồi, tôi có thể gửi tệp tin cho bạn ngay.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:for-example",
+      "conceptType": "phrase",
+      "canonicalForm": "for example",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "discourse",
+      "basePattern": "for example",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "Many daily habits help, for example reading ten minutes before bed."
+        }
+      ],
+      "vietnameseGloss": "ví dụ như",
+      "vietnameseSupport": "dùng để mở đầu một ví dụ minh họa cụ thể",
+      "example": {
+        "en": "Many daily habits help, for example reading ten minutes before bed.",
+        "vi": "Nhiều thói quen hằng ngày rất có ích, ví dụ như đọc sách mười phút trước khi ngủ.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:get-off",
+      "conceptType": "phrase",
+      "canonicalForm": "get on / get off",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "transport",
+      "basePattern": "get {direction} the {vehicle}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "direction",
+          "allowed": [
+            "on",
+            "off"
+          ]
+        },
+        {
+          "slot": "vehicle",
+          "allowed": [
+            "bus",
+            "train",
+            "plane"
+          ]
+        }
+      ],
+      "vietnameseGloss": "lên / xuống (xe buýt, tàu, máy bay)",
+      "vietnameseSupport": "dùng get on/off cho xe buýt, tàu, máy bay; dùng get in/out of cho ô tô/taxi",
+      "example": {
+        "en": "Get off the bus at the third stop.",
+        "vi": "Hãy xuống xe buýt ở trạm dừng thứ ba.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:next-to",
+      "conceptType": "phrase",
+      "canonicalForm": "next to",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "location",
+      "basePattern": "next to {place}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "place",
+          "allowed": [
+            "the station",
+            "the park",
+            "my office"
+          ]
+        }
+      ],
+      "vietnameseGloss": "bên cạnh, sát cạnh",
+      "vietnameseSupport": "không dùng 'next with'",
+      "example": {
+        "en": "There is a quiet coffee shop next to our office.",
+        "vi": "Có một quán cà phê yên tĩnh ngay cạnh văn phòng chúng tôi.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:at-least",
+      "conceptType": "phrase",
+      "canonicalForm": "at least",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "quantity",
+      "basePattern": "at least {quantity}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "quantity",
+          "allowed": [
+            "twenty minutes",
+            "two hours",
+            "five words"
+          ]
+        }
+      ],
+      "vietnameseGloss": "ít nhất là",
+      "vietnameseSupport": "chỉ mức tối thiểu cần đạt",
+      "example": {
+        "en": "Try to review for at least fifteen minutes a day.",
+        "vi": "Hãy cố gắng ôn tập ít nhất mười lăm phút mỗi ngày.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:in-advance",
+      "conceptType": "phrase",
+      "canonicalForm": "in advance",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "plans",
+      "basePattern": "in advance",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "It is cheaper to book train tickets in advance."
+        }
+      ],
+      "vietnameseGloss": "trước (đặt trước, báo trước)",
+      "vietnameseSupport": "thường đi với book, pay, thank (thank you in advance)",
+      "example": {
+        "en": "It is cheaper to book train tickets in advance.",
+        "vi": "Đặt vé tàu trước sẽ rẻ hơn.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:make-a-decision",
+      "conceptType": "phrase",
+      "canonicalForm": "make a decision",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "decisions",
+      "basePattern": "make a {decision_noun}",
+      "headwordCanonicalKey": "word:decision:noun",
+      "slotTemplate": [
+        {
+          "slot": "decision_noun",
+          "allowed": [
+            "decision",
+            "choice",
+            "plan",
+            "mistake",
+            "progress"
+          ]
+        }
+      ],
+      "vietnameseGloss": "đưa ra quyết định",
+      "vietnameseSupport": "collocation cố định với 'make', không dùng 'do a decision'",
+      "example": {
+        "en": "We need more information before we make a decision.",
+        "vi": "Chúng tôi cần thêm thông tin trước khi đưa ra quyết định.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:take-part-in",
+      "conceptType": "phrase",
+      "canonicalForm": "take part in",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "community",
+      "basePattern": "take part in {event}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "event",
+          "allowed": [
+            "the workshop",
+            "the discussion",
+            "the project"
+          ]
+        }
+      ],
+      "vietnameseGloss": "tham gia vào",
+      "vietnameseSupport": "đồng nghĩa với participate in",
+      "example": {
+        "en": "Everyone is welcome to take part in the discussion.",
+        "vi": "Mọi người đều được chào đón tham gia vào cuộc thảo luận.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:look-forward-to",
+      "conceptType": "phrase",
+      "canonicalForm": "look forward to",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "communication",
+      "basePattern": "look forward to {noun_or_gerund}",
+      "headwordCanonicalKey": "word:look:verb",
+      "slotTemplate": [
+        {
+          "slot": "noun_or_gerund",
+          "allowed": [
+            "hearing from you",
+            "meeting you",
+            "our trip"
+          ]
+        }
+      ],
+      "vietnameseGloss": "mong đợi, trông mong",
+      "vietnameseSupport": "chữ 'to' ở đây là giới từ nên theo sau BẮT BUỘC là danh từ hoặc V-ing (look forward to meeting you)",
+      "example": {
+        "en": "I look forward to working with your team.",
+        "vi": "Tôi rất mong được làm việc cùng nhóm của bạn.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:as-soon-as",
+      "conceptType": "phrase",
+      "canonicalForm": "as soon as",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "time",
+      "basePattern": "as soon as {clause_or_possible}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "clause_or_possible",
+          "allowed": [
+            "possible",
+            "I arrive",
+            "the meeting ends"
+          ]
+        }
+      ],
+      "vietnameseGloss": "ngay khi / càng sớm càng tốt",
+      "vietnameseSupport": "nhấn mạnh hành động xảy ra ngay lập tức sau một sự việc khác",
+      "example": {
+        "en": "Please reply as soon as possible.",
+        "vi": "Vui lòng phản hồi càng sớm càng tốt.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:in-case",
+      "conceptType": "phrase",
+      "canonicalForm": "in case",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "plans",
+      "basePattern": "in case {precaution_clause}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "precaution_clause",
+          "allowed": [
+            "it rains",
+            "you need help",
+            "the train is late"
+          ]
+        }
+      ],
+      "vietnameseGloss": "phòng khi,เผื่อ khi",
+      "vietnameseSupport": "nêu lý do chuẩn bị trước để đề phòng một tình huống có thể xảy ra",
+      "example": {
+        "en": "Bring a light jacket in case the room is cold.",
+        "vi": "Hãy mang theo một chiếc áo khoác nhẹ phòng khi trong phòng bị lạnh.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:change-ones-mind",
+      "conceptType": "phrase",
+      "canonicalForm": "change one's mind",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "decisions",
+      "basePattern": "change {possessive} mind",
+      "headwordCanonicalKey": "word:change:verb",
+      "slotTemplate": [
+        {
+          "slot": "possessive",
+          "allowed": [
+            "my",
+            "your",
+            "his",
+            "her",
+            "our",
+            "their"
+          ]
+        }
+      ],
+      "vietnameseGloss": "đổi ý",
+      "vietnameseSupport": "mẫu cụm từ có khe biến thiên theo đại từ sở hữu",
+      "example": {
+        "en": "Let me know if you change your mind about Friday.",
+        "vi": "Hãy báo cho tôi biết nếu bạn đổi ý về ngày thứ Sáu nhé.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:keep-in-touch",
+      "conceptType": "phrase",
+      "canonicalForm": "keep in touch",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "communication",
+      "basePattern": "keep in touch with {person}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "person",
+          "allowed": [
+            "colleagues",
+            "old friends",
+            "the client"
+          ]
+        }
+      ],
+      "vietnameseGloss": "giữ liên lạc",
+      "vietnameseSupport": "dùng khi tạm biệt hoặc duy trì kết nối",
+      "example": {
+        "en": "We still keep in touch after finishing the course.",
+        "vi": "Chúng tôi vẫn giữ liên lạc sau khi kết thúc khóa học.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:out-of-order",
+      "conceptType": "phrase",
+      "canonicalForm": "out of order",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "problems",
+      "basePattern": "out of order",
+      "headwordCanonicalKey": "word:order:noun:sequence",
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "The ticket machine is out of order today."
+        }
+      ],
+      "vietnameseGloss": "bị hỏng (máy móc, thang máy, thiết bị công cộng)",
+      "vietnameseSupport": "dùng cho thiết bị/máy móc không hoạt động được",
+      "example": {
+        "en": "The ticket machine is out of order today.",
+        "vi": "Hôm nay máy bán vé tự động bị hỏng.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:on-business",
+      "conceptType": "phrase",
+      "canonicalForm": "on business",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "work-study",
+      "basePattern": "on {trip_purpose}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "trip_purpose",
+          "allowed": [
+            "business",
+            "holiday",
+            "vacation"
+          ]
+        }
+      ],
+      "vietnameseGloss": "đi công tác",
+      "vietnameseSupport": "dùng giới từ 'on business', không dùng 'for business'",
+      "example": {
+        "en": "She is in Ho Chi Minh City on business this week.",
+        "vi": "Tuần này cô ấy đang đi công tác ở Thành phố Hồ Chí Minh.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:be-used-to",
+      "conceptType": "phrase",
+      "canonicalForm": "be used to",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "routine",
+      "basePattern": "be used to {noun_or_gerund}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "noun_or_gerund",
+          "allowed": [
+            "waking up early",
+            "the hot weather",
+            "working online"
+          ]
+        }
+      ],
+      "vietnameseGloss": "quen với việc gì",
+      "vietnameseSupport": "có 'be' (am/is/are) hoặc 'get' đứng trước used to thì theo sau là V-ing/N (quen với); khác với 'used to + V' (đã từng làm trong quá khứ)",
+      "example": {
+        "en": "I am used to waking up at six in the morning.",
+        "vi": "Tôi đã quen với việc thức dậy lúc sáu giờ sáng.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:take-into-account",
+      "conceptType": "phrase",
+      "canonicalForm": "take into account",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "decisions",
+      "basePattern": "take {factor} into account",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "factor",
+          "allowed": [
+            "travel time",
+            "the budget",
+            "learner feedback"
+          ]
+        }
+      ],
+      "vietnameseGloss": "cân nhắc, tính đến yếu tố",
+      "vietnameseSupport": "cụm từ học thuật và công sở rất tự nhiên ở mức B1",
+      "example": {
+        "en": "We must take travel time into account when planning.",
+        "vi": "Chúng ta phải tính đến thời gian đi lại khi lập kế hoạch.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:in-charge-of",
+      "conceptType": "phrase",
+      "canonicalForm": "in charge of",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "work-study",
+      "basePattern": "be in charge of {responsibility}",
+      "headwordCanonicalKey": "word:charge:noun:responsibility",
+      "slotTemplate": [
+        {
+          "slot": "responsibility",
+          "allowed": [
+            "the project",
+            "customer support",
+            "training"
+          ]
+        }
+      ],
+      "vietnameseGloss": "phụ trách, chịu trách nhiệm về",
+      "vietnameseSupport": "theo sau bởi danh từ hoặc V-ing",
+      "example": {
+        "en": "Who is in charge of updating the project schedule?",
+        "vi": "Ai là người phụ trách cập nhật lịch trình dự án?",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:make-sense",
+      "conceptType": "phrase",
+      "canonicalForm": "make sense",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "opinions",
+      "basePattern": "make sense",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slotIndex": 1,
+          "slotName": "COMPLEMENT_OR_CONTEXT",
+          "acceptedCategories": [
+            "NP",
+            "VP",
+            "Clause"
+          ],
+          "exampleFill": "Your suggestion makes a lot of sense."
+        }
+      ],
+      "vietnameseGloss": "hợp lý, có lý, dễ hiểu",
+      "vietnameseSupport": "không dùng to be (nói 'It makes sense', không nói 'It is make sense')",
+      "example": {
+        "en": "Your suggestion makes a lot of sense.",
+        "vi": "Đề xuất của bạn rất hợp lý.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:as-a-result",
+      "conceptType": "phrase",
+      "canonicalForm": "as a result",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "cause-effect",
+      "basePattern": "as a result (+ of {cause})",
+      "headwordCanonicalKey": "word:result:noun",
+      "slotTemplate": [
+        {
+          "slot": "cause",
+          "allowed": [
+            "the delay",
+            "consistent practice",
+            "clear planning"
+          ]
+        }
+      ],
+      "vietnameseGloss": "kết quả là, do đó",
+      "vietnameseSupport": "dùng để nối nguyên nhân với kết quả ở câu sau hoặc đi với 'of + cụm danh từ'",
+      "example": {
+        "en": "He reviewed daily; as a result, he remembered the words easily.",
+        "vi": "Anh ấy ôn tập hằng ngày; kết quả là anh ấy nhớ từ rất dễ dàng.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:figure-out",
+      "conceptType": "phrase",
+      "canonicalForm": "figure out",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "problems",
+      "basePattern": "figure out {problem_or_clause}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "problem_or_clause",
+          "allowed": [
+            "the solution",
+            "how it works",
+            "what went wrong"
+          ]
+        }
+      ],
+      "vietnameseGloss": "tìm ra cách hiểu / giải quyết",
+      "vietnameseSupport": "phrasal verb cực kỳ phổ biến trong giao tiếp và công việc",
+      "example": {
+        "en": "We need to figure out why the request failed.",
+        "vi": "Chúng ta cần tìm ra nguyên nhân tại sao yêu cầu bị lỗi.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:point-out",
+      "conceptType": "phrase",
+      "canonicalForm": "point out",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "communication",
+      "basePattern": "point out {detail}",
+      "headwordCanonicalKey": "word:point:noun:idea",
+      "slotTemplate": [
+        {
+          "slot": "detail",
+          "allowed": [
+            "an important detail",
+            "a small mistake",
+            "the main risk"
+          ]
+        }
+      ],
+      "vietnameseGloss": "chỉ ra, lưu ý cho thấy",
+      "vietnameseSupport": "nêu ra một sự thật hoặc chi tiết mà người khác có thể chưa để ý",
+      "example": {
+        "en": "The reviewer pointed out a missing translation.",
+        "vi": "Người kiểm duyệt đã chỉ ra một bản dịch còn thiếu.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:run-out-of",
+      "conceptType": "phrase",
+      "canonicalForm": "run out of",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "problems",
+      "basePattern": "run out of {resource}",
+      "headwordCanonicalKey": "word:run:verb:move-fast",
+      "slotTemplate": [
+        {
+          "slot": "resource",
+          "allowed": [
+            "time",
+            "battery",
+            "coffee",
+            "budget"
+          ]
+        }
+      ],
+      "vietnameseGloss": "hết, cạn kiệt (thời gian, pin, nguyên liệu)",
+      "vietnameseSupport": "chủ ngữ là người hoặc hệ thống bị hết thứ gì đó",
+      "example": {
+        "en": "We ran out of time before finishing the last topic.",
+        "vi": "Chúng tôi đã hết thời gian trước khi kịp hoàn thành chủ đề cuối.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:set-up",
+      "conceptType": "phrase",
+      "canonicalForm": "set up",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "technology",
+      "basePattern": "set up {target}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "target",
+          "allowed": [
+            "a meeting",
+            "your profile",
+            "the environment"
+          ]
+        }
+      ],
+      "vietnameseGloss": "thiết lập, cài đặt, sắp xếp",
+      "vietnameseSupport": "dùng cho cả cài đặt kỹ thuật lẫn sắp xếp cuộc họp/tổ chức",
+      "example": {
+        "en": "It takes only two minutes to set up your learning profile.",
+        "vi": "Chỉ mất hai phút để thiết lập hồ sơ học tập của bạn.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:keep-track-of",
+      "conceptType": "phrase",
+      "canonicalForm": "keep track of",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "plans",
+      "basePattern": "keep track of {metric}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "metric",
+          "allowed": [
+            "your progress",
+            "daily expenses",
+            "deadlines"
+          ]
+        }
+      ],
+      "vietnameseGloss": "theo dõi, nắm bắt tiến độ",
+      "vietnameseSupport": "trái nghĩa là lose track of",
+      "example": {
+        "en": "The dashboard helps you keep track of your study minutes.",
+        "vi": "Bảng tổng quan giúp bạn theo dõi số phút học tập của mình.",
+        "rights": "FIRST_PARTY"
+      }
+    },
+    {
+      "canonicalKey": "phrase:Pros-and-cons",
+      "conceptType": "phrase",
+      "canonicalForm": "pros and cons",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "decisions",
+      "basePattern": "the pros and cons of {option}",
+      "headwordCanonicalKey": null,
+      "slotTemplate": [
+        {
+          "slot": "option",
+          "allowed": [
+            "working remotely",
+            "each plan",
+            "both options"
+          ]
+        }
+      ],
+      "vietnameseGloss": "ưu điểm và nhược điểm",
+      "vietnameseSupport": "cách nói ngắn gọn, tự nhiên của advantages and disadvantages",
+      "example": {
+        "en": "Let's weigh the pros and cons of each option.",
+        "vi": "Hãy cân nhắc ưu và nhược điểm của từng phương án.",
+        "rights": "FIRST_PARTY"
+      }
+    }
+  ],
+  "skills": [
+    {
+      "canonicalKey": "skill:introduce-oneself",
+      "conceptType": "skill",
+      "canonicalForm": "introduce oneself and state basic role",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "communication",
+      "vietnameseGloss": "giới thiệu bản thân cơ bản",
+      "vietnameseSupport": "nêu tên, công việc/vai trò và nơi ở bằng câu ngắn rõ ràng",
+      "example": {
+        "en": "Hi, I am Hải from Hanoi, and I work in digital media.",
+        "vi": "Xin chào, tôi là Hải đến từ Hà Nội và tôi làm việc trong lĩnh vực truyền thông số.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "grammar:be-basic",
+        "word:name:noun"
+      ]
+    },
+    {
+      "canonicalKey": "skill:ask-for-repetition-slowly",
+      "conceptType": "skill",
+      "canonicalForm": "ask someone to speak more slowly",
+      "curriculumBand": "LINGUA_A0",
+      "topic": "clarification",
+      "vietnameseGloss": "nhờ nói chậm lại",
+      "vietnameseSupport": "chủ động điều chỉnh tốc độ giao tiếp khi nghe chưa kịp",
+      "example": {
+        "en": "Could you speak a little more slowly, please?",
+        "vi": "Bạn có thể nói chậm hơn một chút được không, làm ơn?",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "phrase:please-repeat",
+        "word:speak:verb"
+      ]
+    },
+    {
+      "canonicalKey": "skill:check-price-and-payment",
+      "conceptType": "skill",
+      "canonicalForm": "ask for price and payment method",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "shopping",
+      "vietnameseGloss": "hỏi giá và cách thanh toán",
+      "vietnameseSupport": "hỏi giá món hàng và xác nhận thanh toán bằng thẻ hay tiền mặt",
+      "example": {
+        "en": "How much is this, and can I pay by card?",
+        "vi": "Món này bao nhiêu tiền và tôi có thể thanh toán bằng thẻ không?",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "phrase:how-much",
+        "phrase:pay-by-card"
+      ]
+    },
+    {
+      "canonicalKey": "skill:confirm-time-and-place",
+      "conceptType": "skill",
+      "canonicalForm": "arrange and confirm a meeting time and place",
+      "curriculumBand": "LINGUA_A1",
+      "topic": "plans",
+      "vietnameseGloss": "hẹn và xác nhận giờ giấc, địa điểm",
+      "vietnameseSupport": "chốt giờ và địa điểm gặp mặt rõ ràng với giới từ at/on/in chuẩn",
+      "example": {
+        "en": "Let's meet at the coffee shop next to the station at ten.",
+        "vi": "Hãy gặp nhau ở quán cà phê cạnh nhà ga lúc mười giờ nhé.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "phrase:what-time",
+        "grammar:prepositions-time-place"
+      ]
+    },
+    {
+      "canonicalKey": "skill:reschedule-an-appointment",
+      "conceptType": "skill",
+      "canonicalForm": "politely reschedule an existing appointment",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "plans",
+      "vietnameseGloss": "dời lịch hẹn một cách lịch sự",
+      "vietnameseSupport": "thông báo lý do ngắn gọn và đề xuất khung giờ thay thế",
+      "example": {
+        "en": "I have an urgent meeting at three. Could we move our appointment to Friday morning?",
+        "vi": "Tôi có một cuộc họp khẩn lúc ba giờ. Chúng ta có thể dời lịch hẹn sang sáng thứ Sáu được không?",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "word:appointment:noun",
+        "word:available:adjective"
+      ]
+    },
+    {
+      "canonicalKey": "skill:compare-two-options",
+      "conceptType": "skill",
+      "canonicalForm": "compare two options and state a preference",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "choices",
+      "vietnameseGloss": "so sánh hai lựa chọn và nêu phương án ưu tiên",
+      "vietnameseSupport": "dùng cấu trúc so sánh hơn và nêu lý do thực tế",
+      "example": {
+        "en": "The morning train is slightly more expensive, but it is much more convenient for our schedule.",
+        "vi": "Chuyến tàu sáng đắt hơn một chút, nhưng lại thuận tiện hơn nhiều cho lịch trình của chúng ta.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "grammar:comparatives-core",
+        "word:convenient:adjective"
+      ]
+    },
+    {
+      "canonicalKey": "skill:describe-past-incident",
+      "conceptType": "skill",
+      "canonicalForm": "narrate a short past problem and how it was resolved",
+      "curriculumBand": "LINGUA_A2",
+      "topic": "experience",
+      "vietnameseGloss": "kể lại một sự cố đã qua và cách xử lý",
+      "vietnameseSupport": "kết hợp quá khứ đơn và từ nối trình tự thời gian",
+      "example": {
+        "en": "Yesterday my flight was delayed, so I called the hotel to confirm my late arrival.",
+        "vi": "Hôm qua chuyến bay của tôi bị hoãn, vì vậy tôi đã gọi cho khách sạn để xác nhận việc đến muộn.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "grammar:past-simple-core",
+        "word:delay:noun"
+      ]
+    },
+    {
+      "canonicalKey": "skill:summarize-action-items",
+      "conceptType": "skill",
+      "canonicalForm": "summarize key points and next steps after a discussion",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "work-study",
+      "vietnameseGloss": "tóm tắt ý chính và bước tiếp theo sau cuộc thảo luận",
+      "vietnameseSupport": "kỹ năng mediation (CEFR Companion Volume) giúp làm rõ trách nhiệm và hạn chót",
+      "example": {
+        "en": "To summarize, Minh will update the design today and we will review it before Friday's deadline.",
+        "vi": "Tóm lại, Minh sẽ cập nhật bản thiết kế hôm nay và chúng ta sẽ duyệt lại trước hạn chót ngày thứ Sáu.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "word:summarize:verb",
+        "word:deadline:noun"
+      ]
+    },
+    {
+      "canonicalKey": "skill:weigh-pros-and-cons",
+      "conceptType": "skill",
+      "canonicalForm": "evaluate advantages and disadvantages before deciding",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "decisions",
+      "vietnameseGloss": "phân tích ưu/nhược điểm trước khi quyết định",
+      "vietnameseSupport": "sử dụng các cụm từ nối tương phản (Although, On the other hand) để lập luận cân bằng",
+      "example": {
+        "en": "Although working from home saves travel time, meeting in the office helps us solve complex issues faster.",
+        "vi": "Mặc dù làm việc tại nhà giúp tiết kiệm thời gian đi lại, việc gặp nhau ở văn phòng giúp chúng tôi giải quyết các vấn đề phức tạp nhanh hơn.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "grammar:contrast-clauses-although-despite",
+        "word:advantage:noun"
+      ]
+    },
+    {
+      "canonicalKey": "skill:write-handover-update",
+      "conceptType": "skill",
+      "canonicalForm": "write a clear asynchronous handover message",
+      "curriculumBand": "LINGUA_B1",
+      "topic": "communication",
+      "vietnameseGloss": "viết tin nhắn bàn giao công việc rõ ràng",
+      "vietnameseSupport": "trình bày trạng thái hiện tại, phần việc đã xong và câu hỏi cần phản hồi",
+      "example": {
+        "en": "I have completed the database check; please review the summary report when your shift starts.",
+        "vi": "Tôi đã hoàn thành việc kiểm tra cơ sở dữ liệu; vui lòng xem báo cáo tóm tắt khi ca làm việc của bạn bắt đầu.",
+        "rights": "FIRST_PARTY"
+      },
+      "prerequisites": [
+        "grammar:present-perfect-experience",
+        "word:continue:verb"
+      ]
+    }
+  ],
+  "manifestSha256": "1d3fd6bb7dba831d860a79384a0fff900ec1205c50396a8d1f093734477b68ef"
+}

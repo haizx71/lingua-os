@@ -1,0 +1,407 @@
+{
+  "schemaVersion": "knowledge-v2-graph-edges.v2",
+  "status": "APPROVED_V2_EXPANSION",
+  "updatedAt": "2026-10-14",
+  "acyclicRelationTypes": [
+    "prerequisite_of",
+    "part_of",
+    "hypernym_of",
+    "derived_from"
+  ],
+  "counts": {
+    "totalEdges": 65
+  },
+  "edges": [
+    {
+      "sourceCanonicalKey": "grammar:subject-pronouns-basic",
+      "targetCanonicalKey": "grammar:be-basic",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Cần nắm đại từ chủ ngữ trước khi chia động từ to be."
+    },
+    {
+      "sourceCanonicalKey": "word:be:verb",
+      "targetCanonicalKey": "grammar:be-basic",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Động từ be là hạt nhân của mẫu câu copula."
+    },
+    {
+      "sourceCanonicalKey": "grammar:be-basic",
+      "targetCanonicalKey": "grammar:there-is-are",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Cấu trúc tồn tại there is/are mở rộng từ động từ be."
+    },
+    {
+      "sourceCanonicalKey": "grammar:be-basic",
+      "targetCanonicalKey": "grammar:present-continuous-now",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Hiện tại tiếp diễn cần chia đúng am/is/are trước V-ing."
+    },
+    {
+      "sourceCanonicalKey": "grammar:present-simple-core",
+      "targetCanonicalKey": "grammar:frequency-adverbs-order",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Trạng từ tần suất thường đi kèm thì hiện tại đơn."
+    },
+    {
+      "sourceCanonicalKey": "grammar:present-simple-core",
+      "targetCanonicalKey": "grammar:wh-questions-basic",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Câu hỏi Wh- sử dụng trợ động từ do/does của hiện tại đơn."
+    },
+    {
+      "sourceCanonicalKey": "grammar:present-simple-core",
+      "targetCanonicalKey": "grammar:time-clauses-when-before-after",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Mệnh đề thời gian tương lai dùng thì hiện tại đơn."
+    },
+    {
+      "sourceCanonicalKey": "grammar:time-clauses-when-before-after",
+      "targetCanonicalKey": "grammar:first-conditional-core",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Mệnh đề If loại 1 có cùng cơ chế dùng hiện tại đơn cho điều kiện tương lai."
+    },
+    {
+      "sourceCanonicalKey": "grammar:past-simple-core",
+      "targetCanonicalKey": "grammar:present-perfect-experience",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Nắm vững sự kiện quá khứ trước khi học trải nghiệm kết nối hiện tại."
+    },
+    {
+      "sourceCanonicalKey": "grammar:present-perfect-experience",
+      "targetCanonicalKey": "grammar:present-perfect-vs-past-simple",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Phân biệt hai thì sau khi đã nắm từng thì riêng lẻ."
+    },
+    {
+      "sourceCanonicalKey": "grammar:past-simple-core",
+      "targetCanonicalKey": "grammar:second-conditional-hypothetical",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Điều kiện loại 2 dùng hình thái quá khứ đơn để giả định."
+    },
+    {
+      "sourceCanonicalKey": "grammar:first-conditional-core",
+      "targetCanonicalKey": "grammar:second-conditional-hypothetical",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Chuyển từ điều kiện có thật (loại 1) sang giả định (loại 2)."
+    },
+    {
+      "sourceCanonicalKey": "grammar:past-simple-core",
+      "targetCanonicalKey": "grammar:reported-speech-core",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Câu tường thuật cần quy tắc lùi thì về quá khứ."
+    },
+    {
+      "sourceCanonicalKey": "grammar:wh-questions-basic",
+      "targetCanonicalKey": "grammar:indirect-polite-questions",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Câu hỏi gián tiếp lịch sự biến đổi từ câu hỏi Wh- trực tiếp."
+    },
+    {
+      "sourceCanonicalKey": "grammar:comparatives-core",
+      "targetCanonicalKey": "grammar:superlatives-core",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "So sánh nhất mở rộng quy tắc tính từ ngắn/dài từ so sánh hơn."
+    },
+    {
+      "sourceCanonicalKey": "grammar:be-basic",
+      "targetCanonicalKey": "grammar:passive-voice-core",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Câu bị động cần chia động từ be theo các thì."
+    },
+    {
+      "sourceCanonicalKey": "grammar:can-ability-requests",
+      "targetCanonicalKey": "grammar:modals-obligation-advice",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Mở rộng từ động từ khuyết thiếu cơ bản can sang should/must/have to."
+    },
+    {
+      "sourceCanonicalKey": "grammar:modals-obligation-advice",
+      "targetCanonicalKey": "grammar:modal-deduction-must-might",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Chuyển từ nghĩa nghĩa vụ (deontic) sang nghĩa suy đoán (epistemic)."
+    },
+    {
+      "sourceCanonicalKey": "grammar:articles-countability-core",
+      "targetCanonicalKey": "grammar:quantifiers-much-many-enough",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Cần phân biệt danh từ đếm được/không đếm được trước khi dùng much/many."
+    },
+    {
+      "sourceCanonicalKey": "phrase:i-dont-understand",
+      "targetCanonicalKey": "skill:repair-understanding",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Cụm từ nòng cốt để báo hiệu chưa hiểu."
+    },
+    {
+      "sourceCanonicalKey": "phrase:please-repeat",
+      "targetCanonicalKey": "skill:repair-understanding",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Cụm từ nòng cốt để xin nhắc lại."
+    },
+    {
+      "sourceCanonicalKey": "skill:repair-understanding",
+      "targetCanonicalKey": "skill:handle-misunderstanding",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Kỹ năng sửa hiểu lầm B1 phát triển từ kỹ năng xin nhắc lại A0."
+    },
+    {
+      "sourceCanonicalKey": "phrase:in-my-opinion",
+      "targetCanonicalKey": "skill:support-an-opinion",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Mở đầu nêu quan điểm cá nhân."
+    },
+    {
+      "sourceCanonicalKey": "word:reason:noun",
+      "targetCanonicalKey": "skill:support-an-opinion",
+      "relationType": "prerequisite_of",
+      "pedagogicalNoteVi": "Nêu lý do củng cố cho quan điểm."
+    },
+    {
+      "sourceCanonicalKey": "word:help:verb",
+      "targetCanonicalKey": "phrase:can-you-help-me",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Động từ hạt nhân trong cụm nhờ giúp đỡ."
+    },
+    {
+      "sourceCanonicalKey": "word:cup:noun",
+      "targetCanonicalKey": "phrase:a-cup-of",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Danh từ chỉ đơn vị chứa trong cụm định lượng."
+    },
+    {
+      "sourceCanonicalKey": "word:home:noun",
+      "targetCanonicalKey": "phrase:at-home",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Danh từ chính trong cụm trạng ngữ chỉ nơi chốn."
+    },
+    {
+      "sourceCanonicalKey": "word:bus:noun",
+      "targetCanonicalKey": "phrase:by-bus",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Danh từ chỉ phương tiện trong cụm giới từ."
+    },
+    {
+      "sourceCanonicalKey": "word:pay:verb",
+      "targetCanonicalKey": "phrase:pay-by-card",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Động từ chính trong cụm thanh toán."
+    },
+    {
+      "sourceCanonicalKey": "word:decision:noun",
+      "targetCanonicalKey": "phrase:make-a-decision",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Danh từ đích trong collocation make a decision."
+    },
+    {
+      "sourceCanonicalKey": "word:result:noun",
+      "targetCanonicalKey": "phrase:as-a-result",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Danh từ chính trong cụm liên từ chỉ kết quả."
+    },
+    {
+      "sourceCanonicalKey": "word:look:verb",
+      "targetCanonicalKey": "phrase:look-forward-to",
+      "relationType": "part_of",
+      "pedagogicalNoteVi": "Động từ gốc trong cụm phrasal-prepositional verb."
+    },
+    {
+      "sourceCanonicalKey": "word:decision:noun",
+      "targetCanonicalKey": "word:decide:verb",
+      "relationType": "derived_from",
+      "pedagogicalNoteVi": "Danh từ phái sinh từ động từ decide (-ion)."
+    },
+    {
+      "sourceCanonicalKey": "word:solution:noun",
+      "targetCanonicalKey": "word:solve:verb",
+      "relationType": "derived_from",
+      "pedagogicalNoteVi": "Danh từ phái sinh từ động từ solve (-tion)."
+    },
+    {
+      "sourceCanonicalKey": "word:difference:noun",
+      "targetCanonicalKey": "word:compare:verb",
+      "relationType": "derived_from",
+      "pedagogicalNoteVi": "Khái niệm đối chiếu phát triển từ hoạt động so sánh."
+    },
+    {
+      "sourceCanonicalKey": "word:choice:noun",
+      "targetCanonicalKey": "word:choose:verb",
+      "relationType": "derived_from",
+      "pedagogicalNoteVi": "Danh từ tương ứng của động từ bất quy tắc choose."
+    },
+    {
+      "sourceCanonicalKey": "word:requirement:noun",
+      "targetCanonicalKey": "word:require:verb",
+      "relationType": "derived_from",
+      "pedagogicalNoteVi": "Thêm hậu tố -ment tạo danh từ chỉ yêu cầu."
+    },
+    {
+      "sourceCanonicalKey": "word:confident:adjective",
+      "targetCanonicalKey": "word:confidence:noun",
+      "relationType": "derived_from",
+      "pedagogicalNoteVi": "Tính từ và danh từ cùng gốc (-ent / -ence)."
+    },
+    {
+      "sourceCanonicalKey": "word:borrow:verb",
+      "targetCanonicalKey": "word:lend:verb",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Tiếng Việt đều dịch gần với chữ 'mượn': borrow là MƯỢN VỀ MÌNH (borrow from), còn lend là CHO NGƯỜI KHÁC MƯỢN (lend to)."
+    },
+    {
+      "sourceCanonicalKey": "word:listen:verb",
+      "targetCanonicalKey": "word:speak:verb",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Listen luôn cần giới từ 'to' trước tân ngữ (listen to music), còn speak/tell có cấu trúc tân ngữ khác."
+    },
+    {
+      "sourceCanonicalKey": "word:remember:verb",
+      "targetCanonicalKey": "word:remind:verb",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Remember là TỰ MÌNH NHỚ; còn remind là NHẮC NHỞ NGƯỜI KHÁC (remind me to call)."
+    },
+    {
+      "sourceCanonicalKey": "word:job:noun",
+      "targetCanonicalKey": "word:work:noun",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Job là danh từ ĐẾM ĐƯỢC (a new job); còn work là danh từ KHÔNG ĐẾM ĐƯỢC (a lot of work, không nói a work)."
+    },
+    {
+      "sourceCanonicalKey": "word:effective:adjective",
+      "targetCanonicalKey": "word:efficient:adjective",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Effective là đạt được kết quả mong muốn (hiệu quả); efficient là làm việc tốn ít thời gian/chi phí nhất (năng suất/tối ưu)."
+    },
+    {
+      "sourceCanonicalKey": "word:quiet:adjective",
+      "targetCanonicalKey": "word:clean:adjective",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Chú ý chính tả và phát âm quiet (/ˈkwaɪ.ət/ - yên tĩnh, 2 âm tiết) khác với quite (/kwaɪt/ - khá là, 1 âm tiết)."
+    },
+    {
+      "sourceCanonicalKey": "word:colleague:noun",
+      "targetCanonicalKey": "word:company:noun",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Chú ý phát âm colleague (/ˈkɑː.liːɡ/ - đồng nghiệp) khác với college (/ˈkɑː.lɪdʒ/ - trường cao đẳng/đại học)."
+    },
+    {
+      "sourceCanonicalKey": "word:problem:noun",
+      "targetCanonicalKey": "word:issue:noun",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Problem thường là sự cố cần sửa; issue vừa là vấn đề cần xử lý vừa là chủ đề đang thảo luận."
+    },
+    {
+      "sourceCanonicalKey": "word:schedule:noun",
+      "targetCanonicalKey": "word:plan:noun",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Schedule nhấn mạnh khung giờ/thời gian biểu cụ thể; plan nhấn mạnh dự định và các bước thực hiện."
+    },
+    {
+      "sourceCanonicalKey": "phrase:look-for",
+      "targetCanonicalKey": "phrase:find-out",
+      "relationType": "confusable_with",
+      "pedagogicalNoteVi": "Look for là tìm kiếm vật/người đang thất lạc; find out là tìm hiểu để biết được thông tin/sự thật."
+    },
+    {
+      "sourceCanonicalKey": "word:meet:verb",
+      "targetCanonicalKey": "word:deadline:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Cụm chuẩn công sở: meet a deadline (hoàn thành đúng hạn chót)."
+    },
+    {
+      "sourceCanonicalKey": "word:prepare:verb",
+      "targetCanonicalKey": "word:mistake:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Dùng 'make a mistake' (mắc lỗi), không dùng 'do a mistake'."
+    },
+    {
+      "sourceCanonicalKey": "word:prepare:verb",
+      "targetCanonicalKey": "word:progress:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Dùng 'make progress' (tiến bộ), progress không đếm được."
+    },
+    {
+      "sourceCanonicalKey": "word:prepare:verb",
+      "targetCanonicalKey": "word:effort:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Dùng 'make an effort to V' (nỗ lực làm gì)."
+    },
+    {
+      "sourceCanonicalKey": "word:solve:verb",
+      "targetCanonicalKey": "word:problem:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Cụm chuẩn: solve a problem (giải quyết vấn đề)."
+    },
+    {
+      "sourceCanonicalKey": "word:confirm:verb",
+      "targetCanonicalKey": "word:appointment:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Cụm chuẩn: confirm an appointment (xác nhận lịch hẹn)."
+    },
+    {
+      "sourceCanonicalKey": "word:cancel:verb",
+      "targetCanonicalKey": "word:ticket:noun",
+      "relationType": "collocates_with",
+      "pedagogicalNoteVi": "Cụm chuẩn: cancel a booking (hủy đặt chỗ)."
+    },
+    {
+      "sourceCanonicalKey": "word:cheap:adjective",
+      "targetCanonicalKey": "word:expensive:adjective",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp tính từ đối lập về giá cả: rẻ <-> đắt."
+    },
+    {
+      "sourceCanonicalKey": "word:early:adverb",
+      "targetCanonicalKey": "word:late:adjective",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp đối lập về thời điểm: sớm <-> muộn."
+    },
+    {
+      "sourceCanonicalKey": "word:fast:adjective",
+      "targetCanonicalKey": "word:slow:adjective",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp tính từ đối lập về tốc độ: nhanh <-> chậm."
+    },
+    {
+      "sourceCanonicalKey": "word:advantage:noun",
+      "targetCanonicalKey": "word:disadvantage:noun",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp danh từ đối lập: ưu điểm <-> nhược điểm."
+    },
+    {
+      "sourceCanonicalKey": "word:borrow:verb",
+      "targetCanonicalKey": "word:lend:verb",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp hành động ngược chiều: đi mượn <-> cho mượn."
+    },
+    {
+      "sourceCanonicalKey": "word:start:verb",
+      "targetCanonicalKey": "word:finish:verb",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp động từ bắt đầu <-> kết thúc."
+    },
+    {
+      "sourceCanonicalKey": "word:remember:verb",
+      "targetCanonicalKey": "word:forget:verb",
+      "relationType": "antonym_of",
+      "pedagogicalNoteVi": "Cặp động từ ghi nhớ <-> quên."
+    },
+    {
+      "sourceCanonicalKey": "word:advantage:noun",
+      "targetCanonicalKey": "word:benefit:noun",
+      "relationType": "synonym_of",
+      "pedagogicalNoteVi": "Cùng chỉ điểm có lợi; advantage nhấn mạnh lợi thế so sánh, benefit nhấn mạnh lợi ích nhận được."
+    },
+    {
+      "sourceCanonicalKey": "word:participate:verb",
+      "targetCanonicalKey": "phrase:take-part-in",
+      "relationType": "synonym_of",
+      "pedagogicalNoteVi": "Cả hai đều mang nghĩa tham gia vào một hoạt động/sự kiện."
+    },
+    {
+      "sourceCanonicalKey": "word:necessary:adjective",
+      "targetCanonicalKey": "word:essential:adjective",
+      "relationType": "synonym_of",
+      "pedagogicalNoteVi": "Cùng chỉ sự cần thiết; essential nhấn mạnh mức độ thiết yếu không thể thiếu."
+    }
+  ],
+  "manifestSha256": "18c6fa356e8e8be5f7c2a097739ef72a9b88ba069a30846341c46f0cef053c68"
+}

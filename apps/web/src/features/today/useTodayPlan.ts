@@ -10,6 +10,7 @@ import {
 } from '@lingua/types';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { getApiClient } from '../../lib/api/client';
+import { invalidateActorCacheForClient } from '../../lib/api/queryCache';
 import {
   mapTodayPlanToViewModel,
   type TodayPlanViewModel,
@@ -235,6 +236,7 @@ export function useTodayPlan({
         if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
 
         // Authoritative update strictly from server response
+        invalidateActorCacheForClient(api);
         setPlan(mapTodayPlanToViewModel(response.data.plan));
         setAlertMessage(`Đã hoàn thành hoạt động: ${response.data.activity.title}`);
       } catch (err) {

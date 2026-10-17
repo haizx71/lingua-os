@@ -1,0 +1,176 @@
+{
+  "schema_version": "lingua.pilot.bilingual-reader-pack.v1",
+  "pack_id": "pilot-reader-vi-pack-a1-b1-v1",
+  "scope": "first_party_bilingual_reader_pack",
+  "language": "en",
+  "translation_language": "vi",
+  "provenance": {
+    "authorName": "LINGUA OS",
+    "sourceName": "LINGUA OS First-Party Bilingual Reader Pack (EN-VI)",
+    "sourceVersion": "pack-v1.0.0",
+    "licenseCode": "LINGUA-FIRST-PARTY-1.0",
+    "attributionText": "Original LINGUA OS first-party English micro-articles with aligned Vietnamese sentence translations for A1-B1 Vietnamese learners.",
+    "rightsStatement": "Owned by LINGUA OS. Approved for Reader, Smart Review, and Today Engine use."
+  },
+  "articles": [
+    {
+      "article_id": "pilot-reader-morning-bus-a1",
+      "title": "The Morning Bus to Work",
+      "vietnamese_title": "Chuyến xe buýt buổi sáng đi làm",
+      "level": "A1",
+      "estimated_minutes": 4,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Nam wakes up early every weekday morning.",
+          "vietnamese": "Nam thức dậy sớm vào mỗi buổi sáng ngày thường.",
+          "concepts": ["morning", "early"]
+        },
+        {
+          "ordinal": 2,
+          "english": "He drinks a glass of warm water before breakfast.",
+          "vietnamese": "Anh ấy uống một cốc nước ấm trước bữa sáng.",
+          "concepts": ["water", "breakfast"]
+        },
+        {
+          "ordinal": 3,
+          "english": "After breakfast, he checks his bag and takes his bus card.",
+          "vietnamese": "Sau bữa sáng, anh kiểm tra túi xách và lấy thẻ xe buýt.",
+          "concepts": ["check", "bag"]
+        },
+        {
+          "ordinal": 4,
+          "english": "The bus stop is only five minutes from his street.",
+          "vietnamese": "Trạm xe buýt chỉ cách con phố nhà anh năm phút đi bộ.",
+          "concepts": ["minute", "street"]
+        },
+        {
+          "ordinal": 5,
+          "english": "He waits under a green tree beside a small coffee shop.",
+          "vietnamese": "Anh đứng đợi dưới tán cây xanh cạnh một quán cà phê nhỏ.",
+          "concepts": ["wait", "coffee"]
+        },
+        {
+          "ordinal": 6,
+          "english": "When the number seven bus arrives, Nam steps on and finds a seat by the window.",
+          "vietnamese": "Khi xe buýt số bảy tới, Nam bước lên xe và tìm một chỗ ngồi cạnh cửa sổ.",
+          "concepts": ["arrive", "window"]
+        },
+        {
+          "ordinal": 7,
+          "english": "During the ride, he listens to a short English lesson on his phone.",
+          "vietnamese": "Trong suốt chuyến đi, anh nghe một bài học tiếng Anh ngắn trên điện thoại.",
+          "concepts": ["listen", "lesson"]
+        },
+        {
+          "ordinal": 8,
+          "english": "He gets off near his office at eight thirty and starts his workday with a smile.",
+          "vietnamese": "Anh xuống xe gần văn phòng lúc tám giờ rưỡi và bắt đầu ngày làm việc với một nụ cười.",
+          "concepts": ["office", "start"]
+        }
+      ]
+    },
+    {
+      "article_id": "pilot-reader-reschedule-appointment-a2",
+      "title": "Rescheduling a Afternoon Appointment",
+      "vietnamese_title": "Dời lịch một cuộc hẹn buổi chiều",
+      "level": "A2",
+      "estimated_minutes": 5,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Linh had an appointment with her dentist at three o'clock on Thursday afternoon.",
+          "vietnamese": "Linh có một cuộc hẹn với nha sĩ vào lúc ba giờ chiều thứ Năm.",
+          "concepts": ["appointment", "afternoon"]
+        },
+        {
+          "ordinal": 2,
+          "english": "However, her manager asked her to join an urgent project meeting at the same time.",
+          "vietnamese": "Tuy nhiên, quản lý của cô đã yêu cầu cô tham gia một cuộc họp dự án khẩn cấp vào đúng khung giờ đó.",
+          "concepts": ["project", "meeting"]
+        },
+        {
+          "ordinal": 3,
+          "english": "During her lunch break, Linh called the clinic to check if another time was available.",
+          "vietnamese": "Trong giờ nghỉ trưa, Linh đã gọi điện cho phòng khám để kiểm tra xem có khung giờ nào khác còn trống không.",
+          "concepts": ["available", "check"]
+        },
+        {
+          "ordinal": 4,
+          "english": "The receptionist checked the schedule and offered two slots on Friday morning.",
+          "vietnamese": "Nhân viên lễ tân kiểm tra lịch trình và đề xuất hai khung giờ vào sáng thứ Sáu.",
+          "concepts": ["schedule", "offer"]
+        },
+        {
+          "ordinal": 5,
+          "english": "Nine thirty was convenient for Linh because her office was near the clinic.",
+          "vietnamese": "Khung giờ chín giờ rưỡi rất thuận tiện cho Linh vì văn phòng của cô ở gần phòng khám.",
+          "concepts": ["convenient", "office"]
+        },
+        {
+          "ordinal": 6,
+          "english": "She confirmed the new time and thanked the receptionist for her help.",
+          "vietnamese": "Cô xác nhận thời gian mới và cảm ơn nhân viên lễ tân vì sự hỗ trợ.",
+          "concepts": ["confirm", "thank"]
+        },
+        {
+          "ordinal": 7,
+          "english": "Right after the call, she updated her digital calendar so she would not forget.",
+          "vietnamese": "Ngay sau cuộc gọi, cô cập nhật lịch điện tử của mình để không bị quên.",
+          "concepts": ["update", "calendar"]
+        },
+        {
+          "ordinal": 8,
+          "english": "Preparing early allowed Linh to focus completely on her afternoon presentation.",
+          "vietnamese": "Việc chuẩn bị sớm giúp Linh hoàn toàn tập trung vào bài thuyết trình buổi chiều của mình.",
+          "concepts": ["prepare", "focus"]
+        }
+      ]
+    },
+    {
+      "article_id": "pilot-reader-remote-collaboration-b1",
+      "title": "Clear Communication Across Time Zones",
+      "vietnamese_title": "Giao tiếp rõ ràng giữa các múi giờ",
+      "level": "B1",
+      "estimated_minutes": 6,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Working with colleagues across different time zones requires thoughtful planning and clear written notes.",
+          "vietnamese": "Làm việc với đồng nghiệp ở các múi giờ khác nhau đòi hỏi sự lên kế hoạch chu đáo và các ghi chú bằng văn bản rõ ràng.",
+          "concepts": ["colleague", "require"]
+        },
+        {
+          "ordinal": 2,
+          "english": "When a team in Hanoi collaborates with partners in London, their shared working hours are limited.",
+          "vietnamese": "Khi một nhóm ở Hà Nội hợp tác với các đối tác tại Luân Đôn, số giờ làm việc trùng nhau của họ khá hạn chế.",
+          "concepts": ["collaborate", "limit"]
+        },
+        {
+          "ordinal": 3,
+          "english": "Instead of waiting for a live call, experienced engineers summarize the problem, context, and proposed solution in one message.",
+          "vietnamese": "Thay vì chờ đợi một cuộc gọi trực tiếp, các kỹ sư giàu kinh nghiệm thường tóm tắt vấn đề, bối cảnh và giải pháp đề xuất trong một tin nhắn duy nhất.",
+          "concepts": ["summarize", "solution"]
+        },
+        {
+          "ordinal": 4,
+          "english": "If a requirement is ambiguous, they do not hesitate to ask specific questions before writing code.",
+          "vietnamese": "Nếu một yêu cầu còn mơ hồ, họ không ngần ngại đặt các câu hỏi cụ thể trước khi bắt tay vào viết mã.",
+          "concepts": ["hesitate", "specific"]
+        },
+        {
+          "ordinal": 5,
+          "english": "At the end of each day, a brief handover update helps the next shift continue without delay.",
+          "vietnamese": "Vào cuối mỗi ngày, một bản cập nhật bàn giao ngắn gọn giúp ca làm việc tiếp theo tiếp tục công việc mà không bị chậm trễ.",
+          "concepts": ["continue", "delay"]
+        },
+        {
+          "ordinal": 6,
+          "english": "This habit reduces misunderstandings and builds lasting trust across the entire organization.",
+          "vietnamese": "Thói quen này giúp giảm thiểu hiểu lầm và xây dựng niềm tin bền vững trong toàn bộ tổ chức.",
+          "concepts": ["reduce", "trust"]
+        }
+      ]
+    }
+  ]
+}

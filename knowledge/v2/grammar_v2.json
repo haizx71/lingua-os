@@ -1,0 +1,1053 @@
+{
+  "schemaVersion": "2.0.0",
+  "specifications": [
+    {
+      "canonicalKey": "grammar:articles-countability-core",
+      "curriculumBand": "LINGUA_A1",
+      "patternFormula": "a/an + singular countable N | the + specific N | Ø + uncountable/plural N",
+      "syntacticCategory": "noun_phrase",
+      "pragmaticFunction": "Distinguish countable vs. uncountable nouns and first-mention vs. specific reference.",
+      "vietnameseExplanation": "Danh từ đếm được số ít bắt buộc phải có mạo từ (a/an/the) hoặc từ hạn định (my/this) đứng trước. Dùng a/an khi nhắc lần đầu, dùng the khi cả người nói và người nghe đều biết rõ đối tượng.",
+      "vietnameseCommonTraps": "Không để trống danh từ đếm được số ít (nói 'I have car' là sai -> 'I have a car'); không thêm -s hoặc dùng a/an với danh từ không đếm được như water, rice, advice, information, money, luggage.",
+      "structuralSlots": [
+        {
+          "label": "determiner",
+          "role": "reference_type",
+          "required": true,
+          "examples": [
+            "a",
+            "an",
+            "the"
+          ]
+        },
+        {
+          "label": "noun",
+          "role": "entity_head",
+          "required": true,
+          "examples": [
+            "ticket",
+            "apple",
+            "station"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:be-basic",
+      "patternFormula": "S + am/is/are + complement",
+      "syntacticCategory": "copular_clause",
+      "pragmaticFunction": "Link a subject to an identity, state, description, or location.",
+      "vietnameseExplanation": "Động từ be thay đổi theo chủ ngữ: I đi với am; he/she/it và danh từ số ít đi với is; you/we/they và danh từ số nhiều đi với are. Be nối chủ ngữ với danh tính, tính chất, trạng thái hoặc nơi chốn.",
+      "vietnameseCommonTraps": "Không bỏ am/is/are như trong câu tiếng Việt; không dùng do/does trước be; chọn đúng dạng be theo chủ ngữ.",
+      "structuralSlots": [
+        {
+          "label": "S",
+          "role": "subject",
+          "required": true,
+          "examples": [
+            "I",
+            "she",
+            "the station"
+          ]
+        },
+        {
+          "label": "am/is/are",
+          "role": "finite_copula",
+          "required": true,
+          "examples": [
+            "am",
+            "is",
+            "are"
+          ]
+        },
+        {
+          "label": "complement",
+          "role": "subject_complement",
+          "required": true,
+          "examples": [
+            "a student",
+            "tired",
+            "at home"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "grammar:can-ability-requests",
+      "curriculumBand": "LINGUA_A0",
+      "patternFormula": "S + can/can't + base verb | Can + S + base verb?",
+      "syntacticCategory": "modality",
+      "pragmaticFunction": "Express basic ability, possibility, or make simple everyday requests.",
+      "vietnameseExplanation": "Động từ khuyết thiếu can giữ nguyên với mọi chủ ngữ và theo sau luôn là động từ nguyên mẫu không 'to'.",
+      "vietnameseCommonTraps": "Không thêm -s vào can khi chủ ngữ là he/she/it; không dùng 'can to V'.",
+      "structuralSlots": [
+        {
+          "label": "S + can/can't",
+          "role": "modal_subject",
+          "required": true,
+          "examples": [
+            "I can",
+            "She can't",
+            "Can you"
+          ]
+        },
+        {
+          "label": "base verb",
+          "role": "action_potential",
+          "required": true,
+          "examples": [
+            "swim",
+            "help me",
+            "pay by card"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:comparatives-core",
+      "patternFormula": "S + be + adjective-er + than + NP | S + be + more + adjective + than + NP",
+      "syntacticCategory": "comparison",
+      "pragmaticFunction": "Compare one person, thing, place, or option with another.",
+      "vietnameseExplanation": "Dùng tính từ ngắn với -er và tính từ dài với more, rồi dùng than để nêu đối tượng được so sánh. Một số tính từ có dạng bất quy tắc như good → better.",
+      "vietnameseCommonTraps": "Không dùng đồng thời more và -er; than là từ nối so sánh, khác với then; kiểm tra dạng bất quy tắc trước khi thêm -er.",
+      "structuralSlots": [
+        {
+          "label": "S + be",
+          "role": "subject_and_copula",
+          "required": true,
+          "examples": [
+            "This hotel is"
+          ]
+        },
+        {
+          "label": "comparative adjective",
+          "role": "comparison_property",
+          "required": true,
+          "examples": [
+            "cheaper",
+            "more convenient",
+            "better"
+          ]
+        },
+        {
+          "label": "than + NP",
+          "role": "comparison_target",
+          "required": true,
+          "examples": [
+            "than the other one"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "grammar:contrast-clauses-although-despite",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "Although / Even though + S + V, S + V | Despite / In spite of + NP/V-ing, S + V",
+      "syntacticCategory": "adverbial_clause",
+      "pragmaticFunction": "Express contrast or concession between an unexpected condition and the actual result.",
+      "vietnameseExplanation": "Although / Even though đi với một mệnh đề đầy đủ (S + V); còn Despite / In spite of đi với cụm danh từ hoặc V-ing (Despite the heavy rain...).",
+      "vietnameseCommonTraps": "Tuyệt đối KHÔNG dùng 'Although..., but...' trong cùng một câu tiếng Anh (trong tiếng Việt luôn nói 'Mặc dù... nhưng...', nhưng trong tiếng Anh chỉ được dùng Although HOẶC but, không dùng cả hai). Ngoài ra không dùng 'despite of'.",
+      "structuralSlots": [
+        {
+          "label": "concessive marker + complement",
+          "role": "unexpected_circumstance",
+          "required": true,
+          "examples": [
+            "Although the traffic was heavy",
+            "Despite the short deadline"
+          ]
+        },
+        {
+          "label": "main clause (no 'but')",
+          "role": "actual_outcome",
+          "required": true,
+          "examples": [
+            "we arrived on time",
+            "the team delivered high quality work"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:demonstratives-this-that",
+      "curriculumBand": "LINGUA_A0",
+      "patternFormula": "this/these + N (near) | that/those + N (far)",
+      "syntacticCategory": "determiner_phrase",
+      "pragmaticFunction": "Point to people or things that are near or far in space or time.",
+      "vietnameseExplanation": "Dùng this (số ít) và these (số nhiều) cho người/vật ở gần; dùng that (số ít) và those (số nhiều) cho người/vật ở xa.",
+      "vietnameseCommonTraps": "Người Việt thường quên đổi sang these/those khi danh từ là số nhiều, hoặc phát âm giống nhau giữa this (/ðɪs/) và these (/ðiːz/).",
+      "structuralSlots": [
+        {
+          "label": "demonstrative",
+          "role": "proximity_number_marker",
+          "required": true,
+          "examples": [
+            "this",
+            "that",
+            "these",
+            "those"
+          ]
+        },
+        {
+          "label": "noun / predicate",
+          "role": "identified_referent",
+          "required": true,
+          "examples": [
+            "book is mine",
+            "chairs are free"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:first-conditional-core",
+      "patternFormula": "If + present simple, S + will + base verb",
+      "syntacticCategory": "conditional_clause",
+      "pragmaticFunction": "Describe a realistic future condition and its likely result.",
+      "vietnameseExplanation": "Mệnh đề if nêu điều kiện có khả năng xảy ra và dùng hiện tại đơn; mệnh đề kết quả thường dùng will + động từ nguyên mẫu. Có thể đổi thứ tự hai mệnh đề mà không đổi nghĩa chính.",
+      "vietnameseCommonTraps": "Thông thường không dùng will trong mệnh đề if; sau will dùng động từ nguyên mẫu không to; dùng dấu phẩy khi mệnh đề if đứng trước.",
+      "structuralSlots": [
+        {
+          "label": "if-clause",
+          "role": "realistic_condition",
+          "required": true,
+          "examples": [
+            "If it rains"
+          ]
+        },
+        {
+          "label": "result subject",
+          "role": "result_subject",
+          "required": true,
+          "examples": [
+            "we"
+          ]
+        },
+        {
+          "label": "will + base verb",
+          "role": "likely_result",
+          "required": true,
+          "examples": [
+            "will stay"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "grammar:frequency-adverbs-order",
+      "curriculumBand": "LINGUA_A1",
+      "patternFormula": "S + always/usually/often/sometimes/never + V | S + be + adverb",
+      "syntacticCategory": "adverbial_placement",
+      "pragmaticFunction": "Express how often an action happens in daily routines.",
+      "vietnameseExplanation": "Trạng từ tần suất đứng TRƯỚC động từ thường (I usually walk) nhưng đứng SAU động từ to be (She is always on time).",
+      "vietnameseCommonTraps": "Không dùng 'never' chung với 'don't' trong cùng một mệnh đề (tránh phủ định kép 'I don't never go' -> 'I never go').",
+      "structuralSlots": [
+        {
+          "label": "subject (+ be)",
+          "role": "clause_subject",
+          "required": true,
+          "examples": [
+            "I",
+            "He is"
+          ]
+        },
+        {
+          "label": "frequency adverb",
+          "role": "frequency_modifier",
+          "required": true,
+          "examples": [
+            "usually",
+            "always",
+            "often",
+            "never"
+          ]
+        },
+        {
+          "label": "main predicate",
+          "role": "routine_event",
+          "required": true,
+          "examples": [
+            "eat breakfast at seven",
+            "on time"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:gerunds-infinitives-core",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "V1 (enjoy/finish/avoid/suggest) + V-ing | V1 (decide/plan/want/promise) + to + V",
+      "syntacticCategory": "verb_complementation",
+      "pragmaticFunction": "Chain a second verb after a main verb or preposition using the required -ing or to-infinitive form.",
+      "vietnameseExplanation": "Một số động từ bắt buộc theo sau bởi V-ing (enjoy, finish, avoid, mind, suggest, practice); một số bắt buộc theo sau bởi to + V (want, need, decide, plan, hope, offer). Sau mọi giới từ (in, on, at, for, about, without, before, after) động từ luôn ở dạng V-ing.",
+      "vietnameseCommonTraps": "Không ghép 2 động từ nguyên mẫu liền nhau kiểu tiếng Việt ('enjoy read book' -> 'enjoy reading books'; 'decide take bus' -> 'decide to take the bus').",
+      "structuralSlots": [
+        {
+          "label": "matrix verb / preposition",
+          "role": "complement_selector",
+          "required": true,
+          "examples": [
+            "enjoy",
+            "finished",
+            "decided",
+            "interested in"
+          ]
+        },
+        {
+          "label": "V-ing or to + V",
+          "role": "non_finite_clause",
+          "required": true,
+          "examples": [
+            "reading short stories",
+            "to change the plan",
+            "learning new words"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:going-to-future-plans",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "S + am/is/are + going to + base verb",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Talk about prior future intentions, plans, or predictions based on visible present evidence.",
+      "vietnameseExplanation": "Dùng 'be going to + V' khi kế hoạch đã được quyết định từ trước lúc nói, hoặc khi nhìn thấy dấu hiệu rõ ràng sắp xảy ra (Look at the dark clouds — it is going to rain).",
+      "vietnameseCommonTraps": "Không bỏ động từ to be (am/is/are) trước 'going to'; dùng 'will' cho quyết định nảy ra tức thì ngay lúc nói, còn 'be going to' cho kế hoạch đã định sẵn.",
+      "structuralSlots": [
+        {
+          "label": "S + am/is/are going to",
+          "role": "planned_future_marker",
+          "required": true,
+          "examples": [
+            "We are going to",
+            "She is going to"
+          ]
+        },
+        {
+          "label": "base verb phrase",
+          "role": "intended_action",
+          "required": true,
+          "examples": [
+            "visit Da Nang next month",
+            "call the clinic"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:imperatives-basic",
+      "curriculumBand": "LINGUA_A0",
+      "patternFormula": "Base verb + object | Please + base verb | Don't + base verb",
+      "syntacticCategory": "clause_structure",
+      "pragmaticFunction": "Give clear instructions, directions, polite requests, or warnings.",
+      "vietnameseExplanation": "Câu mệnh lệnh bắt đầu trực tiếp bằng động từ nguyên mẫu (không có chủ ngữ You). Thêm Please để lịch sự hơn và dùng Don't + V nguyên mẫu cho câu mệnh lệnh phủ định.",
+      "vietnameseCommonTraps": "Không dùng 'No + V' hoặc 'Not + V' ở đầu câu; với tính từ phải có 'Be' đứng trước (Be careful, không nói Careful!).",
+      "structuralSlots": [
+        {
+          "label": "(Please / Don't)",
+          "role": "politeness_or_negation",
+          "required": false,
+          "examples": [
+            "Please",
+            "Don't"
+          ]
+        },
+        {
+          "label": "base verb phrase",
+          "role": "directed_action",
+          "required": true,
+          "examples": [
+            "open your book",
+            "forget your key",
+            "be quiet"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:indirect-polite-questions",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "Could you tell me / Do you know + Wh-word / if + S + V?",
+      "syntacticCategory": "clause_structure",
+      "pragmaticFunction": "Ask questions more politely in workplace, travel, and customer-service situations.",
+      "vietnameseExplanation": "Sau cụm mở đầu lịch sự ('Could you tell me...', 'Do you know...', 'I was wondering...'), phần mệnh đề phía sau giữ trật tự câu trần thuật (S + V) chứ không đảo trợ động từ.",
+      "vietnameseCommonTraps": "Với câu hỏi Yes/No chuyển sang gián tiếp, nhớ thêm 'if' hoặc 'whether' (Do you know if the bank is open?).",
+      "structuralSlots": [
+        {
+          "label": "polite opener",
+          "role": "politeness_matrix",
+          "required": true,
+          "examples": [
+            "Could you tell me",
+            "Do you know",
+            "Would you mind telling me"
+          ]
+        },
+        {
+          "label": "Wh-/if + S + V",
+          "role": "embedded_question_statement_order",
+          "required": true,
+          "examples": [
+            "where the conference room is",
+            "if the train leaves on time"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:modal-deduction-must-might",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "S + must / might / could / can't + base verb",
+      "syntacticCategory": "modality",
+      "pragmaticFunction": "Express how certain or uncertain you are about a present situation based on evidence.",
+      "vietnameseExplanation": "Khi suy đoán ở hiện tại: dùng 'must + V' khi chắc chắn đúng (90%); dùng 'might/could + V' khi có khả năng (50%); dùng 'can't + V' khi chắc chắn KHÔNG thể đúng.",
+      "vietnameseCommonTraps": "Khi phủ định một suy đoán chắc chắn, phải dùng 'can't be' chứ KHÔNG dùng 'mustn't be' (ví dụ: 'He just ate lunch, so he can't be hungry').",
+      "structuralSlots": [
+        {
+          "label": "epistemic modal",
+          "role": "certainty_degree",
+          "required": true,
+          "examples": [
+            "must",
+            "might",
+            "could",
+            "can't"
+          ]
+        },
+        {
+          "label": "base verb / be + complement",
+          "role": "inferred_state",
+          "required": true,
+          "examples": [
+            "be in the meeting room",
+            "arrive late because of the rain"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:modals-obligation-advice",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "S + should/shouldn't / must / have to / don't have to + base verb",
+      "syntacticCategory": "modality",
+      "pragmaticFunction": "Give advice (should) and distinguish strong obligation (must/have to) from lack of necessity (don't have to).",
+      "vietnameseExplanation": "Dùng should/shouldn't để khuyên bảo nhẹ nhàng; dùng must hoặc have to khi bắt buộc phải làm.",
+      "vietnameseCommonTraps": "Cực kỳ lưu ý sự khác nhau giữa 'mustn't' (CẤM không được làm) và 'don't have to' (KHÔNG CẦN phải làm, làm hay không tùy ý).",
+      "structuralSlots": [
+        {
+          "label": "modal / semi-modal",
+          "role": "deontic_force",
+          "required": true,
+          "examples": [
+            "should",
+            "have to",
+            "don't have to",
+            "mustn't"
+          ]
+        },
+        {
+          "label": "base verb phrase",
+          "role": "regulated_action",
+          "required": true,
+          "examples": [
+            "confirm the appointment",
+            "pay extra",
+            "bring your passport"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:passive-voice-core",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "S (receiver) + be + past participle (V3/-ed) (+ by agent)",
+      "syntacticCategory": "voice",
+      "pragmaticFunction": "Focus on the action or the receiver of the action when the doer is unknown, obvious, or less important.",
+      "vietnameseExplanation": "Câu bị động luôn cấu tạo bằng 'be (chia theo thì và chủ ngữ) + V3/-ed'. Rất phổ biến trong thông báo công sở, quy trình và tin tức (The meeting was moved to Friday; Tickets can be booked online).",
+      "vietnameseCommonTraps": "Người Việt hay dịch chữ 'được/bị' sang từ 'get' trong mọi trường hợp hoặc quên chia động từ 'be' theo đúng thì (ví dụ nói 'The report sent yesterday' thay vì 'The report was sent yesterday').",
+      "structuralSlots": [
+        {
+          "label": "patient subject",
+          "role": "affected_entity",
+          "required": true,
+          "examples": [
+            "The schedule",
+            "Your order",
+            "New articles"
+          ]
+        },
+        {
+          "label": "be + V3/-ed",
+          "role": "passive_predicate",
+          "required": true,
+          "examples": [
+            "was updated this morning",
+            "has been confirmed",
+            "are published weekly"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:past-simple-core",
+      "patternFormula": "S + V2/-ed | S + did not + base verb | Did + S + base verb?",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Report a completed event or state at a finished time in the past.",
+      "vietnameseExplanation": "Câu khẳng định dùng động từ quá khứ V2 hoặc -ed. Câu phủ định và câu hỏi dùng did, còn động từ chính trở về dạng nguyên mẫu. Trạng từ như yesterday hoặc last week thường làm rõ thời điểm đã kết thúc.",
+      "vietnameseCommonTraps": "Không dùng dạng quá khứ của động từ chính sau did/did not; học riêng các động từ bất quy tắc; không dùng quá khứ đơn cho một việc vẫn đang tiếp diễn đến hiện tại.",
+      "structuralSlots": [
+        {
+          "label": "S",
+          "role": "subject",
+          "required": true,
+          "examples": [
+            "The train",
+            "we"
+          ]
+        },
+        {
+          "label": "V2/-ed",
+          "role": "completed_past_event",
+          "required": true,
+          "examples": [
+            "arrived",
+            "went"
+          ]
+        },
+        {
+          "label": "finished-time marker",
+          "role": "past_time_context",
+          "required": false,
+          "examples": [
+            "yesterday",
+            "last week"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "grammar:possessive-adjectives-basic",
+      "curriculumBand": "LINGUA_A0",
+      "patternFormula": "my/your/his/her/its/our/their + noun",
+      "syntacticCategory": "noun_phrase",
+      "pragmaticFunction": "Show who owns or is connected with a person or thing.",
+      "vietnameseExplanation": "Tính từ sở hữu luôn đứng trước danh từ (my bag, her name) và không thay đổi theo số lượng của danh từ theo sau.",
+      "vietnameseCommonTraps": "Không nhầm his (của anh ấy) và her (của cô ấy) theo giới tính của người được sở hữu; không nhầm its (của nó) với it's (it is).",
+      "structuralSlots": [
+        {
+          "label": "possessive",
+          "role": "possessor_determiner",
+          "required": true,
+          "examples": [
+            "my",
+            "your",
+            "her",
+            "our"
+          ]
+        },
+        {
+          "label": "head noun",
+          "role": "possessed_entity",
+          "required": true,
+          "examples": [
+            "name",
+            "phone",
+            "parents"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:prepositions-time-place",
+      "curriculumBand": "LINGUA_A1",
+      "patternFormula": "at + clock time/point | on + day/date/surface | in + month/year/enclosed space",
+      "syntacticCategory": "prepositional_phrase",
+      "pragmaticFunction": "Locate events in time and objects or people in physical space.",
+      "vietnameseExplanation": "Quy tắc từ hẹp đến rộng: AT dùng cho giờ cụ thể/điểm cụ thể (at 7:00, at the bus stop); ON dùng cho ngày/thứ/bề mặt (on Monday, on the table); IN dùng cho buổi/tháng/năm/không gian bao quanh (in the morning, in May, in Hanoi).",
+      "vietnameseCommonTraps": "Không dùng 'in Monday' (phải là 'on Monday'); nhớ ngoại lệ 'at night' và 'on the weekend / at the weekend'.",
+      "structuralSlots": [
+        {
+          "label": "at / on / in",
+          "role": "spatial_temporal_preposition",
+          "required": true,
+          "examples": [
+            "at",
+            "on",
+            "in"
+          ]
+        },
+        {
+          "label": "time or place NP",
+          "role": "landmark",
+          "required": true,
+          "examples": [
+            "eight o'clock",
+            "Friday",
+            "the kitchen"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:present-continuous-now",
+      "curriculumBand": "LINGUA_A1",
+      "patternFormula": "S + am/is/are + V-ing",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Describe actions happening right now or temporary situations around the present.",
+      "vietnameseExplanation": "Hiện tại tiếp diễn luôn cần đủ 2 thành phần: động từ to be (am/is/are) chia theo chủ ngữ VÀ động từ chính thêm đuôi -ing.",
+      "vietnameseCommonTraps": "Lỗi phổ biến nhất là dịch từng từ tiếng Việt 'đang làm' mà bỏ mất am/is/are (ví dụ nói 'I waiting' thay vì 'I am waiting'), hoặc dùng thì tiếp diễn với các động từ chỉ trạng thái như know, want, need, like.",
+      "structuralSlots": [
+        {
+          "label": "S + am/is/are",
+          "role": "progressive_auxiliary",
+          "required": true,
+          "examples": [
+            "I am",
+            "She is",
+            "They are"
+          ]
+        },
+        {
+          "label": "V-ing",
+          "role": "ongoing_activity",
+          "required": true,
+          "examples": [
+            "waiting for the bus",
+            "working today"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:present-perfect-experience",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "S + have/has + V3/-ed (+ ever/never/already/yet)",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Connect past experiences or recent actions to the present without specifying an exact past time.",
+      "vietnameseExplanation": "Hiện tại hoàn thành (have/has + V3/-ed) diễn tả trải nghiệm tính đến nay (I have visited Hue twice) hoặc việc vừa mới hoàn thành còn kết quả ở hiện tại (I have sent the email).",
+      "vietnameseCommonTraps": "Tuyệt đối KHÔNG dùng Hiện tại hoàn thành với mốc thời gian quá khứ đã khép kín như yesterday, last week, in 2024 (khi có mốc quá khứ cụ thể bắt buộc phải dùng Quá khứ đơn).",
+      "structuralSlots": [
+        {
+          "label": "S + have/has",
+          "role": "perfect_auxiliary",
+          "required": true,
+          "examples": [
+            "I have",
+            "She has",
+            "Have you ever"
+          ]
+        },
+        {
+          "label": "past participle (V3/-ed)",
+          "role": "anterior_event",
+          "required": true,
+          "examples": [
+            "met the new manager",
+            "finished the report",
+            "tried this dish"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:present-perfect-vs-past-simple",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "Past Simple (finished time: yesterday/in 2023) vs. Present Perfect (unbounded/up to now: since/for/already)",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Contrast completed events anchored in a finished past window against states or actions continuing up to now.",
+      "vietnameseExplanation": "Dùng Quá khứ đơn khi thời gian đã chấm dứt (I worked there for two years — giờ đã nghỉ); dùng Hiện tại hoàn thành khi hành động/trạng thái vẫn kéo dài đến hiện tại với since + mốc thời gian hoặc for + khoảng thời gian (I have worked here for two years — giờ vẫn đang làm).",
+      "vietnameseCommonTraps": "Nhầm lẫn giữa 'since' (từ mốc thời gian: since Monday, since 2024) và 'for' (trong khoảng thời gian: for three days, for two months).",
+      "structuralSlots": [
+        {
+          "label": "aspectual verb phrase",
+          "role": "temporal_viewpoint",
+          "required": true,
+          "examples": [
+            "lived in Hue in 2022",
+            "have lived in Hanoi since 2023"
+          ]
+        },
+        {
+          "label": "time frame expression",
+          "role": "bounded_vs_unbounded_time",
+          "required": true,
+          "examples": [
+            "last year",
+            "since March",
+            "for six months"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:present-simple-core",
+      "patternFormula": "S + base verb(s/es) | S + do/does not + base verb | Do/Does + S + base verb?",
+      "syntacticCategory": "tense_aspect",
+      "pragmaticFunction": "Express habits, repeated situations, routines, and general facts.",
+      "vietnameseExplanation": "Dùng động từ nguyên mẫu với I/you/we/they; thêm -s hoặc -es với he/she/it trong câu khẳng định. Câu hỏi và phủ định dùng do/does, sau đó động từ chính trở về dạng nguyên mẫu.",
+      "vietnameseCommonTraps": "Không quên -s/-es với chủ ngữ ngôi ba số ít; không giữ -s/-es sau does; không dùng be trước động từ thường chỉ để đánh dấu hiện tại.",
+      "structuralSlots": [
+        {
+          "label": "S",
+          "role": "subject",
+          "required": true,
+          "examples": [
+            "I",
+            "he",
+            "the train"
+          ]
+        },
+        {
+          "label": "base verb(s/es)",
+          "role": "habit_or_fact",
+          "required": true,
+          "examples": [
+            "work",
+            "works"
+          ]
+        },
+        {
+          "label": "frequency/time expression",
+          "role": "repetition_context",
+          "required": false,
+          "examples": [
+            "usually",
+            "on Saturdays"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "grammar:quantifiers-much-many-enough",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "many/a few + plural N | much/a little + uncountable N | enough + N | adj + enough",
+      "syntacticCategory": "noun_phrase",
+      "pragmaticFunction": "Quantify countable and uncountable nouns and state whether a quantity is sufficient.",
+      "vietnameseExplanation": "Many và a few đi với danh từ đếm được số nhiều; much và a little đi với danh từ không đếm được; a lot of đi được với cả hai. Từ 'enough' đứng TRƯỚC danh từ (enough time) nhưng đứng SAU tính từ/trạng từ (fast enough).",
+      "vietnameseCommonTraps": "Người Việt rất hay đặt 'enough' trước tính từ theo lối dịch từ 'đủ nhanh' -> 'enough fast' (sai -> phải là 'fast enough').",
+      "structuralSlots": [
+        {
+          "label": "quantifier",
+          "role": "quantity_expression",
+          "required": true,
+          "examples": [
+            "many",
+            "much",
+            "a few",
+            "enough time",
+            "clear enough"
+          ]
+        },
+        {
+          "label": "target noun / context",
+          "role": "quantified_head",
+          "required": true,
+          "examples": [
+            "questions",
+            "information",
+            "to finish today"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:relative-clauses-basic",
+      "patternFormula": "noun + who/that/which + clause",
+      "syntacticCategory": "relative_clause",
+      "pragmaticFunction": "Identify or add information about a person or thing.",
+      "vietnameseExplanation": "Mệnh đề quan hệ đứng ngay sau danh từ mà nó bổ nghĩa. Dùng who cho người, which cho vật, và that thường dùng cho người hoặc vật trong mệnh đề xác định cơ bản.",
+      "vietnameseCommonTraps": "Không đặt mệnh đề quan hệ xa danh từ được bổ nghĩa; tránh lặp đại từ chủ ngữ sau who/that/which khi từ quan hệ đã làm chủ ngữ; chọn who/which phù hợp.",
+      "structuralSlots": [
+        {
+          "label": "head noun",
+          "role": "modified_referent",
+          "required": true,
+          "examples": [
+            "the woman",
+            "the ticket"
+          ]
+        },
+        {
+          "label": "who/that/which",
+          "role": "relative_marker",
+          "required": true,
+          "examples": [
+            "who",
+            "that",
+            "which"
+          ]
+        },
+        {
+          "label": "clause",
+          "role": "identifying_information",
+          "required": true,
+          "examples": [
+            "called me",
+            "I bought"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "grammar:reported-speech-core",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "S + said (that) / told + object (that) + backshifted clause | asked + if/Wh- + S + V",
+      "syntacticCategory": "clause_combining",
+      "pragmaticFunction": "Report what a colleague, friend, or message said without quoting their exact words.",
+      "vietnameseExplanation": "Khi tường thuật lại lời nói ở quá khứ (He said / She told me), động từ thường lùi một thì (present -> past, will -> would, can -> could) và trong câu hỏi tường thuật KHÔNG đảo trợ động từ (She asked where the station was).",
+      "vietnameseCommonTraps": " Hai lỗi phổ biến nhất: (1) dùng 'said me' thay vì 'told me' hoặc 'said to me'; (2) giữ nguyên đảo ngữ câu hỏi trong lời nói gián tiếp ('He asked where is the office' -> sai).",
+      "structuralSlots": [
+        {
+          "label": "reporting frame",
+          "role": "speech_attribution",
+          "required": true,
+          "examples": [
+            "She told me that",
+            "He said that",
+            "They asked if"
+          ]
+        },
+        {
+          "label": "reported clause",
+          "role": "backshifted_proposition",
+          "required": true,
+          "examples": [
+            "the meeting would start at ten",
+            "we were available on Friday"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:second-conditional-hypothetical",
+      "curriculumBand": "LINGUA_B1",
+      "patternFormula": "If + past simple (were/V2), S + would/could + base verb",
+      "syntacticCategory": "conditional_clause",
+      "pragmaticFunction": "Imagine unreal, unlikely, or hypothetical present/future situations and their consequences.",
+      "vietnameseExplanation": "Câu điều kiện loại 2 dùng thì quá khứ giả định ở mệnh đề If và 'would/could + V nguyên mẫu' ở mệnh đề chính để nói về điều không có thật ở hiện tại hoặc lời khuyên giả định (If I were you, I would...).",
+      "vietnameseCommonTraps": "Không dùng 'will' trong câu điều kiện loại 2; hiểu rằng động từ quá khứ ở mệnh đề If mang nghĩa giả định ở HIỆN TẠI chứ không phải chuyện đã qua.",
+      "structuralSlots": [
+        {
+          "label": "If + past simple",
+          "role": "hypothetical_condition",
+          "required": true,
+          "examples": [
+            "If we had more time",
+            "If I were you"
+          ]
+        },
+        {
+          "label": "S + would/could + V",
+          "role": "imagined_consequence",
+          "required": true,
+          "examples": [
+            "we would take the scenic train",
+            "I would confirm the date early"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:subject-pronouns-basic",
+      "patternFormula": "I/You/He/She/It/We/They + predicate",
+      "syntacticCategory": "clause_structure",
+      "pragmaticFunction": "Name the speaker, listener, person, thing, or group acting as the clause subject.",
+      "vietnameseExplanation": "Đại từ chủ ngữ đứng trước động từ trong câu trần thuật tiếng Anh. Chọn đại từ theo người và số: I, you, he, she, it, we, they; tiếng Anh thường không lược bỏ chủ ngữ như tiếng Việt.",
+      "vietnameseCommonTraps": "Không dùng me/him/her/them ở vị trí chủ ngữ; không bỏ chủ ngữ; it có thể chỉ đồ vật, động vật hoặc chủ ngữ hình thức.",
+      "structuralSlots": [
+        {
+          "label": "subject pronoun",
+          "role": "clause_subject",
+          "required": true,
+          "examples": [
+            "I",
+            "she",
+            "they"
+          ]
+        },
+        {
+          "label": "predicate",
+          "role": "subject_information",
+          "required": true,
+          "examples": [
+            "am ready",
+            "works here",
+            "are students"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "grammar:superlatives-core",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "S + be + the + adj-est | S + be + the most + adj",
+      "syntacticCategory": "comparison",
+      "pragmaticFunction": "Identify the item with the highest or lowest degree of a quality within a group.",
+      "vietnameseExplanation": "So sánh nhất luôn có 'the' đứng trước: thêm -est vào tính từ ngắn (the cheapest, the fastest) và dùng 'the most' trước tính từ dài (the most convenient). Bất quy tắc: good -> the best, bad -> the worst.",
+      "vietnameseCommonTraps": "Không quên mạo từ 'the' trước tính từ so sánh nhất; dùng giới từ 'in' cho nơi chốn/tổ chức (the biggest city in Vietnam) và 'of' cho khoảng thời gian/nhóm (the busiest day of the week).",
+      "structuralSlots": [
+        {
+          "label": "the + superlative",
+          "role": "extreme_quality",
+          "required": true,
+          "examples": [
+            "the fastest",
+            "the most comfortable",
+            "the best"
+          ]
+        },
+        {
+          "label": "noun + scope",
+          "role": "compared_domain",
+          "required": true,
+          "examples": [
+            "way to travel in the city",
+            "option of the three"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:there-is-are",
+      "patternFormula": "There + is/are + noun phrase (+ place)",
+      "syntacticCategory": "existential_clause",
+      "pragmaticFunction": "Introduce the existence or presence of a person or thing.",
+      "vietnameseExplanation": "Dùng there is trước danh từ số ít hoặc không đếm được và there are trước danh từ số nhiều. There trong mẫu này mở đầu câu tồn tại, không mang nghĩa địa điểm 'ở đó'.",
+      "vietnameseCommonTraps": "Không chọn is/are theo từ there; hãy chọn theo danh từ theo sau; không dịch there theo nghĩa 'ở đó' trong cấu trúc này; dùng any trong nhiều câu hỏi và phủ định.",
+      "structuralSlots": [
+        {
+          "label": "there",
+          "role": "existential_marker",
+          "required": true,
+          "examples": [
+            "there"
+          ]
+        },
+        {
+          "label": "is/are",
+          "role": "number_agreement",
+          "required": true,
+          "examples": [
+            "is",
+            "are"
+          ]
+        },
+        {
+          "label": "noun phrase",
+          "role": "introduced_entity",
+          "required": true,
+          "examples": [
+            "a cafe",
+            "two seats"
+          ]
+        },
+        {
+          "label": "place",
+          "role": "location_context",
+          "required": false,
+          "examples": [
+            "near the station"
+          ]
+        }
+      ],
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "grammar:time-clauses-when-before-after",
+      "curriculumBand": "LINGUA_A2",
+      "patternFormula": "When/Before/After/As soon as + present simple, S + will + base verb",
+      "syntacticCategory": "adverbial_clause",
+      "pragmaticFunction": "Sequence two events in the past or future using time conjunctions.",
+      "vietnameseExplanation": "Trong mệnh đề chỉ thời gian ở tương lai bắt đầu bằng when, before, after, as soon as, until, tiếng Anh dùng thì HIỆN TẠI ĐƠN chứ không dùng will.",
+      "vietnameseCommonTraps": "Tránh dịch chữ 'sẽ' sang 'will' trong mệnh đề thời gian (không nói 'When I will arrive, I will call you' -> phải là 'When I arrive, I will call you').",
+      "structuralSlots": [
+        {
+          "label": "time conjunction + clause",
+          "role": "temporal_anchor",
+          "required": true,
+          "examples": [
+            "When the bus arrives",
+            "Before you leave",
+            "As soon as I finish"
+          ]
+        },
+        {
+          "label": "main clause",
+          "role": "sequenced_event",
+          "required": true,
+          "examples": [
+            "I will send you a message",
+            "please check the windows"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:want-would-like-to",
+      "curriculumBand": "LINGUA_A1",
+      "patternFormula": "S + want(s) / would like + to + base verb | S + would like + noun",
+      "syntacticCategory": "verb_complementation",
+      "pragmaticFunction": "Express personal desires directly (want) or politely in service/work situations (would like).",
+      "vietnameseExplanation": "Cả 'want' và 'would like' đều nối với động từ theo sau bằng 'to + V nguyên mẫu'. Trong giao tiếp lịch sự (gọi món, viết email, nhờ vả), ưu tiên dùng 'would like'.",
+      "vietnameseCommonTraps": "Sau 'would like to' dùng động từ nguyên mẫu (không dùng V-ing); phân biệt 'Do you like tea?' (bạn có thích trà nói chung không) với 'Would you like some tea?' (bạn có muốn dùng chút trà ngay bây giờ không).",
+      "structuralSlots": [
+        {
+          "label": "S + want / would like",
+          "role": "desire_matrix",
+          "required": true,
+          "examples": [
+            "I would like",
+            "She wants"
+          ]
+        },
+        {
+          "label": "to + base verb / NP",
+          "role": "desired_target",
+          "required": true,
+          "examples": [
+            "to book a room",
+            "a cup of coffee"
+          ]
+        }
+      ]
+    },
+    {
+      "canonicalKey": "grammar:wh-questions-basic",
+      "curriculumBand": "LINGUA_A1",
+      "patternFormula": "Wh-word + do/does/be + S + V?",
+      "syntacticCategory": "clause_structure",
+      "pragmaticFunction": "Ask for specific information about time, place, person, reason, or manner.",
+      "vietnameseExplanation": "Trong câu hỏi có từ để hỏi (What, Where, When, Why, Who, How), trợ động từ (am/is/are hoặc do/does) phải đảo lên trước chủ ngữ.",
+      "vietnameseCommonTraps": "Không giữ nguyên trật tự câu trần thuật khi đặt câu hỏi (tránh nói 'Where you live?' -> phải là 'Where do you live?').",
+      "structuralSlots": [
+        {
+          "label": "Wh-word",
+          "role": "question_focus",
+          "required": true,
+          "examples": [
+            "Where",
+            "What time",
+            "How much"
+          ]
+        },
+        {
+          "label": "auxiliary + S (+ V)",
+          "role": "inverted_core",
+          "required": true,
+          "examples": [
+            "do you work",
+            "does the bus leave",
+            "is the ticket"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import { MockApiClient, type ApiClient, type ApiErrorCode } from '@lingua/types'
 import type { ReaderPassage, TokenItem } from '../../fixtures/readerFixture';
 import { useReaderSession } from './useReaderSession';
 import { getApiClient } from '../../lib/api/client';
+import { clientNavigate } from '../../lib/navigation/clientNavigate';
 
 export interface InteractiveReaderProps {
   readonly apiClient?: ApiClient;
@@ -38,6 +39,8 @@ export function InteractiveReader({
 }: InteractiveReaderProps) {
   const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
+  const fullAudioTimerRef = useRef<number | null>(null);
   const [savedWordNotice, setSavedWordNotice] = useState<string | null>(null);
   const [revealedSentenceIds, setRevealedSentenceIds] = useState<ReadonlySet<string>>(() => new Set());
   const [usesSampleTransport, setUsesSampleTransport] = useState(false);
@@ -45,6 +48,14 @@ export function InteractiveReader({
   const inspectorCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const inspectorWasOpenRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (fullAudioTimerRef.current) {
+        window.clearTimeout(fullAudioTimerRef.current);
+      }
+    };
+  }, []);
   const isSamplePassage = Boolean(initialPassage) || usesSampleTransport;
   const isExplicitSample = Boolean(initialPassage);
   const reader = useReaderSession({
@@ -127,15 +138,70 @@ export function InteractiveReader({
         title="Chưa có bài đọc nào"
         description="Chưa có nội dung đã xuất bản phù hợp với hồ sơ học hiện tại."
         actionLabel="Mở Thư viện"
-        onAction={() => { window.location.href = '/library'; }}
+        onAction={() => { clientNavigate('/library'); }}
       />
     );
   }
 
   const handlePlayFullAudio = () => {
-    if (!passage.audioUrl) return;
+    if (isPlayingAudio) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Fallback if speechSynthesis is unavailable
+        }
+      }
+      if (fullAudioTimerRef.current) {
+        window.clearTimeout(fullAudioTimerRef.current);
+      }
+      setIsPlayingAudio(false);
+      return;
+    }
+
     setIsPlayingAudio(true);
-    window.setTimeout(() => setIsPlayingAudio(false), 1200);
+    const fullText = passage.sentences.map((s) => s.tokens.map((t) => t.raw).join('')).join(' ');
+    if (
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      typeof window.SpeechSynthesisUtterance === 'function' &&
+      fullText.trim()
+    ) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(fullText);
+        utterance.lang = 'en-US';
+        utterance.onend = () => setIsPlayingAudio(false);
+        utterance.onerror = () => setIsPlayingAudio(false);
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        // Fallback for environments where speech synthesis is disabled or blocked
+      }
+    }
+    fullAudioTimerRef.current = window.setTimeout(() => setIsPlayingAudio(false), 1200);
+  };
+
+  const handleSpeakToken = (text: string) => {
+    if (
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      typeof window.SpeechSynthesisUtterance === 'function'
+    ) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        // Fallback for environments where speech synthesis is disabled or blocked
+      }
+    }
+  };
+
+  const handleSpeakSentence = (sentenceId: string, text: string) => {
+    setPlayingSentenceId(sentenceId);
+    handleSpeakToken(text);
+    window.setTimeout(() => setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr)), 1000);
   };
 
   const selectedToken = reader.selectedToken;
@@ -145,10 +211,16 @@ export function InteractiveReader({
   const currentSegmentIndex = passage.progress
     ? passage.segments.findIndex((segment) => segment.id === passage.progress?.currentSegmentId)
     : -1;
+  const translatableSentenceIds = passage.sentences
+    .filter((s) => Boolean(s.translationVi?.trim()))
+    .map((s) => s.id);
+  const allTranslationsRevealed =
+    translatableSentenceIds.length > 0 &&
+    translatableSentenceIds.every((id) => revealedSentenceIds.has(id));
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-2 sm:space-y-4">
-      <header className="flex min-w-0 items-center gap-3 px-1 sm:gap-5">
+      <header className="flex min-w-0 items-center gap-3 rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface)] to-[var(--surface-warm)]/35 p-4 shadow-[var(--shadow-xs)] sm:gap-5 sm:p-6">
         <div className="min-w-0 flex-1">
           {isExplicitSample && <p className="mb-1 text-[10px] font-semibold text-[var(--text-muted)]">Bản xem trước · dữ liệu mẫu</p>}
           <p className="lingua-kicker text-[var(--action-primary)]">
@@ -181,8 +253,8 @@ export function InteractiveReader({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1 px-1">
-        {passage.audioUrl && (
+      <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+        {(Boolean(passage.audioUrl) || passage.sentences.length > 0) && (
           <Button
             variant="ghost"
             size="sm"
@@ -191,6 +263,22 @@ export function InteractiveReader({
             aria-label="Nghe toàn bài"
           >
             {isPlayingAudio ? 'Đang phát' : 'Nghe bài'}
+          </Button>
+        )}
+        {translatableSentenceIds.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Languages className="h-4 w-4" />}
+            onClick={() => {
+              if (allTranslationsRevealed) {
+                setRevealedSentenceIds(new Set());
+              } else {
+                setRevealedSentenceIds(new Set(translatableSentenceIds));
+              }
+            }}
+          >
+            {allTranslationsRevealed ? 'Ẩn nghĩa toàn bài' : 'Hiện nghĩa toàn bài'}
           </Button>
         )}
         <Button
@@ -234,7 +322,7 @@ export function InteractiveReader({
                 id={`reader-segment-${segment.id}`}
                 data-testid="reader-segment"
                 data-segment-id={segment.id}
-                className="min-w-0 scroll-mt-6 space-y-3"
+                className="min-w-0 scroll-mt-6 space-y-4 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 shadow-[var(--shadow-xs)] sm:p-6"
               >
                 {segment.sentences.map((sentence) => {
                   const sentenceSaved = reader.savedSentenceIds.has(sentence.id);
@@ -287,17 +375,35 @@ export function InteractiveReader({
                               {meaningIsRevealed ? 'Ẩn nghĩa câu' : 'Xem nghĩa câu'}
                             </button>
                           ) : <span aria-hidden="true" />}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
-                            title={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
-                            leftIcon={sentenceSaved ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                            disabled={sentenceSaved || reader.busyKeys.has(`sentence:${sentence.id}`)}
-                            onClick={() => void reader.saveSentence(sentence.id)}
-                          />
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Nghe câu ${sentenceNumber}`}
+                              title={`Nghe câu ${sentenceNumber}`}
+                              onClick={() => handleSpeakSentence(sentence.id, sentence.tokens.map((t) => t.raw).join(''))}
+                            >
+                              <Volume2 className={`h-4 w-4 ${playingSentenceId === sentence.id ? 'text-[var(--action-primary)]' : 'text-[var(--text-muted)]'}`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
+                              title={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
+                              leftIcon={sentenceSaved ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                              disabled={sentenceSaved || reader.busyKeys.has(`sentence:${sentence.id}`)}
+                              onClick={() => void reader.saveSentence(sentence.id)}
+                            />
+                          </div>
                         </div>
-                        {hasTranslation && meaningIsRevealed && <p id={`reader-translation-${sentence.id}`} className="reader-copy border-l-2 border-[var(--border-default)] pl-3 text-sm text-[var(--text-secondary)]">{sentence.translationVi}</p>}
+                        {hasTranslation && meaningIsRevealed && (
+                          <p
+                            id={`reader-translation-${sentence.id}`}
+                            className="reader-copy rounded-r-xl border-l-3 border-[var(--action-primary)] bg-[var(--surface-subtle)]/70 py-2 pl-3.5 pr-3 text-sm leading-6 text-[var(--text-secondary)]"
+                          >
+                            {sentence.translationVi}
+                          </p>
+                        )}
                       </div>
                     </article>
                   );
@@ -348,7 +454,18 @@ export function InteractiveReader({
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold text-[var(--text-muted)]">Tra từ</p>
-              <h3 className="break-words text-lg font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">{selectedToken.lemma ?? selectedToken.raw}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="break-words text-lg font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">{selectedToken.lemma ?? selectedToken.raw}</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Phát âm từ vựng"
+                  title="Phát âm từ vựng"
+                  onClick={() => handleSpeakToken(selectedToken.lemma ?? selectedToken.raw)}
+                >
+                  <Volume2 className="h-4 w-4 text-[var(--action-primary)]" />
+                </Button>
+              </div>
               {selectedToken.status && <ConceptChip status={selectedToken.status} size="sm" />}
             </div>
             <Button ref={inspectorCloseButtonRef} variant="ghost" size="icon" onClick={reader.closeInspector} aria-label="Đóng bảng tra từ">

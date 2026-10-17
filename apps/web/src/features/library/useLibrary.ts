@@ -12,6 +12,7 @@ import {
 } from '@lingua/types';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { getApiClient } from '../../lib/api/client';
+import { invalidateActorCacheForClient } from '../../lib/api/queryCache';
 
 export type LibraryStatus = 'loading' | 'success' | 'empty' | 'error';
 
@@ -168,6 +169,7 @@ export function useLibrary({ apiClient: customApiClient, initialItems, enabled =
         throw new Error('Library removal response mismatch');
       }
       setItems((current) => current.filter((candidate) => !(candidate.id === item.id && candidate.itemType === item.itemType)));
+      invalidateActorCacheForClient(api);
     } catch (cause) {
       if (!isCurrent(operationEpoch, operationActorId) || isLinguaActorAbortedError(cause)) return;
       setMutationError(mapApiErrorToUi(cause));

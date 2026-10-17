@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "2.0.0",
+  "catalogReleaseId": "lingua-knowledge-catalog-a0-b1-v2.0.0",
+  "artifactSha256": "81905038298404d7166a77b3db6e81e985d6b3202f53984bab9ed2d8014fa31a",
+  "transactional": true,
+  "isolatedFromLearnerState": true,
+  "forbiddenTablesTouched": [],
+  "totalUpsertRows": 2095,
+  "tableOperations": [
+    {
+      "stepOrder": 1,
+      "tableName": "concepts",
+      "strategy": "upsert_by_canonical_key",
+      "conflictTarget": [
+        "language_code",
+        "concept_type",
+        "canonical_key"
+      ],
+      "rowCount": 415
+    },
+    {
+      "stepOrder": 2,
+      "tableName": "framework_mappings",
+      "strategy": "upsert_by_concept_and_level",
+      "conflictTarget": [
+        "concept_id",
+        "level_id"
+      ],
+      "rowCount": 415
+    },
+    {
+      "stepOrder": 3,
+      "tableName": "lexemes",
+      "strategy": "upsert_by_lemma_pos",
+      "conflictTarget": [
+        "language_code",
+        "normalized_form",
+        "part_of_speech"
+      ],
+      "rowCount": 366
+    },
+    {
+      "stepOrder": 4,
+      "tableName": "word_senses",
+      "strategy": "upsert_by_lexeme_and_sense_order",
+      "conflictTarget": [
+        "lexeme_id",
+        "sense_order"
+      ],
+      "rowCount": 366
+    },
+    {
+      "stepOrder": 5,
+      "tableName": "concept_senses",
+      "strategy": "upsert_by_concept_and_word_sense",
+      "conflictTarget": [
+        "concept_id",
+        "word_sense_id"
+      ],
+      "rowCount": 366
+    },
+    {
+      "stepOrder": 6,
+      "tableName": "grammar_specifications",
+      "strategy": "upsert_by_concept_id",
+      "conflictTarget": [
+        "concept_id"
+      ],
+      "rowCount": 32
+    },
+    {
+      "stepOrder": 7,
+      "tableName": "phrase_specifications",
+      "strategy": "upsert_by_concept_id",
+      "conflictTarget": [
+        "concept_id"
+      ],
+      "rowCount": 40
+    },
+    {
+      "stepOrder": 8,
+      "tableName": "phonetic_transcriptions",
+      "strategy": "upsert_by_lexeme_and_accent",
+      "conflictTarget": [
+        "lexeme_id",
+        "accent_variant"
+      ],
+      "rowCount": 30
+    },
+    {
+      "stepOrder": 9,
+      "tableName": "concept_edges",
+      "strategy": "upsert_by_directed_edge_triple",
+      "conflictTarget": [
+        "source_concept_id",
+        "target_concept_id",
+        "relation_type"
+      ],
+      "rowCount": 65
+    }
+  ],
+  "planDigestSha256": "152aa1ab1458f964937b3f5d7936214c434b4b9c00f307694f04ce248c480593"
+}

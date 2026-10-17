@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
+from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 from typing import Literal, cast
 from uuid import UUID, uuid4
 
 import psycopg
-from psycopg import Connection
+from psycopg import Connection, Cursor
 from psycopg.types.json import Jsonb
 
 from lingua_api.content.store import PostgresContentStore
@@ -31,6 +33,27 @@ from lingua_api.today.domain import (
 from lingua_api.today.policy import TODAY_HEURISTIC_V1, TODAY_HEURISTIC_V2, TodayPolicy
 
 
+def _executor(
+    connection: Connection[tuple[object, ...]],
+    cursor: Cursor[tuple[object, ...]] | None = None,
+) -> Connection[tuple[object, ...]] | Cursor[tuple[object, ...]]:
+    return cursor if cursor is not None else connection
+
+
+@contextlib.contextmanager
+def _shared_cursor(
+    connection: Connection[tuple[object, ...]],
+    cursor: Cursor[tuple[object, ...]] | None = None,
+) -> Iterator[Connection[tuple[object, ...]] | Cursor[tuple[object, ...]]]:
+    if cursor is not None:
+        yield cursor
+    elif hasattr(connection, "cursor"):
+        with connection.cursor() as cur:
+            yield cur
+    else:
+        yield connection
+
+
 class PostgresTodayStore:
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
@@ -40,8 +63,11 @@ class PostgresTodayStore:
         return cast(Connection[tuple[object, ...]], psycopg.connect(self._database_url))
 
     @staticmethod
-    def transaction_timestamp(connection: Connection[tuple[object, ...]]) -> datetime:
-        row = connection.execute("SELECT transaction_timestamp()").fetchone()
+    def transaction_timestamp(
+        connection: Connection[tuple[object, ...]],
+        cursor: Cursor[tuple[object, ...]] | None = None,
+    ) -> datetime:
+        row = _executor(connection, cursor).execute("SELECT transaction_timestamp()").fetchone()
         if row is None:
             raise TodayPlanUnavailable("database transaction timestamp is unavailable")
         return _datetime(row[0])
@@ -52,6 +78,7 @@ class PostgresTodayStore:
         *,
         actor: AuthenticatedActor,
         requested_id: UUID | None,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> TodayProfile:
         parameters: tuple[object, ...]
         requested = ""
@@ -60,8 +87,10 @@ class PostgresTodayStore:
         else:
             requested = "AND profile.id = %s"
             parameters = (actor.id, requested_id)
-        row = connection.execute(
-            f"""
+        row = (
+            _executor(connection, cursor)
+            .execute(
+                f"""
             SELECT profile.id, learner.time_zone, profile.daily_minutes
             FROM user_languages AS profile
             JOIN learner_profiles AS learner ON learner.user_id = profile.user_id
@@ -70,8 +99,10 @@ class PostgresTodayStore:
             ORDER BY profile.created_at, profile.id
             LIMIT 1
             """,
-            parameters,
-        ).fetchone()
+                parameters,
+            )
+            .fetchone()
+        )
         if row is None:
             raise TodayNotFound("active owned English profile was not found")
         return TodayProfile(
@@ -89,8 +120,9 @@ class PostgresTodayStore:
         plan_date: date,
         time_zone: str,
         changed_at: datetime,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> None:
-        connection.execute(
+        _executor(connection, cursor).execute(
             """
             UPDATE today_plans
             SET status = 'expired', updated_at = %s
@@ -107,56 +139,60 @@ class PostgresTodayStore:
         actor: AuthenticatedActor,
         profile_id: UUID,
         plan_date: date,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> TodayPlanProjection | None:
-        plan_row = connection.execute(
-            """
-            SELECT id, user_language_id, plan_date, time_zone, daily_minutes, status,
-                   engine_version, as_of, created_at, updated_at
-            FROM today_plans
-            WHERE user_id = %s AND user_language_id = %s AND plan_date = %s
-            """,
-            (actor.id, profile_id, plan_date),
-        ).fetchone()
-        if plan_row is None:
-            return None
-        plan_id = _uuid(plan_row[0])
-        rows = connection.execute(
-            """
-            SELECT activity.id, activity.position, activity.activity_type,
-                   activity.title_snapshot, activity.description_snapshot,
-                   activity.estimated_minutes, activity.reason_codes,
-                   activity.reason_text_snapshot, activity.status, activity.target_count,
-                   activity.completed_count, activity.content_id, activity.concept_id,
-                   activity.review_item_id, activity.completed_at, activity.created_at,
-                   CASE WHEN activity.content_id IS NULL THEN true
-                        ELSE reader_content_passes_publication_gate(activity.content_id)
-                   END AS target_is_visible
-            FROM today_plan_activities AS activity
-            WHERE activity.plan_id = %s AND activity.user_id = %s
-            ORDER BY activity.position, activity.id
-            """,
-            (plan_id, actor.id),
-        ).fetchall()
-        if any(not bool(row[16]) for row in rows):
-            raise TodayPlanUnavailable("a persisted content target no longer passes publication")
-        activities = tuple(_activity(row) for row in rows)
-        completed_minutes = sum(
-            item.estimated_minutes for item in activities if item.status == "completed"
-        )
-        return TodayPlanProjection(
-            id=plan_id,
-            language_profile_id=_uuid(plan_row[1]),
-            plan_date=_date(plan_row[2]),
-            time_zone=str(plan_row[3]),
-            target_minutes=int(cast(int, plan_row[4])),
-            completed_minutes=completed_minutes,
-            status=str(plan_row[5]),
-            engine_version=str(plan_row[6]),
-            activities=activities,
-            as_of=_datetime(plan_row[7]),
-            created_at=_datetime(plan_row[8]),
-            updated_at=_datetime(plan_row[9]),
-        )
+        with _shared_cursor(connection, cursor) as cur:
+            plan_row = cur.execute(
+                """
+                SELECT id, user_language_id, plan_date, time_zone, daily_minutes, status,
+                       engine_version, as_of, created_at, updated_at
+                FROM today_plans
+                WHERE user_id = %s AND user_language_id = %s AND plan_date = %s
+                """,
+                (actor.id, profile_id, plan_date),
+            ).fetchone()
+            if plan_row is None:
+                return None
+            plan_id = _uuid(plan_row[0])
+            rows = cur.execute(
+                """
+                SELECT activity.id, activity.position, activity.activity_type,
+                       activity.title_snapshot, activity.description_snapshot,
+                       activity.estimated_minutes, activity.reason_codes,
+                       activity.reason_text_snapshot, activity.status, activity.target_count,
+                       activity.completed_count, activity.content_id, activity.concept_id,
+                       activity.review_item_id, activity.completed_at, activity.created_at,
+                       CASE WHEN activity.content_id IS NULL THEN true
+                            ELSE reader_content_passes_publication_gate(activity.content_id)
+                       END AS target_is_visible
+                FROM today_plan_activities AS activity
+                WHERE activity.plan_id = %s AND activity.user_id = %s
+                ORDER BY activity.position, activity.id
+                """,
+                (plan_id, actor.id),
+            ).fetchall()
+            if any(not bool(row[16]) for row in rows):
+                raise TodayPlanUnavailable(
+                    "a persisted content target no longer passes publication"
+                )
+            activities = tuple(_activity(row) for row in rows)
+            completed_minutes = sum(
+                item.estimated_minutes for item in activities if item.status == "completed"
+            )
+            return TodayPlanProjection(
+                id=plan_id,
+                language_profile_id=_uuid(plan_row[1]),
+                plan_date=_date(plan_row[2]),
+                time_zone=str(plan_row[3]),
+                target_minutes=int(cast(int, plan_row[4])),
+                completed_minutes=completed_minutes,
+                status=str(plan_row[5]),
+                engine_version=str(plan_row[6]),
+                activities=activities,
+                as_of=_datetime(plan_row[7]),
+                created_at=_datetime(plan_row[8]),
+                updated_at=_datetime(plan_row[9]),
+            )
 
     @staticmethod
     def reconcile_counts(
@@ -164,8 +200,9 @@ class PostgresTodayStore:
         *,
         actor: AuthenticatedActor,
         plan_id: UUID,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> None:
-        connection.execute(
+        _executor(connection, cursor).execute(
             """
             UPDATE today_plan_activities AS activity
             SET completed_count = CASE activity.activity_type
@@ -219,9 +256,12 @@ class PostgresTodayStore:
         profile_id: UUID,
         as_of: datetime,
         limit: int,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> tuple[ReviewCandidate, ...]:
-        rows = connection.execute(
-            """
+        rows = (
+            _executor(connection, cursor)
+            .execute(
+                """
             SELECT item.id, item.concept_id, state.due_at
             FROM review_items AS item
             JOIN fsrs_states AS state
@@ -232,8 +272,10 @@ class PostgresTodayStore:
             ORDER BY state.due_at, item.id
             LIMIT %s
             """,
-            (actor.id, profile_id, as_of, limit),
-        ).fetchall()
+                (actor.id, profile_id, as_of, limit),
+            )
+            .fetchall()
+        )
         return tuple(
             ReviewCandidate(_uuid(row[0]), _uuid(row[1]), _datetime(row[2])) for row in rows
         )
@@ -247,6 +289,7 @@ class PostgresTodayStore:
         as_of: datetime,
         limit: int,
         policy: TodayPolicy = TODAY_HEURISTIC_V1,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> tuple[ContentCandidate, ...]:
         summaries = self._content.list_summaries(
             actor=actor,
@@ -267,8 +310,10 @@ class PostgresTodayStore:
         due_remediation_filter = (
             "AND NOT due_check.is_due" if policy.version == TODAY_HEURISTIC_V2.version else ""
         )
-        rows = connection.execute(
-            f"""
+        rows = (
+            _executor(connection, cursor)
+            .execute(
+                f"""
             SELECT item.id,
                    count(DISTINCT linked.concept_id) FILTER (
                        WHERE COALESCE(state.status, 'unseen') = 'unseen'
@@ -369,22 +414,24 @@ class PostgresTodayStore:
             WHERE item.id = ANY(%s)
             GROUP BY item.id, saved.saved_at
             """,
-            (
-                actor.id,
-                profile_id,
-                as_of - timedelta(hours=policy.recent_exposure_window_hours),
-                as_of,
-                actor.id,
-                profile_id,
-                as_of,
-                actor.id,
-                profile_id,
-                as_of,
-                actor.id,
-                profile_id,
-                content_ids,
-            ),
-        ).fetchall()
+                (
+                    actor.id,
+                    profile_id,
+                    as_of - timedelta(hours=policy.recent_exposure_window_hours),
+                    as_of,
+                    actor.id,
+                    profile_id,
+                    as_of,
+                    actor.id,
+                    profile_id,
+                    as_of,
+                    actor.id,
+                    profile_id,
+                    content_ids,
+                ),
+            )
+            .fetchall()
+        )
         enrichment = {_uuid(row[0]): row for row in rows}
         candidates: list[ContentCandidate] = []
         for source_rank, summary in enumerate(summaries):
@@ -438,6 +485,7 @@ class PostgresTodayStore:
         review_candidate_count: int,
         content_candidate_count: int,
         policy: TodayPolicy = TODAY_HEURISTIC_V1,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> UUID:
         plan_id = uuid4()
         completed_at = as_of if decision.status == "completed" else None
@@ -449,86 +497,105 @@ class PostgresTodayStore:
             "unusedMinutes": decision.unused_minutes,
             "goalRelevance": "NEUTRAL",
         }
-        connection.execute(
-            """
-            INSERT INTO today_plans
-                (id, user_id, user_language_id, language_code, plan_date, time_zone,
-                 daily_minutes, new_concept_budget, engine_version, status, generated_at,
-                 completed_at, created_at, updated_at, as_of, unused_minutes,
-                 generation_diagnostics)
-            VALUES (%s, %s, %s, 'en', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s)
-            """,
-            (
-                plan_id,
-                actor.id,
-                profile.user_language_id,
-                plan_date,
-                profile.time_zone,
-                profile.daily_minutes,
-                policy.max_new_unseen_concepts,
-                policy.version,
-                decision.status,
-                as_of,
-                completed_at,
-                as_of,
-                as_of,
-                as_of,
-                decision.unused_minutes,
-                Jsonb(diagnostics),
-            ),
-        )
-        for position, activity in enumerate(decision.activities):
-            activity_id = uuid4()
-            first_review = activity.review_item_ids[0] if activity.review_item_ids else None
-            connection.execute(
+        with _shared_cursor(connection, cursor) as cur:
+            cur.execute(
                 """
-                INSERT INTO today_plan_activities
-                    (id, plan_id, user_id, language_code, activity_type, position,
-                     estimated_minutes, reason_codes, concept_id, content_id, review_item_id,
-                     status, created_at, updated_at, target_count, completed_count,
-                     title_snapshot, description_snapshot, reason_text_snapshot,
-                     selection_diagnostics)
-                VALUES (%s, %s, %s, 'en', %s, %s, %s, %s, %s, %s, %s, 'pending',
-                        %s, %s, %s, 0, %s, %s, %s, %s)
+                INSERT INTO today_plans
+                    (id, user_id, user_language_id, language_code, plan_date, time_zone,
+                     daily_minutes, new_concept_budget, engine_version, status, generated_at,
+                     completed_at, created_at, updated_at, as_of, unused_minutes,
+                     generation_diagnostics)
+                VALUES (%s, %s, %s, 'en', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s)
                 """,
                 (
-                    activity_id,
                     plan_id,
                     actor.id,
-                    activity.activity_type,
-                    position,
-                    activity.estimated_minutes,
-                    list(activity.reason_codes),
-                    activity.concept_id,
-                    activity.content_id,
-                    first_review,
+                    profile.user_language_id,
+                    plan_date,
+                    profile.time_zone,
+                    profile.daily_minutes,
+                    policy.max_new_unseen_concepts,
+                    policy.version,
+                    decision.status,
+                    as_of,
+                    completed_at,
                     as_of,
                     as_of,
-                    activity.target_count,
-                    activity.title,
-                    activity.description,
-                    activity.reason_text,
-                    Jsonb(activity.diagnostics or {}),
+                    as_of,
+                    decision.unused_minutes,
+                    Jsonb(diagnostics),
                 ),
             )
-            if activity.review_item_ids:
-                with connection.cursor() as cursor:
-                    cursor.executemany(
-                        """
-                        INSERT INTO today_activity_review_items
-                            (activity_id, user_id, language_code, review_item_id,
-                             position, created_at)
-                        VALUES (%s, %s, 'en', %s, %s, %s)
-                        """,
-                        [
-                            (activity_id, actor.id, review_item_id, review_position, as_of)
-                            for review_position, review_item_id in enumerate(
-                                activity.review_item_ids
+            for position, activity in enumerate(decision.activities):
+                activity_id = uuid4()
+                first_review = activity.review_item_ids[0] if activity.review_item_ids else None
+                cur.execute(
+                    """
+                    INSERT INTO today_plan_activities
+                        (id, plan_id, user_id, language_code, activity_type, position,
+                         estimated_minutes, reason_codes, concept_id, content_id, review_item_id,
+                         status, created_at, updated_at, target_count, completed_count,
+                         title_snapshot, description_snapshot, reason_text_snapshot,
+                         selection_diagnostics)
+                    VALUES (%s, %s, %s, 'en', %s, %s, %s, %s, %s, %s, %s, 'pending',
+                            %s, %s, %s, 0, %s, %s, %s, %s)
+                    """,
+                    (
+                        activity_id,
+                        plan_id,
+                        actor.id,
+                        activity.activity_type,
+                        position,
+                        activity.estimated_minutes,
+                        list(activity.reason_codes),
+                        activity.concept_id,
+                        activity.content_id,
+                        first_review,
+                        as_of,
+                        as_of,
+                        activity.target_count,
+                        activity.title,
+                        activity.description,
+                        activity.reason_text,
+                        Jsonb(activity.diagnostics or {}),
+                    ),
+                )
+                if activity.review_item_ids:
+                    if isinstance(cur, Cursor):
+                        cur.executemany(
+                            """
+                            INSERT INTO today_activity_review_items
+                                (activity_id, user_id, language_code, review_item_id,
+                                 position, created_at)
+                            VALUES (%s, %s, 'en', %s, %s, %s)
+                            """,
+                            [
+                                (activity_id, actor.id, review_item_id, review_position, as_of)
+                                for review_position, review_item_id in enumerate(
+                                    activity.review_item_ids
+                                )
+                            ],
+                        )
+                    else:
+                        with connection.cursor() as fallback_cursor:
+                            fallback_cursor.executemany(
+                                """
+                                INSERT INTO today_activity_review_items
+                                    (activity_id, user_id, language_code, review_item_id,
+                                     position, created_at)
+                                VALUES (%s, %s, 'en', %s, %s, %s)
+                                """,
+                                [
+                                    (activity_id, actor.id, review_item_id, review_position, as_of)
+                                    for review_position, review_item_id in enumerate(
+                                        activity.review_item_ids
+                                    )
+                                ],
                             )
-                        ],
-                    )
         return plan_id
+
+    save_plan = persist_decision
 
     def complete_activity(
         self,
@@ -539,10 +606,15 @@ class PostgresTodayStore:
         idempotency_key: UUID,
         duration_seconds: int | None,
         completed_at: datetime,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> TodayCompletionProjection:
         fingerprint = _completion_fingerprint(actor.id, plan_id, activity_id, duration_seconds)
-        with self.connect() as connection, connection.transaction():
-            row = connection.execute(
+        with (
+            self.connect() as connection,
+            connection.transaction(),
+            _shared_cursor(connection, cursor) as cur,
+        ):
+            row = cur.execute(
                 """
                 SELECT activity.status, activity.idempotency_key,
                        activity.completion_request_fingerprint,
@@ -578,8 +650,13 @@ class PostgresTodayStore:
             if str(row[0]) != "pending":
                 raise TodayInvalidState("activity is not pending")
 
-            self.reconcile_counts(connection, actor=actor, plan_id=plan_id)
-            proof = connection.execute(
+            self.reconcile_counts(
+                connection,
+                actor=actor,
+                plan_id=plan_id,
+                cursor=cur if isinstance(cur, Cursor) else None,
+            )
+            proof = cur.execute(
                 "SELECT completed_count FROM today_plan_activities WHERE id = %s",
                 (activity_id,),
             ).fetchone()
@@ -587,7 +664,7 @@ class PostgresTodayStore:
             if int(cast(int, proof[0])) < int(cast(int, row[5])):
                 raise TodayInvalidState("authoritative activity proof is incomplete")
 
-            connection.execute(
+            cur.execute(
                 """
                 UPDATE today_plan_activities
                 SET status = 'completed', completed_at = %s, updated_at = %s,
@@ -607,7 +684,7 @@ class PostgresTodayStore:
                     actor.id,
                 ),
             )
-            remaining = connection.execute(
+            remaining = cur.execute(
                 """
                 SELECT count(*) FROM today_plan_activities
                 WHERE plan_id = %s AND status <> 'completed'
@@ -616,7 +693,7 @@ class PostgresTodayStore:
             ).fetchone()
             assert remaining is not None
             if int(cast(int, remaining[0])) == 0:
-                connection.execute(
+                cur.execute(
                     """
                     UPDATE today_plans
                     SET status = 'completed', completed_at = %s, updated_at = %s
@@ -629,11 +706,12 @@ class PostgresTodayStore:
                 actor=actor,
                 profile_id=_uuid(row[7]),
                 plan_date=_date(row[8]),
+                cursor=cur if isinstance(cur, Cursor) else None,
             )
             assert plan is not None
             activity = next(item for item in plan.activities if item.id == activity_id)
             result = TodayCompletionProjection(plan, activity, False)
-            connection.execute(
+            cur.execute(
                 """
                 UPDATE today_plan_activities
                 SET completion_result_snapshot = %s

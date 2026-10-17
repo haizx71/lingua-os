@@ -33,6 +33,7 @@ import {
   type ApiErrorCode,
 } from '@lingua/types';
 import type { ReviewCardItem } from '../../fixtures/reviewFixture';
+import { clientNavigate } from '../../lib/navigation/clientNavigate';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { useReviewSession } from './useReviewSession';
 
@@ -134,6 +135,17 @@ export function ReviewSession({
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.focusMode = focusMode ? 'true' : 'false';
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        delete document.documentElement.dataset.focusMode;
+      }
+    };
+  }, [focusMode]);
+
   useGSAP(
     () => {
       if (isInitialMount.current) {
@@ -164,43 +176,77 @@ export function ReviewSession({
     { dependencies: [currentIndex, prefersReducedMotion], scope: sessionCardRef }
   );
 
+  const needsTextResponse = currentCard?.exerciseMode === 'typing'
+    || currentCard?.exerciseMode === 'cloze';
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
       if (isSubmitting || isLoading || error || pendingRetryOperation || localForcedState === 'error' || localForcedState === 'loading') return;
 
-      if (e.key === ' ' || e.code === 'Space') {
+      if (e.key === 'Escape' && focusMode) {
+        e.preventDefault();
+        setFocusMode(false);
+      } else if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         setIsAnswerRevealed((prev) => !prev);
       } else if (e.key === '1') {
         e.preventDefault();
-        void submitRating('again');
+        void submitRating('again', needsTextResponse ? responseText : undefined);
       } else if (e.key === '2') {
         e.preventDefault();
-        void submitRating('hard');
+        void submitRating('hard', needsTextResponse ? responseText : undefined);
       } else if (e.key === '3') {
         e.preventDefault();
-        void submitRating('good');
+        void submitRating('good', needsTextResponse ? responseText : undefined);
       } else if (e.key === '4') {
         e.preventDefault();
-        void submitRating('easy');
+        void submitRating('easy', needsTextResponse ? responseText : undefined);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSubmitting, isLoading, error, pendingRetryOperation, localForcedState, setIsAnswerRevealed, submitRating]);
+  }, [
+    isSubmitting,
+    isLoading,
+    error,
+    pendingRetryOperation,
+    localForcedState,
+    setIsAnswerRevealed,
+    submitRating,
+    needsTextResponse,
+    responseText,
+    focusMode,
+  ]);
+
+  const canSynthesizeSpeech = typeof window !== 'undefined'
+    && 'speechSynthesis' in window
+    && typeof window.SpeechSynthesisUtterance === 'function';
 
   const handleAudioPlay = () => {
     const audio = audioRef.current;
-    if (!audio) return;
-    const epoch = authContext?.getActorEpoch();
-    const actorId = authContext?.user?.id ?? null;
-    void audio.play().then(() => {
-      if (audioRef.current === audio && (!authContext?.isCurrentActor || authContext.isCurrentActor(epoch ?? 0, actorId))) {
-        setIsAudioPlaying(!audio.paused);
+    if (audio) {
+      const epoch = authContext?.getActorEpoch();
+      const actorId = authContext?.user?.id ?? null;
+      void audio.play().then(() => {
+        if (audioRef.current === audio && (!authContext?.isCurrentActor || authContext.isCurrentActor(epoch ?? 0, actorId))) {
+          setIsAudioPlaying(!audio.paused);
+        }
+      }).catch(() => { /* Playback failure does not create learner evidence. */ });
+    } else if (canSynthesizeSpeech && currentCard?.term) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(currentCard.term);
+        utterance.lang = 'en-US';
+        setIsAudioPlaying(true);
+        utterance.onend = () => setIsAudioPlaying(false);
+        utterance.onerror = () => setIsAudioPlaying(false);
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        setIsAudioPlaying(false);
       }
-    }).catch(() => { /* Playback failure does not create learner evidence. */ });
+    }
   };
 
   const isConfiguredMode = Boolean(apiClient || (authContext?.isConfigured && authContext?.authState === 'authenticated'));
@@ -253,7 +299,7 @@ export function ReviewSession({
           icon={<CheckCircle2 className="h-10 w-10 text-[var(--status-success)]" />}
           actionLabel="Đọc bài mới trong Reader"
           onAction={() => {
-            window.location.href = '/read';
+            clientNavigate('/read');
           }}
         />
         <div className="pt-2 text-center">
@@ -273,8 +319,6 @@ export function ReviewSession({
   const hiddenAnswerMode = currentCard.exerciseMode === 'typing'
     || currentCard.exerciseMode === 'cloze'
     || currentCard.exerciseMode === 'listening';
-  const needsTextResponse = currentCard.exerciseMode === 'typing'
-    || currentCard.exerciseMode === 'cloze';
   const exerciseLabels: Record<ReviewExerciseMode, string> = {
     self_recall: 'Tự nhớ lại',
     multiple_choice: 'Chọn đáp án',
@@ -284,7 +328,13 @@ export function ReviewSession({
   };
 
   return (
-    <div aria-busy={isSubmitting} className={`mx-auto w-full max-w-3xl space-y-3 sm:space-y-5 ${focusMode ? 'py-3' : ''}`}>
+    <div
+      aria-busy={isSubmitting}
+      data-focus-mode={focusMode ? 'true' : 'false'}
+      className={`mx-auto w-full max-w-3xl space-y-3 sm:space-y-5 ${
+        focusMode ? 'py-4 sm:py-6 rounded-3xl bg-[var(--surface-subtle)]/40 px-2 sm:px-4 transition-all' : ''
+      }`}
+    >
       <header className="flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <div className="lingua-kicker text-[var(--action-primary)]">Ôn tập</div>
@@ -348,7 +398,7 @@ export function ReviewSession({
                 size="icon"
                 className="min-h-[44px] min-w-[44px] rounded-2xl"
                 aria-label={currentCard.exerciseMode === 'listening' ? 'Nghe từ cần nhớ' : 'Phát âm từ'}
-                disabled={!currentCard.audioUrl}
+                disabled={!currentCard.audioUrl && !canSynthesizeSpeech}
                 onClick={handleAudioPlay}
               >
                 <Volume2 className={`h-5 w-5 text-[var(--action-primary)] ${isAudioPlaying && !prefersReducedMotion ? 'animate-bounce' : ''}`} />
@@ -384,6 +434,12 @@ export function ReviewSession({
                   spellCheck={false}
                   value={responseText}
                   onChange={(event) => setResponseText(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      setIsAnswerRevealed(true);
+                    }
+                  }}
                   className="min-h-[48px] w-full rounded-xl border border-[var(--border-default)] bg-white px-4 text-base"
                 />
               </label>

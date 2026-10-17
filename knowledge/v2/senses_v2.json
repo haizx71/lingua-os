@@ -1,0 +1,643 @@
+{
+  "schemaVersion": "2.0.0",
+  "lexemeGroups": [
+    {
+      "lemma": "bank",
+      "normalizedForm": "bank",
+      "partOfSpeech": "noun",
+      "ipa": "/bæŋk/",
+      "inflectedForms": [
+        "banks"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:bank:noun:finance",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "An organization where people and businesses keep or borrow money.",
+          "definitionVi": "Ngân hàng (tổ chức tài chính)",
+          "example": {
+            "en": "I need to go to the bank to open an account.",
+            "vi": "Tôi cần đến ngân hàng để mở một tài khoản.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:bank:noun:river",
+          "senseOrder": 2,
+          "cefrLevel": "B1",
+          "definitionEn": "The land along the side of a river or canal.",
+          "definitionVi": "Bờ sông, bờ kênh",
+          "example": {
+            "en": "We walked along the river bank in the evening.",
+            "vi": "Chúng tôi đi dạo dọc bờ sông vào buổi tối.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "book",
+      "normalizedForm": "book",
+      "partOfSpeech": "noun",
+      "ipa": "/bʊk/",
+      "inflectedForms": [
+        "books"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:book:noun:reading",
+          "senseOrder": 1,
+          "cefrLevel": "A0",
+          "definitionEn": "A set of printed pages fastened together inside a cover for reading.",
+          "definitionVi": "Cuốn sách",
+          "example": {
+            "en": "She is reading an English book.",
+            "vi": "Cô ấy đang đọc một cuốn sách tiếng Anh.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "book",
+      "normalizedForm": "book",
+      "partOfSpeech": "verb",
+      "ipa": "/bʊk/",
+      "inflectedForms": [
+        "books",
+        "booking",
+        "booked"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:book:verb:reservation",
+          "senseOrder": 1,
+          "cefrLevel": "A2",
+          "definitionEn": "To arrange to have a seat, room, or ticket at a particular time.",
+          "definitionVi": "Đặt chỗ, đặt vé, đặt phòng trước",
+          "example": {
+            "en": "I booked a table for two at seven.",
+            "vi": "Tôi đã đặt một bàn cho hai người lúc bảy giờ.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "check",
+      "normalizedForm": "check",
+      "partOfSpeech": "verb",
+      "ipa": "/tʃek/",
+      "inflectedForms": [
+        "checks",
+        "checking",
+        "checked"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:check:verb:inspect",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "To examine something to make sure it is correct, safe, or working.",
+          "definitionVi": "Kiểm tra, xem lại",
+          "example": {
+            "en": "Please check your email address before submitting.",
+            "vi": "Vui lòng kiểm tra địa chỉ email của bạn trước khi gửi.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:check:verb:luggage",
+          "senseOrder": 2,
+          "cefrLevel": "A2",
+          "definitionEn": "To leave bags with official staff so they can be put on a plane or train.",
+          "definitionVi": "Ký gửi (hành lý)",
+          "example": {
+            "en": "We checked our large bags at the airport counter.",
+            "vi": "Chúng tôi đã ký gửi những chiếc túi lớn tại quầy sân bay.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "free",
+      "normalizedForm": "free",
+      "partOfSpeech": "adjective",
+      "ipa": "/friː/",
+      "inflectedForms": [
+        "freer",
+        "freest"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:free:adjective:available",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "Not busy; having no planned work or appointments.",
+          "definitionVi": "Rảnh rỗi, trống lịch",
+          "example": {
+            "en": "Are you free tomorrow afternoon?",
+            "vi": "Chiều mai bạn có rảnh không?",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:free:adjective:no-cost",
+          "senseOrder": 2,
+          "cefrLevel": "A1",
+          "definitionEn": "Costing nothing; not needing payment.",
+          "definitionVi": "Miễn phí",
+          "example": {
+            "en": "Breakfast is free for hotel guests.",
+            "vi": "Bữa sáng miễn phí cho khách nghỉ tại khách sạn.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "right",
+      "normalizedForm": "right",
+      "partOfSpeech": "noun",
+      "ipa": "/raɪt/",
+      "inflectedForms": [
+        "rights"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:right:noun:direction",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "The side opposite to the left.",
+          "definitionVi": "Bên phải, phía tay phải",
+          "example": {
+            "en": "Turn right at the next corner.",
+            "vi": "Hãy rẽ phải ở góc đường tiếp theo.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:right:noun:entitlement",
+          "senseOrder": 2,
+          "cefrLevel": "B1",
+          "definitionEn": "A moral or legal entitlement to have or do something.",
+          "definitionVi": "Quyền, quyền lợi hợp pháp",
+          "example": {
+            "en": "Every learner has the right to clear feedback.",
+            "vi": "Mỗi người học đều có quyền nhận được phản hồi rõ ràng.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "right",
+      "normalizedForm": "right",
+      "partOfSpeech": "adjective",
+      "ipa": "/raɪt/",
+      "inflectedForms": [],
+      "senses": [
+        {
+          "conceptKey": "word:right:adjective:correct",
+          "senseOrder": 1,
+          "cefrLevel": "A0",
+          "definitionEn": "True or correct as a fact; suitable.",
+          "definitionVi": "Đúng, chính xác",
+          "example": {
+            "en": "Your answer to the third question is right.",
+            "vi": "Câu trả lời của bạn cho câu hỏi thứ ba là đúng.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "change",
+      "normalizedForm": "change",
+      "partOfSpeech": "verb",
+      "ipa": "/tʃeɪndʒ/",
+      "inflectedForms": [
+        "changes",
+        "changing",
+        "changed"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:change:verb:modify",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "To make or become different.",
+          "definitionVi": "Thay đổi, sửa đổi",
+          "example": {
+            "en": "We had to change our travel dates.",
+            "vi": "Chúng tôi đã phải thay đổi ngày đi của mình.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:change:verb:transfer",
+          "senseOrder": 2,
+          "cefrLevel": "A2",
+          "definitionEn": "To get off one train or bus and get on another to continue a journey.",
+          "definitionVi": "Đổi chuyến (tàu, xe, máy bay)",
+          "example": {
+            "en": "You need to change trains at the central station.",
+            "vi": "Bạn cần đổi tàu tại nhà ga trung tâm.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "change",
+      "normalizedForm": "change",
+      "partOfSpeech": "noun",
+      "ipa": "/tʃeɪndʒ/",
+      "inflectedForms": [
+        "changes"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:change:noun:money-back",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "The money returned when you pay more than the price of an item.",
+          "definitionVi": "Tiền thừa, tiền thối lại; tiền lẻ",
+          "example": {
+            "en": "Here is your receipt and your change.",
+            "vi": "Đây là biên lai và tiền thừa của bạn.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:change:noun:difference",
+          "senseOrder": 2,
+          "cefrLevel": "A2",
+          "definitionEn": "The act or result of something becoming different.",
+          "definitionVi": "Sự thay đổi",
+          "example": {
+            "en": "There is a small change in today's schedule.",
+            "vi": "Có một thay đổi nhỏ trong lịch trình hôm nay.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "order",
+      "normalizedForm": "order",
+      "partOfSpeech": "noun",
+      "ipa": "/ˈɔːr.dɚ/",
+      "inflectedForms": [
+        "orders"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:order:noun:request",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "A request for food or goods in a restaurant, shop, or online.",
+          "definitionVi": "Đơn đặt hàng, món gọi",
+          "example": {
+            "en": "Your online order will arrive tomorrow.",
+            "vi": "Đơn hàng trực tuyến của bạn sẽ đến vào ngày mai.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:order:noun:sequence",
+          "senseOrder": 2,
+          "cefrLevel": "A2",
+          "definitionEn": "The arrangement of things in relation to each other according to a sequence.",
+          "definitionVi": "Thứ tự, trình tự",
+          "example": {
+            "en": "Put the sentences in the correct order.",
+            "vi": "Hãy sắp xếp các câu theo đúng thứ tự.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "charge",
+      "normalizedForm": "charge",
+      "partOfSpeech": "noun",
+      "ipa": "/tʃɑːrdʒ/",
+      "inflectedForms": [
+        "charges"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:charge:noun:price",
+          "senseOrder": 1,
+          "cefrLevel": "A2",
+          "definitionEn": "The amount of money asked for a service or activity.",
+          "definitionVi": "Phí dịch vụ, cước phí",
+          "example": {
+            "en": "Delivery is free of charge for orders over twenty dollars.",
+            "vi": "Giao hàng miễn phí cho các đơn hàng trên hai mươi đô la.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:charge:noun:responsibility",
+          "senseOrder": 2,
+          "cefrLevel": "B1",
+          "definitionEn": "Responsibility for controlling or caring for something (in charge of).",
+          "definitionVi": "Sự phụ trách (in charge of)",
+          "example": {
+            "en": "Linh is in charge of the onboarding project.",
+            "vi": "Linh là người phụ trách dự án hướng dẫn người mới.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "save",
+      "normalizedForm": "save",
+      "partOfSpeech": "verb",
+      "ipa": "/seɪv/",
+      "inflectedForms": [
+        "saves",
+        "saving",
+        "saved"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:save:verb:keep-money-time",
+          "senseOrder": 1,
+          "cefrLevel": "A2",
+          "definitionEn": "To keep money or time instead of spending or wasting it.",
+          "definitionVi": "Tiết kiệm (tiền, thời gian)",
+          "example": {
+            "en": "Taking the express bus saves twenty minutes.",
+            "vi": "Đi xe buýt nhanh giúp tiết kiệm hai mươi phút.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:save:verb:store-data",
+          "senseOrder": 2,
+          "cefrLevel": "A2",
+          "definitionEn": "To keep data in a computer or application so you can use it later.",
+          "definitionVi": "Lưu trữ (dữ liệu, từ vựng)",
+          "example": {
+            "en": "Remember to save your document before closing the app.",
+            "vi": "Hãy nhớ lưu tài liệu của bạn trước khi đóng ứng dụng.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "point",
+      "normalizedForm": "point",
+      "partOfSpeech": "noun",
+      "ipa": "/pɔɪnt/",
+      "inflectedForms": [
+        "points"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:point:noun:idea",
+          "senseOrder": 1,
+          "cefrLevel": "B1",
+          "definitionEn": "An important idea, opinion, or fact in a discussion.",
+          "definitionVi": "Ý chính, luận điểm, quan điểm",
+          "example": {
+            "en": "You made a very good point during the meeting.",
+            "vi": "Bạn đã nêu một ý rất hay trong cuộc họp.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:point:noun:location-time",
+          "senseOrder": 2,
+          "cefrLevel": "A2",
+          "definitionEn": "A particular place or moment in time.",
+          "definitionVi": "Điểm, thời điểm",
+          "example": {
+            "en": "At that point, we decided to ask for help.",
+            "vi": "Vào thời điểm đó, chúng tôi quyết định nhờ giúp đỡ.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "light",
+      "normalizedForm": "light",
+      "partOfSpeech": "noun",
+      "ipa": "/laɪt/",
+      "inflectedForms": [
+        "lights"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:light:noun:brightness",
+          "senseOrder": 1,
+          "cefrLevel": "A1",
+          "definitionEn": "The brightness from the sun or a lamp that allows you to see.",
+          "definitionVi": "Ánh sáng, đèn",
+          "example": {
+            "en": "Turn off the light when you leave the room.",
+            "vi": "Hãy tắt đèn khi bạn rời khỏi phòng.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "light",
+      "normalizedForm": "light",
+      "partOfSpeech": "adjective",
+      "ipa": "/laɪt/",
+      "inflectedForms": [
+        "lighter",
+        "lightest"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:light:adjective:weight",
+          "senseOrder": 1,
+          "cefrLevel": "A2",
+          "definitionEn": "Not heavy; easy to lift or carry.",
+          "definitionVi": "Nhẹ (trọng lượng); thanh đạm (bữa ăn)",
+          "example": {
+            "en": "She carried a light backpack for the weekend trip.",
+            "vi": "Cô ấy mang một chiếc ba lô nhẹ cho chuyến đi cuối tuần.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "run",
+      "normalizedForm": "run",
+      "partOfSpeech": "verb",
+      "ipa": "/rʌn/",
+      "inflectedForms": [
+        "runs",
+        "running",
+        "ran"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:run:verb:move-fast",
+          "senseOrder": 1,
+          "cefrLevel": "A0",
+          "definitionEn": "To move quickly on foot.",
+          "definitionVi": "Chạy bộ",
+          "example": {
+            "en": "He runs in the park every morning.",
+            "vi": "Anh ấy chạy bộ trong công viên mỗi sáng.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:run:verb:manage-operate",
+          "senseOrder": 2,
+          "cefrLevel": "B1",
+          "definitionEn": "To organize, manage, or operate a business, course, or system.",
+          "definitionVi": "Vận hành, điều hành, quản lý",
+          "example": {
+            "en": "She runs a small design studio in Hanoi.",
+            "vi": "Cô ấy điều hành một xưởng thiết kế nhỏ tại Hà Nội.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "issue",
+      "normalizedForm": "issue",
+      "partOfSpeech": "noun",
+      "ipa": "/ˈɪʃ.uː/",
+      "inflectedForms": [
+        "issues"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:issue:noun:problem",
+          "senseOrder": 1,
+          "cefrLevel": "B1",
+          "definitionEn": "An important problem or problem situation that needs attention.",
+          "definitionVi": "Vấn đề (cần giải quyết)",
+          "example": {
+            "en": "We fixed the audio playback issue.",
+            "vi": "Chúng tôi đã khắc phục vấn đề phát âm thanh.",
+            "rights": "FIRST_PARTY"
+          }
+        },
+        {
+          "conceptKey": "word:issue:noun:topic",
+          "senseOrder": 2,
+          "cefrLevel": "B1",
+          "definitionEn": "A subject or topic that people are discussing.",
+          "definitionVi": "Chủ đề, vấn đề thời sự",
+          "example": {
+            "en": "Environmental protection is a global issue.",
+            "vi": "Bảo vệ môi trường là một vấn đề toàn cầu.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "present",
+      "normalizedForm": "present",
+      "partOfSpeech": "adjective",
+      "ipa": "/ˈprez.ənt/",
+      "inflectedForms": [],
+      "senses": [
+        {
+          "conceptKey": "word:present:adjective:attending",
+          "senseOrder": 1,
+          "cefrLevel": "A2",
+          "definitionEn": "In a particular place; attending an event.",
+          "definitionVi": "Có mặt, hiện diện",
+          "example": {
+            "en": "All team members were present at the meeting.",
+            "vi": "Tất cả thành viên trong nhóm đều có mặt tại cuộc họp.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "present",
+      "normalizedForm": "present",
+      "partOfSpeech": "verb",
+      "ipa": "/prɪˈzent/",
+      "inflectedForms": [
+        "presents",
+        "presenting",
+        "presented"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:present:verb:show-talk",
+          "senseOrder": 1,
+          "cefrLevel": "B1",
+          "definitionEn": "To show or explain information formally to a group of people.",
+          "definitionVi": "Trình bày, thuyết trình (trọng âm rơi vào âm 2 /prɪˈzent/)",
+          "example": {
+            "en": "He presented the quarterly results clearly.",
+            "vi": "Anh ấy đã trình bày kết quả hàng quý một cách rõ ràng.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "fine",
+      "normalizedForm": "fine",
+      "partOfSpeech": "adjective",
+      "ipa": "/faɪn/",
+      "inflectedForms": [
+        "finer",
+        "finest"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:fine:adjective:well-ok",
+          "senseOrder": 1,
+          "cefrLevel": "A0",
+          "definitionEn": "In good health; satisfactory or acceptable.",
+          "definitionVi": "Khỏe, ổn, tốt",
+          "example": {
+            "en": "Four o'clock works fine for me.",
+            "vi": "Bốn giờ là hoàn toàn ổn với tôi.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    },
+    {
+      "lemma": "fine",
+      "normalizedForm": "fine",
+      "partOfSpeech": "noun",
+      "ipa": "/faɪn/",
+      "inflectedForms": [
+        "fines"
+      ],
+      "senses": [
+        {
+          "conceptKey": "word:fine:noun:penalty",
+          "senseOrder": 1,
+          "cefrLevel": "B1",
+          "definitionEn": "An amount of money that must be paid as punishment for breaking a rule.",
+          "definitionVi": "Tiền phạt",
+          "example": {
+            "en": "Drivers pay a fine if they park in the wrong place.",
+            "vi": "Tài xế phải nộp tiền phạt nếu đỗ xe sai quy định.",
+            "rights": "FIRST_PARTY"
+          }
+        }
+      ]
+    }
+  ]
+}

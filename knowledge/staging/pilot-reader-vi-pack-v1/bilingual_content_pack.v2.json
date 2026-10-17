@@ -1,0 +1,1097 @@
+{
+  "schema_version": "lingua.pilot.bilingual-reader-pack.v2",
+  "pack_id": "pilot-reader-vi-pack-a0-b1-v2",
+  "scope": "first_party_bilingual_reader_pack_v2",
+  "language": "en",
+  "translation_language": "vi",
+  "counts": {
+    "totalArticles": 12,
+    "totalSentences": 96,
+    "byLevel": {
+      "A0": 3,
+      "A1": 3,
+      "A2": 3,
+      "B1": 3
+    }
+  },
+  "provenance": {
+    "authorName": "LINGUA OS",
+    "sourceName": "LINGUA OS First-Party Bilingual Reader Corpus V2 (A0-B1)",
+    "sourceVersion": "pack-v2.0.0",
+    "licenseCode": "LINGUA-FIRST-PARTY-1.0",
+    "attributionText": "Original LINGUA OS first-party English micro-articles across A0, A1, A2, and B1 with aligned Vietnamese sentence translations and concept mappings.",
+    "rightsStatement": "Owned by LINGUA OS. Approved for Reader, Smart Review, Language Brain, and Today Engine use."
+  },
+  "articles": [
+    {
+      "article_id": "k2-reader-a0-first-day-class",
+      "title": "My First English Class",
+      "vietnamese_title": "Buổi học tiếng Anh đầu tiên của tôi",
+      "level": "A0",
+      "archetype": "self_and_greeting",
+      "estimated_minutes": 3,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Hello, my name is Minh.",
+          "vietnamese": "Xin chào, tên tôi là Minh.",
+          "concepts": [
+            "word:name:noun",
+            "skill:greet-someone"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "Today is my first day in this English class.",
+          "vietnamese": "Hôm nay là ngày đầu tiên của tôi trong lớp tiếng Anh này.",
+          "concepts": [
+            "word:today:adverb",
+            "word:day:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Our classroom is on the first floor and it is very bright.",
+          "vietnamese": "Phòng học của chúng tôi ở tầng một và rất sáng sủa.",
+          "concepts": [
+            "word:room:noun",
+            "word:on:preposition"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "I sit on a chair near the window.",
+          "vietnamese": "Tôi ngồi trên một chiếc ghế gần cửa sổ.",
+          "concepts": [
+            "word:chair:noun",
+            "word:window:noun",
+            "word:near:preposition"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "My blue book and my pen are on the table.",
+          "vietnamese": "Cuốn sách màu xanh và chiếc bút của tôi ở trên bàn.",
+          "concepts": [
+            "word:book:noun",
+            "word:pen:noun",
+            "word:table:noun"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Our teacher is kind and she speaks slowly.",
+          "vietnamese": "Giáo viên của chúng tôi rất tốt bụng và cô nói chậm rãi.",
+          "concepts": [
+            "word:teacher:noun",
+            "word:speak:verb"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "When I don't understand a word, I say excuse me and ask for help.",
+          "vietnamese": "Khi tôi không hiểu một từ, tôi nói xin phép và nhờ giúp đỡ.",
+          "concepts": [
+            "phrase:i-dont-understand",
+            "phrase:excuse-me",
+            "word:help:verb"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "I am happy to learn with my new friends here.",
+          "vietnamese": "Tôi rất vui khi được học cùng những người bạn mới ở đây.",
+          "concepts": [
+            "word:happy:adjective",
+            "word:friend:noun",
+            "word:here:adverb"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a0-small-cafe-order",
+      "title": "A Quick Drink at the Corner Cafe",
+      "vietnamese_title": "Gọi đồ uống nhanh ở quán cà phê góc phố",
+      "level": "A0",
+      "archetype": "tiny_cafe_exchange",
+      "estimated_minutes": 3,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "There is a small cafe near my home.",
+          "vietnamese": "Có một quán cà phê nhỏ ở gần nhà tôi.",
+          "concepts": [
+            "grammar:there-is-are",
+            "word:small:adjective",
+            "word:home:noun"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "I go there with my friend Lan in the morning.",
+          "vietnamese": "Tôi đến đó cùng bạn Lan vào buổi sáng.",
+          "concepts": [
+            "word:go:verb",
+            "word:there:adverb",
+            "word:morning:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "The weather is hot today, so I want cold water.",
+          "vietnamese": "Thời tiết hôm nay nóng nên tôi muốn uống nước lạnh.",
+          "concepts": [
+            "word:hot:adjective",
+            "word:want:verb",
+            "word:cold:adjective",
+            "word:water:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "Lan likes hot coffee with a little milk.",
+          "vietnamese": "Lan thích cà phê nóng pha thêm một chút sữa.",
+          "concepts": [
+            "word:like:verb",
+            "word:coffee:noun",
+            "word:milk:noun"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "She says please and orders one cup of coffee.",
+          "vietnamese": "Cô ấy nói làm ơn và gọi một tách cà phê.",
+          "concepts": [
+            "phrase:please",
+            "phrase:a-cup-of",
+            "word:cup:noun"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "We also buy fresh bread for breakfast.",
+          "vietnamese": "Chúng tôi cũng mua bánh mì tươi cho bữa sáng.",
+          "concepts": [
+            "word:buy:verb",
+            "word:bread:noun",
+            "word:breakfast:noun"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "We sit at a clean table by the door.",
+          "vietnamese": "Chúng tôi ngồi ở một chiếc bàn sạch sẽ cạnh cửa ra vào.",
+          "concepts": [
+            "word:clean:adjective",
+            "word:table:noun",
+            "word:door:noun"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "Before we leave, we say thank you to the staff.",
+          "vietnamese": "Trước khi rời đi, chúng tôi nói lời cảm ơn với nhân viên.",
+          "concepts": [
+            "phrase:thank-you",
+            "word:leave:verb"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a0-evening-at-home",
+      "title": "A Quiet Evening at Home",
+      "vietnamese_title": "Một buổi tối yên bình ở nhà",
+      "level": "A0",
+      "archetype": "home_and_routine",
+      "estimated_minutes": 3,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "I come home from work at six in the evening.",
+          "vietnamese": "Tôi đi làm về nhà lúc sáu giờ tối.",
+          "concepts": [
+            "word:come:verb",
+            "word:home:noun",
+            "word:work:noun"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "I put my bag and my phone on the small table.",
+          "vietnamese": "Tôi đặt túi xách và điện thoại lên chiếc bàn nhỏ.",
+          "concepts": [
+            "word:bag:noun",
+            "word:phone:noun",
+            "word:table:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "My mother cooks warm rice and soup in the kitchen.",
+          "vietnamese": "Mẹ tôi nấu cơm nóng và canh trong bếp.",
+          "concepts": [
+            "word:mother:noun",
+            "word:rice:noun",
+            "word:food:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "My family eats dinner together at seven.",
+          "vietnamese": "Gia đình tôi ăn tối cùng nhau lúc bảy giờ.",
+          "concepts": [
+            "word:family:noun",
+            "word:eat:verb",
+            "word:dinner:noun"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "After dinner, I drink a cup of warm tea.",
+          "vietnamese": "Sau bữa tối, tôi uống một tách trà ấm.",
+          "concepts": [
+            "word:drink:verb",
+            "word:tea:noun",
+            "phrase:a-cup-of"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Then I read my English book in my quiet room.",
+          "vietnamese": "Sau đó tôi đọc sách tiếng Anh trong căn phòng yên tĩnh của mình.",
+          "concepts": [
+            "word:read:verb",
+            "word:book:noun",
+            "word:quiet:adjective"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "I write five new words in my notebook.",
+          "vietnamese": "Tôi viết năm từ mới vào sổ tay.",
+          "concepts": [
+            "word:write:verb",
+            "word:new:adjective"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "I feel tired at ten thirty, so I go to bed and sleep well.",
+          "vietnamese": "Tôi thấy mệt lúc mười giờ rưỡi, nên tôi đi ngủ và ngủ rất ngon.",
+          "concepts": [
+            "word:tired:adjective",
+            "word:bed:noun",
+            "word:sleep:verb"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a1-morning-bus-to-work",
+      "title": "The Morning Bus to Work",
+      "vietnamese_title": "Chuyến xe buýt buổi sáng đi làm",
+      "level": "A1",
+      "archetype": "local_transport_and_routine",
+      "estimated_minutes": 4,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Nam wakes up early every weekday morning.",
+          "vietnamese": "Nam thức dậy sớm vào mỗi buổi sáng ngày thường.",
+          "concepts": [
+            "word:morning:noun",
+            "word:early:adverb",
+            "grammar:present-simple-core"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "He drinks a glass of warm water before breakfast.",
+          "vietnamese": "Anh ấy uống một cốc nước ấm trước bữa sáng.",
+          "concepts": [
+            "word:water:noun",
+            "word:breakfast:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "After breakfast, he checks his bag and takes his bus card.",
+          "vietnamese": "Sau bữa sáng, anh kiểm tra túi xách và lấy thẻ xe buýt.",
+          "concepts": [
+            "word:check:verb",
+            "word:bag:noun",
+            "word:card:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "The bus stop is only five minutes from his street.",
+          "vietnamese": "Trạm xe buýt chỉ cách con phố nhà anh năm phút đi bộ.",
+          "concepts": [
+            "word:stop:noun",
+            "word:minute:noun",
+            "word:street:noun"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "He waits near a small coffee shop on the left.",
+          "vietnamese": "Anh đứng đợi gần một quán cà phê nhỏ ở bên trái.",
+          "concepts": [
+            "word:wait:verb",
+            "word:coffee:noun",
+            "phrase:on-the-left"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "When the number seven bus arrives, Nam gets on and finds a seat by the window.",
+          "vietnamese": "Khi xe buýt số bảy tới, Nam bước lên xe và tìm một chỗ ngồi cạnh cửa sổ.",
+          "concepts": [
+            "word:arrive:verb",
+            "word:bus:noun",
+            "word:window:noun"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "During the ride, he listens to a short English lesson on his phone.",
+          "vietnamese": "Trong suốt chuyến đi, anh nghe một bài học tiếng Anh ngắn trên điện thoại.",
+          "concepts": [
+            "word:listen:verb",
+            "word:lesson:noun",
+            "word:phone:noun"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "He gets off near his office at eight thirty and starts his workday.",
+          "vietnamese": "Anh xuống xe gần văn phòng lúc tám giờ rưỡi và bắt đầu ngày làm việc.",
+          "concepts": [
+            "phrase:get-off",
+            "word:office:noun",
+            "word:start:verb"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a1-saturday-market-shopping",
+      "title": "Shopping at the Saturday Market",
+      "vietnamese_title": "Mua sắm ở phiên chợ thứ Bảy",
+      "level": "A1",
+      "archetype": "shopping_and_prices",
+      "estimated_minutes": 4,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Every weekend, Mai walks to the local market near her house.",
+          "vietnamese": "Mỗi dịp cuối tuần, Mai đều đi bộ ra khu chợ địa phương gần nhà.",
+          "concepts": [
+            "word:weekend:noun",
+            "word:walk:verb",
+            "word:market:noun"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "She likes going early in the morning because the food is very fresh.",
+          "vietnamese": "Cô thích đi sớm vào buổi sáng vì thực phẩm rất tươi.",
+          "concepts": [
+            "word:early:adverb",
+            "word:morning:noun",
+            "word:food:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "First, she stops at a fruit stall and looks at the red apples.",
+          "vietnamese": "Đầu tiên, cô dừng lại ở một quầy trái cây và nhìn những quả táo đỏ.",
+          "concepts": [
+            "word:look:verb",
+            "word:apple:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "She asks the seller how much a bag of apples costs.",
+          "vietnamese": "Cô hỏi người bán một túi táo giá bao nhiêu tiền.",
+          "concepts": [
+            "word:ask:verb",
+            "phrase:how-much",
+            "word:price:noun"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "The price is cheap, so she buys one bag for her family.",
+          "vietnamese": "Giá khá rẻ nên cô mua một túi cho gia đình mình.",
+          "concepts": [
+            "word:cheap:adjective",
+            "word:buy:verb",
+            "word:family:noun"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "At the small fruit stall, she pays in cash.",
+          "vietnamese": "Tại quầy trái cây nhỏ, cô thanh toán bằng tiền mặt.",
+          "concepts": [
+            "word:pay:verb",
+            "word:money:noun"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "Next, she visits a bakery next to the market gate to buy bread and milk.",
+          "vietnamese": "Tiếp theo, cô ghé tiệm bánh cạnh cổng chợ để mua bánh mì và sữa.",
+          "concepts": [
+            "phrase:next-to",
+            "word:bread:noun",
+            "word:milk:noun"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "At the bakery counter, she can easily pay by card.",
+          "vietnamese": "Tại quầy thu ngân tiệm bánh, cô có thể dễ dàng thanh toán bằng thẻ.",
+          "concepts": [
+            "phrase:pay-by-card",
+            "word:card:noun",
+            "grammar:can-ability-requests"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a1-weekend-lunch-invitation",
+      "title": "Planning a Weekend Lunch",
+      "vietnamese_title": "Lên kế hoạch cho bữa trưa cuối tuần",
+      "level": "A1",
+      "archetype": "weekend_plans_and_directions",
+      "estimated_minutes": 4,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "On Friday afternoon, Tuan sends a message to his classmate Hoa.",
+          "vietnamese": "Vào chiều thứ Sáu, Tuấn gửi một tin nhắn cho bạn cùng lớp tên Hoa.",
+          "concepts": [
+            "word:afternoon:noun",
+            "word:send:verb",
+            "word:message:noun",
+            "word:classmate:noun"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "He asks if she is free for lunch tomorrow.",
+          "vietnamese": "Anh hỏi xem ngày mai cô ấy có rảnh để đi ăn trưa không.",
+          "concepts": [
+            "word:free:adjective",
+            "word:lunch:noun",
+            "word:tomorrow:adverb"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Hoa replies that she would like to meet after her morning class.",
+          "vietnamese": "Hoa trả lời rằng cô rất muốn gặp nhau sau giờ học buổi sáng của mình.",
+          "concepts": [
+            "phrase:would-like",
+            "word:meet:verb",
+            "word:morning:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "There is a new noodle restaurant on Tran Phu Street.",
+          "vietnamese": "Có một nhà hàng mì mới mở trên phố Trần Phú.",
+          "concepts": [
+            "grammar:there-is-are",
+            "word:restaurant:noun",
+            "word:street:noun"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "Hoa asks where the restaurant is and what time they should meet.",
+          "vietnamese": "Hoa hỏi nhà hàng ở đâu và họ nên gặp nhau lúc mấy giờ.",
+          "concepts": [
+            "phrase:where-is",
+            "phrase:what-time",
+            "skill:ask-for-repetition-slowly"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Tuan explains that it is on the right, just two minutes from the train station.",
+          "vietnamese": "Tuấn giải thích rằng quán nằm ở bên phải, chỉ cách nhà ga hai phút đi bộ.",
+          "concepts": [
+            "word:right:noun",
+            "word:minute:noun",
+            "word:station:noun"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "He sends her a map on his phone so she can find it easily.",
+          "vietnamese": "Anh gửi cho cô bản đồ trên điện thoại để cô có thể tìm thấy quán dễ dàng.",
+          "concepts": [
+            "word:map:noun",
+            "word:phone:noun",
+            "word:easy:adjective"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "They agree to meet at twelve o'clock and have a great weekend meal.",
+          "vietnamese": "Họ đồng ý gặp nhau lúc mười hai giờ đúng và dùng một bữa cuối tuần thật vui.",
+          "concepts": [
+            "skill:confirm-time-and-place",
+            "word:weekend:noun"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a2-reschedule-dentist-appointment",
+      "title": "Rescheduling an Afternoon Appointment",
+      "vietnamese_title": "Dời lịch một cuộc hẹn buổi chiều",
+      "level": "A2",
+      "archetype": "appointment_and_health_routine",
+      "estimated_minutes": 5,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Linh had an appointment with her dentist at three o'clock on Thursday afternoon.",
+          "vietnamese": "Linh có một cuộc hẹn với nha sĩ vào lúc ba giờ chiều thứ Năm.",
+          "concepts": [
+            "word:appointment:noun",
+            "word:afternoon:noun",
+            "grammar:past-simple-core"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "However, her manager asked her to join an urgent project meeting at the same time.",
+          "vietnamese": "Tuy nhiên, quản lý của cô đã yêu cầu cô tham gia một cuộc họp dự án khẩn cấp vào đúng khung giờ đó.",
+          "concepts": [
+            "word:manager:noun",
+            "word:project:noun",
+            "word:meeting:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "During her lunch break, Linh called the clinic to check if another time was available.",
+          "vietnamese": "Trong giờ nghỉ trưa, Linh đã gọi điện cho phòng khám để kiểm tra xem có khung giờ nào khác còn trống không.",
+          "concepts": [
+            "word:call:verb",
+            "word:check:verb",
+            "word:available:adjective"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "The receptionist checked the schedule and offered two slots on Friday morning.",
+          "vietnamese": "Nhân viên lễ tân kiểm tra lịch trình và đề xuất hai khung giờ vào sáng thứ Sáu.",
+          "concepts": [
+            "word:schedule:noun",
+            "word:offer:verb",
+            "skill:reschedule-an-appointment"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "Nine thirty was convenient for Linh because her office was near the clinic.",
+          "vietnamese": "Khung giờ chín giờ rưỡi rất thuận tiện cho Linh vì văn phòng của cô ở gần phòng khám.",
+          "concepts": [
+            "word:convenient:adjective",
+            "word:office:noun",
+            "word:near:preposition"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "She confirmed the new time and thanked the receptionist for her help.",
+          "vietnamese": "Cô xác nhận thời gian mới và cảm ơn nhân viên lễ tân vì sự hỗ trợ.",
+          "concepts": [
+            "word:confirm:verb",
+            "phrase:thank-you",
+            "word:help:verb"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "Right after the call, she updated her digital calendar so she would not forget.",
+          "vietnamese": "Ngay sau cuộc gọi, cô cập nhật lịch điện tử của mình để không bị quên.",
+          "concepts": [
+            "word:update:verb",
+            "word:calendar:noun",
+            "word:forget:verb"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "Preparing early allowed Linh to focus completely on her afternoon presentation.",
+          "vietnamese": "Việc chuẩn bị sớm giúp Linh hoàn toàn tập trung vào bài thuyết trình buổi chiều của mình.",
+          "concepts": [
+            "word:prepare:verb",
+            "word:early:adverb",
+            "word:focus:verb"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a2-comparing-train-and-flight",
+      "title": "Choosing Between the Train and a Flight",
+      "vietnamese_title": "Lựa chọn giữa đi tàu hỏa và máy bay",
+      "level": "A2",
+      "archetype": "comparing_two_options",
+      "estimated_minutes": 5,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Next month, Duc and his colleagues are going to travel to Da Nang for a conference.",
+          "vietnamese": "Tháng tới, Đức và các đồng nghiệp dự định đi Đà Nẵng để dự một hội nghị.",
+          "concepts": [
+            "word:colleague:noun",
+            "grammar:going-to-future-plans"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "They met this morning to compare two travel options and make a plan.",
+          "vietnamese": "Sáng nay họ đã gặp nhau để so sánh hai phương án di chuyển và lập kế hoạch.",
+          "concepts": [
+            "word:compare:verb",
+            "phrase:make-a-decision",
+            "word:plan:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Flying is faster than taking the train, so it saves several hours.",
+          "vietnamese": "Đi máy bay nhanh hơn đi tàu hỏa, nên tiết kiệm được vài tiếng đồng hồ.",
+          "concepts": [
+            "grammar:comparatives-core",
+            "word:fast:adjective",
+            "word:save:verb"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "However, the airport is far from the city center, and flight tickets are more expensive.",
+          "vietnamese": "Tuy nhiên, sân bay ở xa trung tâm thành phố và vé máy bay thì đắt hơn.",
+          "concepts": [
+            "word:airport:noun",
+            "word:late:adjective",
+            "word:ticket:noun",
+            "word:expensive:adjective"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "The overnight train is cheaper and has comfortable sleeping seats.",
+          "vietnamese": "Chuyến tàu đêm rẻ hơn và có giường nằm thoải mái.",
+          "concepts": [
+            "word:train:noun",
+            "word:cheap:adjective",
+            "word:comfortable:adjective"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Also, the train station is very close to their hotel in Da Nang.",
+          "vietnamese": "Ngoài ra, nhà ga xe lửa lại rất gần khách sạn của họ ở Đà Nẵng.",
+          "concepts": [
+            "word:station:noun",
+            "word:hotel:noun"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "Duc suggested taking the morning flight out and returning by overnight train.",
+          "vietnamese": "Đức đề xuất chiều đi sẽ bay chuyến sáng và chiều về sẽ đi tàu đêm.",
+          "concepts": [
+            "word:suggest:verb",
+            "skill:make-simple-suggestion",
+            "word:flight:noun"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "Everyone agreed that this choice gave them enough time for work and rest.",
+          "vietnamese": "Mọi người đều đồng ý rằng lựa chọn này cho họ đủ thời gian cho cả công việc lẫn nghỉ ngơi.",
+          "concepts": [
+            "word:choice:noun",
+            "word:enough:determiner",
+            "skill:compare-two-options"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-a2-rainy-day-travel-problem",
+      "title": "Solving a Travel Problem in the Rain",
+      "vietnamese_title": "Xử lý sự cố di chuyển trong ngày mưa",
+      "level": "A2",
+      "archetype": "past_travel_problem",
+      "estimated_minutes": 5,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Last Saturday, Hanh planned a short weekend journey to Ninh Binh.",
+          "vietnamese": "Thứ Bảy tuần trước, Hạnh đã lên kế hoạch cho một chuyến đi cuối tuần ngắn ngày tới Ninh Bình.",
+          "concepts": [
+            "word:weekend:noun",
+            "word:journey:noun",
+            "grammar:past-simple-core"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "She got ready early and arrived at the station thirty minutes before departure.",
+          "vietnamese": "Cô chuẩn bị sẵn sàng từ sớm và có mặt tại nhà ga trước giờ khởi hành ba mươi phút.",
+          "concepts": [
+            "phrase:get-ready",
+            "word:early:adverb",
+            "word:arrive:verb"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Suddenly, heavy rain started, and the board showed a forty-minute delay.",
+          "vietnamese": "Đột nhiên trời đổ mưa lớn và bảng điện tử thông báo chuyến tàu bị trễ bốn mươi phút.",
+          "concepts": [
+            "word:rain:noun",
+            "word:delay:noun",
+            "word:problem:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "Hanh had booked a local tour for ten o'clock, so she needed to inform the guide.",
+          "vietnamese": "Hạnh đã đặt trước một tour địa phương lúc mười giờ, nên cô cần báo cho hướng dẫn viên biết.",
+          "concepts": [
+            "word:ticket:noun",
+            "word:local:adjective",
+            "word:want:verb"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "She called the tour office and explained the train delay clearly.",
+          "vietnamese": "Cô gọi đến văn phòng tour và giải thích rõ ràng về việc chuyến tàu bị trễ.",
+          "concepts": [
+            "word:call:verb",
+            "word:explain:verb",
+            "skill:explain-simple-problem"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "The staff was very helpful and changed her booking to the afternoon group at no extra charge.",
+          "vietnamese": "Nhân viên rất nhiệt tình hỗ trợ và đã đổi đặt chỗ của cô sang đoàn buổi chiều mà không thu thêm phí.",
+          "concepts": [
+            "word:change:verb",
+            "word:ticket:noun",
+            "word:charge:noun:price"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "While waiting at the station, Hanh drank warm tea and practiced her English flashcards.",
+          "vietnamese": "Trong lúc chờ đợi ở nhà ga, Hạnh uống trà ấm và luyện các thẻ từ vựng tiếng Anh của mình.",
+          "concepts": [
+            "word:wait:verb",
+            "word:tea:noun",
+            "word:practice:verb"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "Even with the delay, staying calm turned a difficult morning into a good travel experience.",
+          "vietnamese": "Ngay cả khi bị trễ giờ, việc giữ bình tĩnh đã biến một buổi sáng khó khăn thành một trải nghiệm du lịch tốt đẹp.",
+          "concepts": [
+            "word:difficult:adjective",
+            "word:experience:noun",
+            "skill:describe-past-incident"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-b1-clear-remote-collaboration",
+      "title": "Clear Communication Across Time Zones",
+      "vietnamese_title": "Giao tiếp rõ ràng giữa các múi giờ",
+      "level": "B1",
+      "archetype": "work_collaboration_and_handover",
+      "estimated_minutes": 6,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Working with colleagues across different time zones requires thoughtful planning and clear written notes.",
+          "vietnamese": "Làm việc với đồng nghiệp ở các múi giờ khác nhau đòi hỏi sự lên kế hoạch chu đáo và các ghi chú bằng văn bản rõ ràng.",
+          "concepts": [
+            "word:colleague:noun",
+            "word:require:verb",
+            "word:clear:adjective"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "When a team in Hanoi collaborates with partners in London, their shared working hours are limited.",
+          "vietnamese": "Khi một nhóm ở Hà Nội hợp tác với các đối tác tại Luân Đôn, số giờ làm việc trùng nhau của họ khá hạn chế.",
+          "concepts": [
+            "word:collaborate:verb",
+            "word:hour:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Instead of waiting for a live call, experienced engineers summarize the problem, context, and proposed solution in one message.",
+          "vietnamese": "Thay vì chờ đợi một cuộc gọi trực tiếp, các kỹ sư giàu kinh nghiệm thường tóm tắt vấn đề, bối cảnh và giải pháp đề xuất trong một tin nhắn duy nhất.",
+          "concepts": [
+            "word:summarize:verb",
+            "word:context:noun",
+            "word:solution:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "If a requirement is unclear, they do not hesitate to ask specific questions before writing code.",
+          "vietnamese": "Nếu một yêu cầu chưa rõ, họ không ngần ngại đặt các câu hỏi cụ thể trước khi bắt tay vào viết mã.",
+          "concepts": [
+            "word:requirement:noun",
+            "word:hesitate:verb",
+            "word:specific:adjective",
+            "grammar:first-conditional-core"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "At the end of each day, a brief handover update helps the next shift continue without delay.",
+          "vietnamese": "Vào cuối mỗi ngày, một bản cập nhật bàn giao ngắn gọn giúp ca làm việc tiếp theo tiếp tục công việc mà không bị chậm trễ.",
+          "concepts": [
+            "word:continue:verb",
+            "word:delay:noun",
+            "skill:write-handover-update"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Although asynchronous communication takes effort at first, it reduces misunderstandings across the team.",
+          "vietnamese": "Mặc dù giao tiếp không đồng bộ đòi hỏi nỗ lực lúc ban đầu, nó giúp giảm thiểu hiểu lầm trong toàn nhóm.",
+          "concepts": [
+            "grammar:contrast-clauses-although-despite",
+            "word:effort:noun",
+            "word:reduce:verb"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "Team members can also keep track of decisions and deadlines in one shared document.",
+          "vietnamese": "Các thành viên trong nhóm cũng có thể theo dõi các quyết định và hạn chót trong một tài liệu dùng chung.",
+          "concepts": [
+            "phrase:keep-track-of",
+            "word:decision:noun",
+            "word:deadline:noun"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "As a result, this reliable habit builds lasting trust across the entire organization.",
+          "vietnamese": "Kết quả là, thói quen đáng tin cậy này giúp xây dựng niềm tin bền vững trong toàn bộ tổ chức.",
+          "concepts": [
+            "phrase:as-a-result",
+            "word:reliable:adjective",
+            "word:habit:noun",
+            "word:trust:noun"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-b1-digital-screen-habits",
+      "title": "Building Better Digital Screen Habits",
+      "vietnamese_title": "Xây dựng thói quen sử dụng màn hình số lành mạnh hơn",
+      "level": "B1",
+      "archetype": "online_habits_and_viewpoint",
+      "estimated_minutes": 6,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "Online tools make studying and working more flexible, but looking at a screen all evening can hurt your sleep.",
+          "vietnamese": "Các công cụ trực tuyến giúp việc học và làm việc linh hoạt hơn, nhưng nhìn vào màn hình suốt buổi tối có thể ảnh hưởng xấu đến giấc ngủ của bạn.",
+          "concepts": [
+            "word:online:adjective",
+            "word:flexible:adjective",
+            "word:screen:noun"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "Last month, Quang realized that checking his phone late at night was a bad habit.",
+          "vietnamese": "Tháng trước, Quang nhận ra rằng việc kiểm tra điện thoại muộn vào ban đêm là một thói quen xấu.",
+          "concepts": [
+            "word:realize:verb",
+            "word:habit:noun",
+            "word:night:noun"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Whenever he stayed up late scrolling, he felt tired the next morning and could not focus.",
+          "vietnamese": "Mỗi khi thức khuya lướt điện thoại, sáng hôm sau anh đều thấy mệt và không thể tập trung.",
+          "concepts": [
+            "word:tired:adjective",
+            "word:focus:verb"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "He decided to make a simple change to deal with this problem.",
+          "vietnamese": "Anh đã quyết định thực hiện một thay đổi đơn giản để xử lý vấn đề này.",
+          "concepts": [
+            "word:decide:verb",
+            "phrase:deal-with",
+            "word:problem:noun"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "Now, he charges his phone in the living room instead of keeping it beside his bed.",
+          "vietnamese": "Bây giờ, anh sạc điện thoại ở phòng khách thay vì để nó ngay cạnh giường ngủ.",
+          "concepts": [
+            "word:phone:noun",
+            "word:bed:noun"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Before going to sleep, he spends twenty minutes reading a printed book or reviewing calm notes.",
+          "vietnamese": "Trước khi đi ngủ, anh dành hai mươi phút đọc sách giấy hoặc xem lại các ghi chú nhẹ nhàng.",
+          "concepts": [
+            "word:spend:verb",
+            "word:minute:noun",
+            "word:read:verb"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "In my opinion, setting a clear boundary with technology is an effective strategy for mental energy.",
+          "vietnamese": "Theo ý tôi, việc đặt ra ranh giới rõ ràng với công nghệ là một chiến lược hiệu quả cho năng lượng tinh thần.",
+          "concepts": [
+            "phrase:in-my-opinion",
+            "word:effective:adjective",
+            "word:strategy:noun",
+            "skill:support-an-opinion"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "After three weeks, Quang noticed that his memory and morning concentration had improved significantly.",
+          "vietnamese": "Sau ba tuần, Quang nhận thấy trí nhớ và sự tập trung buổi sáng của mình đã cải thiện rõ rệt.",
+          "concepts": [
+            "word:notice:verb",
+            "word:improve:verb",
+            "word:result:noun"
+          ]
+        }
+      ]
+    },
+    {
+      "article_id": "k2-reader-b1-community-green-street",
+      "title": "A Practical Solution for Our Neighborhood Street",
+      "vietnamese_title": "Một giải pháp thiết thực cho con phố khu dân cư",
+      "level": "B1",
+      "archetype": "community_problem_and_solution",
+      "estimated_minutes": 6,
+      "sentences": [
+        {
+          "ordinal": 1,
+          "english": "For a long time, plastic waste and parked motorbikes were a frustrating issue in our neighborhood.",
+          "vietnamese": "Trong một thời gian dài, rác thải nhựa và xe máy đỗ tràn lan là một vấn đề gây bức xúc trong khu phố của chúng tôi.",
+          "concepts": [
+            "word:issue:noun:problem",
+            "word:community:noun"
+          ]
+        },
+        {
+          "ordinal": 2,
+          "english": "Narrow sidewalks made walking unsafe for children and older residents.",
+          "vietnamese": "Vỉa hè chật hẹp khiến việc đi bộ trở nên mất an toàn đối với trẻ em và người lớn tuổi.",
+          "concepts": [
+            "word:walk:verb",
+            "word:child:noun",
+            "word:old:adjective"
+          ]
+        },
+        {
+          "ordinal": 3,
+          "english": "Last month, the community organized a weekend meeting to discuss practical alternatives.",
+          "vietnamese": "Tháng trước, cộng đồng đã tổ chức một cuộc họp cuối tuần để thảo luận các phương án thay thế thiết thực.",
+          "concepts": [
+            "word:organize:verb",
+            "word:practical:adjective",
+            "word:alternative:noun"
+          ]
+        },
+        {
+          "ordinal": 4,
+          "english": "Some residents complained about the noise, while others pointed out the lack of recycling bins.",
+          "vietnamese": "Một số cư dân phàn nàn về tiếng ồn, trong khi những người khác chỉ ra sự thiếu hụt các thùng rác tái chế.",
+          "concepts": [
+            "word:complain:verb",
+            "phrase:point-out"
+          ]
+        },
+        {
+          "ordinal": 5,
+          "english": "After weighing the pros and cons, everyone agreed on a three-step action plan.",
+          "vietnamese": "Sau khi cân nhắc ưu và nhược điểm, mọi người đã thống nhất một kế hoạch hành động gồm ba bước.",
+          "concepts": [
+            "phrase:Pros-and-cons",
+            "word:plan:noun",
+            "skill:weigh-pros-and-cons"
+          ]
+        },
+        {
+          "ordinal": 6,
+          "english": "Clear parking lines were painted, and new sorting bins were placed near every corner.",
+          "vietnamese": "Các vạch đỗ xe rõ ràng đã được kẻ vẽ và các thùng phân loại rác mới được đặt gần mỗi góc phố.",
+          "concepts": [
+            "grammar:passive-voice-core",
+            "word:clear:adjective"
+          ]
+        },
+        {
+          "ordinal": 7,
+          "english": "Over fifty families participated in the Sunday clean-up to reduce street litter.",
+          "vietnamese": "Hơn năm mươi gia đình đã tham gia buổi dọn vệ sinh ngày Chủ nhật để giảm rác thải trên phố.",
+          "concepts": [
+            "word:participate:verb",
+            "word:reduce:verb",
+            "word:community:noun"
+          ]
+        },
+        {
+          "ordinal": 8,
+          "english": "The experience taught us an important lesson: small shared efforts can transform our living environment.",
+          "vietnamese": "Trải nghiệm đó đã dạy chúng tôi một bài học quan trọng: những nỗ lực chung nhỏ bé có thể thay đổi môi trường sống của chúng ta.",
+          "concepts": [
+            "word:experience:noun",
+            "word:lesson:noun",
+            "word:effort:noun",
+            "word:community:noun"
+          ]
+        }
+      ]
+    }
+  ],
+  "packSha256": "ab972642faf6536bf513ea1967a51e30a79dff38787f30c642170fae0bc9bd59"
+}

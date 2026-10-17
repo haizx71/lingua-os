@@ -1,34 +1,54 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '@lingua/ui';
 import { ArrowRight, BookOpen, Brain, CalendarDays, Clock3, UserRound } from 'lucide-react';
-import { type ApiErrorCode } from '@lingua/types';
+import { type ApiClient, type ApiErrorCode } from '@lingua/types';
 import type { UserProfileData } from '../../fixtures/profileFixture';
+import { clientNavigate } from '../../lib/navigation/clientNavigate';
+import { useLearnerProfile } from './useLearnerProfile';
 
 export interface ProfileViewProps {
+  apiClient?: ApiClient;
   initialProfile?: Partial<UserProfileData>;
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
 }
 
 export function ProfileView({
+  apiClient,
   initialProfile,
-  forcedState = 'success',
+  forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
 }: ProfileViewProps) {
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
+  const learner = useLearnerProfile({
+    ...(apiClient ? { apiClient } : {}),
+    ...(initialProfile ? { initialProfile } : {}),
+    enabled: !forcedState,
+  });
+  const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
 
+  useEffect(() => {
+    setLocalForcedState(forcedState);
+  }, [forcedState]);
+
+  const profile = initialProfile ?? learner.profile;
+  const currentState = localForcedState ?? learner.status;
+
   const handleRetry = () => {
-    setCurrentState('loading');
-    setTimeout(() => setCurrentState('success'), 400);
+    if (localForcedState) {
+      setLocalForcedState('loading');
+      setTimeout(() => setLocalForcedState('success'), 400);
+      return;
+    }
+    learner.retry();
   };
 
   if (currentState === 'loading') return <LoadingState message="Đang tải hồ sơ người học..." count={3} />;
-  if (currentState === 'error') return <ErrorState code={errorCode} onRetry={handleRetry} />;
-  if (currentState === 'empty' || !initialProfile) {
+  if (currentState === 'error') return <ErrorState code={learner.error?.code ?? errorCode} onRetry={handleRetry} />;
+  if (currentState === 'empty' || !profile) {
     return (
       <div className="mx-auto w-full max-w-4xl space-y-6">
         <header className="max-w-2xl">
@@ -40,13 +60,12 @@ export function ProfileView({
           title="Chưa thể hiển thị hồ sơ"
           description="Chưa thể hiển thị thông tin hồ sơ lúc này. Bạn có thể tiếp tục bài học ở Hôm nay."
           actionLabel="Về Hôm nay"
-          onAction={() => { window.location.href = '/today'; }}
+          onAction={() => { clientNavigate('/today'); }}
         />
       </div>
     );
   }
 
-  const profile = initialProfile;
   const level = profile.startingLevelEstimate?.trim();
   const encountered = profile.totalConceptsEncountered;
   const mastered = profile.totalConceptsMastered;
@@ -65,7 +84,7 @@ export function ProfileView({
         <Link href="/settings" className="shrink-0"><Button variant="outline" size="md" rightIcon={<ArrowRight className="h-4 w-4" />}>Cài đặt</Button></Link>
       </header>
 
-      <Card padding="lg" className="overflow-hidden bg-[var(--surface)]">
+      <Card padding="lg" className="overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface)] to-[var(--surface-lilac)]/35 p-5 sm:p-7 shadow-[var(--shadow-xs)]">
         <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-lilac)] text-[var(--action-primary)]"><UserRound className="h-6 w-6" aria-hidden="true" /></span>
@@ -89,19 +108,19 @@ export function ProfileView({
       </Card>
 
       <section aria-label="Tóm tắt hồ sơ" className="grid gap-3 sm:grid-cols-3">
-        <Card padding="md" className="min-w-0">
+        <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><BookOpen className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-medium text-[var(--text-muted)]">Từ đã gặp</p><p className="mt-0.5 text-2xl font-bold text-[var(--text-primary)]">{encountered ?? '—'}</p></div></div>
         </Card>
-        <Card padding="md" className="min-w-0">
+        <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--status-success-bg)] text-[var(--status-success)]"><Brain className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-medium text-[var(--text-muted)]">Đã củng cố vững</p><p className="mt-0.5 text-2xl font-bold text-[var(--text-primary)]">{mastered ?? '—'}</p></div></div>
         </Card>
-        <Card padding="md" className="min-w-0">
+        <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-warm)] text-[var(--status-warning)]"><CalendarDays className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs font-medium text-[var(--text-muted)]">Ngày học liên tục</p><p className="mt-0.5 text-2xl font-bold text-[var(--text-primary)]">{profile.streakDays === undefined ? '—' : `${profile.streakDays} ngày`}</p></div></div>
         </Card>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.7fr)]">
-        <Card padding="lg">
+        <Card padding="lg" className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-xs)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><p className="lingua-kicker">Năng lực</p><h2 className="mt-1 text-xl font-bold text-[var(--text-primary)]">Khái niệm đã củng cố</h2></div>
             {masteryPercent !== null && <span className="rounded-full bg-[var(--status-success-bg)] px-3 py-1.5 text-xs font-bold text-[var(--status-success)]">{masteryPercent}%</span>}
@@ -113,7 +132,7 @@ export function ProfileView({
             </>
           ) : <p className="mt-4 rounded-xl bg-[var(--surface-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]">Chưa đủ dữ liệu để tính tỷ lệ củng cố.</p>}
         </Card>
-        <Card padding="lg" className="bg-[var(--surface-lilac)]">
+        <Card padding="lg" className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-lilac)] shadow-[var(--shadow-xs)]">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--action-primary)]"><Clock3 className="h-5 w-5" aria-hidden="true" /></span>
           <h2 className="mt-4 text-lg font-bold text-[var(--text-primary)]">Tiếp tục học</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Mở kế hoạch hôm nay để xem hoạt động tiếp theo.</p>

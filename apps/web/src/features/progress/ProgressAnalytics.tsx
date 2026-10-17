@@ -1,38 +1,56 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { Button, Card, EmptyState, ErrorState, LoadingState, componentMotionNumeric, usePrefersReducedMotion } from '@lingua/ui';
 import { ArrowRight, CalendarDays, Clock3, Flame, TrendingUp } from 'lucide-react';
-import { type ApiErrorCode } from '@lingua/types';
+import { type ApiClient, type ApiErrorCode } from '@lingua/types';
 import type { ProgressSummaryData } from '../../fixtures/progressFixture';
+import { clientNavigate } from '../../lib/navigation/clientNavigate';
+import { useProgressOverview, type ProgressWindowOption } from './useProgressOverview';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(useGSAP);
 }
 
 export interface ProgressAnalyticsProps {
+  apiClient?: ApiClient;
+  languageProfileId?: string;
   initialData?: ProgressSummaryData;
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
 }
 
 export function ProgressAnalytics({
+  apiClient,
+  languageProfileId,
   initialData,
-  forcedState = 'success',
+  forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
 }: ProgressAnalyticsProps) {
-  const [data] = useState<ProgressSummaryData | undefined>(initialData);
-  const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
+  const progress = useProgressOverview({
+    ...(apiClient ? { apiClient } : {}),
+    ...(initialData ? { initialData } : {}),
+    ...(languageProfileId ? { languageProfileId } : {}),
+    enabled: !forcedState,
+  });
+  const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
+  useEffect(() => {
+    setLocalForcedState(forcedState);
+  }, [forcedState]);
+
+  const data = initialData ?? progress.data;
+  const currentState = localForcedState ?? progress.status;
+
   useGSAP(
     () => {
-      if (currentState !== 'success') return;
+      if (currentState !== 'success' || !data) return;
       if (prefersReducedMotion) {
         gsap.set('.progress-bar-fill', { scaleX: 1, opacity: 1, clearProps: 'transform,opacity' });
         return;
@@ -52,16 +70,20 @@ export function ProgressAnalytics({
         }
       );
     },
-    { dependencies: [currentState, prefersReducedMotion], scope: containerRef }
+    { dependencies: [currentState, prefersReducedMotion, data], scope: containerRef }
   );
 
   const handleRetry = () => {
-    setCurrentState('loading');
-    setTimeout(() => setCurrentState('success'), 400);
+    if (localForcedState) {
+      setLocalForcedState('loading');
+      setTimeout(() => setLocalForcedState('success'), 400);
+      return;
+    }
+    progress.retry();
   };
 
   if (currentState === 'loading') return <LoadingState message="Đang tải tiến độ học tập..." count={3} />;
-  if (currentState === 'error') return <ErrorState code={errorCode} onRetry={handleRetry} />;
+  if (currentState === 'error') return <ErrorState code={progress.error?.code ?? errorCode} onRetry={handleRetry} />;
   if (currentState === 'empty' || !data) {
     return (
       <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -74,7 +96,7 @@ export function ProgressAnalytics({
           title="Chưa thể hiển thị tiến độ"
           description="Chưa thể hiển thị thống kê tại đây. Bạn có thể tiếp tục bài học ở Hôm nay."
           actionLabel="Về Hôm nay"
-          onAction={() => { window.location.href = '/today'; }}
+          onAction={() => { clientNavigate('/today'); }}
         />
       </div>
     );
@@ -85,6 +107,11 @@ export function ProgressAnalytics({
   const minutes = data.totalStudyMinutes;
   const history = data.history7d;
   const maxMinutes = Math.max(1, ...history.map((day) => day.minutesSpent));
+  const avgMinutes = history.length > 0 ? Math.round(minutes / history.length) : 0;
+  const peakDay = history.reduce<{ dayLabel: string; minutesSpent: number } | null>((best, cur) => (!best || cur.minutesSpent > best.minutesSpent ? cur : best), null);
+  const avgRetention = history.length > 0 ? Math.round(history.reduce((sum, d) => sum + d.retentionPercent, 0) / history.length) : data.retentionScore;
+  const isLive = !initialData && !localForcedState;
+  const selectedWindow = progress.window;
 
   return (
     <div ref={containerRef} className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
@@ -92,27 +119,51 @@ export function ProgressAnalytics({
         <div className="max-w-2xl">
           <p className="lingua-kicker text-[var(--action-primary)]">Tổng quan</p>
           <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Tiến độ học</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Một bản tóm tắt nhịp học và những gì đã được ghi nhận trong tuần qua.</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+            {selectedWindow === 'week'
+              ? 'Một bản tóm tắt nhịp học và những gì đã được ghi nhận trong tuần qua.'
+              : 'Một bản tóm tắt nhịp học và những gì đã được ghi nhận trong 30 ngày qua.'}
+          </p>
         </div>
-        <Link href="/today" className="shrink-0">
-          <Button variant="outline" size="md" rightIcon={<ArrowRight className="h-4 w-4" />}>Kế hoạch hôm nay</Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {isLive && (
+            <div className="flex rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-1" role="group" aria-label="Khoảng thời gian tiến độ">
+              {([
+                { id: 'week', label: '7 ngày' },
+                { id: 'month', label: '30 ngày' },
+              ] as const).map((item: { id: ProgressWindowOption; label: string }) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={progress.window === item.id}
+                  onClick={() => progress.setWindow(item.id)}
+                  className={`min-h-9 rounded-xl px-3 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] ${progress.window === item.id ? 'bg-[var(--action-primary)] text-white' : 'text-[var(--text-secondary)]'}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <Link href="/today" className="shrink-0">
+            <Button variant="outline" size="md" rightIcon={<ArrowRight className="h-4 w-4" />}>Kế hoạch hôm nay</Button>
+          </Link>
+        </div>
       </header>
 
       <section aria-label="Tóm tắt tiến độ" className="grid gap-3 sm:grid-cols-3">
-        <Card padding="md" className="min-w-0">
+        <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><Clock3 className="h-5 w-5" aria-hidden="true" /></span>
             <div className="min-w-0"><p className="text-xs font-medium text-[var(--text-muted)]">Thời gian học</p><p className="mt-0.5 text-2xl font-bold tracking-tight text-[var(--text-primary)]">{minutes} <span className="text-sm font-semibold">phút</span></p></div>
           </div>
         </Card>
-        <Card padding="md" className="min-w-0">
+        <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--accent-purple)]"><CalendarDays className="h-5 w-5" aria-hidden="true" /></span>
             <div className="min-w-0"><p className="text-xs font-medium text-[var(--text-muted)]">Ngày học thành công</p><p className="mt-0.5 text-2xl font-bold tracking-tight text-[var(--text-primary)]">{activeDays}<span className="text-sm font-semibold text-[var(--text-secondary)]"> / {targetDays} ngày</span></p></div>
           </div>
         </Card>
-        <Card padding="md" className="min-w-0">
+        <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--status-success-bg)] text-[var(--status-success)]"><TrendingUp className="h-5 w-5" aria-hidden="true" /></span>
             <div className="min-w-0"><p className="text-xs font-medium text-[var(--text-muted)]">Từ đã gặp</p><p className="mt-0.5 text-2xl font-bold tracking-tight text-[var(--text-primary)]">{data.newWordsAcquired}</p></div>
@@ -121,19 +172,48 @@ export function ProgressAnalytics({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)]">
-        <Card padding="lg" className="min-w-0">
+        <Card padding="lg" className="min-w-0 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-xs)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="lingua-kicker">7 ngày gần nhất</p><h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">Nhịp học mỗi ngày</h2></div>
+            <div>
+              <p className="lingua-kicker">
+                {selectedWindow === 'week' ? '7 ngày gần nhất' : '30 ngày gần nhất'}
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-[var(--text-primary)]">Nhịp học mỗi ngày</h2>
+            </div>
             <span className="rounded-full bg-[var(--surface-lilac)] px-3 py-1.5 text-xs font-semibold text-[var(--action-primary)]">{minutes} phút</span>
           </div>
+
+          <div
+            data-testid="progress-window-summary"
+            className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/60 px-3 py-2 text-xs font-medium text-[var(--text-secondary)] sm:gap-3"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--action-primary)]" aria-hidden="true" />
+              <span>Trung bình: <strong className="font-bold text-[var(--text-primary)]">{avgMinutes} phút/ngày</strong></span>
+            </div>
+            <span className="hidden text-[var(--border-subtle)] sm:inline">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-warning)]" aria-hidden="true" />
+              <span>Cao điểm: <strong className="font-bold text-[var(--text-primary)]">{peakDay && peakDay.minutesSpent > 0 ? `${peakDay.dayLabel} (${peakDay.minutesSpent}m)` : 'Chưa có'}</strong></span>
+            </div>
+            <span className="hidden text-[var(--border-subtle)] sm:inline">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-success)]" aria-hidden="true" />
+              <span>Ghi nhớ TB: <strong className="font-bold text-[var(--text-primary)]">{avgRetention}%</strong></span>
+            </div>
+          </div>
+
           {history.length > 0 ? (
             <div className="mt-6 grid grid-cols-7 items-end gap-2 sm:gap-3" role="list" aria-label="Thời gian học theo ngày">
               {history.map((day, index) => {
                 const height = day.minutesSpent === 0 ? 4 : Math.max(12, Math.round((day.minutesSpent / maxMinutes) * 100));
+                const barContainerClass = history.length > 7
+                  ? 'flex h-20 items-end justify-center rounded-xl bg-[var(--surface-subtle)] p-1 sm:h-24 sm:p-1.5'
+                  : 'flex h-28 items-end justify-center rounded-xl bg-[var(--surface-subtle)] p-1.5 sm:h-36 sm:p-2';
                 return (
                   <div key={`${day.dayLabel}-${index}`} role="listitem" className="min-w-0 text-center">
                     <span className="mb-2 block truncate text-[10px] font-medium text-[var(--text-muted)] sm:text-xs">{day.minutesSpent ? `${day.minutesSpent}m` : '—'}</span>
-                    <div className="flex h-28 items-end justify-center rounded-xl bg-[var(--surface-subtle)] p-1.5 sm:h-36 sm:p-2">
+                    <div className={barContainerClass}>
                       <div
                         className="progress-bar-fill w-full rounded-lg bg-[var(--action-primary)]"
                         style={{ height: `${height}%` }}
@@ -151,7 +231,7 @@ export function ProgressAnalytics({
           )}
         </Card>
 
-        <Card padding="lg" className="flex min-w-0 flex-col justify-between bg-[var(--surface-lilac)]">
+        <Card padding="lg" className="flex min-w-0 flex-col justify-between rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface-lilac)]/60 via-[var(--surface-lilac)]/40 to-[var(--surface)] shadow-[var(--shadow-xs)]">
           <div>
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--action-primary)]"><Flame className="h-5 w-5" aria-hidden="true" /></span>
             <p className="mt-5 text-sm font-semibold text-[var(--text-secondary)]">Sức khỏe ghi nhớ</p>

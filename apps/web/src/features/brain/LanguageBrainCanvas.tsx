@@ -47,6 +47,20 @@ export interface LanguageBrainCanvasProps {
   onSelectConcept?: (node: BrainNodeItem) => void;
 }
 
+function computeRemediationAdvice(node: BrainNodeItem): string {
+  const recognition = node.recognitionScore ?? 0;
+  const listening = node.listeningScore ?? 0;
+  const production = node.productionScore ?? 0;
+
+  if (listening < recognition && listening <= production) {
+    return 'Ưu tiên luyện Nghe & Điền từ (Listening / Cloze) để cân bằng trí nhớ âm thanh.';
+  }
+  if (production < recognition && production <= listening) {
+    return 'Ưu tiên luyện Nhớ chủ động & Gõ từ (Production / Typing) để chuyển từ nhận diện sang sử dụng.';
+  }
+  return 'Tiếp tục đọc ngữ cảnh (Reader) và ôn tập định kỳ để củng cố nhận diện mặt chữ.';
+}
+
 export function LanguageBrainCanvas({
   initialNodes = defaultBrainNodes,
   nodes: liveNodes,
@@ -211,7 +225,7 @@ export function LanguageBrainCanvas({
 
           <div className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
             {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => <button key={lvl} type="button" aria-label={lvl === 'ALL' ? 'ALL' : undefined} onClick={() => setSelectedCefr(lvl)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedCefr === lvl ? 'bg-[var(--action-primary)] text-white' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{lvl === 'ALL' ? 'Tất cả CEFR' : lvl}</button>)}
-            {[{ id: 'ALL', label: 'Tất cả' }, { id: 'mastered', label: 'Đã vững' }, { id: 'learning', label: 'Đang học' }, { id: 'weak', label: 'Cần củng cố' }].map((st) => <button key={st.id} type="button" onClick={() => setSelectedStatus(st.id)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedStatus === st.id ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{st.label}</button>)}
+            {[{ id: 'ALL', label: 'Tất cả' }, { id: 'mastered', label: 'Đã vững' }, { id: 'learning', label: 'Đang học' }, { id: 'weak', label: 'Cần củng cố' }, { id: 'forgotten', label: 'Đã quên' }].map((st) => <button key={st.id} type="button" onClick={() => setSelectedStatus(st.id)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedStatus === st.id ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{st.label}</button>)}
           </div>
         </div>
 
@@ -315,6 +329,12 @@ export function LanguageBrainCanvas({
           <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-xl bg-[var(--surface-blue)] p-2"><span className="block text-[var(--text-muted)]">Độ vững</span><strong className="mt-1 block text-[var(--text-primary)]">{displayPercent(visibleSelectedNode.mastery)}</strong></div><div className="rounded-xl bg-[var(--accent-teal-soft)] p-2"><span className="block text-[var(--text-muted)]">Tin cậy</span><strong className="mt-1 block text-[var(--text-primary)]">{displayPercent(visibleSelectedNode.confidence)}</strong></div><div className="rounded-xl bg-[var(--surface-warm)] p-2"><span className="block text-[var(--text-muted)]">Đã gặp</span><strong className="mt-1 block text-[var(--text-primary)]">{visibleSelectedNode.exposureCount}</strong></div></div>
 
           <div className="mt-4 space-y-3 border-t border-[var(--border-subtle)] pt-4"><Progress value={visibleSelectedNode.recognitionScore} max={100} label={`Nhận diện: ${visibleSelectedNode.recognitionScore}%`} size="sm" /><Progress value={visibleSelectedNode.listeningScore} max={100} label={`Nghe: ${visibleSelectedNode.listeningScore}%`} size="sm" variant="warning" /><Progress value={visibleSelectedNode.productionScore} max={100} label={`Tự dùng: ${visibleSelectedNode.productionScore}%`} size="sm" variant="warning" /></div>
+          <div className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3.5">
+            <h4 className="text-xs font-bold text-[var(--text-primary)]">Gợi ý ôn tập trọng tâm</h4>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+              {computeRemediationAdvice(visibleSelectedNode)}
+            </p>
+          </div>
           <Link href="/review" className="mt-5 block"><Button className="w-full" variant="primary" size="md" rightIcon={<ArrowRight className="h-4 w-4" />}>Ôn tập từ này</Button></Link>
         </div>
       )}

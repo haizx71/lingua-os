@@ -103,6 +103,8 @@ def _headers(key: uuid.UUID | None = None) -> dict[str, str]:
 
 
 def _assert_contract_schema(schema_name: str, payload: object) -> None:
+    if schema_name == "LibraryListResponse":
+        schema_name = "LibraryItemsResponse"
     with open(ROOT / "contracts" / "openapi.yaml", encoding="utf-8") as source:
         contract = yaml.safe_load(source)
 
@@ -1193,3 +1195,107 @@ def test_get_library_items_unified_filter_and_keyset_pagination(
         headers=_headers(),
     )
     assert bad_cursor_res.status_code == 422
+
+
+def test_library_list_returns_phonetic_ipa_audio_url_and_effective_retrievability_status(
+    library_api: LibraryApiFixture,
+) -> None:
+    with psycopg.connect(library_api.database_url) as conn:
+        lexeme_row = conn.execute(
+            "SELECT id FROM lexemes WHERE concept_id = %s ORDER BY id LIMIT 1",
+            (CONCEPT_ONE,),
+        ).fetchone()
+        assert lexeme_row is not None
+        conn.execute(
+            """
+            INSERT INTO phonetic_transcriptions
+                (lexeme_id, accent_variant, ipa, audio_uri, audio_source)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (lexeme_id, accent_variant) DO UPDATE
+            SET ipa = EXCLUDED.ipa,
+                audio_uri = EXCLUDED.audio_uri,
+                audio_source = EXCLUDED.audio_source
+            """,
+            (
+                lexeme_row[0],
+                "en_US",
+                "/əˈpɔɪntmənt/",  # noqa: RUF001
+                "https://audio.lingua-os.internal/audio/v2/lexemes/test/en-US.mp3",
+                "high_quality_neural_tts",
+            ),
+        )
+        conn.commit()
+
+    try:
+        put_res = library_api.client.put(
+            f"/v1/library/concepts/{CONCEPT_ONE}",
+            params={"languageProfileId": str(library_api.profile_id)},
+            headers=_headers(),
+        )
+        assert put_res.status_code == 200
+
+        res = library_api.client.get(
+            "/v1/library/items",
+            params={"languageProfileId": str(library_api.profile_id)},
+            headers=_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        _assert_contract_schema("LibraryListResponse", body)
+
+        concept_items = [it for it in body["data"] if it.get("itemType") == "concept"]
+        assert len(concept_items) == 1
+        concept = concept_items[0]["concept"]
+        assert concept["id"] == str(CONCEPT_ONE)
+        assert concept["ipa"] == "/əˈpɔɪntmənt/"  # noqa: RUF001
+        assert (
+            concept["audioUrl"]
+            == "https://audio.lingua-os.internal/audio/v2/lexemes/test/en-US.mp3"
+        )
+        assert concept["status"] == "learning"
+
+        # Verify effective retrievability status when competence/retrievability changes
+        with psycopg.connect(library_api.database_url) as conn:
+            conn.execute(
+                """
+                UPDATE user_concept_states
+                SET status = 'active'
+                WHERE user_id = %s AND concept_id = %s
+                """,
+                (library_api.actor.id, CONCEPT_ONE),
+            )
+            conn.execute(
+                """
+                UPDATE fsrs_states
+                SET state = 'review', stability = 1.0, difficulty = 3.0,
+                    last_review_at = '2026-07-01 00:00:00+00',
+                    due_at = '2026-07-02 00:00:00+00',
+                    step = NULL
+                WHERE review_item_id IN (
+                    SELECT id FROM review_items WHERE user_id = %s AND concept_id = %s
+                )
+                """,
+                (library_api.actor.id, CONCEPT_ONE),
+            )
+            conn.commit()
+
+        res_effective = library_api.client.get(
+            "/v1/library/items",
+            params={"languageProfileId": str(library_api.profile_id)},
+            headers=_headers(),
+        )
+        assert res_effective.status_code == 200
+        body_effective = res_effective.json()
+        _assert_contract_schema("LibraryListResponse", body_effective)
+        effective_concept = next(
+            it["concept"] for it in body_effective["data"] if it.get("itemType") == "concept"
+        )
+        # Stored status was 'active', but due to low retrievability, effective status drops
+        assert effective_concept["status"] in ("weak", "forgotten")
+    finally:
+        with psycopg.connect(library_api.database_url) as conn:
+            conn.execute(
+                "DELETE FROM phonetic_transcriptions WHERE lexeme_id = %s AND accent_variant = %s",
+                (lexeme_row[0], "en_US"),
+            )
+            conn.commit()

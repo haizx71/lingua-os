@@ -3,27 +3,42 @@ import { useSyncExternalStore } from 'react';
 const QUERY = '(prefers-reduced-motion: reduce)';
 
 function subscribe(callback: () => void): () => void {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return () => {};
+  let mediaCleanup = () => {};
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    const mediaQueryList = window.matchMedia(QUERY);
+    if (typeof mediaQueryList?.addEventListener === 'function') {
+      mediaQueryList.addEventListener('change', callback);
+      mediaCleanup = () => mediaQueryList.removeEventListener('change', callback);
+    } else if (typeof (mediaQueryList as unknown as { addListener?: (cb: () => void) => void })?.addListener === 'function') {
+      (mediaQueryList as unknown as { addListener: (cb: () => void) => void }).addListener(callback);
+      mediaCleanup = () => {
+        if (typeof (mediaQueryList as unknown as { removeListener?: (cb: () => void) => void })?.removeListener === 'function') {
+          (mediaQueryList as unknown as { removeListener: (cb: () => void) => void }).removeListener(callback);
+        }
+      };
+    }
   }
-  const mediaQueryList = window.matchMedia(QUERY);
-  if (typeof mediaQueryList.addEventListener === 'function') {
-    mediaQueryList.addEventListener('change', callback);
-    return () => mediaQueryList.removeEventListener('change', callback);
+
+  let observerCleanup = () => {};
+  if (typeof MutationObserver === 'function' && typeof document !== 'undefined' && document.documentElement) {
+    const observer = new MutationObserver(callback);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-reduced-motion'],
+    });
+    observerCleanup = () => observer.disconnect();
   }
-  // Fallback for legacy environments
-  if (typeof (mediaQueryList as unknown as { addListener?: (cb: () => void) => void }).addListener === 'function') {
-    (mediaQueryList as unknown as { addListener: (cb: () => void) => void }).addListener(callback);
-    return () => {
-      if (typeof (mediaQueryList as unknown as { removeListener?: (cb: () => void) => void }).removeListener === 'function') {
-        (mediaQueryList as unknown as { removeListener: (cb: () => void) => void }).removeListener(callback);
-      }
-    };
-  }
-  return () => {};
+
+  return () => {
+    mediaCleanup();
+    observerCleanup();
+  };
 }
 
 function getSnapshot(): boolean {
+  if (typeof document !== 'undefined' && document.documentElement?.dataset?.reducedMotion === 'true') {
+    return true;
+  }
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return false;
   }

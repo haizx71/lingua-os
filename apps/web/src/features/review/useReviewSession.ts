@@ -6,6 +6,7 @@ import { useOptionalAuth } from '../auth/AuthContext';
 import { getApiClient } from '../../lib/api/client';
 import { mapReviewAnswerResultToViewModel, mapReviewQueueItemToViewModel, type ReviewSessionItemViewModel } from './adapters';
 import { defaultReviewQueue, type ReviewCardItem } from '../../fixtures/reviewFixture';
+import { invalidateActorCacheForClient } from '../../lib/api/queryCache';
 import { readPendingAnswer, type PendingReviewOperation } from './pendingAnswer';
 export type { PendingReviewOperation } from './pendingAnswer';
 
@@ -237,6 +238,7 @@ export function useReviewSession({
       });
       if (!current()) return;
       if (response.data.reviewItemId !== operation.reviewItemId) throw new Error('Mismatched review response');
+      invalidateActorCacheForClient(api);
       const result = mapReviewAnswerResultToViewModel(response.data);
       if (receiptKey) sessionStorage.removeItem(receiptKey);
       activeOperationRef.current = null;

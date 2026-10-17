@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -11,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.base import RequestResponseEndpoint
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 
 from lingua_api.admin.authorization import AdminActorPolicy, AdminForbidden
@@ -71,6 +73,9 @@ from lingua_api.profile.domain import (
 )
 from lingua_api.profile.routes import router as profile_router
 from lingua_api.profile.service import ProfileApplication
+from lingua_api.progress.domain import ProgressNotFound
+from lingua_api.progress.routes import router as progress_router
+from lingua_api.progress.service import ProgressApplication
 from lingua_api.reader.domain import ReaderMutationInFlight, ReaderValidationError
 from lingua_api.reader.routes import router as reader_router
 from lingua_api.reader.service import ReaderApplication
@@ -78,6 +83,12 @@ from lingua_api.review.domain import InvalidReviewCursor, ReviewModeMismatch
 from lingua_api.review.models import ErrorBodyDto, ErrorCodeDto, ErrorEnvelopeDto
 from lingua_api.review.routes import router as review_router
 from lingua_api.review.service import ReviewApplication
+from lingua_api.security.rate_limit import (
+    RateLimitErrorBodyDto,
+    RateLimitErrorEnvelopeDto,
+    SlidingWindowRateLimiter,
+    get_rate_limit_bucket,
+)
 from lingua_api.today.domain import (
     TodayIdempotencyConflict,
     TodayInvalidState,
@@ -109,6 +120,19 @@ def _render_source_sha() -> str | None:
     return value if re.fullmatch(r"[a-f0-9]{40}", value) else None
 
 
+def _apply_security_headers(request: Request, response: Response) -> Response:
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), geolocation=(), usb=(), microphone=(self)"
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    source_sha = _render_source_sha()
+    if source_sha is not None:
+        response.headers["X-Lingua-Source-Sha"] = source_sha
+    return response
+
+
 class _MissingTokenVerifier:
     def verify(self, token: str) -> AuthenticatedActor:
         del token
@@ -122,6 +146,7 @@ def create_app(
     clock: Clock | None = None,
     cursor_secret: bytes | None = None,
     admin_user_ids: str | None = None,
+    rate_limit_rpm: int | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="LINGUA OS API",
@@ -158,6 +183,9 @@ def create_app(
         if resolved_database_url is not None and resolved_cursor_secret is not None
         else None
     )
+    application.state.progress_application = (
+        ProgressApplication(resolved_database_url) if resolved_database_url is not None else None
+    )
     application.state.dictionary_application = (
         DictionaryApplication(resolved_database_url, cursor_secret=resolved_cursor_secret)
         if resolved_database_url is not None and resolved_cursor_secret is not None
@@ -192,14 +220,76 @@ def create_app(
         else None
     )
 
+    if rate_limit_rpm is not None:
+        resolved_rate_limit_rpm = rate_limit_rpm
+    else:
+        env_rpm = os.getenv("LINGUA_RATE_LIMIT_RPM")
+        if env_rpm is not None and env_rpm.strip().isdigit():
+            resolved_rate_limit_rpm = int(env_rpm.strip())
+        else:
+            resolved_rate_limit_rpm = 600
+
+    rate_limiter = SlidingWindowRateLimiter(requests_per_minute=resolved_rate_limit_rpm)
+    application.state.rate_limiter = rate_limiter
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins_from_environment(),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["X-Lingua-Source-Sha", "ETag", "X-Lingua-Upstream-ETag"],
+    )
+
     @application.middleware("http")
     async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.request_id = uuid4()
+        content_length = request.headers.get("content-length")
+        if content_length and content_length.isdigit() and int(content_length) > 10 * 1024 * 1024:
+            return _apply_security_headers(
+                request,
+                _error(
+                    request,
+                    422,
+                    "VALIDATION_ERROR",
+                    "The request body exceeds maximum allowed size.",
+                ),
+            )
+
+        if resolved_rate_limit_rpm > 0:
+            bucket = get_rate_limit_bucket(request.method, request.url.path)
+            if bucket is not None:
+                auth_header = request.headers.get("authorization")
+                if auth_header and auth_header.strip():
+                    client_key = hashlib.sha256(auth_header.strip().encode("utf-8")).hexdigest()
+                else:
+                    client_host = (
+                        request.client.host
+                        if request.client and request.client.host
+                        else "anonymous"
+                    )
+                    client_key = client_host or "anonymous"
+
+                allowed, retry_after = rate_limiter.check(client_key, bucket)
+                if not allowed:
+                    rate_limit_envelope = RateLimitErrorEnvelopeDto(
+                        error=RateLimitErrorBodyDto(
+                            code=ErrorCodeDto.RATE_LIMITED,
+                            message="Too many requests. Please retry later.",
+                            request_id=_request_id(request),
+                            retry_after_seconds=retry_after,
+                            retryable=True,
+                        )
+                    )
+                    rate_limit_response = JSONResponse(
+                        status_code=429,
+                        headers={"Retry-After": str(retry_after)},
+                        content=rate_limit_envelope.model_dump(mode="json", by_alias=True),
+                    )
+                    return _apply_security_headers(request, rate_limit_response)
+
         response = await call_next(request)
-        source_sha = _render_source_sha()
-        if source_sha is not None:
-            response.headers["X-Lingua-Source-Sha"] = source_sha
-        return response
+        return _apply_security_headers(request, response)
 
     _register_error_handlers(application)
     application.include_router(admin_router)
@@ -210,11 +300,13 @@ def create_app(
     application.include_router(reader_router)
     application.include_router(today_router)
     application.include_router(brain_router)
+    application.include_router(progress_router)
     application.include_router(assessment_router)
     application.include_router(hosted_fixture_router)
     application.include_router(library_router)
 
     @application.get("/health", response_model=HealthResponse, include_in_schema=False)
+    @application.get("/healthz", response_model=HealthResponse, include_in_schema=False)
     async def health(response: Response) -> HealthResponse:
         response.headers["Cache-Control"] = "no-store"
         return HealthResponse(source_sha=_render_source_sha())
@@ -380,6 +472,11 @@ def _register_error_handlers(application: FastAPI) -> None:
     async def brain_not_found(request: Request, error: BrainNotFound) -> JSONResponse:
         del error
         return _error(request, 404, "NOT_FOUND", "The requested Brain resource was not found.")
+
+    @application.exception_handler(ProgressNotFound)
+    async def progress_not_found(request: Request, error: ProgressNotFound) -> JSONResponse:
+        del error
+        return _error(request, 404, "NOT_FOUND", "The requested Progress resource was not found.")
 
     @application.exception_handler(ContentNotFound)
     async def content_not_found(request: Request, error: ContentNotFound) -> JSONResponse:
@@ -550,6 +647,18 @@ def _token_verifier_from_environment() -> AccessTokenVerifier:
 def _cursor_secret_from_environment() -> bytes | None:
     value = os.getenv("REVIEW_CURSOR_SECRET")
     return value.encode() if value is not None else None
+
+
+def _allowed_origins_from_environment() -> list[str]:
+    raw = os.getenv("LINGUA_ALLOWED_ORIGINS", "").strip()
+    if not raw:
+        return [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://lingua-os.vercel.app",
+        ]
+    origins = [item.strip() for item in raw.split(",") if item.strip()]
+    return origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 app = create_app()

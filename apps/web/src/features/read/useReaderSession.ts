@@ -14,6 +14,7 @@ import {
 } from '@lingua/types';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { getApiClient } from '../../lib/api/client';
+import { invalidateActorCacheForClient } from '../../lib/api/queryCache';
 
 export type ReaderLoadStatus = 'loading' | 'success' | 'empty' | 'error';
 
@@ -401,6 +402,7 @@ export function useReaderSession({
       const response = await api.saveConceptToLibrary(token.conceptId);
       if (!isOperationCurrent(operation)) return false;
       if (response.data.isSaved) {
+        invalidateActorCacheForClient(api);
         setSavedConceptIds((current) => new Set(current).add(token.conceptId!));
         return true;
       }
@@ -491,6 +493,7 @@ export function useReaderSession({
         isCompleted: response.data.isCompleted,
       };
       setPassage((current) => current ? { ...current, progress: nextProgress } : null);
+      invalidateActorCacheForClient(api);
       idempotencyKeysRef.current.delete(exposureLogical);
       idempotencyKeysRef.current.delete(progressLogical);
     } catch (cause) {

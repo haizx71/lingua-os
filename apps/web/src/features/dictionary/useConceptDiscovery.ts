@@ -9,6 +9,7 @@ import {
 } from '@lingua/types';
 import { useOptionalAuth } from '../auth/AuthContext';
 import { getApiClient } from '../../lib/api/client';
+import { invalidateActorCacheForClient } from '../../lib/api/queryCache';
 import {
   mapConceptDetailToSearchResultViewModel,
   mapConceptSummaryToSearchResultViewModel,
@@ -381,6 +382,7 @@ export function useConceptDiscovery({
         if (isCurrentActor && !isCurrentActor(opEpoch, opActorId)) return;
 
         if (response.data.isSaved) {
+          invalidateActorCacheForClient(api);
           setSavedConceptIds((prev) => new Set(prev).add(conceptId));
 
           // Update in-memory search results

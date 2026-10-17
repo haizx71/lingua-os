@@ -144,4 +144,37 @@ describe('production same-origin API proxy', () => {
     expect(await invalid.text()).not.toContain('api.internal.example.test');
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('forwards rate-limit Retry-After and X-Request-Id headers from upstream 429 response while maintaining security headers', async () => {
+    vi.stubEnv('API_INTERNAL_URL', 'https://api.internal.example.test');
+    const rateLimitBody = JSON.stringify({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many requests, please retry later.',
+        requestId: 'req-rate-limit-429',
+      },
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(rateLimitBody, {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '42',
+          'X-Request-Id': 'req-rate-limit-429',
+        },
+      }),
+    );
+
+    const response = await GET(request('GET'), context('v1', 'me'));
+
+    expect(response.status).toBe(429);
+    expect(await response.text()).toBe(rateLimitBody);
+    expect(response.headers.get('retry-after')).toBe('42');
+    expect(response.headers.get('x-request-id')).toBe('req-rate-limit-429');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+    expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+  });
 });

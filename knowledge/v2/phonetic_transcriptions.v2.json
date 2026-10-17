@@ -1,0 +1,297 @@
+{
+  "schemaVersion": "knowledge-v2-phonetics.v2",
+  "status": "APPROVED_V2_EXPANSION",
+  "updatedAt": "2026-10-14",
+  "counts": {
+    "phoneticProfiles": 15,
+    "transcriptionRows": 30
+  },
+  "profiles": [
+    {
+      "conceptCanonicalKey": "word:schedule:noun",
+      "lemma": "schedule",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈskedʒ.uːl/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈʃed.juːl/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "initial_cluster_and_medial_dʒ",
+      "vietnameseArticulationTip": "Âm đầu Anh-Mỹ là /sk/ (không chèn nguyên âm 'sờ-ke'), âm giữa là /dʒ/ như trong chữ 'job'."
+    },
+    {
+      "conceptCanonicalKey": "word:receipt:noun",
+      "lemma": "receipt",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/rɪˈsiːt/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/rɪˈsiːt/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 2,
+      "vietnamesePhonologyTrap": "silent_p_and_final_t",
+      "vietnameseArticulationTip": "Chữ 'p' ở cuối là âm CÂM hoàn toàn; đọc là /rɪˈsiːt/ với trọng âm rơi vào âm tiết thứ hai."
+    },
+    {
+      "conceptCanonicalKey": "word:listen:verb",
+      "lemma": "listen",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈlɪs.ən/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈlɪs.ən/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "silent_t",
+      "vietnameseArticulationTip": "Chữ 't' ở giữa là âm CÂM; đọc mượt là /ˈlɪs.ən/, không bật âm /t/ ở giữa."
+    },
+    {
+      "conceptCanonicalKey": "word:answer:noun",
+      "lemma": "answer",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈæn.sɚ/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈɑːn.sə/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "silent_w",
+      "vietnameseArticulationTip": "Chữ 'w' ở giữa là âm CÂM; nối thẳng từ /n/ sang /s/ (/ˈæn.sər/)."
+    },
+    {
+      "conceptCanonicalKey": "word:walk:verb",
+      "lemma": "walk",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/wɔːk/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/wɔːk/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "silent_l_and_vowel_contrast",
+      "vietnameseArticulationTip": "Chữ 'l' là âm câm; nguyên âm mở /ɔː/ cộng âm cuối /k/ rõ để không bị nghe nhầm thành 'work' (/wɜːrk/)."
+    },
+    {
+      "conceptCanonicalKey": "word:busy:adjective",
+      "lemma": "busy",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈbɪz.i/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈbɪz.i/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "vowel_u_as_i",
+      "vietnameseArticulationTip": "Chữ 'u' phát âm là /ɪ/, chữ 's' phát âm là âm hữu thanh /z/ (/ˈbɪz.i/)."
+    },
+    {
+      "conceptCanonicalKey": "word:minute:noun",
+      "lemma": "minute",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈmɪn.ɪt/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈmɪn.ɪt/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "unstressed_second_syllable",
+      "vietnameseArticulationTip": "Hai nguyên âm đều là /ɪ/ ngắn (/ˈmɪn.ɪt/), không đọc âm thứ hai thành /uːt/."
+    },
+    {
+      "conceptCanonicalKey": "word:comfortable:adjective",
+      "lemma": "comfortable",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈkʌm.fɚ.t̬ə.bəl/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈkʌm.fə.tə.bəl/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "syllable_elision_and_stress_1",
+      "vietnameseArticulationTip": "Trọng âm rơi vào âm tiết ĐẦU TIÊN (/ˈkʌm.fə.tə.bəl/), không nhấn vào 'for'."
+    },
+    {
+      "conceptCanonicalKey": "word:colleague:noun",
+      "lemma": "colleague",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ˈkɑː.liːɡ/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ˈkɒl.iːɡ/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "final_voiced_velar_g",
+      "vietnameseArticulationTip": "Âm tiết thứ hai là /liːɡ/ (kết thúc bằng /ɡ/), tránh đọc thành /lɪdʒ/ (college - trường đại học)."
+    },
+    {
+      "conceptCanonicalKey": "word:available:adjective",
+      "lemma": "available",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/əˈveɪ.lə.bəl/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/əˈveɪ.lə.bəl/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 2,
+      "vietnamesePhonologyTrap": "diphthong_ei_and_stress_2",
+      "vietnameseArticulationTip": "Nhấn trọng âm vào âm tiết thứ hai /ˈveɪ/, âm đầu giảm nhẹ thành âm schwa /ə/."
+    },
+    {
+      "conceptCanonicalKey": "word:convenient:adjective",
+      "lemma": "convenient",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/kənˈviː.ni.ənt/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/kənˈviː.ni.ənt/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 2,
+      "vietnamesePhonologyTrap": "final_cluster_nt",
+      "vietnameseArticulationTip": "Nhấn vào /ˈviː/ và giữ tổ hợp phụ âm cuối /nt/ để phân biệt với danh từ convenience (/ns/)."
+    },
+    {
+      "conceptCanonicalKey": "word:important:adjective",
+      "lemma": "important",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ɪmˈpɔːr.tənt/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ɪmˈpɔː.tənt/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 2,
+      "vietnamesePhonologyTrap": "final_cluster_nt",
+      "vietnameseArticulationTip": "Nhấn trọng âm 2 /ˈpɔːr/ và khép rõ âm cuối /nt/."
+    },
+    {
+      "conceptCanonicalKey": "word:community:noun",
+      "lemma": "community",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/ɪnˈvaɪ.rən.mənt/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/ɪnˈvaɪ.rən.mənt/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 2,
+      "vietnamesePhonologyTrap": "diphthong_ai_and_stress_2",
+      "vietnameseArticulationTip": "Nhấn trọng âm vào âm tiết thứ hai /ˈvaɪ/."
+    },
+    {
+      "conceptCanonicalKey": "word:decide:verb",
+      "lemma": "decide",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/spəˈsɪf.ɪk/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/spəˈsɪf.ɪk/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 2,
+      "vietnamesePhonologyTrap": "initial_cluster_sp",
+      "vietnameseArticulationTip": "Giữ liền hơi tổ hợp /sp/ ở đầu và nhấn trọng âm vào âm tiết thứ hai /ˈsɪf/."
+    },
+    {
+      "conceptCanonicalKey": "word:month:noun",
+      "lemma": "month",
+      "transcriptions": [
+        {
+          "accentVariant": "en_US",
+          "ipa": "/mʌnθ/",
+          "audioSource": "high_quality_neural_tts"
+        },
+        {
+          "accentVariant": "en_GB",
+          "ipa": "/mʌnθ/",
+          "audioSource": "high_quality_neural_tts"
+        }
+      ],
+      "primaryStressSyllable": 1,
+      "vietnamesePhonologyTrap": "dental_fricative_th",
+      "vietnameseArticulationTip": "Đưa nhẹ đầu lưỡi ra giữa hai hàm răng ở cuối từ để tạo âm vô thanh /θ/."
+    }
+  ],
+  "manifestSha256": "f9b2f65a70b7e6a3cbb24e031dea9e7282fef96bdfba3931f8923a9124d4c845"
+}

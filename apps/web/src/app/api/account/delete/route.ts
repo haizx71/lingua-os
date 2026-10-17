@@ -15,11 +15,19 @@ function response(body: unknown, status: number) {
     headers: {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
     },
   });
 }
 
 function requestOriginIsSameOrigin(request: NextRequest): boolean {
+  // Defense-in-depth: Validate Fetch Metadata to reject cross-site requests
+  const secFetchSite = request.headers.get('sec-fetch-site');
+  if (secFetchSite && secFetchSite !== 'same-origin' && secFetchSite !== 'none') {
+    return false;
+  }
+
   const origin = request.headers.get('origin');
   const forwardedHost = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
   const forwardedProto = request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '');
@@ -31,7 +39,9 @@ function requestOriginIsSameOrigin(request: NextRequest): boolean {
   if (!host || (proto !== 'http' && proto !== 'https')) return false;
 
   try {
-    return new URL(origin).origin === `${proto}://${host}`;
+    const originUrl = new URL(origin);
+    const expectedOrigin = `${proto}://${host}`;
+    return originUrl.origin === expectedOrigin;
   } catch {
     return false;
   }

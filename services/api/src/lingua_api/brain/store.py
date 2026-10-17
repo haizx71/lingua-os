@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -10,7 +10,7 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg import Connection
+from psycopg import Connection, Cursor
 
 from lingua_api.brain.cursor import BrainCursor
 from lingua_api.brain.domain import (
@@ -53,10 +53,31 @@ class BrainSnapshot:
         *,
         actor: AuthenticatedActor,
         as_of: datetime,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> None:
         self.connection = connection
         self.actor = actor
         self.as_of = as_of
+        self._cursor = cursor
+
+    @property
+    def cursor(self) -> Cursor[tuple[object, ...]]:
+        if self._cursor is None:
+            self._cursor = self.connection.cursor()
+        return self._cursor
+
+    @cursor.setter
+    def cursor(self, value: Cursor[tuple[object, ...]] | None) -> None:
+        self._cursor = value
+
+    def execute(
+        self,
+        query: str,
+        params: Sequence[object] | Mapping[str, object] | None = None,
+    ) -> Cursor[tuple[object, ...]]:
+        if self._cursor is not None:
+            return self._cursor.execute(query, params)
+        return self.connection.execute(query, params)
 
 
 class PostgresBrainStore:
@@ -70,15 +91,16 @@ class PostgresBrainStore:
     def snapshot(self, *, actor: AuthenticatedActor) -> Iterator[BrainSnapshot]:
         with self.connect() as connection:
             connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-            row = connection.execute("SELECT transaction_timestamp()").fetchone()
-            if row is None or not isinstance(row[0], datetime):
-                raise BrainProjectionUnavailable("database snapshot timestamp is unavailable")
-            yield BrainSnapshot(connection, actor=actor, as_of=_datetime(row[0]))
+            with connection.cursor() as cursor:
+                row = cursor.execute("SELECT transaction_timestamp()").fetchone()
+                if row is None or not isinstance(row[0], datetime):
+                    raise BrainProjectionUnavailable("database snapshot timestamp is unavailable")
+                yield BrainSnapshot(connection, actor=actor, as_of=_datetime(row[0]), cursor=cursor)
 
     @staticmethod
     def resolve_profile(snapshot: BrainSnapshot, requested_id: UUID | None) -> UUID:
         if requested_id is None:
-            row = snapshot.connection.execute(
+            row = snapshot.execute(
                 """
                 SELECT id FROM user_languages
                 WHERE user_id = %s AND language_code = 'en'
@@ -89,7 +111,7 @@ class PostgresBrainStore:
                 (snapshot.actor.id,),
             ).fetchone()
         else:
-            row = snapshot.connection.execute(
+            row = snapshot.execute(
                 """
                 SELECT id FROM user_languages
                 WHERE id = %s AND user_id = %s AND language_code = 'en'
@@ -103,7 +125,7 @@ class PostgresBrainStore:
 
     @staticmethod
     def load_summary(snapshot: BrainSnapshot, profile_id: UUID) -> BrainSummaryProjection:
-        status_rows = snapshot.connection.execute(
+        status_rows = snapshot.execute(
             f"""
             WITH anchors AS ({_ANCHOR_SQL}), projected AS (
                 SELECT COALESCE(retrievability.effective_status, state.status, 'unseen') AS status
@@ -135,7 +157,7 @@ class PostgresBrainStore:
             except ValueError as error:
                 raise BrainProjectionUnavailable("invalid concept status projection") from error
 
-        due_row = snapshot.connection.execute(
+        due_row = snapshot.execute(
             f"""
             SELECT count(*)
             FROM review_items AS item
@@ -193,7 +215,7 @@ class PostgresBrainStore:
             parameters.extend((boundary.canonical_key, boundary.concept_id))
         where = "" if not filters else "AND " + " AND ".join(filters)
         parameters.append(limit)
-        rows = snapshot.connection.execute(
+        rows = snapshot.execute(
             f"""
             WITH anchors AS ({_ANCHOR_SQL})
             SELECT concept.id, concept.language_code, concept.canonical_key,
@@ -253,7 +275,7 @@ class PostgresBrainStore:
     def load_detail(
         snapshot: BrainSnapshot, *, profile_id: UUID, concept_id: UUID
     ) -> BrainConceptDetailProjection:
-        row = snapshot.connection.execute(
+        row = snapshot.execute(
             f"""
             SELECT concept.id, concept.language_code, concept.canonical_key,
                    COALESCE(lexeme.lemma, concept.canonical_key), lexeme.part_of_speech,
@@ -342,7 +364,7 @@ class PostgresBrainStore:
         """Load actor-scoped Brain projections for linked catalog concepts in one batch."""
         if not concept_ids:
             return {}
-        rows = snapshot.connection.execute(
+        rows = snapshot.execute(
             f"""
             SELECT concept.id, concept.language_code, concept.canonical_key,
                    COALESCE(lexeme.lemma, concept.canonical_key), lexeme.part_of_speech,
@@ -457,7 +479,7 @@ def _anchor_parameters(actor_id: UUID, profile_id: UUID) -> list[object]:
 
 
 def _load_skill_competence(snapshot: BrainSnapshot, profile_id: UUID) -> CompetenceProjection:
-    rows = snapshot.connection.execute(
+    rows = snapshot.execute(
         """
         SELECT skill, score, confidence, evidence_count, last_evidence_at
         FROM user_skill_states
@@ -489,7 +511,7 @@ def _load_skill_competence(snapshot: BrainSnapshot, profile_id: UUID) -> Compete
 
 
 def _load_recent(snapshot: BrainSnapshot, profile_id: UUID) -> list[BrainConceptListItem]:
-    rows = snapshot.connection.execute(
+    rows = snapshot.execute(
         f"""
         SELECT concept.id, concept.language_code, concept.canonical_key,
                COALESCE(lexeme.lemma, concept.canonical_key), lexeme.part_of_speech,
@@ -539,7 +561,7 @@ def _load_recent(snapshot: BrainSnapshot, profile_id: UUID) -> list[BrainConcept
 
 
 def _load_definitions(snapshot: BrainSnapshot, concept_id: UUID) -> list[DefinitionProjection]:
-    rows = snapshot.connection.execute(
+    rows = snapshot.execute(
         f"""
         WITH own_senses AS (
             SELECT lexeme.id AS lexeme_id, lexeme.normalized_form,
@@ -585,7 +607,7 @@ def _load_definitions(snapshot: BrainSnapshot, concept_id: UUID) -> list[Definit
 
 
 def _load_examples(snapshot: BrainSnapshot, concept_id: UUID) -> list[ExampleProjection]:
-    rows = snapshot.connection.execute(
+    rows = snapshot.execute(
         f"""
         SELECT DISTINCT ON (sentence.id)
                sentence.id, sentence.text, translation.text, audio.storage_uri
@@ -622,7 +644,7 @@ def _load_examples(snapshot: BrainSnapshot, concept_id: UUID) -> list[ExamplePro
 
 
 def _load_relations(snapshot: BrainSnapshot, concept_id: UUID) -> list[RelationProjection]:
-    rows = snapshot.connection.execute(
+    rows = snapshot.execute(
         f"""
         SELECT target.id, relation.relation_type,
                COALESCE(lexeme.lemma, target.canonical_key)
@@ -666,7 +688,7 @@ def _load_relations(snapshot: BrainSnapshot, concept_id: UUID) -> list[RelationP
 def _load_grammar_specification(
     snapshot: BrainSnapshot, concept_id: UUID
 ) -> GrammarSpecificationProjection | None:
-    row = snapshot.connection.execute(
+    row = snapshot.execute(
         """
         SELECT grammar.pattern_formula, grammar.syntactic_category,
                grammar.pragmatic_function, grammar.vietnamese_explanation,

@@ -14,6 +14,7 @@ import {
 import { useOptionalAuth } from '../auth/AuthContext';
 import { mapTodayPlanToViewModel, type TodayActivityViewModel, type TodayPlanViewModel } from './adapters';
 import { useTodayPlan } from './useTodayPlan';
+import { clientNavigate } from '../../lib/navigation/clientNavigate';
 
 export interface TodayDashboardProps {
   initialPlan?: TodayPlanViewModel;
@@ -108,7 +109,7 @@ export function TodayDashboard({
         title="Cần thiết lập múi giờ học tập"
         description="Hồ sơ học tập của bạn chưa có múi giờ hợp lệ để hệ thống xây dựng kế hoạch hôm nay."
         actionLabel="Thiết lập lộ trình học"
-        onAction={() => { window.location.href = '/onboarding'; }}
+        onAction={() => { clientNavigate('/onboarding'); }}
       />
     );
   }
@@ -121,7 +122,7 @@ export function TodayDashboard({
           title="Chưa có hoạt động hôm nay"
           description="Kế hoạch hiện không có hoạt động cần thực hiện. Bạn có thể mở Thư viện để tìm nội dung đã xuất bản."
           actionLabel="Mở Thư viện"
-          onAction={() => { window.location.href = '/library'; }}
+          onAction={() => { clientNavigate('/library'); }}
         />
       </div>
     );

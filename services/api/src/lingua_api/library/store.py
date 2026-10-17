@@ -9,7 +9,7 @@ from typing import Any, cast
 from uuid import UUID
 
 import psycopg
-from psycopg import Connection
+from psycopg import Connection, Cursor
 
 from lingua_api.content.domain import AttributionProjection, ReadingProgressProjection
 from lingua_api.library.domain import (
@@ -288,10 +288,54 @@ class PostgresLibraryStore:
         limit: int,
         now: datetime,
     ) -> tuple[tuple[SavedConceptItem | SavedContentItem | SavedSentenceItem, ...], bool]:
+        if hasattr(connection, "cursor") and callable(connection.cursor):
+            with connection.cursor() as cursor:
+                return self._list_saved_items_query(
+                    connection=connection,
+                    cursor=cursor,
+                    actor=actor,
+                    profile_id=profile_id,
+                    item_type=item_type,
+                    query=query,
+                    after_saved_at=after_saved_at,
+                    after_item_id=after_item_id,
+                    limit=limit,
+                    now=now,
+                )
+        return self._list_saved_items_query(
+            connection=connection,
+            cursor=None,
+            actor=actor,
+            profile_id=profile_id,
+            item_type=item_type,
+            query=query,
+            after_saved_at=after_saved_at,
+            after_item_id=after_item_id,
+            limit=limit,
+            now=now,
+        )
+
+    def _list_saved_items_query(
+        self,
+        *,
+        connection: Connection[tuple[object, ...]],
+        cursor: Cursor[tuple[object, ...]] | None,
+        actor: AuthenticatedActor,
+        profile_id: UUID,
+        item_type: str | None,
+        query: str | None,
+        after_saved_at: datetime | None,
+        after_item_id: UUID | None,
+        limit: int,
+        now: datetime,
+    ) -> tuple[tuple[SavedConceptItem | SavedContentItem | SavedSentenceItem, ...], bool]:
+        executor: Connection[tuple[object, ...]] | Cursor[tuple[object, ...]] = (
+            cursor if cursor is not None else connection
+        )
         pattern = f"%{_escape_like(query)}%" if query is not None else None
 
         # 1. Fetch unified IDs and types ordered by saved_at DESC, item_id DESC
-        rows = connection.execute(
+        rows = executor.execute(
             """
             WITH saved_union AS (
                 SELECT 'concept' AS item_type, sc.concept_id AS item_id, sc.saved_at
@@ -362,13 +406,26 @@ class PostgresLibraryStore:
         sentence_ids = [_uuid(row[1]) for row in selected_rows if str(row[0]) == "sentence"]
 
         concepts_by_id = self._load_concepts(
-            connection, actor=actor, profile_id=profile_id, concept_ids=concept_ids, now=now
+            connection,
+            actor=actor,
+            profile_id=profile_id,
+            concept_ids=concept_ids,
+            now=now,
+            cursor=cursor,
         )
         content_by_id = self._load_content(
-            connection, actor=actor, profile_id=profile_id, content_ids=content_ids
+            connection,
+            actor=actor,
+            profile_id=profile_id,
+            content_ids=content_ids,
+            cursor=cursor,
         )
         sentences_by_id = self._load_sentences(
-            connection, actor=actor, profile_id=profile_id, sentence_ids=sentence_ids
+            connection,
+            actor=actor,
+            profile_id=profile_id,
+            sentence_ids=sentence_ids,
+            cursor=cursor,
         )
 
         items: list[SavedConceptItem | SavedContentItem | SavedSentenceItem] = []
@@ -437,25 +494,38 @@ class PostgresLibraryStore:
         profile_id: UUID,
         concept_ids: list[UUID],
         now: datetime,
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> dict[UUID, dict[str, Any]]:
         if not concept_ids:
             return {}
-        rows = connection.execute(
+        executor: Connection[tuple[object, ...]] | Cursor[tuple[object, ...]] = (
+            cursor if cursor is not None else connection
+        )
+        rows = executor.execute(
             """
             SELECT concept.id,
                    COALESCE(lexeme.lemma, concept.canonical_key) AS canonical_form,
                    lexeme.part_of_speech,
                    level.code AS level_code,
-                   COALESCE(ucs.status, 'unseen') AS status,
-                   COALESCE(fs.due_at <= %s, false) AS is_due
+                   COALESCE(retrievability.effective_status, ucs.status, 'unseen') AS status,
+                   COALESCE(fs.due_at <= %s, false) AS is_due,
+                   phonetic.ipa,
+                   phonetic.audio_uri
             FROM concepts AS concept
             LEFT JOIN LATERAL (
-                SELECT lemma, part_of_speech
+                SELECT id, lemma, part_of_speech
                 FROM lexemes
                 WHERE concept_id = concept.id
                 ORDER BY id
                 LIMIT 1
             ) AS lexeme ON true
+            LEFT JOIN LATERAL (
+                SELECT ipa, audio_uri
+                FROM phonetic_transcriptions
+                WHERE lexeme_id = lexeme.id
+                ORDER BY CASE WHEN accent_variant = 'en_US' THEN 0 ELSE 1 END, id
+                LIMIT 1
+            ) AS phonetic ON true
             LEFT JOIN LATERAL (
                 SELECT level_id
                 FROM framework_mappings
@@ -466,6 +536,10 @@ class PostgresLibraryStore:
             LEFT JOIN proficiency_levels AS level ON level.id = mapping.level_id
             LEFT JOIN user_concept_states AS ucs
               ON ucs.user_id = %s AND ucs.user_language_id = %s AND ucs.concept_id = concept.id
+            LEFT JOIN v_learner_concept_retrievability AS retrievability
+              ON retrievability.user_id = ucs.user_id
+             AND retrievability.user_language_id = ucs.user_language_id
+             AND retrievability.concept_id = ucs.concept_id
             LEFT JOIN review_items AS ri
               ON ri.user_id = %s AND ri.concept_id = concept.id
             LEFT JOIN fsrs_states AS fs ON fs.review_item_id = ri.id
@@ -479,8 +553,8 @@ class PostgresLibraryStore:
             result[cid] = {
                 "canonical_form": str(r[1]),
                 "part_of_speech": None if r[2] is None else str(r[2]),
-                "ipa": None,
-                "audio_url": None,
+                "ipa": None if r[6] is None else str(r[6]),
+                "audio_url": None if r[7] is None else str(r[7]),
                 "level": None if r[3] is None else str(r[3]),
                 "status": str(r[4]),
                 "is_due": bool(r[5]),
@@ -494,10 +568,14 @@ class PostgresLibraryStore:
         actor: AuthenticatedActor,
         profile_id: UUID,
         content_ids: list[UUID],
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> dict[UUID, dict[str, Any]]:
         if not content_ids:
             return {}
-        rows = connection.execute(
+        executor: Connection[tuple[object, ...]] | Cursor[tuple[object, ...]] = (
+            cursor if cursor is not None else connection
+        )
+        rows = executor.execute(
             """
             WITH known AS (
                 SELECT linked.content_id,
@@ -602,10 +680,14 @@ class PostgresLibraryStore:
         actor: AuthenticatedActor,
         profile_id: UUID,
         sentence_ids: list[UUID],
+        cursor: Cursor[tuple[object, ...]] | None = None,
     ) -> dict[UUID, dict[str, Any]]:
         if not sentence_ids:
             return {}
-        rows = connection.execute(
+        executor: Connection[tuple[object, ...]] | Cursor[tuple[object, ...]] = (
+            cursor if cursor is not None else connection
+        )
+        rows = executor.execute(
             """
             SELECT sentence.id, sentence.text, trans.text AS translation,
                    asset.storage_uri AS audio_url
@@ -629,11 +711,11 @@ class PostgresLibraryStore:
             (sentence_ids,),
         ).fetchall()
 
-        concept_rows = connection.execute(
+        concept_rows = executor.execute(
             """
             SELECT sc.sentence_id, sc.concept_id, sc.start_offset, sc.end_offset,
                    COALESCE(lexeme.lemma, c.canonical_key) AS canonical_form,
-                   COALESCE(ucs.status, 'unseen')
+                   COALESCE(retrievability.effective_status, ucs.status, 'unseen')
             FROM sentence_concepts AS sc
             JOIN concepts AS c ON c.id = sc.concept_id
             LEFT JOIN LATERAL (
@@ -641,6 +723,10 @@ class PostgresLibraryStore:
             ) AS lexeme ON true
             LEFT JOIN user_concept_states AS ucs
               ON ucs.user_id = %s AND ucs.user_language_id = %s AND ucs.concept_id = sc.concept_id
+            LEFT JOIN v_learner_concept_retrievability AS retrievability
+              ON retrievability.user_id = ucs.user_id
+             AND retrievability.user_language_id = ucs.user_language_id
+             AND retrievability.concept_id = ucs.concept_id
             WHERE sc.sentence_id = ANY(%s)
             ORDER BY sc.sentence_id, sc.start_offset, sc.end_offset
             """,

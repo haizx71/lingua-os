@@ -21,8 +21,18 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
-  const handlePlayAudio = (id: string) => {
+  const handlePlayAudio = (id: string, text?: string) => {
     setPlayingAudioId(id);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(text ?? id);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        // Safe fallback in headless/test environments
+      }
+    }
     setTimeout(() => setPlayingAudioId(null), 800);
   };
 
@@ -101,7 +111,18 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             <Card key={group.lexemeId} padding="lg" className="min-w-0 overflow-hidden">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <h2 className="break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{group.lemma}</h2>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{group.lemma}</h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handlePlayAudio(group.lexemeId, group.lemma)}
+                      aria-label={`Phát âm từ ${group.lemma}`}
+                      className="h-10 w-10 shrink-0 rounded-2xl"
+                    >
+                      <Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === group.lexemeId ? 'animate-bounce' : ''}`} />
+                    </Button>
+                  </div>
                   {group.partOfSpeech && <span className="mt-1 block text-xs text-[var(--text-muted)]">{partOfSpeechLabels[group.partOfSpeech] ?? group.partOfSpeech}</span>}
                 </div>
                 <div className="flex flex-wrap gap-2" aria-label={`Các dạng khớp của ${group.lemma}`}>
@@ -171,7 +192,18 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             <Card key={concept.id} padding="lg" className="min-w-0 overflow-hidden rounded-[26px]">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <h2 className="break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{concept.term}</h2>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="break-words text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{concept.term}</h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handlePlayAudio(concept.id, concept.term)}
+                      aria-label={`Phát âm từ ${concept.term}`}
+                      className="h-10 w-10 shrink-0 rounded-2xl"
+                    >
+                      <Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === concept.id ? 'animate-bounce' : ''}`} />
+                    </Button>
+                  </div>
                   {(concept.ipa || concept.pos) && <span className="mt-1 block font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos].filter(Boolean).join(' • ')}</span>}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2"><Badge variant="primary" size="sm">{concept.cefrLevel}</Badge><ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" /></div>
@@ -205,7 +237,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-2">
                     <h2 className="truncate text-2xl font-black tracking-[-0.04em] text-[var(--text-primary)]">{concept.term}</h2>
-                    <Button variant="ghost" size="icon" onClick={() => handlePlayAudio(concept.id)} aria-label={`Phát âm từ ${concept.term}`} className="h-10 w-10 shrink-0 rounded-2xl"><Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === concept.id ? 'animate-bounce' : ''}`} /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handlePlayAudio(concept.id, concept.term)} aria-label={`Phát âm từ ${concept.term}`} className="h-10 w-10 shrink-0 rounded-2xl"><Volume2 className={`h-4 w-4 text-[var(--action-primary)] ${playingAudioId === concept.id ? 'animate-bounce' : ''}`} /></Button>
                   </div>
                   {(concept.ipa || concept.pos) && <span className="mt-1 block truncate font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos].filter(Boolean).join(' • ')}</span>}
                 </div>

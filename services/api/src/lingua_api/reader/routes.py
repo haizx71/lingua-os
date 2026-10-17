@@ -52,8 +52,16 @@ class ReaderAnalyzeRequestDto(ApiModel):
         default=None, max_length=300, exclude_if=lambda v: v is None
     )
     text: str = Field(min_length=1, max_length=20000)
-    target_language_code: str
-    translation_language_code: str
+    target_language_code: str = Field(
+        min_length=2,
+        max_length=16,
+        pattern=r"^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+    )
+    translation_language_code: str = Field(
+        min_length=2,
+        max_length=16,
+        pattern=r"^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+    )
 
 
 @router.post(

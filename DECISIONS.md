@@ -323,3 +323,21 @@ removes it from learner Reader discovery.
 The `/admin` route requires authentication but deliberately does not bootstrap learner readiness or
 create learner state. All Admin persistence is catalog/content provenance, and tests verify that
 learning events, review events and learner concept state remain unchanged.
+
+## ADR-025 — Progress Overview v1 Read-Only Projection and Live Frontend Integration (TASK-014 / TASK-015)
+Status: ACCEPTED
+
+`GET /v1/progress/overview` (`operationId: getProgressOverview`) is implemented as a bounded, read-only PostgreSQL projection (`PostgresProgressStore`) over existing authoritative tables: `user_languages`, `learner_profiles`, `assessment_attempts`/`assessment_results` (latest completed Starting Level Estimate with confidence band), `v_learner_concept_retrievability` (mean retrievability across active FSRS lineages as `memoryHealth`), `today_plans`/`today_plan_activities` (completed minutes, activities, and daily goal attainment), `exposure_events`/`reader_exposure_concepts` (distinct concepts exposed per local day), `review_events`/`review_items` (distinct concepts strengthened via `correct = true` and `rating IN ('good', 'easy')` and daily retention ratio), and `user_skill_states` (recognition, listening, production competence). Window bounds (`week` = 7 days, `month` = 30 days) are evaluated in the learner's validated IANA timezone (`ZoneInfo` with safe UTC fallback). Frontend `ProgressAnalytics`, `ProfileView`, and `SettingsView` connect directly to live `/v1/progress/overview`, `/v1/me`, `/v1/brain/summary`, and `PATCH /v1/me/languages/{id}` (using child `etag` `If-Match` and `Idempotency-Key`).
+
+## ADR-026 — Strictly A0–B1 Knowledge V2 & Bilingual Reader Pack v1 Expansion
+Status: ACCEPTED
+
+Canonical Knowledge V2 (`knowledge/v2/`) and the bilingual EN-VI Reader content packs (`knowledge/staging/pilot-reader-vi-pack-v1/`) remain strictly bounded to the MVP proficiency bands `A0`, `A1`, `A2`, and `B1` (`LINGUA_A0`..`LINGUA_B1`), matching `MASTER_PROJECT.md`, `contracts/enums.json`, `contracts/openapi.yaml`, and PostgreSQL `proficiency_levels`. Unapproved `B2` / `LINGUA_B2` entries are rejected until a formal post-MVP contract and schema migration is authorized. `knowledge/catalog_import_v2.py` emits idempotent, transactional SQL targeting exclusively real PostgreSQL tables from migrations `0001`, `0014`, `0015`, and `0016` (`concepts`, `lexemes`, `word_senses`, `framework_mappings`, `grammar_specifications`, `phrase_specifications`, `phonetic_transcriptions`, `concept_senses`, `concept_edges`), never learner-state or unmigrated tables.
+
+## ADR-027 — API & Next.js Proxy Defense-in-Depth Hardening
+Status: ACCEPTED
+
+Defense-in-depth security controls are enforced across both the Next.js `/api` proxy (`apps/web/src/app/api/[...path]/route.ts`, `apps/web/src/app/api/account/delete/route.ts`) and FastAPI (`services/api/src/lingua_api/main.py`, `reader/routes.py`):
+1. **SSRF & Path Traversal Protection**: Proxy routes allowlist top-level `/v1/*` resource prefixes, reject `..`, backslash, encoded-slash, and control-character segments, and strip CRLF characters from query parameters.
+2. **Payload & Input Bounds**: Both proxy and FastAPI enforce a 10MB `Content-Length` ceiling (`413` at proxy, `422 VALIDATION_ERROR` at FastAPI), and `ReaderAnalyzeRequestDto` enforces BCP-47 language code patterns via Pydantic v2 `pattern=`.
+3. **CSRF & Security Headers**: Cross-site browser mutations (`Sec-Fetch-Site: cross-site`) are rejected on state-changing proxy routes, and standard security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Strict-Transport-Security`) are attached to responses.

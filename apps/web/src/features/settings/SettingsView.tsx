@@ -3,8 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Card, ErrorState, InlineAlert, LoadingState } from '@lingua/ui';
 import { Save } from 'lucide-react';
-import { PERSISTENCE_GAPS, type ApiErrorCode } from '@lingua/types';
+import { PERSISTENCE_GAPS, type ApiClient, type ApiErrorCode } from '@lingua/types';
 import { AccountSecurityCard } from './AccountSecurityCard';
+import { useSettingsPersistence } from './useSettingsPersistence';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -25,6 +26,7 @@ export interface UserSettingsData {
 }
 
 export interface SettingsViewProps {
+  apiClient?: ApiClient;
   initialSettings?: Partial<UserSettingsData>;
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
   forcedErrorCode?: ApiErrorCode;
@@ -35,17 +37,76 @@ function isThemeMode(value: string | null): value is ThemeMode {
   return value === 'light' || value === 'dark' || value === 'system';
 }
 
-export function SettingsView({ initialSettings, forcedState = 'success', forcedErrorCode = 'INTERNAL_ERROR', onSaveSettings }: SettingsViewProps) {
+function getStoredUserSettings(): {
+  newWordsBudgetPerDay?: number;
+  reducedMotion?: boolean;
+  audioAutoplay?: boolean;
+} {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem('lingua-user-settings-v1');
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // Ignore invalid JSON in localStorage
+  }
+  return {};
+}
+
+function Switch({ checked, onClick, label }: { checked: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-label={label}
+      aria-checked={checked}
+      onClick={onClick}
+      className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${checked ? 'justify-end bg-[var(--action-primary)]' : 'justify-start bg-[var(--border-default)]'}`}
+    >
+      <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+    </button>
+  );
+}
+
+export function SettingsView({
+  apiClient,
+  initialSettings,
+  forcedState = 'success',
+  forcedErrorCode = 'INTERNAL_ERROR',
+  onSaveSettings,
+}: SettingsViewProps) {
+  const persistence = useSettingsPersistence({
+    ...(apiClient ? { apiClient } : {}),
+    enabled: forcedState === 'success' && !initialSettings,
+  });
   const [dailyMinutes, setDailyMinutes] = useState<number>(initialSettings?.dailyTargetMinutes ?? 25);
-  const [newWordsBudget, setNewWordsBudget] = useState<number>(initialSettings?.newWordsBudgetPerDay ?? 4);
+  const [newWordsBudget, setNewWordsBudget] = useState<number>(() => {
+    if (initialSettings?.newWordsBudgetPerDay !== undefined) return initialSettings.newWordsBudgetPerDay;
+    const stored = getStoredUserSettings();
+    return typeof stored.newWordsBudgetPerDay === 'number' ? stored.newWordsBudgetPerDay : 4;
+  });
   const [theme, setTheme] = useState<ThemeMode>(initialSettings?.theme ?? 'light');
-  const [reducedMotion, setReducedMotion] = useState<boolean>(initialSettings?.reducedMotion ?? false);
-  const [audioAutoplay, setAudioAutoplay] = useState<boolean>(initialSettings?.audioAutoplay ?? true);
+  const [reducedMotion, setReducedMotion] = useState<boolean>(() => {
+    if (initialSettings?.reducedMotion !== undefined) return initialSettings.reducedMotion;
+    const stored = getStoredUserSettings();
+    return typeof stored.reducedMotion === 'boolean' ? stored.reducedMotion : false;
+  });
+  const [audioAutoplay, setAudioAutoplay] = useState<boolean>(() => {
+    if (initialSettings?.audioAutoplay !== undefined) return initialSettings.audioAutoplay;
+    const stored = getStoredUserSettings();
+    return typeof stored.audioAutoplay === 'boolean' ? stored.audioAutoplay : true;
+  });
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDirtyRef = useRef(false);
+
+  useEffect(() => {
+    if (!isDirtyRef.current && persistence.persistedDailyMinutes !== null && !initialSettings?.dailyTargetMinutes) {
+      setDailyMinutes(persistence.persistedDailyMinutes);
+    }
+  }, [initialSettings?.dailyTargetMinutes, persistence.persistedDailyMinutes]);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem('lingua-theme');
@@ -71,6 +132,37 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
     return () => media.removeEventListener('change', onChange);
   }, [theme]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem('lingua-user-settings-v1');
+      if (stored) {
+        const parsed = JSON.parse(stored) as {
+          newWordsBudgetPerDay?: number;
+          reducedMotion?: boolean;
+          audioAutoplay?: boolean;
+        };
+        if (initialSettings?.newWordsBudgetPerDay === undefined && typeof parsed.newWordsBudgetPerDay === 'number') {
+          setNewWordsBudget(parsed.newWordsBudgetPerDay);
+        }
+        if (initialSettings?.reducedMotion === undefined && typeof parsed.reducedMotion === 'boolean') {
+          setReducedMotion(parsed.reducedMotion);
+        }
+        if (initialSettings?.audioAutoplay === undefined && typeof parsed.audioAutoplay === 'boolean') {
+          setAudioAutoplay(parsed.audioAutoplay);
+        }
+      }
+    } catch {
+      // Ignore corrupted localStorage
+    }
+  }, [initialSettings?.audioAutoplay, initialSettings?.newWordsBudgetPerDay, initialSettings?.reducedMotion]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.reducedMotion = reducedMotion ? 'true' : 'false';
+    }
+  }, [reducedMotion]);
+
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
@@ -78,10 +170,34 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
 
   const handleSave = () => {
     const updated: UserSettingsData = { dailyTargetMinutes: dailyMinutes, newWordsBudgetPerDay: newWordsBudget, theme, reducedMotion, audioAutoplay };
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(
+          'lingua-user-settings-v1',
+          JSON.stringify({
+            newWordsBudgetPerDay: newWordsBudget,
+            reducedMotion,
+            audioAutoplay,
+          })
+        );
+      } catch {
+        // Ignore localStorage write error
+      }
+    }
     onSaveSettings?.(updated);
     setSavedNotification('Giao diện đã được lưu trên thiết bị. Các tùy chọn còn lại hiện chỉ áp dụng trong phiên này.');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => { setSavedNotification(null); saveTimerRef.current = null; }, 3000);
+
+    if (persistence.isLive) {
+      void persistence.saveDailyMinutes(dailyMinutes).then((persisted) => {
+        if (persisted) {
+          setSavedNotification('Thời lượng học mỗi ngày đã được đồng bộ lên máy chủ và giao diện đã được lưu trên thiết bị.');
+          if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = setTimeout(() => { setSavedNotification(null); saveTimerRef.current = null; }, 3000);
+        }
+      });
+    }
   };
 
   const handleRetry = () => {
@@ -97,12 +213,6 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
     ? 'border-[var(--action-primary)]/25 bg-[var(--surface-blue)] text-[var(--action-primary)]'
     : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'}`;
 
-  const Switch = ({ checked, onClick, label }: { checked: boolean; onClick: () => void; label: string }) => (
-    <button type="button" role="switch" aria-label={label} aria-checked={checked} onClick={onClick} className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${checked ? 'justify-end bg-[var(--action-primary)]' : 'justify-start bg-[var(--border-default)]'}`}>
-      <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
-    </button>
-  );
-
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
       <header className="min-w-0">
@@ -112,6 +222,7 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
       </header>
 
       {savedNotification && <InlineAlert variant="success" title="Đã lưu">{savedNotification}</InlineAlert>}
+      {persistence.saveError && <InlineAlert variant="danger" title="Không thể lưu thời lượng học">{persistence.saveError.message}</InlineAlert>}
       <InlineAlert variant="info" title="Lưu tùy chọn">
         Giao diện được lưu trên thiết bị này. Mục tiêu học, ngân sách từ mới, giảm chuyển động và tự phát âm chưa được lưu lâu dài.
       </InlineAlert>
@@ -136,7 +247,22 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
                   </div>
                   <span className="shrink-0 rounded-full bg-[var(--surface-blue)] px-3 py-1.5 text-xs font-extrabold text-[var(--action-primary)]">{dailyMinutes} phút / ngày</span>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">{[10, 20, 25, 45].map((mins) => <button key={mins} type="button" onClick={() => setDailyMinutes(mins)} className={optionClass(dailyMinutes === mins)}>{mins} phút</button>)}</div>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[10, 20, 25, 45].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => {
+                        isDirtyRef.current = true;
+                        setDailyMinutes(mins);
+                        persistence.setDailyMinutes(mins);
+                      }}
+                      className={optionClass(dailyMinutes === mins)}
+                    >
+                      {mins} phút
+                    </button>
+                  ))}
+                </div>
               </section>
 
               <section className="min-w-0">
@@ -147,7 +273,18 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
                   </div>
                   <span className="shrink-0 rounded-full bg-[var(--accent-teal-soft)] px-3 py-1.5 text-xs font-extrabold text-[var(--accent-teal-strong)]">{newWordsBudget} từ mới / ngày</span>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">{[2, 4, 6, 8].map((count) => <button key={count} type="button" onClick={() => setNewWordsBudget(count)} className={optionClass(newWordsBudget === count)}>{count} từ</button>)}</div>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[2, 4, 6, 8].map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => setNewWordsBudget(count)}
+                      className={optionClass(newWordsBudget === count)}
+                    >
+                      {count} từ
+                    </button>
+                  ))}
+                </div>
               </section>
             </div>
           </Card>
@@ -158,7 +295,18 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
             <div className="mt-5 space-y-1">
               <div className="border-b border-[var(--border-subtle)] py-4">
                 <span className="text-sm font-bold text-[var(--text-primary)]">Chế độ hiển thị</span>
-                <div className="mt-3 grid grid-cols-3 gap-2">{(['light', 'dark', 'system'] as const).map((t) => <button key={t} type="button" onClick={() => setTheme(t)} className={optionClass(theme === t)}>{t === 'light' ? 'Sáng' : t === 'dark' ? 'Tối' : 'Hệ thống'}</button>)}</div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {(['light', 'dark', 'system'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTheme(t)}
+                      className={optionClass(theme === t)}
+                    >
+                      {t === 'light' ? 'Sáng' : t === 'dark' ? 'Tối' : 'Hệ thống'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[var(--border-subtle)] py-4">
@@ -180,7 +328,16 @@ export function SettingsView({ initialSettings, forcedState = 'success', forcedE
           </Card>
 
           <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-card)] md:static md:flex md:justify-end md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-            <Button className="w-full md:w-auto" variant="primary" size="md" leftIcon={<Save className="h-4 w-4" />} onClick={handleSave}>Lưu cài đặt</Button>
+            <Button
+              className="w-full md:w-auto"
+              variant="primary"
+              size="md"
+              leftIcon={<Save className="h-4 w-4" />}
+              disabled={persistence.isSaving}
+              onClick={() => { void handleSave(); }}
+            >
+              Lưu cài đặt
+            </Button>
           </div>
         </div>
       </div>

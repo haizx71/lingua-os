@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -86,15 +86,18 @@ export function OnboardingDiagnostic({
 }: OnboardingDiagnosticProps) {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [currentSelectedOption, setCurrentSelectedOption] = useState<number | null>(null);
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
 
   const isCompleted = currentStep >= questions.length;
   const currentQuestion = questions[currentStep];
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = useCallback(() => {
     if (currentSelectedOption === null) return;
 
+    const updatedAnswers = [...selectedAnswers, currentSelectedOption];
+    setSelectedAnswers(updatedAnswers);
     setCurrentSelectedOption(null);
 
     const nextStep = currentStep + 1;
@@ -102,23 +105,65 @@ export function OnboardingDiagnostic({
 
     if (nextStep >= questions.length && onComplete) {
       const estimate = mockLanguageProfile.startingLevelEstimate;
+      const count = Math.max(updatedAnswers.length, estimate.evidenceCount);
       onComplete({
         estimatedLevel: estimate.level.code,
         confidence: estimate.confidenceBand,
-        evidenceCount: estimate.evidenceCount,
+        evidenceCount: count,
         assessedSkills: estimate.assessedSkills,
         methodVersion: estimate.methodVersion,
       });
     }
-  };
+  }, [currentSelectedOption, selectedAnswers, currentStep, questions.length, onComplete]);
 
   const handleRetry = () => {
     setCurrentState('loading');
     setTimeout(() => {
       setCurrentState('success');
       setCurrentStep(0);
+      setSelectedAnswers([]);
+      setCurrentSelectedOption(null);
     }, 400);
   };
+
+  useEffect(() => {
+    if (currentState !== 'success' || isCompleted || !currentQuestion) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const optionMap: Record<string, number> = {
+        '1': 0, 'a': 0,
+        '2': 1, 'b': 1,
+        '3': 2, 'c': 2,
+        '4': 3, 'd': 3,
+      };
+
+      if (key in optionMap) {
+        const optionIndex = optionMap[key];
+        if (optionIndex < currentQuestion.options.length) {
+          event.preventDefault();
+          setCurrentSelectedOption(optionIndex);
+        }
+      } else if (event.key === 'Enter') {
+        if (currentSelectedOption !== null) {
+          event.preventDefault();
+          handleNextQuestion();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentState, isCompleted, currentQuestion, currentSelectedOption, handleNextQuestion]);
 
   if (currentState === 'loading') {
     return <LoadingState message="Đang chuẩn bị câu hỏi kiểm tra năng lực khởi điểm..." count={3} />;
@@ -192,19 +237,35 @@ export function OnboardingDiagnostic({
                 key={idx}
                 type="button"
                 onClick={() => setCurrentSelectedOption(idx)}
-                className={`p-4 rounded-xl border text-left font-medium text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] min-h-[52px] ${
+                className={`group flex items-center justify-between p-4 rounded-xl border text-left font-medium text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] min-h-[52px] ${
                   currentSelectedOption === idx
                     ? 'bg-[var(--status-info-bg)] border-[var(--action-primary)] text-[var(--action-primary)] ring-2 ring-[var(--focus-ring)]'
-                    : 'bg-[var(--surface)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
+                    : 'bg-[var(--surface)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--action-primary)]/40 hover:bg-[var(--surface-subtle)]'
                 }`}
               >
-                <span className="inline-block w-6 text-[var(--text-muted)] font-mono">
-                  {String.fromCharCode(65 + idx)}.
-                </span>
-                <span>{opt}</span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-6 text-[var(--text-muted)] font-mono">
+                    {String.fromCharCode(65 + idx)}.
+                  </span>
+                  <span>{opt}</span>
+                </div>
+                <kbd
+                  aria-hidden="true"
+                  className={`ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-lg border px-1.5 font-mono text-[11px] font-bold ${
+                    currentSelectedOption === idx
+                      ? 'border-[var(--action-primary)]/30 bg-[var(--action-primary)] text-white'
+                      : 'border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {idx + 1}
+                </kbd>
               </button>
             ))}
           </div>
+
+          <p className="text-xs text-[var(--text-muted)]">
+            Mẹo: Nhấn phím 1–4 (hoặc A–D) để chọn nhanh và Enter để tiếp tục
+          </p>
 
           {/* Action Button */}
           <div className="pt-4 border-t border-[var(--border-subtle)] flex justify-end">
@@ -236,7 +297,7 @@ export function OnboardingDiagnostic({
                 A2 Elementary
               </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                Độ tin cậy: <span className="font-semibold text-[var(--status-success)]">Vừa</span> • 12 bằng chứng
+                Độ tin cậy: <span className="font-semibold text-[var(--status-success)]">Vừa</span> • {Math.max(selectedAnswers.length, mockLanguageProfile.startingLevelEstimate.evidenceCount)} bằng chứng
               </p>
             </div>
           </div>

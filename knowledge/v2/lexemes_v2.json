@@ -1,0 +1,1865 @@
+{
+  "schemaVersion": "2.0.0",
+  "lexemes": [
+    {
+      "canonicalKey": "word:achieve:verb",
+      "lemma": "achieve",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:advantage:noun",
+      "lemma": "advantage",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:advice:noun",
+      "lemma": "advice",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:afternoon:noun",
+      "lemma": "afternoon",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:airport:noun",
+      "lemma": "airport",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:alternative:noun",
+      "lemma": "alternative",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:answer:noun",
+      "lemma": "answer",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:apologize:verb",
+      "lemma": "apologize",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:apple:noun",
+      "lemma": "apple",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:appointment:noun",
+      "lemma": "appointment",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:arrive:verb",
+      "lemma": "arrive",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:ask:verb",
+      "lemma": "ask",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:attitude:noun",
+      "lemma": "attitude",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:available:adjective",
+      "lemma": "available",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:avoid:verb",
+      "lemma": "avoid",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:bad:adjective",
+      "lemma": "bad",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:bag:noun",
+      "lemma": "bag",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:bank:noun",
+      "lemma": "bank",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:bank:noun:finance",
+      "lemma": "bank",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:bank:noun:river",
+      "lemma": "bank",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:be:verb",
+      "lemma": "be",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:bed:noun",
+      "lemma": "bed",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:benefit:noun",
+      "lemma": "benefit",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:big:adjective",
+      "lemma": "big",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:bill:noun",
+      "lemma": "bill",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:book:noun",
+      "lemma": "book",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:book:noun:reading",
+      "lemma": "book",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:book:verb:reservation",
+      "lemma": "book",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:borrow:verb",
+      "lemma": "borrow",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:bread:noun",
+      "lemma": "bread",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:breakfast:noun",
+      "lemma": "breakfast",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:budget:noun",
+      "lemma": "budget",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:bus:noun",
+      "lemma": "bus",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:busy:adjective",
+      "lemma": "busy",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:buy:verb",
+      "lemma": "buy",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:calendar:noun",
+      "lemma": "calendar",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:call:verb",
+      "lemma": "call",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:cancel:verb",
+      "lemma": "cancel",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:card:noun",
+      "lemma": "card",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:careful:adjective",
+      "lemma": "careful",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:chair:noun",
+      "lemma": "chair",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:challenge:noun",
+      "lemma": "challenge",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:change:noun:difference",
+      "lemma": "change",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:change:noun:money-back",
+      "lemma": "change",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:change:verb",
+      "lemma": "change",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:change:verb:modify",
+      "lemma": "change",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:change:verb:transfer",
+      "lemma": "change",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:charge:noun:price",
+      "lemma": "charge",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:charge:noun:responsibility",
+      "lemma": "charge",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:cheap:adjective",
+      "lemma": "cheap",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:check:verb",
+      "lemma": "check",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:check:verb:inspect",
+      "lemma": "check",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:check:verb:luggage",
+      "lemma": "check",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:child:noun",
+      "lemma": "child",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:choice:noun",
+      "lemma": "choice",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:choose:verb",
+      "lemma": "choose",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:city:noun",
+      "lemma": "city",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:classmate:noun",
+      "lemma": "classmate",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:clean:adjective",
+      "lemma": "clean",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:clear:adjective",
+      "lemma": "clear",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:close:verb",
+      "lemma": "close",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:clothes:noun",
+      "lemma": "clothes",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:coffee:noun",
+      "lemma": "coffee",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:cold:adjective",
+      "lemma": "cold",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:collaborate:verb",
+      "lemma": "collaborate",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:colleague:noun",
+      "lemma": "colleague",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:come:verb",
+      "lemma": "come",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:comfortable:adjective",
+      "lemma": "comfortable",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:community:noun",
+      "lemma": "community",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:company:noun",
+      "lemma": "company",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:compare:verb",
+      "lemma": "compare",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:complain:verb",
+      "lemma": "complain",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:confidence:noun",
+      "lemma": "confidence",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:confident:adjective",
+      "lemma": "confident",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:confirm:verb",
+      "lemma": "confirm",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:consider:verb",
+      "lemma": "consider",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:context:noun",
+      "lemma": "context",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:continue:verb",
+      "lemma": "continue",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:convenient:adjective",
+      "lemma": "convenient",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:crowded:adjective",
+      "lemma": "crowded",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:cup:noun",
+      "lemma": "cup",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:customer:noun",
+      "lemma": "customer",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:day:noun",
+      "lemma": "day",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:deadline:noun",
+      "lemma": "deadline",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:decide:verb",
+      "lemma": "decide",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:decision:noun",
+      "lemma": "decision",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:delay:noun",
+      "lemma": "delay",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:depend:verb",
+      "lemma": "depend",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:describe:verb",
+      "lemma": "describe",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:difference:noun",
+      "lemma": "difference",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:difficult:adjective",
+      "lemma": "difficult",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:dinner:noun",
+      "lemma": "dinner",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:disadvantage:noun",
+      "lemma": "disadvantage",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:discount:noun",
+      "lemma": "discount",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:doctor:noun",
+      "lemma": "doctor",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:door:noun",
+      "lemma": "door",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:drink:verb",
+      "lemma": "drink",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:early:adverb",
+      "lemma": "early",
+      "partOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:easy:adjective",
+      "lemma": "easy",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:eat:verb",
+      "lemma": "eat",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:effective:adjective",
+      "lemma": "effective",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:efficient:adjective",
+      "lemma": "efficient",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:effort:noun",
+      "lemma": "effort",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:email:noun",
+      "lemma": "email",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:enough:determiner",
+      "lemma": "enough",
+      "partOfSpeech": "determiner",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:essential:adjective",
+      "lemma": "essential",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:evening:noun",
+      "lemma": "evening",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:evidence:noun",
+      "lemma": "evidence",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:exercise:noun",
+      "lemma": "exercise",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:expect:verb",
+      "lemma": "expect",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:expensive:adjective",
+      "lemma": "expensive",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:experience:noun",
+      "lemma": "experience",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:explain:verb",
+      "lemma": "explain",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:familiar:adjective",
+      "lemma": "familiar",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:family:noun",
+      "lemma": "family",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:fast:adjective",
+      "lemma": "fast",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:father:noun",
+      "lemma": "father",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:feedback:noun",
+      "lemma": "feedback",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:fine:adjective:well-ok",
+      "lemma": "fine",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:fine:noun:penalty",
+      "lemma": "fine",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:finish:verb",
+      "lemma": "finish",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:flexible:adjective",
+      "lemma": "flexible",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:flight:noun",
+      "lemma": "flight",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:focus:verb",
+      "lemma": "focus",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:food:noun",
+      "lemma": "food",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:forget:verb",
+      "lemma": "forget",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:free:adjective",
+      "lemma": "free",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:free:adjective:available",
+      "lemma": "free",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:free:adjective:no-cost",
+      "lemma": "free",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:friend:noun",
+      "lemma": "friend",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:go:verb",
+      "lemma": "go",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:goal:noun",
+      "lemma": "goal",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:good:adjective",
+      "lemma": "good",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:habit:noun",
+      "lemma": "habit",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:happy:adjective",
+      "lemma": "happy",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:have:verb",
+      "lemma": "have",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:health:noun",
+      "lemma": "health",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:help:verb",
+      "lemma": "help",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:here:adverb",
+      "lemma": "here",
+      "partOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:hesitate:verb",
+      "lemma": "hesitate",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:home:noun",
+      "lemma": "home",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:hospital:noun",
+      "lemma": "hospital",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:hot:adjective",
+      "lemma": "hot",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:hotel:noun",
+      "lemma": "hotel",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:hour:noun",
+      "lemma": "hour",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:hungry:adjective",
+      "lemma": "hungry",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:impact:noun",
+      "lemma": "impact",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:important:adjective",
+      "lemma": "important",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:improve:verb",
+      "lemma": "improve",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:in:preposition",
+      "lemma": "in",
+      "partOfSpeech": "preposition",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:independent:adjective",
+      "lemma": "independent",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:issue:noun",
+      "lemma": "issue",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:issue:noun:problem",
+      "lemma": "issue",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:issue:noun:topic",
+      "lemma": "issue",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:job:noun",
+      "lemma": "job",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:journey:noun",
+      "lemma": "journey",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:know:verb",
+      "lemma": "know",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:late:adjective",
+      "lemma": "late",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:leave:verb",
+      "lemma": "leave",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:left:noun",
+      "lemma": "left",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:lend:verb",
+      "lemma": "lend",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:lesson:noun",
+      "lemma": "lesson",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:light:adjective:weight",
+      "lemma": "light",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:light:noun:brightness",
+      "lemma": "light",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:like:verb",
+      "lemma": "like",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:listen:verb",
+      "lemma": "listen",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:local:adjective",
+      "lemma": "local",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:look:verb",
+      "lemma": "look",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:luggage:noun",
+      "lemma": "luggage",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:lunch:noun",
+      "lemma": "lunch",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:manage:verb",
+      "lemma": "manage",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:manager:noun",
+      "lemma": "manager",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:map:noun",
+      "lemma": "map",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:market:noun",
+      "lemma": "market",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:medicine:noun",
+      "lemma": "medicine",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:meet:verb",
+      "lemma": "meet",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:meeting:noun",
+      "lemma": "meeting",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:menu:noun",
+      "lemma": "menu",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:message:noun",
+      "lemma": "message",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:milk:noun",
+      "lemma": "milk",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:minute:noun",
+      "lemma": "minute",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:mistake:noun",
+      "lemma": "mistake",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:money:noun",
+      "lemma": "money",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:month:noun",
+      "lemma": "month",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:morning:noun",
+      "lemma": "morning",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:mother:noun",
+      "lemma": "mother",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:name:noun",
+      "lemma": "name",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:near:preposition",
+      "lemma": "near",
+      "partOfSpeech": "preposition",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:necessary:adjective",
+      "lemma": "necessary",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:new:adjective",
+      "lemma": "new",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:night:noun",
+      "lemma": "night",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:notice:verb",
+      "lemma": "notice",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:offer:verb",
+      "lemma": "offer",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:office:noun",
+      "lemma": "office",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:old:adjective",
+      "lemma": "old",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:on:preposition",
+      "lemma": "on",
+      "partOfSpeech": "preposition",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:online:adjective",
+      "lemma": "online",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:open:verb",
+      "lemma": "open",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:opinion:noun",
+      "lemma": "opinion",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:opportunity:noun",
+      "lemma": "opportunity",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:order:noun:request",
+      "lemma": "order",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:order:noun:sequence",
+      "lemma": "order",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:organize:verb",
+      "lemma": "organize",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:participate:verb",
+      "lemma": "participate",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:passenger:noun",
+      "lemma": "passenger",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:pay:verb",
+      "lemma": "pay",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:pen:noun",
+      "lemma": "pen",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:person:noun",
+      "lemma": "person",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:phone:noun",
+      "lemma": "phone",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:plan:noun",
+      "lemma": "plan",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:point:noun:idea",
+      "lemma": "point",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:point:noun:location-time",
+      "lemma": "point",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:polite:adjective",
+      "lemma": "polite",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:possible:adjective",
+      "lemma": "possible",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:practical:adjective",
+      "lemma": "practical",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:practice:verb",
+      "lemma": "practice",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:prepare:verb",
+      "lemma": "prepare",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:present:adjective:attending",
+      "lemma": "present",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:present:verb:show-talk",
+      "lemma": "present",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:pressure:noun",
+      "lemma": "pressure",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:price:noun",
+      "lemma": "price",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:priority:noun",
+      "lemma": "priority",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:problem:noun",
+      "lemma": "problem",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:progress:noun",
+      "lemma": "progress",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:project:noun",
+      "lemma": "project",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:question:noun",
+      "lemma": "question",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:quiet:adjective",
+      "lemma": "quiet",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:rain:noun",
+      "lemma": "rain",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:read:verb",
+      "lemma": "read",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:ready:adjective",
+      "lemma": "ready",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:realize:verb",
+      "lemma": "realize",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:reason:noun",
+      "lemma": "reason",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:receipt:noun",
+      "lemma": "receipt",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:recommend:verb",
+      "lemma": "recommend",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:reduce:verb",
+      "lemma": "reduce",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:regular:adjective",
+      "lemma": "regular",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:reliable:adjective",
+      "lemma": "reliable",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:remember:verb",
+      "lemma": "remember",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:remind:verb",
+      "lemma": "remind",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:require:verb",
+      "lemma": "require",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:requirement:noun",
+      "lemma": "requirement",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:responsibility:noun",
+      "lemma": "responsibility",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:restaurant:noun",
+      "lemma": "restaurant",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:result:noun",
+      "lemma": "result",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:rice:noun",
+      "lemma": "rice",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:right:adjective:correct",
+      "lemma": "right",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:right:noun",
+      "lemma": "right",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:right:noun:direction",
+      "lemma": "right",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:right:noun:entitlement",
+      "lemma": "right",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:room:noun",
+      "lemma": "room",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:run:verb:manage-operate",
+      "lemma": "run",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:run:verb:move-fast",
+      "lemma": "run",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:save:verb",
+      "lemma": "save",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:save:verb:keep-money-time",
+      "lemma": "save",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:save:verb:store-data",
+      "lemma": "save",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:schedule-conflict:noun",
+      "lemma": "schedule-conflict",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:schedule:noun",
+      "lemma": "schedule",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:school:noun",
+      "lemma": "school",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:screen:noun",
+      "lemma": "screen",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:send:verb",
+      "lemma": "send",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:share:verb",
+      "lemma": "share",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:shirt:noun",
+      "lemma": "shirt",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:shop:noun",
+      "lemma": "shop",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:skill:noun",
+      "lemma": "skill",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:sleep:verb",
+      "lemma": "sleep",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:slow:adjective",
+      "lemma": "slow",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:small:adjective",
+      "lemma": "small",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:solution:noun",
+      "lemma": "solution",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:solve:verb",
+      "lemma": "solve",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:speak:verb",
+      "lemma": "speak",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:specific:adjective",
+      "lemma": "specific",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:spend:verb",
+      "lemma": "spend",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:start:verb",
+      "lemma": "start",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:station:noun",
+      "lemma": "station",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:stop:noun",
+      "lemma": "stop",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:strategy:noun",
+      "lemma": "strategy",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:street:noun",
+      "lemma": "street",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:student:noun",
+      "lemma": "student",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:study:verb",
+      "lemma": "study",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:succeed:verb",
+      "lemma": "succeed",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:suggest:verb",
+      "lemma": "suggest",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:suitable:adjective",
+      "lemma": "suitable",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:summarize:verb",
+      "lemma": "summarize",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:support:verb",
+      "lemma": "support",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:symptom:noun",
+      "lemma": "symptom",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:table:noun",
+      "lemma": "table",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:tea:noun",
+      "lemma": "tea",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:teacher:noun",
+      "lemma": "teacher",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:there:adverb",
+      "lemma": "there",
+      "partOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:ticket:noun",
+      "lemma": "ticket",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:time:noun",
+      "lemma": "time",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:tired:adjective",
+      "lemma": "tired",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:today:adverb",
+      "lemma": "today",
+      "partOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:tomorrow:adverb",
+      "lemma": "tomorrow",
+      "partOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:train:noun",
+      "lemma": "train",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:trust:noun",
+      "lemma": "trust",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_B1"
+    },
+    {
+      "canonicalKey": "word:update:verb",
+      "lemma": "update",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:useful:adjective",
+      "lemma": "useful",
+      "partOfSpeech": "adjective",
+      "curriculumBand": "LINGUA_A2"
+    },
+    {
+      "canonicalKey": "word:usually:adverb",
+      "lemma": "usually",
+      "partOfSpeech": "adverb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:wait:verb",
+      "lemma": "wait",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:walk:verb",
+      "lemma": "walk",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:want:verb",
+      "lemma": "want",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:water:noun",
+      "lemma": "water",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:weather:noun",
+      "lemma": "weather",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:week:noun",
+      "lemma": "week",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:weekend:noun",
+      "lemma": "weekend",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:window:noun",
+      "lemma": "window",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:work:noun",
+      "lemma": "work",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A1"
+    },
+    {
+      "canonicalKey": "word:write:verb",
+      "lemma": "write",
+      "partOfSpeech": "verb",
+      "curriculumBand": "LINGUA_A0"
+    },
+    {
+      "canonicalKey": "word:year:noun",
+      "lemma": "year",
+      "partOfSpeech": "noun",
+      "curriculumBand": "LINGUA_A0"
+    }
+  ]
+}

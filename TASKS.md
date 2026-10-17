@@ -705,21 +705,19 @@ remains manually BLOCKED until explicit Frontend/frontend authorization after th
 
 ### TASK-014 — Progress API
 Owner: BACKEND
-Status: BACKLOG
+Status: DONE
 Dependencies: TASK-006A, TASK-006D, TASK-008, TASK-010, TASK-012
 
 Expose evidence-based progress summaries without XP-first metrics.
-*Before runtime, freeze the authoritative definitions for Memory Health, successful learning day,
-target learning days, minutes, strengthened concepts and review-retention bucketing. Brain state,
-Reader progress, Today completion and Progress trends must remain separate authorities.*
+*Implemented in `services/api/src/lingua_api/progress/` (`GET /v1/progress/overview`, `operationId: getProgressOverview`) strictly matching `contracts/openapi.yaml`. Queries read-only projections across `user_languages`, `learner_profiles`, `assessment_attempts`, `assessment_results`, `v_learner_concept_retrievability`, `today_plans`, `today_plan_activities`, `exposure_events`, `reader_exposure_concepts`, `review_events`, `review_items`, and `user_skill_states` with server-side actor authority, anti-IDOR 404 boundaries, and defensive `ZoneInfo` fallback to UTC. Verified by `tests/backend/test_progress_domain.py`, `tests/backend/test_progress_models.py`, and real PostgreSQL integration suite `tests/backend/database/test_progress_api.py`.*
 
 ### TASK-015 — Progress UI
 Owner: FRONTEND
-Status: BLOCKED
+Status: DONE
 Dependencies: TASK-005, TASK-014
 
 Implement Progress according to the UI spec.
-*Note: UI analytics and evidence breakdown complete; marked BLOCKED pending Backend implementation of TASK-014.*
+*Connected `ProgressAnalytics.tsx` (`useProgressOverview.ts` with 7-day `week` and 30-day `month` window selector), `ProfileView.tsx` (`useLearnerProfile.ts` orchestrating `getMe`, `getBrainSummary`, and `getProgressOverview`), `SettingsView.tsx` (`useSettingsPersistence.ts` persisting `dailyMinutes` via `PATCH /v1/me/languages/{id}` with child `If-Match` ETag and `Idempotency-Key` and hydration dirty-state protection), and `LanguageBrainCanvas.tsx` (`forgotten` status filter chip). Verified by `tests/frontend/task015-progress-profile-live.test.tsx`, `tests/frontend/settings-brain-followup.test.tsx`, and 658/658 passing frontend tests across 51 files.*
 
 ## FRLL acceptance checkpoint
 
