@@ -20,6 +20,14 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [selectedCefr, setSelectedCefr] = useState<'ALL' | 'A1' | 'A2' | 'B1'>('ALL');
+  const [recentSearches, setRecentSearches] = useState<string[]>(['morning', 'practice']);
+
+  const recordSearchTerm = (term: string) => {
+    const clean = term.trim();
+    if (!clean) return;
+    setRecentSearches((prev) => [clean, ...prev.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 5));
+  };
 
   const handlePlayAudio = (id: string, text?: string, rate: number = 1) => {
     setPlayingAudioId(id);
@@ -52,7 +60,12 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   );
   const ungroupedResults = visibleLemmaGroups === null
     ? []
-    : discovery.results.filter((concept) => !groupedConceptIds.has(concept.id));
+    : discovery.results
+        .filter((concept) => !groupedConceptIds.has(concept.id))
+        .filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr);
+  const visibleDirectResults = discovery.lemmaGroups === null
+    ? discovery.results.filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr)
+    : [];
 
   const renderSaveAction = (conceptId: string, term: string, serverSaysSaved = false) => {
     if (serverSaysSaved || discovery.isSaved(conceptId)) {
@@ -72,7 +85,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
 
   if (currentState === 'loading') return <LoadingState message="Đang nạp dữ liệu từ điển và tra cứu ngữ cảnh..." count={3} />;
   if (currentState === 'error') return <ErrorState code={errorCode} onRetry={handleRetry} />;
-  if (currentState === 'empty') return <EmptyState title="Không tìm thấy từ vựng" description="Không có kết quả nào khớp với từ khóa tìm kiếm của bạn." actionLabel="Xóa bộ lọc" onAction={discovery.clearSearch} />;
+  if (currentState === 'empty') return <EmptyState title="Không tìm thấy từ vựng" description="Không có kết quả nào khớp với từ khóa tìm kiếm của bạn." actionLabel="Xóa bộ lọc" onAction={() => { discovery.clearSearch(); setSelectedCefr('ALL'); }} />;
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
@@ -97,6 +110,91 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             {discovery.searchQuery && <button type="button" onClick={discovery.clearSearch} className="absolute right-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" aria-label="Xóa từ khóa tìm kiếm"><X className="h-4 w-4" /></button>}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]"><span className="rounded-full bg-white/80 px-3 py-1.5">Nghĩa tiếng Việt</span><span className="rounded-full bg-white/80 px-3 py-1.5">IPA & từ loại</span><span className="rounded-full bg-white/80 px-3 py-1.5">Ví dụ ngữ cảnh</span></div>
+
+          <div data-testid="dictionary-starter-chips" className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium text-[var(--text-muted)]">Gợi ý:</span>
+            {(['appointment', 'available', 'schedule', 'tea'] as const).map((word) => (
+              <button
+                key={word}
+                type="button"
+                onClick={() => {
+                  discovery.setSearchQuery(word);
+                  recordSearchTerm(word);
+                }}
+                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-1 text-xs font-semibold text-[var(--action-primary)] transition-all hover:bg-[var(--action-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              >
+                {word}
+              </button>
+            ))}
+          </div>
+
+          {recentSearches.length > 0 && (
+            <div
+              data-testid="dictionary-recent-searches"
+              className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3.5 py-2"
+            >
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs font-semibold text-[var(--text-muted)]">
+                  🕒 Tra cứu gần đây:
+                </span>
+                {recentSearches.map((term) => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => {
+                      discovery.setSearchQuery(term);
+                      recordSearchTerm(term);
+                    }}
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--action-primary)] hover:text-[var(--action-primary)]"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                data-testid="dictionary-clear-history"
+                onClick={() => setRecentSearches([])}
+                className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                Xóa lịch sử
+              </button>
+            </div>
+          )}
+
+          <div
+            data-testid="dictionary-cefr-filter"
+            role="group"
+            aria-label="Lọc theo cấp độ CEFR"
+            className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--border-subtle)]/70 pt-3 text-xs"
+          >
+            <span className="mr-1 font-semibold text-[var(--text-muted)]">Cấp độ CEFR:</span>
+            {(
+              [
+                { value: 'ALL', label: 'Tất cả' },
+                { value: 'A1', label: 'A1' },
+                { value: 'A2', label: 'A2' },
+                { value: 'B1', label: 'B1' },
+              ] as const
+            ).map((level) => {
+              const active = selectedCefr === level.value;
+              return (
+                <button
+                  key={level.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedCefr(level.value)}
+                  className={`rounded-xl px-3 py-1 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                    active
+                      ? 'bg-[var(--action-primary)] text-white shadow-xs'
+                      : 'border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface)]'
+                  }`}
+                >
+                  {level.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -244,13 +342,13 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
               <div className="mt-4 flex justify-end">{renderSaveAction(concept.id, concept.term)}</div>
             </Card>
           ))}
-          {visibleLemmaGroups.length === 0 && ungroupedResults.length === 0 && <div><EmptyState title="Không tìm thấy từ vựng" description="Không có kết quả nào khớp với từ khóa tìm kiếm của bạn." actionLabel="Xóa bộ lọc" onAction={discovery.clearSearch} /></div>}
+          {visibleLemmaGroups.length === 0 && ungroupedResults.length === 0 && <div><EmptyState title="Không tìm thấy từ vựng" description="Không có kết quả nào khớp với từ khóa tìm kiếm của bạn." actionLabel="Xóa bộ lọc" onAction={() => { discovery.clearSearch(); setSelectedCefr('ALL'); }} /></div>}
         </div>
       )}
 
       {!discovery.isSearching && discovery.lemmaGroups === null && (
         <div className="grid min-w-0 grid-cols-1 gap-3">
-          {discovery.results.map((concept) => (
+          {visibleDirectResults.map((concept) => (
             <Card key={concept.id} padding="lg" className="min-w-0 overflow-hidden rounded-[26px]">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
@@ -306,7 +404,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
               </div>
             </Card>
           ))}
-          {discovery.results.length === 0 && <div className="xl:col-span-2"><EmptyState title="Không tìm thấy từ vựng" description="Không có kết quả nào khớp với từ khóa tìm kiếm của bạn." actionLabel="Xóa bộ lọc" onAction={discovery.clearSearch} /></div>}
+          {visibleDirectResults.length === 0 && <div className="xl:col-span-2"><EmptyState title="Không tìm thấy từ vựng" description="Không có kết quả nào khớp với từ khóa tìm kiếm của bạn." actionLabel="Xóa bộ lọc" onAction={() => { discovery.clearSearch(); setSelectedCefr('ALL'); }} /></div>}
         </div>
       )}
     </div>

@@ -34,6 +34,8 @@ function savedLabel(savedAt: string): string {
 export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorCode = 'INTERNAL_ERROR' }: LibraryViewProps) {
   const [activeTab, setActiveTab] = useState<LibraryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'default' | 'az'>('default');
+  const [copiedExport, setCopiedExport] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
 
   const presentationItems = forcedState ? (initialItems ?? []) : initialItems;
@@ -76,9 +78,25 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
     window.setTimeout(() => setPlayingKey((curr) => (curr === key ? null : curr)), 1200);
   };
 
+  const handleExportCopy = async () => {
+    try {
+      const textToExport = visibleItems
+        .map((item) => (item.itemType === 'concept' ? item.canonicalForm : item.itemType === 'sentence' ? item.text : item.title))
+        .join('\n');
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(textToExport);
+      }
+      setCopiedExport(true);
+      window.setTimeout(() => setCopiedExport(false), 1500);
+    } catch {
+      setCopiedExport(true);
+      window.setTimeout(() => setCopiedExport(false), 1500);
+    }
+  };
+
   const tabItems = library.items.filter((item) => activeTab === 'all' || item.itemType === activeTab);
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const visibleItems = normalizedQuery
+  const filteredItems = normalizedQuery
     ? tabItems.filter((item) => {
         if (item.itemType === 'concept') {
           return (
@@ -102,6 +120,14 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
         return false;
       })
     : tabItems;
+
+  const visibleItems = sortOrder === 'az'
+    ? [...filteredItems].sort((a, b) => {
+        const textA = a.itemType === 'concept' ? a.canonicalForm : a.itemType === 'sentence' ? a.text : a.title;
+        const textB = b.itemType === 'concept' ? b.canonicalForm : b.itemType === 'sentence' ? b.text : b.title;
+        return textA.localeCompare(textB);
+      })
+    : filteredItems;
 
   const count = (filter: LibraryFilter) =>
     filter === 'all'
@@ -130,7 +156,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       </header>
 
       {status !== 'loading' && status !== 'error' && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="group" aria-label="Lọc thư viện">
             {tabs.map((tab) => (
               <button
@@ -147,26 +173,52 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
             ))}
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm từ, câu hoặc bài đọc..."
-              aria-label="Tìm kiếm trong thư viện"
-              className="min-h-11 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-10 pr-9 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--action-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-            />
-            {searchQuery && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm từ, câu hoặc bài đọc..."
+                aria-label="Tìm kiếm trong thư viện"
+                className="min-h-11 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-10 pr-9 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--action-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  aria-label="Xóa tìm kiếm"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                aria-label="Xóa tìm kiếm"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                data-testid="library-sort-toggle"
+                onClick={() => setSortOrder((prev) => (prev === 'default' ? 'az' : 'default'))}
+                className="min-h-11 shrink-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3.5 py-2 text-xs font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               >
-                <X className="h-4 w-4" />
+                {sortOrder === 'az' ? 'Sắp xếp: A → Z' : 'Sắp xếp: Mặc định'}
               </button>
-            )}
+
+              <button
+                type="button"
+                data-testid="library-export-copy"
+                onClick={() => void handleExportCopy()}
+                className={`min-h-11 shrink-0 rounded-2xl border px-3.5 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                  copiedExport
+                    ? 'border-[var(--status-success-border,#D1FAE5)] bg-[var(--status-success-bg,#ECFDF5)] text-[var(--status-success,#059669)]'
+                    : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--action-primary)] hover:bg-[var(--surface-subtle)]'
+                }`}
+              >
+                {copiedExport ? 'Đã sao chép danh sách' : 'Sao chép danh sách'}
+              </button>
+            </div>
           </div>
         </div>
       )}

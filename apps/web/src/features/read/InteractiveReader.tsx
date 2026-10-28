@@ -35,6 +35,21 @@ export interface InteractiveReaderProps {
   readonly onSaveWord?: (token: TokenItem) => void;
 }
 
+function getConceptTokenHighlightClass(status?: TokenItem['status']): string {
+  switch (status as string | undefined) {
+    case 'mastered':
+      return 'border-emerald-500/50 bg-emerald-500/12 text-[var(--text-primary)] hover:bg-emerald-500/20';
+    case 'learning':
+    case 'reviewing':
+      return 'border-amber-500/60 bg-amber-500/15 text-[var(--text-primary)] hover:bg-amber-500/25';
+    case 'weak':
+    case 'forgotten':
+      return 'border-rose-500/60 bg-rose-500/15 text-[var(--text-primary)] hover:bg-rose-500/25';
+    default:
+      return 'border-[var(--action-primary)]/55 bg-[var(--surface-lilac)] text-[var(--text-primary)] hover:bg-[var(--action-secondary)]';
+  }
+}
+
 export function InteractiveReader({
   apiClient,
   passage: initialPassage,
@@ -46,16 +61,45 @@ export function InteractiveReader({
   const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
-  const [speechRate, setSpeechRate] = useState<1 | 0.75>(1);
+  const [speechRate, setSpeechRate] = useState<1 | 0.75>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem('lingua-user-settings-v1');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.defaultSpeechRate === 0.75) return 0.75;
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+    return 1;
+  });
   const [quickLookupToken, setQuickLookupToken] = useState<TokenItem | null>(null);
   const fullAudioTimerRef = useRef<number | null>(null);
   const [savedWordNotice, setSavedWordNotice] = useState<string | null>(null);
   const [revealedSentenceIds, setRevealedSentenceIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [revealedRecallIds, setRevealedRecallIds] = useState<Set<string>>(() => new Set());
   const [usesSampleTransport, setUsesSampleTransport] = useState(false);
   const lastNotifiedSaveRef = useRef<string | null>(null);
   const inspectorCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const inspectorWasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('lingua-user-settings-v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.defaultSpeechRate === 0.75) {
+          setSpeechRate(0.75);
+        }
+      }
+    } catch {
+      // Ignore localStorage read errors
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -82,8 +126,24 @@ export function InteractiveReader({
     reader.closeInspector();
   }, [reader.closeInspector]);
 
+  const recallConcepts = React.useMemo(() => {
+    const seen = new Set<string>();
+    const list: TokenItem[] = [];
+    for (const s of passage?.sentences ?? []) {
+      for (const t of s.tokens) {
+        if (t.conceptId && !seen.has(t.conceptId)) {
+          seen.add(t.conceptId);
+          list.push(t);
+          if (list.length >= 3) return list;
+        }
+      }
+    }
+    return list;
+  }, [passage]);
+
   useEffect(() => {
     setRevealedSentenceIds(new Set());
+    setRevealedRecallIds(new Set());
     setSavedWordNotice(null);
     setQuickLookupToken(null);
     lastNotifiedSaveRef.current = null;
@@ -227,6 +287,35 @@ export function InteractiveReader({
     window.setTimeout(() => setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr)), 1000);
   };
 
+  const handleShadowSentence = (sentenceId: string, text: string) => {
+    setPlayingSentenceId(sentenceId);
+    if (
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      typeof window.SpeechSynthesisUtterance === 'function' &&
+      text.trim()
+    ) {
+      try {
+        window.speechSynthesis.cancel();
+        const normalUtterance = new window.SpeechSynthesisUtterance(text);
+        normalUtterance.lang = 'en-US';
+        normalUtterance.rate = 1;
+        const slowUtterance = new window.SpeechSynthesisUtterance(text);
+        slowUtterance.lang = 'en-US';
+        slowUtterance.rate = 0.75;
+        slowUtterance.onend = () => setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr));
+        slowUtterance.onerror = () => setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr));
+        window.speechSynthesis.speak(normalUtterance);
+        window.speechSynthesis.speak(slowUtterance);
+      } catch {
+        // ignore speech synthesis errors
+      }
+    }
+    window.setTimeout(() => {
+      setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr));
+    }, 1800);
+  };
+
   const selectedToken = activeToken;
   const selectedSentence = selectedToken?.sentenceId
     ? passage.sentences.find((sentence) => sentence.id === selectedToken.sentenceId)
@@ -366,20 +455,22 @@ export function InteractiveReader({
                       key={sentence.id}
                       data-testid="reader-sentence"
                       data-sentence-id={sentence.id}
-                      className="min-w-0 space-y-1.5 py-1"
+                      data-playing={playingSentenceId === sentence.id ? 'true' : 'false'}
+                      className={`min-w-0 space-y-1.5 rounded-2xl py-1.5 transition-all ${playingSentenceId === sentence.id ? 'bg-[var(--surface-lilac)]/55 px-3 ring-2 ring-[var(--action-primary)]/35' : ''}`}
                     >
                       <p className="reader-copy break-words text-[1.18rem] text-[var(--text-primary)] sm:text-[1.3rem]">
                         {sentence.tokens.map((token, tokenIndex) => token.conceptId ? (
                           <React.Fragment key={`${sentence.id}:${tokenIndex}`}>
                             <button
                               type="button"
+                              data-concept-status={token.status ?? 'unseen'}
                               aria-describedby={token.status ? `reader-token-status-${sentence.id}-${tokenIndex}` : undefined}
                               onClick={(event) => {
                                 setQuickLookupToken(null);
                                 inspectorTriggerRef.current = event.currentTarget;
                                 void reader.inspectToken(token);
                               }}
-                              className="mx-0.5 inline break-words rounded-md border-b-2 border-[var(--action-primary)]/55 bg-[var(--surface-lilac)] px-1 font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--action-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                              className={`mx-0.5 inline break-words rounded-md border-b-2 px-1 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] ${getConceptTokenHighlightClass(token.status)}`}
                             >
                               {token.raw}
                             </button>
@@ -442,6 +533,21 @@ export function InteractiveReader({
                             </Button>
                             <Button
                               variant="ghost"
+                              size="sm"
+                              data-testid="reader-shadowing-button"
+                              aria-label={`Nhại lại câu ${sentenceNumber}`}
+                              title="Nghe 1.0x rồi 0.75x để đọc nhại theo (Shadowing)"
+                              onClick={() =>
+                                handleShadowSentence(
+                                  sentence.id,
+                                  sentence.tokens.map((t) => t.raw).join(''),
+                                )
+                              }
+                            >
+                              🗣️ Nhại lại
+                            </Button>
+                            <Button
+                              variant="ghost"
                               size="icon"
                               aria-label={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
                               title={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
@@ -489,15 +595,58 @@ export function InteractiveReader({
         </div>
 
         {passage.progress?.isCompleted && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 px-4 py-3">
-            <p className="text-sm text-[var(--text-secondary)]">Bài đọc đã hoàn thành. Bạn có thể xem hoạt động trong kế hoạch hôm nay.</p>
-            <Link
-              href="/today"
-              prefetch={false}
-              className="inline-flex min-h-11 items-center rounded-lg font-semibold text-[var(--action-primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            >
-              Xem kế hoạch hôm nay
-            </Link>
+          <div className="mt-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-[var(--text-secondary)]">Bài đọc đã hoàn thành. Bạn có thể xem hoạt động trong kế hoạch hôm nay.</p>
+              <Link
+                href="/today"
+                prefetch={false}
+                className="inline-flex min-h-11 items-center rounded-lg font-semibold text-[var(--action-primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              >
+                Xem kế hoạch hôm nay
+              </Link>
+            </div>
+            {recallConcepts.length > 0 && (
+              <div
+                data-testid="reader-completion-recall"
+                className="mt-3 border-t border-[var(--border-subtle)] pt-3"
+              >
+                <p className="text-xs font-bold text-[var(--text-primary)]">
+                  ⚡ Kiểm tra trí nhớ nhanh sau bài đọc (Chạm để lật nghĩa):
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {recallConcepts.map((item) => {
+                    const cid = item.conceptId!;
+                    const isRevealed = revealedRecallIds.has(cid);
+                    const fallbackEntry = lookupBeginnerWord(item.lemma ?? item.raw);
+                    const meaning = item.translationVi ?? fallbackEntry?.meaningVi ?? 'Đã lưu trong bài';
+                    return (
+                      <button
+                        key={cid}
+                        type="button"
+                        data-testid={`reader-recall-chip-${cid}`}
+                        onClick={() =>
+                          setRevealedRecallIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(cid)) next.delete(cid);
+                            else next.add(cid);
+                            return next;
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--action-primary)]"
+                      >
+                        <span>{item.lemma ?? item.raw}</span>
+                        {isRevealed ? (
+                          <span className="text-[var(--action-primary)]">→ {meaning}</span>
+                        ) : (
+                          <span className="text-[var(--text-muted)]">(Chạm xem nghĩa)</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

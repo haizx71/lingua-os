@@ -757,8 +757,8 @@ export const BEGINNER_LEXICON: Readonly<Record<string, BeginnerWordEntry>> = {
   },
   work: {
     lemma: 'work',
-    posVi: 'Danh từ',
-    meaningVi: 'công việc, làm việc',
+    posVi: 'Động từ',
+    meaningVi: 'làm việc, công việc',
     ipa: '/wɜːk/',
     pronTipVi: 'Âm ơ dài, bật k',
   },
@@ -885,8 +885,8 @@ export const BEGINNER_LEXICON: Readonly<Record<string, BeginnerWordEntry>> = {
   },
   step: {
     lemma: 'step',
-    posVi: 'Danh từ',
-    meaningVi: 'bước chân, bậc thang',
+    posVi: 'Động từ',
+    meaningVi: 'bước đi, dẫm chân, bước chân',
     ipa: '/step/',
     pronTipVi: 'Âm st- và e, bật p',
   },
@@ -1060,6 +1060,496 @@ export const BEGINNER_LEXICON: Readonly<Record<string, BeginnerWordEntry>> = {
     ipa: '/hɪz/',
     pronTipVi: 'Âm i ngắn, kết thúc z',
   },
+
+  // High-Frequency Beginner Base Verbs
+  go: {
+    lemma: 'go',
+    posVi: 'Động từ',
+    meaningVi: 'đi, di chuyển',
+    ipa: '/ɡəʊ/',
+    pronTipVi: 'Âm g và ôu: gôu',
+  },
+  come: {
+    lemma: 'come',
+    posVi: 'Động từ',
+    meaningVi: 'đến, tới',
+    ipa: '/kʌm/',
+    pronTipVi: 'Âm k-ă-m: căm',
+  },
+  feel: {
+    lemma: 'feel',
+    posVi: 'Động từ',
+    meaningVi: 'cảm thấy, cảm giác',
+    ipa: '/fiːl/',
+    pronTipVi: 'Âm f, i dài và cong lưỡi l: fiil',
+  },
+  eat: {
+    lemma: 'eat',
+    posVi: 'Động từ',
+    meaningVi: 'ăn',
+    ipa: '/iːt/',
+    pronTipVi: 'Âm i dài, bật t cuối: iit',
+  },
+  say: {
+    lemma: 'say',
+    posVi: 'Động từ',
+    meaningVi: 'nói, bảo',
+    ipa: '/seɪ/',
+    pronTipVi: 'Âm s và ei: sêi',
+  },
+  have: {
+    lemma: 'have',
+    posVi: 'Động từ',
+    meaningVi: 'có, dùng',
+    ipa: '/hæv/',
+    pronTipVi: 'Âm h, a bẹt và kết thúc bằng v: hæv',
+  },
+  has: {
+    lemma: 'have',
+    posVi: 'Động từ',
+    meaningVi: 'có, dùng (ngôi thứ 3 số ít)',
+    ipa: '/hæz/',
+    pronTipVi: 'Âm h, a bẹt và kết thúc bằng z',
+  },
+  do: {
+    lemma: 'do',
+    posVi: 'Động từ',
+    meaningVi: 'làm, thực hiện',
+    ipa: '/duː/',
+    pronTipVi: 'Âm d và u dài: đu',
+  },
+  does: {
+    lemma: 'do',
+    posVi: 'Động từ',
+    meaningVi: 'làm, thực hiện (ngôi thứ 3 số ít)',
+    ipa: '/dʌz/',
+    pronTipVi: 'Âm d và á-z: đăz',
+  },
+  take: {
+    lemma: 'take',
+    posVi: 'Động từ',
+    meaningVi: 'cầm, lấy, mang theo',
+    ipa: '/teɪk/',
+    pronTipVi: 'Âm t, ei và bật nhẹ k: têik',
+  },
+  make: {
+    lemma: 'make',
+    posVi: 'Động từ',
+    meaningVi: 'làm, tạo ra, pha chế',
+    ipa: '/meɪk/',
+    pronTipVi: 'Âm m, ei và bật nhẹ k: mêik',
+  },
+  find: {
+    lemma: 'find',
+    posVi: 'Động từ',
+    meaningVi: 'tìm thấy, nhận ra',
+    ipa: '/faɪnd/',
+    pronTipVi: 'Âm f, ai và kết thúc nd: faind',
+  },
+  tell: {
+    lemma: 'tell',
+    posVi: 'Động từ',
+    meaningVi: 'kể, bảo, nói với',
+    ipa: '/tel/',
+    pronTipVi: 'Âm t, e và cong lưỡi l: tel',
+  },
+  know: {
+    lemma: 'know',
+    posVi: 'Động từ',
+    meaningVi: 'biết, hiểu',
+    ipa: '/nəʊ/',
+    pronTipVi: 'Chữ k câm, đọc n-ôu: nôu',
+  },
+  think: {
+    lemma: 'think',
+    posVi: 'Động từ',
+    meaningVi: 'nghĩ, suy nghĩ',
+    ipa: '/θɪŋk/',
+    pronTipVi: 'Đặt lưỡi giữa răng âm th, kết thúc ngk',
+  },
+  leave: {
+    lemma: 'leave',
+    posVi: 'Động từ',
+    meaningVi: 'rời đi, để lại',
+    ipa: '/liːv/',
+    pronTipVi: 'Âm l, i dài và kết thúc v: liiv',
+  },
+  give: {
+    lemma: 'give',
+    posVi: 'Động từ',
+    meaningVi: 'cho, đưa, tặng',
+    ipa: '/ɡɪv/',
+    pronTipVi: 'Âm g, i ngắn và kết thúc v: giv',
+  },
+  keep: {
+    lemma: 'keep',
+    posVi: 'Động từ',
+    meaningVi: 'giữ, tiếp tục',
+    ipa: '/kiːp/',
+    pronTipVi: 'Âm k, i dài và mím môi bật p: kiip',
+  },
+  stand: {
+    lemma: 'stand',
+    posVi: 'Động từ',
+    meaningVi: 'đứng',
+    ipa: '/stænd/',
+    pronTipVi: 'Âm st- đầu, a bẹt và kết thúc nd: stænd',
+  },
+  hold: {
+    lemma: 'hold',
+    posVi: 'Động từ',
+    meaningVi: 'cầm, nắm, giữ',
+    ipa: '/həʊld/',
+    pronTipVi: 'Âm h, ôu và kết thúc ld: hôuld',
+  },
+  put: {
+    lemma: 'put',
+    posVi: 'Động từ',
+    meaningVi: 'đặt, để',
+    ipa: '/pʊt/',
+    pronTipVi: 'Âm p, u ngắn và bật t: put',
+  },
+  set: {
+    lemma: 'set',
+    posVi: 'Động từ',
+    meaningVi: 'đặt, sắp xếp, chuẩn bị',
+    ipa: '/set/',
+    pronTipVi: 'Âm s, e ngắn và bật t: set',
+  },
+  read: {
+    lemma: 'read',
+    posVi: 'Động từ',
+    meaningVi: 'đọc',
+    ipa: '/riːd/',
+    pronTipVi: 'Âm r, i dài và bật nhẹ d: riid',
+  },
+  write: {
+    lemma: 'write',
+    posVi: 'Động từ',
+    meaningVi: 'viết',
+    ipa: '/raɪt/',
+    pronTipVi: 'Chữ w câm, âm r, ai và bật t: rait',
+  },
+  run: {
+    lemma: 'run',
+    posVi: 'Động từ',
+    meaningVi: 'chạy',
+    ipa: '/rʌn/',
+    pronTipVi: 'Âm r và ă-n: răn',
+  },
+  bring: {
+    lemma: 'bring',
+    posVi: 'Động từ',
+    meaningVi: 'mang lại, mang theo',
+    ipa: '/brɪŋ/',
+    pronTipVi: 'Âm br- đầu và kết thúc ng: brinh',
+  },
+  buy: {
+    lemma: 'buy',
+    posVi: 'Động từ',
+    meaningVi: 'mua',
+    ipa: '/baɪ/',
+    pronTipVi: 'Âm b và ai: bai',
+  },
+  hear: {
+    lemma: 'hear',
+    posVi: 'Động từ',
+    meaningVi: 'nghe thấy',
+    ipa: '/hɪər/',
+    pronTipVi: 'Âm h, i-ơ và uốn lưỡi r: hi-ờ',
+  },
+  get: {
+    lemma: 'get',
+    posVi: 'Động từ',
+    meaningVi: 'nhận, có được, trở nên',
+    ipa: '/ɡet/',
+    pronTipVi: 'Âm g, e ngắn và bật t: get',
+  },
+  ask: {
+    lemma: 'ask',
+    posVi: 'Động từ',
+    meaningVi: 'hỏi, yêu cầu',
+    ipa: '/ɑːsk/',
+    pronTipVi: 'Âm a dài và xì s-k: aask',
+  },
+  fall: {
+    lemma: 'fall',
+    posVi: 'Động từ',
+    meaningVi: 'rơi, ngã',
+    ipa: '/fɔːl/',
+    pronTipVi: 'Âm f, o dài và cong lưỡi l: fool',
+  },
+  laugh: {
+    lemma: 'laugh',
+    posVi: 'Động từ',
+    meaningVi: 'cười, cười lớn',
+    ipa: '/lɑːf/',
+    pronTipVi: 'Âm l, a dài và kết thúc bằng f: laaf',
+  },
+  sweep: {
+    lemma: 'sweep',
+    posVi: 'Động từ',
+    meaningVi: 'quét (nhà)',
+    ipa: '/swiːp/',
+    pronTipVi: 'Âm sw- đầu, i dài và mím môi bật p: swiip',
+  },
+  pour: {
+    lemma: 'pour',
+    posVi: 'Động từ',
+    meaningVi: 'rót, đổ (nước)',
+    ipa: '/pɔːr/',
+    pronTipVi: 'Âm p, o dài và uốn lưỡi r: poor',
+  },
+  smell: {
+    lemma: 'smell',
+    posVi: 'Động từ',
+    meaningVi: 'ngửi thấy, có mùi thơm',
+    ipa: '/smel/',
+    pronTipVi: 'Âm sm- đầu, e và cong lưỡi l: smel',
+  },
+  hug: {
+    lemma: 'hug',
+    posVi: 'Động từ',
+    meaningVi: 'ôm, ôm chặt',
+    ipa: '/hʌɡ/',
+    pronTipVi: 'Âm h, ă và kết thúc g nhẹ: hăg',
+  },
+  lift: {
+    lemma: 'lift',
+    posVi: 'Động từ',
+    meaningVi: 'nâng lên, nhấc lên',
+    ipa: '/lɪft/',
+    pronTipVi: 'Âm l, i ngắn và kết thúc ft: lift',
+  },
+  clear: {
+    lemma: 'clear',
+    posVi: 'Động từ',
+    meaningVi: 'dọn dẹp, làm sạch, làm sáng tỏ',
+    ipa: '/klɪər/',
+    pronTipVi: 'Âm kl- đầu, i-ơ và uốn lưỡi r: kli-ờ',
+  },
+  wash: {
+    lemma: 'wash',
+    posVi: 'Động từ',
+    meaningVi: 'rửa, giặt',
+    ipa: '/wɒʃ/',
+    pronTipVi: 'Âm w, o ngắn và kết thúc sh chu môi: wosh',
+  },
+  nod: {
+    lemma: 'nod',
+    posVi: 'Động từ',
+    meaningVi: 'gật đầu',
+    ipa: '/nɒd/',
+    pronTipVi: 'Âm n, o ngắn và bật d: nod',
+  },
+  pass: {
+    lemma: 'pass',
+    posVi: 'Động từ',
+    meaningVi: 'chuyển qua, đi qua, vượt qua',
+    ipa: '/pɑːs/',
+    pronTipVi: 'Âm p, a dài và xì s: paas',
+  },
+  turn: {
+    lemma: 'turn',
+    posVi: 'Động từ',
+    meaningVi: 'xoay, rẽ, quay lại',
+    ipa: '/tɜːn/',
+    pronTipVi: 'Âm t, ơ dài uốn lưỡi và n: tơn',
+  },
+  draw: {
+    lemma: 'draw',
+    posVi: 'Động từ',
+    meaningVi: 'vẽ, kéo',
+    ipa: '/drɔː/',
+    pronTipVi: 'Âm dr- đầu và o dài tròn môi: droo',
+  },
+  add: {
+    lemma: 'add',
+    posVi: 'Động từ',
+    meaningVi: 'thêm vào, cộng',
+    ipa: '/æd/',
+    pronTipVi: 'Âm a bẹt và bật nhẹ d: æd',
+  },
+  send: {
+    lemma: 'send',
+    posVi: 'Động từ',
+    meaningVi: 'gửi đi',
+    ipa: '/send/',
+    pronTipVi: 'Âm s, e ngắn và kết thúc nd: send',
+  },
+};
+
+export const IRREGULAR_VERB_MAP: Readonly<Record<string, { base: string; noteVi: string }>> = {
+  went: { base: 'go', noteVi: 'Quá khứ của go (đi)' },
+  gone: { base: 'go', noteVi: 'Quá khứ phân từ của go (đã đi / đã hết)' },
+  drank: { base: 'drink', noteVi: 'Quá khứ của drink (uống)' },
+  saw: { base: 'see', noteVi: 'Quá khứ của see (nhìn thấy)' },
+  came: { base: 'come', noteVi: 'Quá khứ của come (đến)' },
+  felt: { base: 'feel', noteVi: 'Quá khứ của feel (cảm thấy)' },
+  ate: { base: 'eat', noteVi: 'Quá khứ của eat (ăn)' },
+  said: { base: 'say', noteVi: 'Quá khứ của say (nói)' },
+  had: { base: 'have', noteVi: 'Quá khứ của have (có / dùng)' },
+  took: { base: 'take', noteVi: 'Quá khứ của take (lấy / cầm / mang)' },
+  made: { base: 'make', noteVi: 'Quá khứ của make (làm / pha chế)' },
+  found: { base: 'find', noteVi: 'Quá khứ của find (tìm thấy)' },
+  sat: { base: 'sit', noteVi: 'Quá khứ của sit (ngồi)' },
+  met: { base: 'meet', noteVi: 'Quá khứ của meet (gặp gỡ)' },
+  told: { base: 'tell', noteVi: 'Quá khứ của tell (kể / bảo)' },
+  knew: { base: 'know', noteVi: 'Quá khứ của know (biết)' },
+  thought: { base: 'think', noteVi: 'Quá khứ của think (nghĩ)' },
+  left: { base: 'leave', noteVi: 'Quá khứ của leave (rời đi / để lại)' },
+  gave: { base: 'give', noteVi: 'Quá khứ của give (đưa / tặng)' },
+  kept: { base: 'keep', noteVi: 'Quá khứ của keep (giữ)' },
+  stood: { base: 'stand', noteVi: 'Quá khứ của stand (đứng)' },
+  held: { base: 'hold', noteVi: 'Quá khứ của hold (cầm / giữ)' },
+  wrote: { base: 'write', noteVi: 'Quá khứ của write (viết)' },
+  ran: { base: 'run', noteVi: 'Quá khứ của run (chạy)' },
+  brought: { base: 'bring', noteVi: 'Quá khứ của bring (mang theo)' },
+  heard: { base: 'hear', noteVi: 'Quá khứ của hear (nghe thấy)' },
+  got: { base: 'get', noteVi: 'Quá khứ của get (nhận / trở nên / xuống xe)' },
+  woke: { base: 'wake', noteVi: 'Quá khứ của wake (thức dậy)' },
+  bought: { base: 'buy', noteVi: 'Quá khứ của buy (mua)' },
+  fell: { base: 'fall', noteVi: 'Quá khứ của fall (rơi / ngã)' },
+  swept: { base: 'sweep', noteVi: 'Quá khứ của sweep (quét dọn)' },
+  sent: { base: 'send', noteVi: 'Quá khứ của send (gửi)' },
+  drew: { base: 'draw', noteVi: 'Quá khứ của draw (vẽ / kéo)' },
+  did: { base: 'do', noteVi: 'Quá khứ của do (làm)' },
+};
+
+export const CONTRACTION_MAP: Readonly<Record<string, BeginnerWordEntry>> = {
+  "don't": {
+    lemma: "do not (don't)",
+    posVi: 'Trợ động từ phủ định',
+    meaningVi: 'không (viết tắt của do not)',
+    ipa: '/dəʊnt/',
+    pronTipVi: 'Đọc nối âm: ĐÔN-t',
+  },
+  "doesn't": {
+    lemma: "does not (doesn't)",
+    posVi: 'Trợ động từ phủ định',
+    meaningVi: 'không (viết tắt của does not)',
+    ipa: '/ˈdʌz.ənt/',
+    pronTipVi: 'Nhấn âm 1: ĐẮZ-ừnt',
+  },
+  "didn't": {
+    lemma: "did not (didn't)",
+    posVi: 'Trợ động từ quá khứ',
+    meaningVi: 'đã không (viết tắt của did not)',
+    ipa: '/ˈdɪd.ənt/',
+    pronTipVi: 'Nhấn âm 1: ĐÍT-đừn',
+  },
+  "can't": {
+    lemma: "cannot (can't)",
+    posVi: 'Động từ khuyết thiếu',
+    meaningVi: 'không thể (viết tắt của cannot)',
+    ipa: '/kɑːnt/',
+    pronTipVi: 'Âm a kéo dài, bật t: KAAN-t',
+  },
+  "won't": {
+    lemma: "will not (won't)",
+    posVi: 'Động từ khuyết thiếu',
+    meaningVi: 'sẽ không (viết tắt của will not)',
+    ipa: '/wəʊnt/',
+    pronTipVi: 'Đọc nối âm: UÔUN-t',
+  },
+  "it's": {
+    lemma: "it is (it's)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'nó là / trời đang (viết tắt của it is / it has)',
+    ipa: '/ɪts/',
+    pronTipVi: 'Âm i ngắn, xì ts: ÍT-s',
+  },
+  "i'm": {
+    lemma: "I am (I'm)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'tôi là / tôi đang (viết tắt của I am)',
+    ipa: '/aɪm/',
+    pronTipVi: 'Âm ai mím môi: AIM',
+  },
+  "she's": {
+    lemma: "she is (she's)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'cô ấy là / cô ấy có (viết tắt của she is / she has)',
+    ipa: '/ʃiːz/',
+    pronTipVi: 'Âm sh chu môi, i dài và z: SHII-z',
+  },
+  "he's": {
+    lemma: "he is (he's)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'anh ấy là / anh ấy có (viết tắt của he is / he has)',
+    ipa: '/hiːz/',
+    pronTipVi: 'Âm h, i dài và z: HII-z',
+  },
+  "they're": {
+    lemma: "they are (they're)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'họ là / họ đang (viết tắt của they are)',
+    ipa: '/ðeər/',
+    pronTipVi: 'Đặt lưỡi giữa răng, đọc ĐE-ờ',
+  },
+  "we're": {
+    lemma: "we are (we're)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'chúng tôi là / chúng ta đang (viết tắt của we are)',
+    ipa: '/wɪər/',
+    pronTipVi: 'Âm qui-ờ: UY-ờ',
+  },
+  "you're": {
+    lemma: "you are (you're)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'bạn là / bạn đang (viết tắt của you are)',
+    ipa: '/jɔːr/',
+    pronTipVi: 'Đọc uốn lưỡi: IO-ờ',
+  },
+  "that's": {
+    lemma: "that is (that's)",
+    posVi: 'Cụm đại từ + động từ',
+    meaningVi: 'đó là / điều đó thì (viết tắt của that is)',
+    ipa: '/ðæts/',
+    pronTipVi: 'Đặt lưỡi giữa răng, xì ts: ĐÁT-s',
+  },
+  "there's": {
+    lemma: "there is (there's)",
+    posVi: 'Cụm trạng từ + động từ',
+    meaningVi: 'có / hiện diện (viết tắt của there is / there has)',
+    ipa: '/ðeəz/',
+    pronTipVi: 'Đặt lưỡi giữa răng, âm z: ĐE-ờz',
+  },
+  "isn't": {
+    lemma: "is not (isn't)",
+    posVi: 'Động từ to be phủ định',
+    meaningVi: 'không phải, không là (viết tắt của is not)',
+    ipa: '/ˈɪz.ənt/',
+    pronTipVi: 'Nhấn âm 1: ÍZ-ừnt',
+  },
+  "aren't": {
+    lemma: "are not (aren't)",
+    posVi: 'Động từ to be phủ định',
+    meaningVi: 'không phải, không là (viết tắt của are not)',
+    ipa: '/ɑːnt/',
+    pronTipVi: 'Âm a dài, bật t: AAN-t',
+  },
+  "wasn't": {
+    lemma: "was not (wasn't)",
+    posVi: 'Động từ to be quá khứ',
+    meaningVi: 'đã không phải (viết tắt của was not)',
+    ipa: '/ˈwɒz.ənt/',
+    pronTipVi: 'Nhấn âm 1: QUÁZ-ừnt',
+  },
+  "weren't": {
+    lemma: "were not (weren't)",
+    posVi: 'Động từ to be quá khứ',
+    meaningVi: 'đã không phải (viết tắt của were not)',
+    ipa: '/wɜːnt/',
+    pronTipVi: 'Âm ơ kéo dài, bật t: QUƠN-t',
+  },
+  "let's": {
+    lemma: "let us (let's)",
+    posVi: 'Cụm từ gợi ý',
+    meaningVi: 'chúng ta hãy (viết tắt của let us)',
+    ipa: '/lets/',
+    pronTipVi: 'Âm e ngắn, xì ts: LET-s',
+  },
 };
 
 const POS_VI_MAP: Readonly<Record<string, string>> = {
@@ -1075,33 +1565,57 @@ const POS_VI_MAP: Readonly<Record<string, string>> = {
 
 /**
  * Look up a word or token in the curated beginner lexicon.
- * Normalizes punctuation and lowercases, with fallback stem matching for plurals and conjugations.
+ * Normalizes punctuation and lowercases, with fallback stem matching for plurals, conjugations,
+ * irregular verb forms, and contractions.
  */
 export function lookupBeginnerWord(rawWord: string): BeginnerWordEntry | null {
   if (!rawWord) {
     return null;
   }
-  const normalized = rawWord.toLowerCase().replace(/[^a-z']/g, '');
-  if (!normalized) {
+  const clean = rawWord
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[^a-z']/g, '')
+    .replace(/^'+|'+$/g, '');
+  if (!clean) {
     return null;
   }
 
-  const direct = BEGINNER_LEXICON[normalized];
+  // 1. Common English contractions (don't, doesn't, it's, i'm, etc.)
+  const contraction = CONTRACTION_MAP[clean];
+  if (contraction) {
+    return contraction;
+  }
+
+  // 2. Common irregular verbs (went -> go, drank -> drink, saw -> see, etc.)
+  const irregular = IRREGULAR_VERB_MAP[clean];
+  if (irregular) {
+    const baseEntry = BEGINNER_LEXICON[irregular.base];
+    if (baseEntry) {
+      return {
+        ...baseEntry,
+        meaningVi: `${baseEntry.meaningVi} (${irregular.noteVi})`,
+      };
+    }
+  }
+
+  // 3. Direct lookup in curated lexicon
+  const direct = BEGINNER_LEXICON[clean];
   if (direct) {
     return direct;
   }
 
   // Trailing 's
-  if (normalized.endsWith("'s") && normalized.length > 2) {
-    const stem = normalized.slice(0, -2);
+  if (clean.endsWith("'s") && clean.length > 2) {
+    const stem = clean.slice(0, -2);
     if (BEGINNER_LEXICON[stem]) {
       return BEGINNER_LEXICON[stem];
     }
   }
 
   // Trailing -ing
-  if (normalized.endsWith('ing') && normalized.length > 4) {
-    const stem1 = normalized.slice(0, -3);
+  if (clean.endsWith('ing') && clean.length > 4) {
+    const stem1 = clean.slice(0, -3);
     if (BEGINNER_LEXICON[stem1]) {
       return BEGINNER_LEXICON[stem1];
     }
@@ -1112,40 +1626,40 @@ export function lookupBeginnerWord(rawWord: string): BeginnerWordEntry | null {
   }
 
   // Trailing -ed
-  if (normalized.endsWith('ed') && normalized.length > 3) {
-    const stem1 = normalized.slice(0, -2);
+  if (clean.endsWith('ed') && clean.length > 3) {
+    const stem1 = clean.slice(0, -2);
     if (BEGINNER_LEXICON[stem1]) {
       return BEGINNER_LEXICON[stem1];
     }
-    const stem2 = normalized.slice(0, -1);
+    const stem2 = clean.slice(0, -1);
     if (BEGINNER_LEXICON[stem2]) {
       return BEGINNER_LEXICON[stem2];
     }
   }
 
   // Trailing -ies
-  if (normalized.endsWith('ies') && normalized.length > 3) {
-    const stem = `${normalized.slice(0, -3)}y`;
+  if (clean.endsWith('ies') && clean.length > 3) {
+    const stem = `${clean.slice(0, -3)}y`;
     if (BEGINNER_LEXICON[stem]) {
       return BEGINNER_LEXICON[stem];
     }
   }
 
   // Trailing -es
-  if (normalized.endsWith('es') && normalized.length > 3) {
-    const stem1 = normalized.slice(0, -2);
+  if (clean.endsWith('es') && clean.length > 3) {
+    const stem1 = clean.slice(0, -2);
     if (BEGINNER_LEXICON[stem1]) {
       return BEGINNER_LEXICON[stem1];
     }
-    const stem2 = normalized.slice(0, -1);
+    const stem2 = clean.slice(0, -1);
     if (BEGINNER_LEXICON[stem2]) {
       return BEGINNER_LEXICON[stem2];
     }
   }
 
   // Trailing -s (excluding double s like pass, glass)
-  if (normalized.endsWith('s') && !normalized.endsWith('ss') && normalized.length > 2) {
-    const stem = normalized.slice(0, -1);
+  if (clean.endsWith('s') && !clean.endsWith('ss') && clean.length > 2) {
+    const stem = clean.slice(0, -1);
     if (BEGINNER_LEXICON[stem]) {
       return BEGINNER_LEXICON[stem];
     }

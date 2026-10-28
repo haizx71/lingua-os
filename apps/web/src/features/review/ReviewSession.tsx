@@ -60,6 +60,19 @@ function buildSpellingHint(term: string, meaningVi: string, level: number): stri
   return '';
 }
 
+export function computeIntervalPreview(
+  rating: 'again' | 'hard' | 'good' | 'easy',
+  status?: string,
+): string {
+  const isMature = status === 'mastered' || status === 'reviewing';
+  switch (rating) {
+    case 'again': return '< 10 phút';
+    case 'hard': return isMature ? '2 ngày' : '1 ngày';
+    case 'good': return isMature ? '7 ngày' : '3 ngày';
+    case 'easy': return isMature ? '14 ngày' : '6 ngày';
+  }
+}
+
 export interface ReviewSessionProps {
   initialQueue?: ReviewCardItem[];
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
@@ -287,6 +300,31 @@ export function ReviewSession({
     }
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!currentCard?.id || !currentCard?.term) return;
+    if (currentCard.exerciseMode === 'typing' || currentCard.exerciseMode === 'cloze') return;
+    if (currentCard.audioUrl || !canSynthesizeSpeech) return;
+
+    try {
+      const raw = window.localStorage.getItem('lingua-user-settings-v1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.audioAutoplay === true) {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(currentCard.term);
+        utterance.lang = 'en-US';
+        utterance.rate = parsed?.defaultSpeechRate === 0.75 ? 0.75 : 1;
+        setIsAudioPlaying(true);
+        utterance.onend = () => setIsAudioPlaying(false);
+        utterance.onerror = () => setIsAudioPlaying(false);
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch {
+      // Audio autoplay failure is non-fatal
+    }
+  }, [currentCard?.id, currentCard?.term, currentCard?.exerciseMode, currentCard?.audioUrl, canSynthesizeSpeech]);
+
   const isConfiguredMode = Boolean(apiClient || (authContext?.isConfigured && authContext?.authState === 'authenticated'));
 
   const handleRetry = () => {
@@ -403,7 +441,15 @@ export function ReviewSession({
       )}
 
       <div ref={sessionCardRef}>
-        <Card padding="none" className="relative overflow-hidden border-[var(--border-subtle)] shadow-[var(--shadow-card-hover)]">
+        <Card
+          key={currentCard.id}
+          data-testid="review-active-card"
+          data-card-flipped={isAnswerRevealed ? 'true' : 'false'}
+          padding="none"
+          className={`relative overflow-hidden border-[var(--border-subtle)] shadow-[var(--shadow-card-hover)] ${
+            !prefersReducedMotion ? 'transition-all duration-300' : ''
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4 sm:px-7">
             <div className="flex items-center gap-2">
               <Badge variant="neutral" size="sm">Thẻ {currentIndex + 1} / {queue.length}</Badge>
@@ -531,6 +577,15 @@ export function ReviewSession({
 
           <div className="border-t border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-5 sm:px-7">
             <p className="mb-3 text-center text-xs text-[var(--text-secondary)]">Chọn mức độ ghi nhớ để cập nhật lịch ôn:</p>
+            <div
+              data-testid="review-interval-preview"
+              className="mb-2 grid grid-cols-2 gap-2 text-center text-[11px] font-medium text-[var(--text-muted)] sm:grid-cols-4"
+            >
+              <span><kbd className="mr-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-1 font-mono text-[10px]">1</kbd>{computeIntervalPreview('again', currentCard.status)}</span>
+              <span><kbd className="mr-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-1 font-mono text-[10px]">2</kbd>{computeIntervalPreview('hard', currentCard.status)}</span>
+              <span><kbd className="mr-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-1 font-mono text-[10px]">3</kbd>{computeIntervalPreview('good', currentCard.status)}</span>
+              <span><kbd className="mr-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-1 font-mono text-[10px]">4</kbd>{computeIntervalPreview('easy', currentCard.status)}</span>
+            </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]" onClick={() => void submitRating('again', needsTextResponse ? responseText : undefined)}>Quên (Again)</Button>
               <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]" onClick={() => void submitRating('hard', needsTextResponse ? responseText : undefined)}>Khó (Hard)</Button>

@@ -60,6 +60,7 @@ export function TodayDashboard({
   initialPlan,
   initialTargetMinutes,
   initialCompletedMinutes,
+  initialStreakDays,
   forcedState,
   forcedErrorCode = 'INTERNAL_ERROR',
   apiClient,
@@ -131,6 +132,7 @@ export function TodayDashboard({
   const targetMinutes = initialTargetMinutes ?? effectivePlan.targetMinutes;
   const completedMinutes = initialCompletedMinutes ?? effectivePlan.completedMinutes;
   const progressPercent = targetMinutes > 0 ? Math.min(100, Math.round((completedMinutes / targetMinutes) * 100)) : 0;
+  const streakDays = initialStreakDays ?? (effectivePlan.completedActivitiesCount > 0 ? 1 : 0);
   const nextActivity = effectivePlan.activities.find((activity) => !activity.completed);
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
@@ -164,12 +166,33 @@ export function TodayDashboard({
               </Link>
             </div>
           ) : (
-            <div className="mt-5 rounded-2xl bg-[var(--status-success-bg)] p-4 text-sm font-semibold text-[var(--status-success)]">Bạn đã hoàn thành các hoạt động trong kế hoạch hôm nay.</div>
+            <div
+              data-testid="today-milestone-celebration"
+              className="mt-5 flex flex-col gap-3 rounded-2xl bg-[var(--status-success-bg)] p-4 text-sm font-semibold text-[var(--status-success)] sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span>Bạn đã hoàn thành các hoạt động trong kế hoạch hôm nay.</span>
+              <Link href="/read" className="inline-flex shrink-0">
+                <Button variant="outline" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>
+                  Đọc thêm bài mới
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
 
         <aside className="flex min-w-0 flex-col justify-between rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] p-5 sm:p-6">
-          <div><p className="lingua-kicker text-[var(--action-primary)]">Mục tiêu</p><p className="mt-2 text-4xl font-bold tracking-[-0.05em] text-[var(--text-primary)]">{targetMinutes}<span className="ml-1 text-base font-semibold text-[var(--text-secondary)]">phút</span></p><p className="mt-1 text-sm text-[var(--text-secondary)]">Thời lượng kế hoạch hôm nay</p></div>
+          <div>
+            <p className="lingua-kicker text-[var(--action-primary)]">Mục tiêu</p>
+            <p className="mt-2 text-4xl font-bold tracking-[-0.05em] text-[var(--text-primary)]">{targetMinutes}<span className="ml-1 text-base font-semibold text-[var(--text-secondary)]">phút</span></p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Thời lượng kế hoạch hôm nay</p>
+            <div
+              data-testid="today-streak-badge"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1 text-xs font-bold text-[var(--action-primary)]"
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{streakDays > 0 ? `Chuỗi học ${streakDays} ngày liên tiếp` : 'Bắt đầu chuỗi ngày học hôm nay'}</span>
+            </div>
+          </div>
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4 text-sm"><span className="text-[var(--text-secondary)]">Hoạt động hoàn tất</span><span className="font-bold text-[var(--text-primary)]">{effectivePlan.completedActivitiesCount} / {effectivePlan.totalActivitiesCount}</span></div>
         </aside>
       </section>

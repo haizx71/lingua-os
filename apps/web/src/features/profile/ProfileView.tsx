@@ -73,6 +73,43 @@ export function ProfileView({
     ? Math.min(100, Math.round((mastered / encountered) * 100))
     : null;
 
+  const data = {
+    totalConceptsEncountered: profile.totalConceptsEncountered ?? 0,
+    totalConceptsMastered: profile.totalConceptsMastered ?? 0,
+    streakDays: profile.streakDays ?? 0,
+  };
+
+  const achievements = [
+    {
+      id: 'first-step',
+      icon: '🌱',
+      title: 'Khởi đầu vững chắc',
+      desc: 'Bắt gặp ít nhất 10 khái niệm ngôn ngữ',
+      unlocked: data.totalConceptsEncountered >= 10,
+    },
+    {
+      id: 'streak-builder',
+      icon: '🔥',
+      title: 'Kiên trì bền bỉ',
+      desc: 'Duy trì chuỗi học tập từ 3 ngày trở lên',
+      unlocked: data.streakDays >= 3,
+    },
+    {
+      id: 'avid-explorer',
+      icon: '📖',
+      title: 'Độc giả chăm chỉ',
+      desc: 'Khám phá từ 50 khái niệm trong bài đọc',
+      unlocked: data.totalConceptsEncountered >= 50,
+    },
+    {
+      id: 'memory-master',
+      icon: '🧠',
+      title: 'Trí nhớ vững vàng',
+      desc: 'Làm chủ hoàn toàn ít nhất 10 khái niệm',
+      unlocked: data.totalConceptsMastered >= 10,
+    },
+  ];
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -105,6 +142,16 @@ export function ProfileView({
             {profile.startingLevelConfidence && <span>Độ tin cậy ước lượng: {profile.startingLevelConfidence}</span>}
           </div>
         )}
+        <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="profile-edit-goal-link"
+            onClick={() => clientNavigate('/settings')}
+          >
+            Chỉnh sửa mục tiêu & múi giờ
+          </Button>
+        </div>
       </Card>
 
       <section aria-label="Tóm tắt hồ sơ" className="grid gap-3 sm:grid-cols-3">
@@ -138,6 +185,39 @@ export function ProfileView({
           <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Mở kế hoạch hôm nay để xem hoạt động tiếp theo.</p>
           <Link href="/today" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-1 py-2 text-sm font-bold text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">Mở Hôm nay <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
         </Card>
+      </section>
+
+      <section data-testid="profile-achievements-grid" aria-label="Huy hiệu học tập" className="space-y-3">
+        <h2 className="text-base font-bold text-[var(--text-primary)]">Huy hiệu & Cột mốc đạt được</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {achievements.map((badge) => (
+            <div
+              key={badge.id}
+              data-testid={`profile-badge-${badge.id}`}
+              data-unlocked={badge.unlocked ? 'true' : 'false'}
+              className={`rounded-2xl border p-4 transition-all ${
+                badge.unlocked
+                  ? 'border-[var(--border-default)] bg-[var(--surface)] shadow-[var(--shadow-xs)]'
+                  : 'border-[var(--border-subtle)] bg-[var(--surface-subtle)] opacity-60'
+              }`}
+            >
+              <div className="text-2xl" role="img" aria-hidden="true">{badge.icon}</div>
+              <h3 className="mt-2 text-sm font-bold text-[var(--text-primary)]">{badge.title}</h3>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">{badge.desc}</p>
+              <div className="mt-3">
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                    badge.unlocked
+                      ? 'bg-[var(--status-success-bg)] text-[var(--status-success)]'
+                      : 'bg-[var(--surface-subtle)] text-[var(--text-muted)]'
+                  }`}
+                >
+                  {badge.unlocked ? 'Đã đạt' : 'Đang chinh phục'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

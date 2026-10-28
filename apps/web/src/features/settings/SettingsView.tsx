@@ -23,6 +23,7 @@ export interface UserSettingsData {
   theme: ThemeMode;
   reducedMotion: boolean;
   audioAutoplay: boolean;
+  defaultSpeechRate?: 1 | 0.75;
 }
 
 export interface SettingsViewProps {
@@ -41,6 +42,7 @@ function getStoredUserSettings(): {
   newWordsBudgetPerDay?: number;
   reducedMotion?: boolean;
   audioAutoplay?: boolean;
+  defaultSpeechRate?: 1 | 0.75;
 } {
   if (typeof window === 'undefined') return {};
   try {
@@ -95,6 +97,11 @@ export function SettingsView({
     const stored = getStoredUserSettings();
     return typeof stored.audioAutoplay === 'boolean' ? stored.audioAutoplay : true;
   });
+  const [defaultSpeechRate, setDefaultSpeechRate] = useState<1 | 0.75>(() => {
+    if (initialSettings?.defaultSpeechRate !== undefined) return initialSettings.defaultSpeechRate;
+    const stored = getStoredUserSettings();
+    return stored.defaultSpeechRate === 0.75 || stored.defaultSpeechRate === 1 ? stored.defaultSpeechRate : 1;
+  });
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
@@ -141,6 +148,7 @@ export function SettingsView({
           newWordsBudgetPerDay?: number;
           reducedMotion?: boolean;
           audioAutoplay?: boolean;
+          defaultSpeechRate?: 1 | 0.75;
         };
         if (initialSettings?.newWordsBudgetPerDay === undefined && typeof parsed.newWordsBudgetPerDay === 'number') {
           setNewWordsBudget(parsed.newWordsBudgetPerDay);
@@ -151,11 +159,14 @@ export function SettingsView({
         if (initialSettings?.audioAutoplay === undefined && typeof parsed.audioAutoplay === 'boolean') {
           setAudioAutoplay(parsed.audioAutoplay);
         }
+        if (initialSettings?.defaultSpeechRate === undefined && (parsed.defaultSpeechRate === 0.75 || parsed.defaultSpeechRate === 1)) {
+          setDefaultSpeechRate(parsed.defaultSpeechRate);
+        }
       }
     } catch {
       // Ignore corrupted localStorage
     }
-  }, [initialSettings?.audioAutoplay, initialSettings?.newWordsBudgetPerDay, initialSettings?.reducedMotion]);
+  }, [initialSettings?.audioAutoplay, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.reducedMotion]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -169,16 +180,20 @@ export function SettingsView({
   }, []);
 
   const handleSave = () => {
-    const updated: UserSettingsData = { dailyTargetMinutes: dailyMinutes, newWordsBudgetPerDay: newWordsBudget, theme, reducedMotion, audioAutoplay };
+    const updated: UserSettingsData = { dailyTargetMinutes: dailyMinutes, newWordsBudgetPerDay: newWordsBudget, theme, reducedMotion, audioAutoplay, defaultSpeechRate };
     if (typeof window !== 'undefined') {
       try {
+        const storedSettingsPayload: Record<string, unknown> = {
+          newWordsBudgetPerDay: newWordsBudget,
+          reducedMotion,
+          audioAutoplay,
+        };
+        if (defaultSpeechRate !== 1) {
+          storedSettingsPayload.defaultSpeechRate = defaultSpeechRate;
+        }
         window.localStorage.setItem(
           'lingua-user-settings-v1',
-          JSON.stringify({
-            newWordsBudgetPerDay: newWordsBudget,
-            reducedMotion,
-            audioAutoplay,
-          })
+          JSON.stringify(storedSettingsPayload)
         );
       } catch {
         // Ignore localStorage write error
@@ -323,6 +338,40 @@ export function SettingsView({
                   <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Phát âm từ ngay khi lật thẻ.</p>
                 </div>
                 <Switch checked={audioAutoplay} onClick={() => setAudioAutoplay(!audioAutoplay)} label="Tự động phát âm trong Ôn tập" />
+              </div>
+
+              <div
+                data-testid="settings-speech-rate-group"
+                className="mt-2 flex flex-col gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <span className="block text-sm font-medium text-[var(--text-primary)]">
+                    Tốc độ phát âm mặc định (Reader & Ôn tập)
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">
+                    Chọn 0.75x nếu bạn là người mới cần nghe rõ từng âm tiết
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={defaultSpeechRate === 1 ? 'primary' : 'outline'}
+                    data-testid="settings-speech-rate-1"
+                    onClick={() => setDefaultSpeechRate(1)}
+                  >
+                    1.0x Bình thường
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={defaultSpeechRate === 0.75 ? 'primary' : 'outline'}
+                    data-testid="settings-speech-rate-slow"
+                    onClick={() => setDefaultSpeechRate(0.75)}
+                  >
+                    🐢 0.75x Chậm
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

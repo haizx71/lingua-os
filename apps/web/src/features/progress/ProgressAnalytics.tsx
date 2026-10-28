@@ -102,16 +102,44 @@ export function ProgressAnalytics({
     );
   }
 
-  const activeDays = data.activeDaysCount;
-  const targetDays = data.weeklyTargetDays;
-  const minutes = data.totalStudyMinutes;
-  const history = data.history7d;
+  const anyData = data as unknown as Record<string, unknown>;
+  const activeDays = data.activeDaysCount ?? (typeof anyData.streakDays === 'number' ? anyData.streakDays : 0);
+  const targetDays = data.weeklyTargetDays ?? 7;
+  const minutes = data.totalStudyMinutes ?? (typeof anyData.minutesLearned7d === 'number' ? anyData.minutesLearned7d : 0);
+  const rawHistory = Array.isArray(data.history7d)
+    ? data.history7d
+    : Array.isArray(anyData.dailyHistory)
+      ? (anyData.dailyHistory as typeof data.history7d)
+      : [];
+  const history = rawHistory;
   const maxMinutes = Math.max(1, ...history.map((day) => day.minutesSpent));
   const avgMinutes = history.length > 0 ? Math.round(minutes / history.length) : 0;
   const peakDay = history.reduce<{ dayLabel: string; minutesSpent: number } | null>((best, cur) => (!best || cur.minutesSpent > best.minutesSpent ? cur : best), null);
-  const avgRetention = history.length > 0 ? Math.round(history.reduce((sum, d) => sum + d.retentionPercent, 0) / history.length) : data.retentionScore;
+  const avgRetention = history.length > 0 ? Math.round(history.reduce((sum, d) => sum + d.retentionPercent, 0) / history.length) : (data.retentionScore ?? 0);
   const isLive = !initialData && !localForcedState;
   const selectedWindow = progress.window;
+
+  const wordsSolidified = data.wordsSolidified ?? 0;
+  let currentBand = 'A2 → B1';
+  let targetBand = 'B1 Intermediate';
+  let targetWords = 500;
+
+  if (wordsSolidified < 50) {
+    currentBand = 'A0 → A1';
+    targetBand = 'A1 Beginner';
+    targetWords = 50;
+  } else if (wordsSolidified < 200) {
+    currentBand = 'A1 → A2';
+    targetBand = 'A2 Elementary';
+    targetWords = 200;
+  }
+
+  const milestonePercent = Math.min(100, Math.round((wordsSolidified / targetWords) * 100));
+  const wordsRemaining = Math.max(0, targetWords - wordsSolidified);
+
+  const windowDays = selectedWindow === 'week' ? '7d' : '30d';
+  const activeDaysCount = history.filter((d) => d.minutesSpent > 0).length;
+  const totalWindowDays = history.length || (windowDays === '7d' ? 7 : 30);
 
   return (
     <div ref={containerRef} className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
@@ -171,6 +199,37 @@ export function ProgressAnalytics({
         </Card>
       </section>
 
+      <section
+        data-testid="progress-cefr-milestone"
+        aria-label="Lộ trình cấp độ CEFR"
+        className="rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-r from-[var(--surface)] via-[var(--surface)] to-[var(--surface-lilac)]/40 p-5 shadow-[var(--shadow-xs)]"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)]">
+              Cột mốc CEFR tiếp theo · {currentBand}
+            </p>
+            <h2 className="mt-0.5 text-base font-bold text-[var(--text-primary)]">
+              Hướng tới {targetBand} ({wordsSolidified}/{targetWords} từ vững)
+            </h2>
+          </div>
+          <span className="rounded-full bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]">
+            {milestonePercent}%
+          </span>
+        </div>
+        <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[var(--surface-subtle)]">
+          <div
+            className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
+            style={{ width: `${milestonePercent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          {wordsRemaining > 0
+            ? `Cần làm chủ thêm ${wordsRemaining} từ vựng nữa để hoàn thành cột mốc ${targetBand}.`
+            : `Xuất sắc! Bạn đã đạt cột mốc từ vựng ${targetBand}.`}
+        </p>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)]">
         <Card padding="lg" className="min-w-0 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-xs)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -201,6 +260,18 @@ export function ProgressAnalytics({
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-success)]" aria-hidden="true" />
               <span>Ghi nhớ TB: <strong className="font-bold text-[var(--text-primary)]">{avgRetention}%</strong></span>
             </div>
+          </div>
+
+          <div
+            data-testid="progress-consistency-strip"
+            className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3.5 py-2 text-xs text-[var(--text-secondary)]"
+          >
+            <span>
+              Độ đều đặn: <strong className="font-mono text-[var(--text-primary)]">{activeDaysCount}/{totalWindowDays} ngày</strong> có học tập
+            </span>
+            <span className="font-semibold text-[var(--action-primary)]">
+              {activeDaysCount >= Math.ceil(totalWindowDays * 0.7) ? '🔥 Duy trì thói quen rất tốt' : '🌱 Hãy cố gắng học ít nhất 5 phút mỗi ngày'}
+            </span>
           </div>
 
           {history.length > 0 ? (

@@ -97,6 +97,20 @@ export function OnboardingDiagnostic({
     usedBeginnerBypass ||
     selectedAnswers.filter((a) => a === -1).length >= Math.ceil(questions.length / 2);
 
+  const handleSpeakPrompt = useCallback((text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        // ignore speech errors in unsupported environments
+      }
+    }
+  }, []);
+
   const handleBeginnerBypass = useCallback(() => {
     setUsedBeginnerBypass(true);
     setSelectedAnswers([]);
@@ -284,10 +298,19 @@ export function OnboardingDiagnostic({
             </Badge>
           </div>
 
-          <div className="py-2">
+          <div className="py-2 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">
               {currentQuestion.prompt}
             </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="onboarding-speak-prompt"
+              aria-label="Nghe phát âm câu hỏi"
+              onClick={() => handleSpeakPrompt(currentQuestion.prompt)}
+            >
+              🔊 Nghe câu hỏi
+            </Button>
           </div>
 
           {/* Options Grid */}
@@ -385,6 +408,36 @@ export function OnboardingDiagnostic({
             </div>
           )}
 
+          {/* Multi-Skill Diagnostic Competence Breakdown */}
+          <div
+            data-testid="onboarding-skill-breakdown"
+            className="w-full max-w-lg rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 text-left shadow-[var(--shadow-xs)]"
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              Phân tích năng lực khởi điểm
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 p-2.5">
+                <p className="text-[11px] font-semibold text-[var(--text-secondary)]">Nhận diện từ vựng</p>
+                <p className="mt-0.5 font-mono text-xs font-bold text-[var(--action-primary)]">
+                  {isBeginnerCalibration ? 'Cơ bản (A1)' : 'Khá tốt (A2)'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 p-2.5">
+                <p className="text-[11px] font-semibold text-[var(--text-secondary)]">Đọc hiểu ngữ cảnh</p>
+                <p className="mt-0.5 font-mono text-xs font-bold text-[var(--action-primary)]">
+                  {isBeginnerCalibration ? 'Có trợ giúp dịch' : 'Độc lập câu ngắn'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 p-2.5">
+                <p className="text-[11px] font-semibold text-[var(--text-secondary)]">Nhịp độ đề xuất</p>
+                <p className="mt-0.5 font-mono text-xs font-bold text-[var(--action-primary)]">
+                  {isBeginnerCalibration ? '3–5 từ mới/ngày' : '5–8 từ mới/ngày'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Calibration Summary */}
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-[var(--text-primary)]">
@@ -419,9 +472,9 @@ export function OnboardingDiagnostic({
             </div>
           </div>
 
-          {/* Start Learning CTA Button */}
-          <div className="pt-2">
-            <Link href="/today" className="w-full block">
+          {/* Action Buttons */}
+          <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+            <Link href="/today" className="w-full sm:flex-1 block">
               <Button
                 variant="primary"
                 size="lg"
@@ -431,6 +484,14 @@ export function OnboardingDiagnostic({
                 Bắt đầu học ngày đầu tiên
               </Button>
             </Link>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto min-h-[48px]"
+              onClick={handleRetry}
+            >
+              Làm lại bài đánh giá
+            </Button>
           </div>
         </Card>
       )}

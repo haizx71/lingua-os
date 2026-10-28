@@ -25,6 +25,7 @@ import {
   Search,
   X,
   ArrowRight,
+  Volume2,
 } from 'lucide-react';
 import { type ApiErrorCode, type BrainSummaryViewModel } from '@lingua/types';
 import { defaultBrainNodes, type BrainNodeItem } from '../../fixtures/brainFixture';
@@ -76,9 +77,11 @@ export function LanguageBrainCanvas({
   forcedErrorCode = 'INTERNAL_ERROR',
   onSelectConcept,
 }: LanguageBrainCanvasProps) {
-  const nodes = liveNodes ?? initialNodes;
+  const effectiveNodes = liveNodes ?? initialNodes;
+  const nodes = effectiveNodes;
   const [selectedCefr, setSelectedCefr] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNode, setSelectedNode] = useState<BrainNodeItem | null>(null);
   const [selectedContextKey, setSelectedContextKey] = useState(contextKey);
@@ -142,15 +145,34 @@ export function LanguageBrainCanvas({
     animateCamera(targetX, targetY, scale);
   }, [zoomLevel, animateCamera]);
 
-  const filteredNodes = useMemo(() => nodes.filter((n) => {
+  const availableGroups = useMemo(
+    () => Array.from(new Set(effectiveNodes.map((n) => n.groupLabel).filter((g): g is string => Boolean(g)))),
+    [effectiveNodes]
+  );
+
+  const handleSpeakConcept = useCallback((term: string, rate: number = 1) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new window.SpeechSynthesisUtterance(term);
+      utterance.lang = 'en-US';
+      utterance.rate = rate;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // safe fallback if speech synthesis fails or is blocked
+    }
+  }, []);
+
+  const filteredNodes = useMemo(() => effectiveNodes.filter((n) => {
     if (selectedCefr !== 'ALL' && n.cefr !== selectedCefr) return false;
     if (selectedStatus !== 'ALL' && n.status !== selectedStatus) return false;
+    if (selectedGroup !== 'ALL' && n.groupLabel !== selectedGroup) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       if (!n.label.toLowerCase().includes(q) && !n.translationVi.toLowerCase().includes(q)) return false;
     }
     return true;
-  }), [nodes, selectedCefr, selectedStatus, searchQuery]);
+  }), [effectiveNodes, selectedCefr, selectedStatus, selectedGroup, searchQuery]);
 
   const handleNodeClick = (node: BrainNodeItem) => {
     setSelectedContextKey(contextKey);
@@ -227,6 +249,39 @@ export function LanguageBrainCanvas({
             {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => <button key={lvl} type="button" aria-label={lvl === 'ALL' ? 'ALL' : undefined} onClick={() => setSelectedCefr(lvl)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedCefr === lvl ? 'bg-[var(--action-primary)] text-white' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{lvl === 'ALL' ? 'Tất cả CEFR' : lvl}</button>)}
             {[{ id: 'ALL', label: 'Tất cả' }, { id: 'mastered', label: 'Đã vững' }, { id: 'learning', label: 'Đang học' }, { id: 'weak', label: 'Cần củng cố' }, { id: 'forgotten', label: 'Đã quên' }].map((st) => <button key={st.id} type="button" onClick={() => setSelectedStatus(st.id)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedStatus === st.id ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{st.label}</button>)}
           </div>
+
+          {availableGroups.length > 1 && (
+            <div
+              data-testid="brain-group-filter"
+              className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedGroup('ALL')}
+                className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                  selectedGroup === 'ALL'
+                    ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
+                    : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                }`}
+              >
+                Tất cả chủ đề
+              </button>
+              {availableGroups.map((group) => (
+                <button
+                  key={group}
+                  type="button"
+                  onClick={() => setSelectedGroup(group)}
+                  className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                    selectedGroup === group
+                      ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
+                      : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div ref={viewportRef} className="relative mt-4 min-h-[250px] w-full overflow-hidden rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)] sm:min-h-[340px]">
@@ -284,7 +339,22 @@ export function LanguageBrainCanvas({
       {visibleSelectedNode && (
         <div role="dialog" aria-modal="true" aria-label="Chi tiết khái niệm" className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] max-h-[68dvh] overflow-y-auto rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 shadow-[var(--shadow-floating)] sm:inset-x-auto sm:bottom-8 sm:right-8 sm:w-[390px] sm:p-5">
           <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="truncate text-xl font-black tracking-[-0.03em] text-[var(--text-primary)]">{visibleSelectedNode.label}</h3>{visibleSelectedNode.cefr && <Badge variant="primary" size="sm">{visibleSelectedNode.cefr}</Badge>}</div>{(visibleSelectedNode.ipa || visibleSelectedNode.pos) && <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">{[visibleSelectedNode.ipa, visibleSelectedNode.pos].filter(Boolean).join(' • ')}</p>}</div>
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h3 className="truncate text-xl font-black tracking-[-0.03em] text-[var(--text-primary)]">{visibleSelectedNode.label}</h3>
+                {visibleSelectedNode.cefr && <Badge variant="primary" size="sm">{visibleSelectedNode.cefr}</Badge>}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Phát âm khái niệm ${visibleSelectedNode.label}`}
+                  title={`Phát âm ${visibleSelectedNode.label}`}
+                  onClick={() => handleSpeakConcept(visibleSelectedNode.label)}
+                >
+                  <Volume2 className="h-4 w-4 text-[var(--action-primary)]" />
+                </Button>
+              </div>
+              {(visibleSelectedNode.ipa || visibleSelectedNode.pos) && <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">{[visibleSelectedNode.ipa, visibleSelectedNode.pos].filter(Boolean).join(' • ')}</p>}
+            </div>
             <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)} aria-label="Đóng bảng chi tiết"><X className="h-4 w-4" /></Button>
           </div>
 
