@@ -38,6 +38,7 @@ export function ProgressAnalytics({
   });
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
+  const [copiedReport, setCopiedReport] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -148,6 +149,19 @@ export function ProgressAnalytics({
   const totalWindowMinutes = minutes;
   const avgActiveSessionMinutes = activeDaysCount > 0 ? Math.round(totalWindowMinutes / activeDaysCount) : 0;
 
+  const handleCopyProgressReport = async () => {
+    const reportText = `LINGUA OS Tiến độ · Đã củng cố: ${data.wordsSolidified} từ · Trung bình: ${avgMinutes} phút/ngày · Ghi nhớ: ${avgRetention}%`;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(reportText);
+      } catch {
+        // ignore clipboard errors
+      }
+    }
+    setCopiedReport(true);
+    setTimeout(() => setCopiedReport(false), 1800);
+  };
+
   return (
     <div ref={containerRef} className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -235,9 +249,20 @@ export function ProgressAnalytics({
               Hướng tới {targetBand} ({wordsSolidified}/{targetWords} từ vững)
             </h2>
           </div>
-          <span className="rounded-full bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]">
-            {milestonePercent}%
-          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="progress-copy-report"
+              aria-label="Sao chép báo cáo tóm tắt tiến độ học tập"
+              onClick={() => void handleCopyProgressReport()}
+            >
+              {copiedReport ? 'Đã sao chép báo cáo' : '📋 Sao chép báo cáo tiến độ'}
+            </Button>
+            <span className="rounded-full bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]">
+              {milestonePercent}%
+            </span>
+          </div>
         </div>
         <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[var(--surface-subtle)]">
           <div

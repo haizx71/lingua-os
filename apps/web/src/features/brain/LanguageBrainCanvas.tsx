@@ -228,6 +228,12 @@ export function LanguageBrainCanvas({
 
   const masteredPercent = nodes.length > 0 ? Math.round((nodeStatusCounts.mastered / nodes.length) * 100) : 0;
 
+  const hasActiveBrainFilters =
+    selectedStatus.toUpperCase() !== 'ALL' ||
+    selectedCefr.toUpperCase() !== 'ALL' ||
+    selectedGroup.toUpperCase() !== 'ALL' ||
+    Boolean(searchQuery.trim());
+
   const cefrCounts = React.useMemo(() => {
     let a1 = 0;
     let a2 = 0;
@@ -447,6 +453,22 @@ export function LanguageBrainCanvas({
                 placeholder="🔍 Tìm nhanh từ vựng trong Brain..."
                 className="w-full max-w-xs rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--action-primary)] focus:outline-none"
               />
+              {hasActiveBrainFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="brain-reset-filters"
+                  aria-label="Đặt lại bộ lọc mạng lưới Language Brain"
+                  onClick={() => {
+                    setSelectedStatus('ALL');
+                    setSelectedCefr('ALL');
+                    setSelectedGroup('ALL');
+                    setSearchQuery('');
+                  }}
+                >
+                  Đặt lại bộ lọc mạng lưới
+                </Button>
+              )}
             </div>
           </div>
 

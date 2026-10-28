@@ -190,17 +190,28 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
             </div>
             <h1 className="mt-2 text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Thư viện</h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">Bài đọc, câu và khái niệm bạn đã lưu để xem lại.</p>
-            <div
-              data-testid="library-type-counts"
-              aria-label="Thống kê số lượng mục đã lưu theo phân loại"
-              className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
-            >
-              <span>📚 Tổng hợp kho lưu trữ:</span>
-              <span className="font-mono text-[var(--action-primary)]">{typeCounts.concepts} từ vựng</span>
-              <span>·</span>
-              <span className="font-mono">{typeCounts.sentences} câu</span>
-              <span>·</span>
-              <span className="font-mono">{typeCounts.passages} bài đọc</span>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div
+                data-testid="library-type-counts"
+                aria-label="Thống kê số lượng mục đã lưu theo phân loại"
+                className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
+              >
+                <span>📚 Tổng hợp kho lưu trữ:</span>
+                <span className="font-mono text-[var(--action-primary)]">{typeCounts.concepts} từ vựng</span>
+                <span>·</span>
+                <span className="font-mono">{typeCounts.sentences} câu</span>
+                <span>·</span>
+                <span className="font-mono">{typeCounts.passages} bài đọc</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="library-start-review-link"
+                aria-label="Bắt đầu ôn tập thông minh các từ đã lưu"
+                onClick={() => clientNavigate('/review')}
+              >
+                ⚡ Ôn tập từ đã lưu
+              </Button>
             </div>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">

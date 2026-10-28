@@ -230,6 +230,15 @@ export function SettingsView({
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
   }, []);
 
+  const handleResetDefaults = () => {
+    setDefaultSpeechRate(1);
+    setPreferredReminderTime('off');
+    setPreferredAccent('en-US');
+    setDailyReviewCap(50);
+    setReducedMotion(false);
+    setAudioAutoplay(true);
+  };
+
   const handleSave = () => {
     const updated: UserSettingsData = {
       dailyTargetMinutes: dailyMinutes,
@@ -562,7 +571,17 @@ export function SettingsView({
             </div>
           </Card>
 
-          <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-card)] md:static md:flex md:justify-end md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+          <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex items-center justify-end gap-2 rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-card)] md:static md:flex md:justify-end md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-testid="settings-reset-defaults"
+              aria-label="Khôi phục tùy chọn thiết bị về mặc định"
+              onClick={handleResetDefaults}
+            >
+              Khôi phục mặc định
+            </Button>
             <Button
               className="w-full md:w-auto"
               variant="primary"

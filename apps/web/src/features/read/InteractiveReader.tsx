@@ -66,6 +66,7 @@ export function InteractiveReader({
   const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
+  const [copiedSentenceId, setCopiedSentenceId] = useState<string | null>(null);
   const [fontScale, setFontScale] = useState<'standard' | 'large' | 'xlarge'>('standard');
   const [zenMode, setZenMode] = useState(false);
   const [readerTheme, setReaderTheme] = useState<'default' | 'sepia' | 'dark'>('default');
@@ -190,6 +191,7 @@ export function InteractiveReader({
     setRevealedRecallIds(new Set());
     setSavedWordNotice(null);
     setQuickLookupToken(null);
+    setCopiedSentenceId(null);
     lastNotifiedSaveRef.current = null;
   }, [passage?.id]);
 
@@ -357,6 +359,21 @@ export function InteractiveReader({
     }
     window.setTimeout(() => {
       setPlayingSentenceId((curr) => (curr === sentenceId ? null : curr));
+    }, 1800);
+  };
+
+  const handleCopySentence = async (sentenceId: string, englishText: string, translationVi?: string) => {
+    const payload = translationVi ? `${englishText} — ${translationVi}` : englishText;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(payload);
+      } catch {
+        // ignore clipboard errors
+      }
+    }
+    setCopiedSentenceId(sentenceId);
+    window.setTimeout(() => {
+      setCopiedSentenceId((curr) => (curr === sentenceId ? null : curr));
     }, 1800);
   };
 
@@ -706,6 +723,21 @@ export function InteractiveReader({
                             </Button>
                             <Button
                               variant="ghost"
+                              size="sm"
+                              data-testid="reader-copy-sentence"
+                              aria-label={`Sao chép câu ${sentenceNumber}`}
+                              onClick={() =>
+                                void handleCopySentence(
+                                  sentence.id,
+                                  sentence.tokens.map((t) => t.raw).join(''),
+                                  sentence.translationVi,
+                                )
+                              }
+                            >
+                              {copiedSentenceId === sentence.id ? 'Đã chép câu' : '📋 Chép câu'}
+                            </Button>
+                            <Button
+                              variant="ghost"
                               size="icon"
                               aria-label={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
                               title={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
@@ -922,7 +954,16 @@ export function InteractiveReader({
                 Từ bổ trợ trong câu · Bấm từ gạch chân để lưu vào Brain
               </span>
             )}
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="inspector-open-dictionary-link"
+                aria-label="Mở từ này trong Từ điển để xem chi tiết"
+                onClick={() => clientNavigate('/dictionary')}
+              >
+                🔎 Mở Từ điển
+              </Button>
               {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
                 <Button variant="secondary" size="sm" leftIcon={<Check className="h-3.5 w-3.5" />} disabled>
                   Đã lưu vào Brain

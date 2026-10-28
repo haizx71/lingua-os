@@ -75,6 +75,14 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
     setTimeout(() => setCurrentState('success'), 400);
   };
 
+  const savedConceptIds = discovery.savedConceptIds;
+  const totalSavedConceptsCount = initialConcepts.filter((c) => {
+    const isSavedViaDiscovery = discovery.isSaved(c.id);
+    const isSavedInSet = savedConceptIds instanceof Set ? savedConceptIds.has(c.id) : Boolean((savedConceptIds as unknown as Record<string, boolean>)?.[c.id]);
+    const isSavedProperty = Boolean((c as { saved?: boolean }).saved);
+    return isSavedProperty || isSavedViaDiscovery || isSavedInSet;
+  }).length;
+
   const baseDirectResults = discovery.lemmaGroups === null
     ? discovery.results.filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr)
     : [];
@@ -167,6 +175,13 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
           >
             📖 Luyện đọc ngữ cảnh
           </Button>
+          <span
+            data-testid="dictionary-saved-counter"
+            aria-label="Tổng số khái niệm đã lưu vào kho cá nhân"
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]"
+          >
+            ⭐ Đã lưu {totalSavedConceptsCount} khái niệm
+          </span>
         </div>
       </header>
 

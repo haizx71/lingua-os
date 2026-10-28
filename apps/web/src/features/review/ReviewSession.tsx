@@ -420,6 +420,7 @@ export function ReviewSession({
 
   const displayDueCount = remainingDueCount;
   const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : queue.length;
+  const remainingQueueCards = Math.max(0, queue.length - currentIndex);
   const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
   const accuracyPercent = reviewedCount > 0 ? Math.round((correctCount / reviewedCount) * 100) : 100;
   const isDifficultConcept = currentCard.status === 'forgotten' || currentCard.status === 'weak';
@@ -448,6 +449,13 @@ export function ReviewSession({
             <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-2xl">Thẻ đến lượt</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <span
+              data-testid="review-remaining-encouragement"
+              aria-label="Số thẻ còn lại trong phiên ôn tập"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--action-primary)]"
+            >
+              💪 Còn {remainingQueueCards} thẻ trong phiên
+            </span>
             <span
               data-testid="review-shortcuts-help"
               aria-label="Hướng dẫn phím tắt bàn phím"

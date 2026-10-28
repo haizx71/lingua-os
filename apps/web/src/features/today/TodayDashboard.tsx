@@ -231,6 +231,13 @@ export function TodayDashboard({
             >
               ✅ Hoàn tất {effectivePlan.completedActivitiesCount}/{effectivePlan.totalActivitiesCount} nhiệm vụ
             </div>
+            <p
+              data-testid="today-consistency-tip"
+              aria-label="Mẹo duy trì thói quen học tập"
+              className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]"
+            >
+              💡 Mẹo duy trì: Học đều 15 phút mỗi ngày hiệu quả gấp 3 lần học dồn cuối tuần.
+            </p>
             <div className="mt-3">
               <Button
                 variant="ghost"

@@ -168,6 +168,13 @@ export function ProfileView({
         <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span
+              data-testid="profile-account-status-badge"
+              aria-label="Trạng thái duy trì tài khoản học tập"
+              className="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-[var(--text-primary)]"
+            >
+              🟢 Trạng thái: Đang hoạt động tích cực
+            </span>
+            <span
               data-testid="profile-weekly-commitment"
               aria-label="Cam kết nhịp độ học hàng tuần"
               className="inline-flex items-center rounded-full bg-[var(--surface-lilac)] px-3 py-1 text-xs font-bold text-[var(--action-primary)]"
