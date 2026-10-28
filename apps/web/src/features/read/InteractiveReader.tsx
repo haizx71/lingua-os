@@ -26,6 +26,7 @@ import {
   getFalseFriendTrap,
   getIrregularVerbInfo,
   getWordFamilyHint,
+  getSemanticContrastTip,
 } from './beginnerLexicon';
 import { getApiClient } from '../../lib/api/client';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
@@ -412,6 +413,13 @@ export function InteractiveReader({
               className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
             >
               ⏱️ ~{estimatedReadMinutes} phút đọc
+            </span>
+            <span
+              data-testid="reader-sentence-count-pill"
+              aria-label="Tổng số câu trong bài đọc"
+              className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+            >
+              📄 {passage.sentences.length} câu trong bài
             </span>
           </div>
           <div
@@ -879,6 +887,9 @@ export function InteractiveReader({
             </p>
             <p data-testid="inspector-word-family" className="mt-1 text-[11px] text-[var(--text-secondary)]">
               🌱 {getWordFamilyHint(selectedToken.lemma ?? selectedToken.raw)}
+            </p>
+            <p data-testid="inspector-semantic-contrast" className="mt-1 text-[11px] text-[var(--text-secondary)]">
+              ⚖️ {getSemanticContrastTip(selectedToken.lemma ?? selectedToken.raw)}
             </p>
             {(() => {
               const falseFriendTrap = getFalseFriendTrap(selectedToken.lemma ?? selectedToken.raw);

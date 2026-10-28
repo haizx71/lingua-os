@@ -102,6 +102,7 @@ export function ReviewSession({
   const [sessionStreak, setSessionStreak] = useState(0);
   const [sprintBatchSize, setSprintBatchSize] = useState<'all' | 5 | 10 | 15>('all');
   const [blindListeningMode, setBlindListeningMode] = useState(false);
+  const [selectedExerciseMode, setSelectedExerciseMode] = useState<ReviewExerciseMode | null>(null);
 
   useEffect(() => {
     setLocalForcedState(forcedState);
@@ -159,6 +160,7 @@ export function ReviewSession({
   useEffect(() => {
     setResponseText('');
     setHintLevel(0);
+    setSelectedExerciseMode(null);
   }, [currentCard?.id, currentIndex]);
 
   useEffect(() => {
@@ -228,8 +230,17 @@ export function ReviewSession({
     { dependencies: [currentIndex, prefersReducedMotion], scope: sessionCardRef }
   );
 
-  const needsTextResponse = currentCard?.exerciseMode === 'typing'
-    || currentCard?.exerciseMode === 'cloze';
+  const exerciseMode = selectedExerciseMode ?? currentCard?.exerciseMode ?? 'self_recall';
+
+  const modeGuidanceText =
+    exerciseMode === 'typing'
+      ? '✍️ Chế độ Gõ từ: Gõ chính xác từng chữ cái để rèn trí nhớ cơ tay và chính tả.'
+      : exerciseMode === 'cloze'
+        ? '🧩 Chế độ Điền từ: Đọc cả câu ngữ cảnh để suy luận từ vựng còn khuyết.'
+        : '🃏 Chế độ Thẻ lật: Nhẩm nghĩa và đọc to câu ví dụ trước khi lật đáp án.';
+
+  const needsTextResponse = exerciseMode === 'typing'
+    || exerciseMode === 'cloze';
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -412,9 +423,9 @@ export function ReviewSession({
   const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
   const accuracyPercent = reviewedCount > 0 ? Math.round((correctCount / reviewedCount) * 100) : 100;
   const isDifficultConcept = currentCard.status === 'forgotten' || currentCard.status === 'weak';
-  const hiddenAnswerMode = currentCard.exerciseMode === 'typing'
-    || currentCard.exerciseMode === 'cloze'
-    || currentCard.exerciseMode === 'listening';
+  const hiddenAnswerMode = exerciseMode === 'typing'
+    || exerciseMode === 'cloze'
+    || exerciseMode === 'listening';
   const exerciseLabels: Record<ReviewExerciseMode, string> = {
     self_recall: 'Tự nhớ lại',
     multiple_choice: 'Chọn đáp án',
@@ -531,6 +542,41 @@ export function ReviewSession({
         <Progress value={progressValue} max={100} label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`} showValueText size="sm" />
       </div>
 
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3">
+        <div
+          role="group"
+          aria-label="Chọn hình thức bài tập ôn luyện"
+          className="flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-1 text-xs"
+        >
+          {([
+            { mode: 'self_recall' as const, label: '🃏 Thẻ lật' },
+            { mode: 'cloze' as const, label: '🧩 Điền từ' },
+            { mode: 'typing' as const, label: '✍️ Gõ từ' },
+          ]).map((item) => (
+            <button
+              key={item.mode}
+              type="button"
+              aria-pressed={exerciseMode === item.mode}
+              onClick={() => setSelectedExerciseMode(item.mode)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                exerciseMode === item.mode
+                  ? 'bg-[var(--action-primary)] text-white shadow-xs'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--surface)]'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <p
+          data-testid="review-mode-guidance"
+          aria-label="Hướng dẫn phương pháp theo chế độ ôn tập"
+          className="text-center text-xs font-medium text-[var(--text-secondary)]"
+        >
+          {modeGuidanceText}
+        </p>
+      </div>
+
       {recoveryAlert}
 
       {!actionError && lastFeedback && (
@@ -550,7 +596,7 @@ export function ReviewSession({
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4 sm:px-7">
             <div className="flex items-center gap-2">
               <Badge variant="neutral" size="sm">Thẻ {currentIndex + 1} / {queue.length}</Badge>
-              <Badge variant="neutral" size="sm">{exerciseLabels[currentCard.exerciseMode]}</Badge>
+              <Badge variant="neutral" size="sm">{exerciseLabels[exerciseMode]}</Badge>
             </div>
             <ConceptChip
               status={currentCard.status}

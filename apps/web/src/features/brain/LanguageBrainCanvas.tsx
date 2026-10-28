@@ -226,6 +226,8 @@ export function LanguageBrainCanvas({
     };
   }, [nodes]);
 
+  const masteredPercent = nodes.length > 0 ? Math.round((nodeStatusCounts.mastered / nodes.length) * 100) : 0;
+
   const cefrCounts = React.useMemo(() => {
     let a1 = 0;
     let a2 = 0;
@@ -340,6 +342,13 @@ export function LanguageBrainCanvas({
                 className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--text-primary)]"
               >
                 🔔 Cần ôn ngay: {dueNodesCount} khái niệm
+              </span>
+              <span
+                data-testid="brain-mastery-percent-badge"
+                aria-label="Tỷ lệ làm chủ mạng lưới khái niệm"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--text-primary)]"
+              >
+                🏆 Làm chủ: {masteredPercent}% mạng lưới
               </span>
             </div>
           </div>

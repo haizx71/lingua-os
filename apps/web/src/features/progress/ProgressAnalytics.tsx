@@ -269,6 +269,13 @@ export function ProgressAnalytics({
         >
           {retentionHealthLabel} ({avgRetention}%)
         </span>
+        <span
+          data-testid="progress-solidified-ratio"
+          aria-label="Tỷ lệ tích lũy từ vựng bền vững"
+          className="mt-2.5 ml-2 inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+        >
+          📚 Tích lũy bền vững: {data.wordsSolidified}/{targetWords} từ
+        </span>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)]">

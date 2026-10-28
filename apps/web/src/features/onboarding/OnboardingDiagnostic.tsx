@@ -317,6 +317,13 @@ export function OnboardingDiagnostic({
               >
                 ⏱️ Còn {remainingQuestions} câu (~1 phút)
               </span>
+              <span
+                data-testid="onboarding-question-category-tag"
+                aria-label="Nhóm kỹ năng của câu hỏi chẩn đoán"
+                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-0.5 font-mono text-xs font-semibold text-[var(--text-secondary)]"
+              >
+                🎯 Kỹ năng: Đọc hiểu & Ngữ cảnh
+              </span>
             </div>
             <Badge variant="primary" size="sm">
               Bằng chứng {currentQuestion.skill}

@@ -224,6 +224,13 @@ export function TodayDashboard({
             >
               📊 Hoàn thành {progressPercent}% mục tiêu ngày
             </div>
+            <div
+              data-testid="today-activity-ratio-pill"
+              aria-label="Số nhiệm vụ đã hoàn thành trong ngày"
+              className="mt-1.5 text-xs font-semibold text-[var(--text-secondary)]"
+            >
+              ✅ Hoàn tất {effectivePlan.completedActivitiesCount}/{effectivePlan.totalActivitiesCount} nhiệm vụ
+            </div>
             <div className="mt-3">
               <Button
                 variant="ghost"

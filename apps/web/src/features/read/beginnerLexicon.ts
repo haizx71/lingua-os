@@ -1893,4 +1893,26 @@ export function getWordFamilyHint(term: string): string | null {
   return `Họ từ & biến thể: Chú ý các hậu tố thường gặp (-er, -ing, -ed, -ly) khi gặp "${clean}" trong bài đọc.`;
 }
 
+export const SEMANTIC_CONTRAST_TIPS: Readonly<Record<string, string>> = {
+  morning: 'Đối lập ngữ nghĩa: evening (buổi tối) / night (ban đêm) · Cùng trường nghĩa: dawn (bình minh).',
+  hot: 'Trái nghĩa: cold (lạnh), cool (mát mẻ) · Nâng cao: warm (ấm áp).',
+  early: 'Trái nghĩa: late (trễ, muộn) · Đồng nghĩa: ahead of time (sớm hơn dự kiến).',
+  tea: 'Cùng nhóm đồ uống: coffee (cà phê), juice (nước ép), water (nước lọc).',
+  schedule: 'Đồng nghĩa gần: timetable (thời khóa biểu), agenda (chương trình làm việc).',
+  appointment: 'Phân biệt: appointment (hẹn công việc/bác sĩ) ≠ date (hẹn hò cá nhân).',
+  good: 'Trái nghĩa: bad (tệ), poor (kém) · Nâng cao: excellent (xuất sắc).',
+  start: 'Trái nghĩa: finish (kết thúc), stop (dừng lại) · Đồng nghĩa: begin (bắt đầu).',
+};
+
+export function getSemanticContrastTip(term: string): string | null {
+  const clean = term.trim().toLowerCase().replace(/[^a-z']/g, '');
+  if (!clean) return null;
+  if (SEMANTIC_CONTRAST_TIPS[clean]) return SEMANTIC_CONTRAST_TIPS[clean];
+  const entry = lookupBeginnerWord(clean);
+  if (entry && (SEMANTIC_CONTRAST_TIPS[entry.lemma] || SEMANTIC_CONTRAST_TIPS[entry.lemma.toLowerCase()])) {
+    return SEMANTIC_CONTRAST_TIPS[entry.lemma] || SEMANTIC_CONTRAST_TIPS[entry.lemma.toLowerCase()];
+  }
+  return `Liên kết ngữ nghĩa: Hãy đặt "${clean}" cạnh 1 từ đồng nghĩa hoặc trái nghĩa để nhớ nhanh gấp đôi.`;
+}
+
 

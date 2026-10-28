@@ -7,6 +7,7 @@ import { type ApiErrorCode, type ApiClient } from '@lingua/types';
 import { defaultDictionaryConcepts, type DictionaryConceptItem } from '../../fixtures/dictionaryFixture';
 import { partOfSpeechLabels } from './adapters';
 import { useConceptDiscovery } from './useConceptDiscovery';
+import { clientNavigate } from '../../lib/navigation/clientNavigate';
 
 export interface DictionaryViewProps {
   initialConcepts?: DictionaryConceptItem[];
@@ -156,6 +157,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
         <div className="lingua-kicker text-[var(--action-primary)]">Tra cứu</div>
         <h1 className="mt-2 text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Từ điển</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Tìm nghĩa, cách phát âm, ví dụ và trạng thái học đã ghi nhận.</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="dictionary-practice-reader-link"
+            aria-label="Chuyển sang bài đọc ngữ cảnh để thực hành từ vựng"
+            onClick={() => clientNavigate('/read')}
+          >
+            📖 Luyện đọc ngữ cảnh
+          </Button>
+        </div>
       </header>
 
       <section className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-[var(--shadow-card)] sm:p-5" aria-label="Tìm từ">

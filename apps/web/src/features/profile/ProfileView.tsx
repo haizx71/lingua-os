@@ -258,6 +258,17 @@ export function ProfileView({
               <p className="mt-3 text-sm text-[var(--text-secondary)]">{mastered} trên {encountered} khái niệm đã gặp được ghi nhận là đã củng cố.</p>
             </>
           ) : <p className="mt-4 rounded-xl bg-[var(--surface-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]">Chưa đủ dữ liệu để tính tỷ lệ củng cố.</p>}
+          <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="profile-open-brain-link"
+              aria-label="Mở bản đồ mạng lưới từ vựng Language Brain"
+              onClick={() => clientNavigate('/brain')}
+            >
+              🧠 Mở bản đồ Language Brain
+            </Button>
+          </div>
         </Card>
         <Card padding="lg" className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-lilac)] shadow-[var(--shadow-xs)]">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--action-primary)]"><Clock3 className="h-5 w-5" aria-hidden="true" /></span>

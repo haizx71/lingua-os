@@ -38,7 +38,8 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
   const sortBy = sortOrder;
   const setSortBy = setSortOrder;
   const [statusFilter, setStatusFilter] = useState<'all' | 'learning' | 'mastered' | 'weak'>('all');
-  const hasActiveFilters = activeTab !== 'all' || Boolean(searchQuery.trim()) || sortBy !== 'default' || statusFilter !== 'all';
+  const [dueOnly, setDueOnly] = useState(false);
+  const hasActiveFilters = activeTab !== 'all' || Boolean(searchQuery.trim()) || sortBy !== 'default' || statusFilter !== 'all' || dueOnly;
   const [copiedExport, setCopiedExport] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
@@ -138,13 +139,23 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
     return item.status !== 'mastered' && item.status !== 'weak' && item.status !== 'forgotten';
   });
 
+  const dueFilteredItems = dueOnly
+    ? statusFilteredItems.filter(
+        (item) =>
+          item.itemType === 'concept' &&
+          (Boolean((item as { isDueForReview?: boolean }).isDueForReview) ||
+            Boolean((item as { isDue?: boolean }).isDue) ||
+            item.status !== 'mastered'),
+      )
+    : statusFilteredItems;
+
   const visibleItems = sortOrder === 'az'
-    ? [...statusFilteredItems].sort((a, b) => {
+    ? [...dueFilteredItems].sort((a, b) => {
         const textA = a.itemType === 'concept' ? a.canonicalForm : a.itemType === 'sentence' ? a.text : a.title;
         const textB = b.itemType === 'concept' ? b.canonicalForm : b.itemType === 'sentence' ? b.text : b.title;
         return textA.localeCompare(textB);
       })
-    : statusFilteredItems;
+    : dueFilteredItems;
 
   const typeCounts = useMemo(() => {
     let concepts = 0;
@@ -270,6 +281,16 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                 >
                   {viewDensity === 'compact' ? '📐 Hiển thị: Thu gọn' : '📐 Hiển thị: Thoáng'}
                 </Button>
+                <Button
+                  variant={dueOnly ? 'secondary' : 'ghost'}
+                  size="sm"
+                  data-testid="library-due-only-toggle"
+                  aria-pressed={dueOnly}
+                  aria-label="Chỉ hiện từ vựng cần ôn tập"
+                  onClick={() => setDueOnly((prev) => !prev)}
+                >
+                  {dueOnly ? '⏰ Đang lọc: Cần ôn' : '⏰ Lọc từ cần ôn'}
+                </Button>
                 <div
                   data-testid="wave9-library-mastery-filter"
                   role="group"
@@ -330,6 +351,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                       setSearchQuery('');
                       setSortBy('default');
                       setStatusFilter('all');
+                      setDueOnly(false);
                     }}
                   >
                     Đặt lại bộ lọc
