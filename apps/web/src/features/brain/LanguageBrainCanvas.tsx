@@ -62,6 +62,35 @@ function computeRemediationAdvice(node: BrainNodeItem): string {
   return 'Tiếp tục đọc ngữ cảnh (Reader) và ôn tập định kỳ để củng cố nhận diện mặt chữ.';
 }
 
+function getCollocationsForConcept(term: string): ReadonlyArray<{ phrase: string; meaningVi: string }> {
+  const clean = term.trim().toLowerCase();
+  const preset: Record<string, ReadonlyArray<{ phrase: string; meaningVi: string }>> = {
+    tea: [
+      { phrase: 'a cup of tea', meaningVi: 'một tách trà' },
+      { phrase: 'make tea', meaningVi: 'pha trà' },
+      { phrase: 'hot tea', meaningVi: 'trà nóng' },
+    ],
+    appointment: [
+      { phrase: 'make an appointment', meaningVi: 'đặt lịch hẹn' },
+      { phrase: 'keep an appointment', meaningVi: 'giữ đúng hẹn' },
+    ],
+    schedule: [
+      { phrase: 'on schedule', meaningVi: 'đúng tiến độ' },
+      { phrase: 'busy schedule', meaningVi: 'lịch trình bận rộn' },
+    ],
+    morning: [
+      { phrase: 'early morning', meaningVi: 'sáng sớm' },
+      { phrase: 'every morning', meaningVi: 'mỗi buổi sáng' },
+    ],
+  };
+  return (
+    preset[clean] ?? [
+      { phrase: `use "${term}" in context`, meaningVi: `dùng "${term}" trong ngữ cảnh` },
+      { phrase: `common "${term}" phrase`, meaningVi: `cụm từ phổ biến với "${term}"` },
+    ]
+  );
+}
+
 export function LanguageBrainCanvas({
   initialNodes = defaultBrainNodes,
   nodes: liveNodes,
@@ -174,6 +203,26 @@ export function LanguageBrainCanvas({
     return true;
   }), [effectiveNodes, selectedCefr, selectedStatus, selectedGroup, searchQuery]);
 
+  const nodeStatusCounts = useMemo(() => {
+    let mastered = 0;
+    let learning = 0;
+    let weak = 0;
+    let forgotten = 0;
+    for (const node of nodes) {
+      if (node.status === 'mastered') mastered++;
+      else if (node.status === 'learning') learning++;
+      else if (node.status === 'weak') weak++;
+      else if (node.status === 'forgotten') forgotten++;
+    }
+    return {
+      mastered,
+      learning,
+      weak,
+      forgotten,
+      weakOrForgotten: weak + forgotten,
+    };
+  }, [nodes]);
+
   const handleNodeClick = (node: BrainNodeItem) => {
     setSelectedContextKey(contextKey);
     setSelectedNode(node);
@@ -245,9 +294,62 @@ export function LanguageBrainCanvas({
             <input id="brain-concept-search" type="search" placeholder="Lọc từ vựng trong Brain..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="min-h-11 w-full min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-9 pr-3 text-base text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus-ring)] sm:text-sm" />
           </div>
 
-          <div className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-            {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => <button key={lvl} type="button" aria-label={lvl === 'ALL' ? 'ALL' : undefined} onClick={() => setSelectedCefr(lvl)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedCefr === lvl ? 'bg-[var(--action-primary)] text-white' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{lvl === 'ALL' ? 'Tất cả CEFR' : lvl}</button>)}
-            {[{ id: 'ALL', label: 'Tất cả' }, { id: 'mastered', label: 'Đã vững' }, { id: 'learning', label: 'Đang học' }, { id: 'weak', label: 'Cần củng cố' }, { id: 'forgotten', label: 'Đã quên' }].map((st) => <button key={st.id} type="button" onClick={() => setSelectedStatus(st.id)} className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${selectedStatus === st.id ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]' : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'}`}>{st.label}</button>)}
+          <div
+            data-testid="brain-mastery-summary-filter"
+            role="group"
+            aria-label="Lọc nhanh khái niệm theo sức khỏe ghi nhớ"
+            className="space-y-2"
+          >
+            <div
+              role="group"
+              aria-label="Lọc trạng thái khái niệm"
+              className="lingua-mobile-scroller -mx-1 flex snap-x items-center gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+            >
+              {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => (
+                <button
+                  key={lvl}
+                  type="button"
+                  aria-label={lvl === 'ALL' ? 'ALL' : undefined}
+                  onClick={() => setSelectedCefr(lvl)}
+                  className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                    selectedCefr === lvl
+                      ? 'bg-[var(--action-primary)] text-white'
+                      : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {lvl === 'ALL' ? 'Tất cả CEFR' : lvl}
+                </button>
+              ))}
+              {[
+                { id: 'ALL', label: 'Tất cả' },
+                { id: 'mastered', label: 'Đã vững' },
+                { id: 'learning', label: 'Đang học' },
+                { id: 'weak', label: 'Cần củng cố' },
+                { id: 'forgotten', label: 'Đã quên' },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setSelectedStatus(st.id)}
+                  className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                    selectedStatus === st.id
+                      ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
+                      : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+              <div
+                className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-xl bg-[var(--surface-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
+              >
+                <span className="text-[var(--status-success)]">Đã vững: {nodeStatusCounts.mastered}</span>
+                <span>·</span>
+                <span className="text-[var(--action-primary)]">Đang học: {nodeStatusCounts.learning}</span>
+                <span>·</span>
+                <span className="text-[var(--status-warning)]">Cần củng cố / Đã quên: {nodeStatusCounts.weakOrForgotten}</span>
+              </div>
+            </div>
           </div>
 
           {availableGroups.length > 1 && (
@@ -404,6 +506,32 @@ export function LanguageBrainCanvas({
             <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
               {computeRemediationAdvice(visibleSelectedNode)}
             </p>
+          </div>
+          <div
+            data-testid="brain-related-collocations"
+            aria-label="Cụm từ thường đi kèm và liên quan"
+            className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3.5"
+          >
+            <p className="text-xs font-bold text-[var(--text-primary)]">
+              🔗 Cụm từ thường đi kèm (Collocations):
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {getCollocationsForConcept(
+                ('term' in visibleSelectedNode ? (visibleSelectedNode as { term?: string }).term : undefined) ??
+                  visibleSelectedNode.label ??
+                  ''
+              ).map((col) => (
+                <button
+                  key={col.phrase}
+                  type="button"
+                  onClick={() => handleSpeakConcept(col.phrase)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--action-primary)]"
+                >
+                  <span className="font-bold text-[var(--action-primary)]">{col.phrase}</span>
+                  <span className="text-[var(--text-muted)]">· {col.meaningVi}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <Link href="/review" className="mt-5 block"><Button className="w-full" variant="primary" size="md" rightIcon={<ArrowRight className="h-4 w-4" />}>Ôn tập từ này</Button></Link>
         </div>

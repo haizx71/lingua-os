@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -93,10 +93,13 @@ export function ReviewSession({
   onSessionComplete,
 }: ReviewSessionProps) {
   const [focusMode, setFocusMode] = useState(false);
+  const [soundFeedbackEnabled, setSoundFeedbackEnabled] = useState(true);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [hintLevel, setHintLevel] = useState(0);
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [sessionStreak, setSessionStreak] = useState(0);
 
   useEffect(() => {
     setLocalForcedState(forcedState);
@@ -116,7 +119,7 @@ export function ReviewSession({
     reviewedCount,
     isAnswerRevealed,
     setIsAnswerRevealed,
-    submitRating,
+    submitRating: sessionSubmitRating,
     retryLastAnswer,
     pendingRetryOperation,
     refetch,
@@ -127,6 +130,19 @@ export function ReviewSession({
     onRatingSubmit,
     onSessionComplete,
   });
+
+  const submitRating = useCallback(
+    (rating: ReviewRating, responseTextValue?: string) => {
+      if (rating === 'good' || rating === 'easy') {
+        setCorrectCount((prev) => prev + 1);
+        setSessionStreak((prev) => prev + 1);
+      } else {
+        setSessionStreak(0);
+      }
+      return sessionSubmitRating(rating, responseTextValue);
+    },
+    [sessionSubmitRating]
+  );
 
   const sessionCardRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
@@ -392,6 +408,8 @@ export function ReviewSession({
   const displayDueCount = remainingDueCount;
   const totalCount = remainingDueCount !== null ? reviewedCount + remainingDueCount : queue.length;
   const progressValue = totalCount > 0 ? Math.min(100, Math.round((reviewedCount / totalCount) * 100)) : 0;
+  const accuracyPercent = reviewedCount > 0 ? Math.round((correctCount / reviewedCount) * 100) : 100;
+  const isDifficultConcept = currentCard.status === 'forgotten' || currentCard.status === 'weak';
   const hiddenAnswerMode = currentCard.exerciseMode === 'typing'
     || currentCard.exerciseMode === 'cloze'
     || currentCard.exerciseMode === 'listening';
@@ -417,7 +435,24 @@ export function ReviewSession({
             <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-2xl">Thẻ đến lượt</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <span
+              data-testid="review-session-accuracy-badge"
+              aria-label="Độ chính xác và chuỗi trả lời đúng trong buổi học"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--action-primary)]"
+            >
+              🎯 {accuracyPercent}%{sessionStreak > 0 ? ` · 🔥 ${sessionStreak}` : ''}
+            </span>
             {displayDueCount !== null && <Badge variant="warning" size="md">{displayDueCount} còn lại</Badge>}
+            <Button
+              variant={soundFeedbackEnabled ? 'secondary' : 'ghost'}
+              size="sm"
+              data-testid="review-audio-feedback-toggle"
+              aria-label="Bật/tắt âm thanh phản hồi khi trả lời thẻ"
+              aria-pressed={soundFeedbackEnabled}
+              onClick={() => setSoundFeedbackEnabled((prev) => !prev)}
+            >
+              {soundFeedbackEnabled ? '🔔 Âm phản hồi: Bật' : '🔕 Âm phản hồi: Tắt'}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -464,6 +499,15 @@ export function ReviewSession({
           </div>
 
           <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
+            {isDifficultConcept && (
+              <div
+                data-testid="review-leech-indicator"
+                aria-label="Khái niệm cần mẹo ghi nhớ đặc biệt"
+                className="mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full border border-rose-500/40 bg-rose-500/10 px-3.5 py-1 text-xs font-bold text-rose-700"
+              >
+                <span>⚠️ Từ cần chú ý đặc biệt · Hãy đọc to và liên tưởng hình ảnh</span>
+              </div>
+            )}
             <span className="lingua-kicker text-[var(--action-primary)]">
               {currentCard.pos ? 'Từ vựng tiếng Anh' : 'Khái niệm tiếng Anh'}
             </span>

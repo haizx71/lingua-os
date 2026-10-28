@@ -61,6 +61,8 @@ export function InteractiveReader({
   const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
+  const [fontScale, setFontScale] = useState<'standard' | 'large' | 'xlarge'>('standard');
+  const [zenMode, setZenMode] = useState(false);
   const [speechRate, setSpeechRate] = useState<1 | 0.75>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -125,6 +127,38 @@ export function InteractiveReader({
     setQuickLookupToken(null);
     reader.closeInspector();
   }, [reader.closeInspector]);
+
+  const lexicalCounts = React.useMemo(() => {
+    const seen = new Set<string>();
+    let mastered = 0;
+    let learning = 0;
+    let unseen = 0;
+    for (const s of passage?.sentences ?? []) {
+      for (const t of s.tokens) {
+        if (t.conceptId && !seen.has(t.conceptId)) {
+          seen.add(t.conceptId);
+          const status = t.status as string | undefined;
+          if (status === 'mastered') mastered += 1;
+          else if (status === 'learning' || status === 'reviewing') learning += 1;
+          else unseen += 1;
+        }
+      }
+    }
+    return { mastered, learning, unseen, total: mastered + learning + unseen };
+  }, [passage]);
+
+  const readerFontSizeClass =
+    fontScale === 'xlarge'
+      ? 'text-[1.45rem] sm:text-[1.6rem] leading-relaxed'
+      : fontScale === 'large'
+        ? 'text-[1.3rem] sm:text-[1.45rem] leading-relaxed'
+        : 'text-[1.18rem] sm:text-[1.3rem]';
+  const fontScaleLabel =
+    fontScale === 'xlarge'
+      ? 'Aa Cỡ chữ: Rất lớn'
+      : fontScale === 'large'
+        ? 'Aa Cỡ chữ: Lớn'
+        : 'Aa Cỡ chữ: Chuẩn';
 
   const recallConcepts = React.useMemo(() => {
     const seen = new Set<string>();
@@ -331,7 +365,10 @@ export function InteractiveReader({
     translatableSentenceIds.every((id) => revealedSentenceIds.has(id));
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-2 sm:space-y-4">
+    <div
+      data-reader-zen={zenMode ? 'true' : 'false'}
+      className={`mx-auto w-full min-w-0 max-w-4xl space-y-2 sm:space-y-4 ${zenMode ? 'rounded-3xl bg-[var(--surface-subtle)]/35 p-3 sm:p-6 transition-all' : ''}`}
+    >
       <header className="flex min-w-0 items-center gap-3 rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface)] to-[var(--surface-warm)]/35 p-4 shadow-[var(--shadow-xs)] sm:gap-5 sm:p-6">
         <div className="min-w-0 flex-1">
           {isExplicitSample && <p className="mb-1 text-[10px] font-semibold text-[var(--text-muted)]">Bản xem trước · dữ liệu mẫu</p>}
@@ -339,6 +376,21 @@ export function InteractiveReader({
             CEFR {passage.level} · {passage.wordCount} từ{!isSamplePassage ? ` · ${passage.familiarityRate}% từ quen` : ''}
           </p>
           <h1 className="mt-1 max-w-[13ch] text-[26px] font-bold leading-[1.08] tracking-[-0.04em] text-[var(--text-primary)] sm:text-3xl">{passage.title}</h1>
+          <div
+            data-testid="reader-lexical-distribution"
+            aria-label="Phân bổ từ vựng bài đọc"
+            className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold"
+          >
+            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[var(--text-primary)]">
+              {lexicalCounts.mastered} từ vững
+            </span>
+            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[var(--text-primary)]">
+              {lexicalCounts.learning} đang học
+            </span>
+            <span className="rounded-full border border-[var(--action-primary)]/40 bg-[var(--surface-lilac)] px-2.5 py-0.5 text-[var(--text-primary)]">
+              {lexicalCounts.unseen} từ mới
+            </span>
+          </div>
         </div>
         <Image src="/assets/reader-tea-book.png" alt="" aria-hidden="true" width={270} height={190} className="h-auto w-[34%] max-w-[175px] shrink-0 object-contain" />
       </header>
@@ -385,6 +437,29 @@ export function InteractiveReader({
           data-testid="reader-slow-audio-toggle"
         >
           {speechRate === 0.75 ? '🐢 Chậm 0.75x' : '1.0x Bình thường'}
+        </Button>
+        <Button
+          variant={fontScale !== 'standard' ? 'secondary' : 'ghost'}
+          size="sm"
+          data-testid="reader-font-size-toggle"
+          aria-label="Điều chỉnh kích cỡ chữ bài đọc"
+          onClick={() =>
+            setFontScale((prev) =>
+              prev === 'standard' ? 'large' : prev === 'large' ? 'xlarge' : 'standard',
+            )
+          }
+        >
+          {fontScaleLabel}
+        </Button>
+        <Button
+          variant={zenMode ? 'secondary' : 'ghost'}
+          size="sm"
+          data-testid="reader-focus-mode-toggle"
+          aria-label="Bật/tắt chế độ đọc tập trung (Zen Mode)"
+          aria-pressed={zenMode}
+          onClick={() => setZenMode((prev) => !prev)}
+        >
+          {zenMode ? '🧘 Đang tập trung' : '🧘 Đọc tập trung'}
         </Button>
         {translatableSentenceIds.length > 0 && (
           <Button
@@ -456,9 +531,13 @@ export function InteractiveReader({
                       data-testid="reader-sentence"
                       data-sentence-id={sentence.id}
                       data-playing={playingSentenceId === sentence.id ? 'true' : 'false'}
+                      data-font-scale={fontScale}
                       className={`min-w-0 space-y-1.5 rounded-2xl py-1.5 transition-all ${playingSentenceId === sentence.id ? 'bg-[var(--surface-lilac)]/55 px-3 ring-2 ring-[var(--action-primary)]/35' : ''}`}
                     >
-                      <p className="reader-copy break-words text-[1.18rem] text-[var(--text-primary)] sm:text-[1.3rem]">
+                      <p
+                        data-font-scale={fontScale}
+                        className={`reader-copy break-words text-[var(--text-primary)] ${readerFontSizeClass}`}
+                      >
                         {sentence.tokens.map((token, tokenIndex) => token.conceptId ? (
                           <React.Fragment key={`${sentence.id}:${tokenIndex}`}>
                             <button

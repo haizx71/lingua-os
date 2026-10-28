@@ -1552,6 +1552,77 @@ export const CONTRACTION_MAP: Readonly<Record<string, BeginnerWordEntry>> = {
   },
 };
 
+export const PHRASAL_VERBS_MAP: Readonly<Record<string, BeginnerWordEntry>> = {
+  'wake up': {
+    lemma: 'wake up',
+    posVi: 'Cụm động từ',
+    meaningVi: 'thức dậy, tỉnh giấc',
+    ipa: '/weɪk ʌp/',
+    pronTipVi: 'Nối âm cuối k sang up: UẾCH-kắp',
+  },
+  'get up': {
+    lemma: 'get up',
+    posVi: 'Cụm động từ',
+    meaningVi: 'rời khỏi giường, đứng dậy',
+    ipa: '/ɡet ʌp/',
+    pronTipVi: 'Nối âm t sang up: GÉT-tắp',
+  },
+  'look forward to': {
+    lemma: 'look forward to',
+    posVi: 'Cụm động từ',
+    meaningVi: 'mong đợi, háo hức chờ đón',
+    ipa: '/lʊk ˈfɔː.wəd tuː/',
+  },
+  'take off': {
+    lemma: 'take off',
+    posVi: 'Cụm động từ',
+    meaningVi: 'cởi (áo/mũ), cất cánh',
+    ipa: '/teɪk ɒf/',
+  },
+  'give up': {
+    lemma: 'give up',
+    posVi: 'Cụm động từ',
+    meaningVi: 'từ bỏ, bỏ cuộc',
+    ipa: '/ɡɪv ʌp/',
+  },
+  'put on': {
+    lemma: 'put on',
+    posVi: 'Cụm động từ',
+    meaningVi: 'mặc vào, đội vào',
+    ipa: '/pʊt ɒn/',
+  },
+  'turn on': {
+    lemma: 'turn on',
+    posVi: 'Cụm động từ',
+    meaningVi: 'bật (đèn, thiết bị)',
+    ipa: '/tɜːn ɒn/',
+  },
+  'come in': {
+    lemma: 'come in',
+    posVi: 'Cụm động từ',
+    meaningVi: 'bước vào, đi vào',
+    ipa: '/kʌm ɪn/',
+  },
+  'sit down': {
+    lemma: 'sit down',
+    posVi: 'Cụm động từ',
+    meaningVi: 'ngồi xuống',
+    ipa: '/sɪt daʊn/',
+  },
+  'find out': {
+    lemma: 'find out',
+    posVi: 'Cụm động từ',
+    meaningVi: 'tìm ra, khám phá ra',
+    ipa: '/faɪnd aʊt/',
+  },
+  'a lot of': {
+    lemma: 'a lot of',
+    posVi: 'Cụm lượng từ',
+    meaningVi: 'nhiều, rất nhiều',
+    ipa: '/ə lɒt əv/',
+  },
+};
+
 const POS_VI_MAP: Readonly<Record<string, string>> = {
   noun: 'Danh từ',
   verb: 'Động từ',
@@ -1571,6 +1642,10 @@ const POS_VI_MAP: Readonly<Record<string, string>> = {
 export function lookupBeginnerWord(rawWord: string): BeginnerWordEntry | null {
   if (!rawWord) {
     return null;
+  }
+  const phraseClean = rawWord.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z' ]/g, '');
+  if (PHRASAL_VERBS_MAP[phraseClean]) {
+    return PHRASAL_VERBS_MAP[phraseClean];
   }
   const clean = rawWord
     .toLowerCase()

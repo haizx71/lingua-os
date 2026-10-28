@@ -29,6 +29,7 @@ export function ProfileView({
   });
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
+  const [copiedSummary, setCopiedSummary] = useState(false);
 
   useEffect(() => {
     setLocalForcedState(forcedState);
@@ -77,6 +78,19 @@ export function ProfileView({
     totalConceptsEncountered: profile.totalConceptsEncountered ?? 0,
     totalConceptsMastered: profile.totalConceptsMastered ?? 0,
     streakDays: profile.streakDays ?? 0,
+  };
+
+  const handleCopyProfileSummary = async () => {
+    const summaryText = `LINGUA OS · ${profile?.name ?? 'Người học'} · Cấp độ: ${level || 'A1'} · Đã củng cố: ${data.totalConceptsMastered} từ · Chuỗi: ${data.streakDays} ngày`;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(summaryText);
+      } catch {
+        // ignore clipboard errors
+      }
+    }
+    setCopiedSummary(true);
+    setTimeout(() => setCopiedSummary(false), 1800);
   };
 
   const achievements = [
@@ -142,7 +156,16 @@ export function ProfileView({
             {profile.startingLevelConfidence && <span>Độ tin cậy ước lượng: {profile.startingLevelConfidence}</span>}
           </div>
         )}
-        <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex justify-end">
+        <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="profile-copy-summary"
+            aria-label="Sao chép tóm tắt hồ sơ học tập"
+            onClick={() => void handleCopyProfileSummary()}
+          >
+            {copiedSummary ? 'Đã sao chép hồ sơ' : '📋 Sao chép tóm tắt hồ sơ'}
+          </Button>
           <Button
             variant="ghost"
             size="sm"

@@ -93,6 +93,7 @@ export function OnboardingDiagnostic({
 
   const isCompleted = currentStep >= questions.length;
   const currentQuestion = questions[currentStep];
+  const diagnosticPercent = questions.length > 0 ? Math.round(((currentStep + 1) / questions.length) * 100) : 0;
   const isBeginnerCalibration =
     usedBeginnerBypass ||
     selectedAnswers.filter((a) => a === -1).length >= Math.ceil(questions.length / 2);
@@ -254,7 +255,7 @@ export function OnboardingDiagnostic({
       {!isCompleted && (
         <Card variant="subtle" padding="sm">
           <Progress
-            value={Math.round(((currentStep + 1) / questions.length) * 100)}
+            value={diagnosticPercent}
             max={100}
             label={`Tiến trình chẩn đoán: ${currentStep + 1} / ${questions.length}`}
             showValueText
@@ -292,7 +293,23 @@ export function OnboardingDiagnostic({
       {!isCompleted && currentQuestion && (
         <Card variant="elevated" padding="lg" className="space-y-6">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 text-xs text-[var(--text-muted)]">
-            <span>Dạng bài: {currentQuestion.type === 'vocab_recognition' ? 'Nhận diện từ vựng' : currentQuestion.type === 'sentence_comprehension' ? 'Đọc hiểu câu' : 'Cụm từ cố định'}</span>
+            <div className="flex items-center gap-2">
+              <span>
+                Câu {currentStep + 1}/{questions.length} • Dạng bài:{' '}
+                {currentQuestion.type === 'vocab_recognition'
+                  ? 'Nhận diện từ vựng'
+                  : currentQuestion.type === 'sentence_comprehension'
+                    ? 'Đọc hiểu câu'
+                    : 'Cụm từ cố định'}
+              </span>
+              <span
+                data-testid="diagnostic-percentage-indicator"
+                aria-label="Tỷ lệ hoàn thành bài chẩn đoán"
+                className="rounded-full bg-[var(--surface-lilac)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--action-primary)]"
+              >
+                {diagnosticPercent}%
+              </span>
+            </div>
             <Badge variant="primary" size="sm">
               Bằng chứng {currentQuestion.skill}
             </Badge>

@@ -24,6 +24,7 @@ export interface UserSettingsData {
   reducedMotion: boolean;
   audioAutoplay: boolean;
   defaultSpeechRate?: 1 | 0.75;
+  preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
 }
 
 export interface SettingsViewProps {
@@ -43,6 +44,7 @@ function getStoredUserSettings(): {
   reducedMotion?: boolean;
   audioAutoplay?: boolean;
   defaultSpeechRate?: 1 | 0.75;
+  preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
 } {
   if (typeof window === 'undefined') return {};
   try {
@@ -102,6 +104,17 @@ export function SettingsView({
     const stored = getStoredUserSettings();
     return stored.defaultSpeechRate === 0.75 || stored.defaultSpeechRate === 1 ? stored.defaultSpeechRate : 1;
   });
+  const [preferredReminderTime, setPreferredReminderTime] = useState<
+    'off' | '07:30' | '12:30' | '20:00' | '21:30'
+  >(() => {
+    if (initialSettings?.preferredReminderTime !== undefined) return initialSettings.preferredReminderTime;
+    const stored = getStoredUserSettings();
+    const val = stored.preferredReminderTime;
+    if (val === '07:30' || val === '12:30' || val === '20:00' || val === '21:30') {
+      return val;
+    }
+    return 'off';
+  });
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
@@ -149,6 +162,7 @@ export function SettingsView({
           reducedMotion?: boolean;
           audioAutoplay?: boolean;
           defaultSpeechRate?: 1 | 0.75;
+          preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
         };
         if (initialSettings?.newWordsBudgetPerDay === undefined && typeof parsed.newWordsBudgetPerDay === 'number') {
           setNewWordsBudget(parsed.newWordsBudgetPerDay);
@@ -162,11 +176,21 @@ export function SettingsView({
         if (initialSettings?.defaultSpeechRate === undefined && (parsed.defaultSpeechRate === 0.75 || parsed.defaultSpeechRate === 1)) {
           setDefaultSpeechRate(parsed.defaultSpeechRate);
         }
+        if (
+          initialSettings?.preferredReminderTime === undefined &&
+          (parsed.preferredReminderTime === 'off' ||
+            parsed.preferredReminderTime === '07:30' ||
+            parsed.preferredReminderTime === '12:30' ||
+            parsed.preferredReminderTime === '20:00' ||
+            parsed.preferredReminderTime === '21:30')
+        ) {
+          setPreferredReminderTime(parsed.preferredReminderTime);
+        }
       }
     } catch {
       // Ignore corrupted localStorage
     }
-  }, [initialSettings?.audioAutoplay, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.reducedMotion]);
+  }, [initialSettings?.audioAutoplay, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.preferredReminderTime, initialSettings?.reducedMotion]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -180,7 +204,15 @@ export function SettingsView({
   }, []);
 
   const handleSave = () => {
-    const updated: UserSettingsData = { dailyTargetMinutes: dailyMinutes, newWordsBudgetPerDay: newWordsBudget, theme, reducedMotion, audioAutoplay, defaultSpeechRate };
+    const updated: UserSettingsData = {
+      dailyTargetMinutes: dailyMinutes,
+      newWordsBudgetPerDay: newWordsBudget,
+      theme,
+      reducedMotion,
+      audioAutoplay,
+      defaultSpeechRate,
+      ...(preferredReminderTime !== 'off' ? { preferredReminderTime } : {}),
+    };
     if (typeof window !== 'undefined') {
       try {
         const storedSettingsPayload: Record<string, unknown> = {
@@ -190,6 +222,9 @@ export function SettingsView({
         };
         if (defaultSpeechRate !== 1) {
           storedSettingsPayload.defaultSpeechRate = defaultSpeechRate;
+        }
+        if (preferredReminderTime !== 'off') {
+          storedSettingsPayload.preferredReminderTime = preferredReminderTime;
         }
         window.localStorage.setItem(
           'lingua-user-settings-v1',
@@ -371,6 +406,46 @@ export function SettingsView({
                   >
                     🐢 0.75x Chậm
                   </Button>
+                </div>
+              </div>
+
+              <div
+                data-testid="settings-reminder-time-selector"
+                role="group"
+                aria-label="Chọn giờ nhắc nhở học tập hàng ngày"
+                className="space-y-2 border-t border-[var(--border-subtle)] pt-4"
+              >
+                <span className="block text-sm font-bold text-[var(--text-primary)]">
+                  Khung giờ nhắc học hàng ngày
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: 'off', label: 'Tắt nhắc' },
+                      { value: '07:30', label: '07:30 Sáng' },
+                      { value: '12:30', label: '12:30 Trưa' },
+                      { value: '20:00', label: '20:00 Tối' },
+                      { value: '21:30', label: '21:30 Đêm' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = preferredReminderTime === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        data-testid={`settings-reminder-${opt.value}`}
+                        aria-pressed={active}
+                        onClick={() => setPreferredReminderTime(opt.value)}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                          active
+                            ? 'bg-[var(--action-primary)] text-white'
+                            : 'border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

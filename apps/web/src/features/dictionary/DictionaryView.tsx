@@ -22,6 +22,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [selectedCefr, setSelectedCefr] = useState<'ALL' | 'A1' | 'A2' | 'B1'>('ALL');
   const [recentSearches, setRecentSearches] = useState<string[]>(['morning', 'practice']);
+  const [searchDirection, setSearchDirection] = useState<'en-vi' | 'vi-en'>('en-vi');
 
   const recordSearchTerm = (term: string) => {
     const clean = term.trim();
@@ -50,9 +51,42 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
     setTimeout(() => setCurrentState('success'), 400);
   };
 
-  const visibleLemmaGroups = discovery.lemmaGroups === null
-    ? null
-    : [...new Map(discovery.lemmaGroups.map((group) => [group.lexemeId, group])).values()];
+  const baseDirectResults = discovery.lemmaGroups === null
+    ? discovery.results.filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr)
+    : [];
+
+  const viEnFallbackResults =
+    searchDirection === 'vi-en' && discovery.searchQuery.trim()
+      ? initialConcepts
+          .filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr)
+          .filter((concept) =>
+            concept.definitions.some((d) =>
+              d.meaningVi.toLowerCase().includes(discovery.searchQuery.trim().toLowerCase())
+            )
+          )
+          .map((c) => ({
+            id: c.id,
+            term: c.term,
+            lemma: c.lemma,
+            pos: c.pos,
+            ipa: c.ipa,
+            cefrLevel: c.cefrLevel,
+            status: c.status,
+            isDue: c.isDue,
+            isSaved: discovery.isSaved(c.id),
+            primaryTranslationVi: c.primaryTranslationVi,
+            definitions: c.definitions.map((d) => ({
+              meaningVi: d.meaningVi,
+              explanationEn: d.explanationEn,
+              examples: d.examples?.map((ex) => ({ source: ex.source, target: ex.target })),
+            })),
+          }))
+      : [];
+
+  const visibleLemmaGroups =
+    discovery.lemmaGroups === null || (searchDirection === 'vi-en' && viEnFallbackResults.length > 0 && discovery.lemmaGroups.length === 0)
+      ? null
+      : [...new Map(discovery.lemmaGroups.map((group) => [group.lexemeId, group])).values()];
   const groupedConceptIds = new Set(
     visibleLemmaGroups?.flatMap((group) =>
       group.senses.flatMap((sense) => sense.concepts.map((linked) => linked.concept.id))
@@ -60,12 +94,18 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   );
   const ungroupedResults = visibleLemmaGroups === null
     ? []
-    : discovery.results
-        .filter((concept) => !groupedConceptIds.has(concept.id))
-        .filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr);
-  const visibleDirectResults = discovery.lemmaGroups === null
-    ? discovery.results.filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr)
-    : [];
+    : [
+        ...discovery.results
+          .filter((concept) => !groupedConceptIds.has(concept.id))
+          .filter((concept) => selectedCefr === 'ALL' || concept.cefrLevel === selectedCefr),
+        ...(searchDirection === 'vi-en' ? viEnFallbackResults.filter((vi) => !groupedConceptIds.has(vi.id)) : []),
+      ];
+  const visibleDirectResults =
+    baseDirectResults.length > 0
+      ? (searchDirection === 'vi-en' && viEnFallbackResults.length > 0
+          ? [...baseDirectResults, ...viEnFallbackResults.filter((viItem) => !baseDirectResults.some((b) => b.id === viItem.id))]
+          : baseDirectResults)
+      : viEnFallbackResults;
 
   const renderSaveAction = (conceptId: string, term: string, serverSaysSaved = false) => {
     if (serverSaysSaved || discovery.isSaved(conceptId)) {
@@ -109,7 +149,20 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             />
             {discovery.searchQuery && <button type="button" onClick={discovery.clearSearch} className="absolute right-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" aria-label="Xóa từ khóa tìm kiếm"><X className="h-4 w-4" /></button>}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]"><span className="rounded-full bg-white/80 px-3 py-1.5">Nghĩa tiếng Việt</span><span className="rounded-full bg-white/80 px-3 py-1.5">IPA & từ loại</span><span className="rounded-full bg-white/80 px-3 py-1.5">Ví dụ ngữ cảnh</span></div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+            <span className="rounded-full bg-white/80 px-3 py-1.5">Nghĩa tiếng Việt</span>
+            <span className="rounded-full bg-white/80 px-3 py-1.5">IPA & từ loại</span>
+            <span className="rounded-full bg-white/80 px-3 py-1.5">Ví dụ ngữ cảnh</span>
+            <button
+              type="button"
+              data-testid="dictionary-search-lang-toggle"
+              aria-label="Chuyển chế độ tìm kiếm: Anh-Việt hoặc Việt-Anh"
+              onClick={() => setSearchDirection((prev) => (prev === 'en-vi' ? 'vi-en' : 'en-vi'))}
+              className="rounded-full border border-[var(--action-primary)]/40 bg-[var(--surface-lilac)] px-3 py-1.5 text-xs font-bold text-[var(--action-primary)] transition-colors hover:bg-[var(--action-primary)] hover:text-white"
+            >
+              {searchDirection === 'en-vi' ? '🔄 Chế độ: Anh ↔ Việt' : '🇻🇳 Chế độ: Tìm bằng tiếng Việt'}
+            </button>
+          </div>
 
           <div data-testid="dictionary-starter-chips" className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <span className="font-medium text-[var(--text-muted)]">Gợi ý:</span>
@@ -273,7 +326,18 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                                   ))}
                                   {detail.examples.map((example, index) => (
                                     <div key={`${example.text}-${index}`} className="text-xs leading-5 text-[var(--text-secondary)]">
-                              <p className="reader-copy">“{example.text}”</p>
+                                      <p className="reader-copy">
+                                        “{example.text}”
+                                        <button
+                                          type="button"
+                                          data-testid="dictionary-example-audio"
+                                          aria-label="Phát âm câu ví dụ"
+                                          onClick={() => handlePlayAudio(`ex:${example.text}`, example.text)}
+                                          className="ml-1.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[var(--action-primary)] hover:bg-[var(--surface-lilac)]"
+                                        >
+                                          🔊 Nghe câu
+                                        </button>
+                                      </p>
                                       {example.translation && <p>→ {example.translation}</p>}
                                     </div>
                                   ))}
@@ -332,7 +396,18 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                     {definition.explanationEn && <p className="mt-1 text-xs text-[var(--text-muted)]">{definition.explanationEn}</p>}
                     {definition.examples?.map((example, exampleIndex) => (
                       <div key={`${example.source}-${exampleIndex}`} className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
-                        <p>“{example.source}”</p>
+                        <p>
+                          “{example.source}”
+                          <button
+                            type="button"
+                            data-testid="dictionary-example-audio"
+                            aria-label="Phát âm câu ví dụ"
+                            onClick={() => handlePlayAudio(`ex:${example.source}`, example.source)}
+                            className="ml-1.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[var(--action-primary)] hover:bg-[var(--surface-lilac)]"
+                          >
+                            🔊 Nghe câu
+                          </button>
+                        </p>
                         {example.target && <p>→ {example.target}</p>}
                       </div>
                     ))}
@@ -346,7 +421,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
         </div>
       )}
 
-      {!discovery.isSearching && discovery.lemmaGroups === null && (
+      {!discovery.isSearching && visibleLemmaGroups === null && (
         <div className="grid min-w-0 grid-cols-1 gap-3">
           {visibleDirectResults.map((concept) => (
             <Card key={concept.id} padding="lg" className="min-w-0 overflow-hidden rounded-[26px]">
@@ -377,7 +452,27 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                       <div key={idx} className="rounded-2xl bg-[var(--surface-subtle)] p-4">
                         <p className="font-bold leading-6 text-[var(--text-primary)]">{def.meaningVi}</p>
                         {def.explanationEn && <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">{def.explanationEn}</p>}
-                        {def.examples && def.examples.length > 0 && <div className="mt-3 space-y-2 border-l-2 border-[var(--accent-teal)]/35 pl-3 text-xs">{def.examples.map((ex, exIdx) => <div key={exIdx} className="min-w-0"><p className="leading-5 text-[var(--text-primary)]">“{ex.source}”</p><p className="mt-0.5 leading-5 text-[var(--text-muted)]">→ {ex.target}</p></div>)}</div>}
+                        {def.examples && def.examples.length > 0 && (
+                          <div className="mt-3 space-y-2 border-l-2 border-[var(--accent-teal)]/35 pl-3 text-xs">
+                            {def.examples.map((ex, exIdx) => (
+                              <div key={exIdx} className="min-w-0">
+                                <p className="leading-5 text-[var(--text-primary)]">
+                                  “{ex.source}”
+                                  <button
+                                    type="button"
+                                    data-testid="dictionary-example-audio"
+                                    aria-label="Phát âm câu ví dụ"
+                                    onClick={() => handlePlayAudio(`ex:${ex.source}`, ex.source)}
+                                    className="ml-1.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[var(--action-primary)] hover:bg-[var(--surface-lilac)]"
+                                  >
+                                    🔊 Nghe câu
+                                  </button>
+                                </p>
+                                <p className="mt-0.5 leading-5 text-[var(--text-muted)]">→ {ex.target}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -131,6 +131,7 @@ export function TodayDashboard({
 
   const targetMinutes = initialTargetMinutes ?? effectivePlan.targetMinutes;
   const completedMinutes = initialCompletedMinutes ?? effectivePlan.completedMinutes;
+  const remainingMinutes = Math.max(0, targetMinutes - completedMinutes);
   const progressPercent = targetMinutes > 0 ? Math.min(100, Math.round((completedMinutes / targetMinutes) * 100)) : 0;
   const streakDays = initialStreakDays ?? (effectivePlan.completedActivitiesCount > 0 ? 1 : 0);
   const nextActivity = effectivePlan.activities.find((activity) => !activity.completed);
@@ -192,10 +193,32 @@ export function TodayDashboard({
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
               <span>{streakDays > 0 ? `Chuỗi học ${streakDays} ngày liên tiếp` : 'Bắt đầu chuỗi ngày học hôm nay'}</span>
             </div>
+            <div
+              data-testid="today-remaining-time-indicator"
+              aria-label="Thời gian học ước tính còn lại hôm nay"
+              className="mt-2 text-xs font-semibold text-[var(--text-secondary)]"
+            >
+              {remainingMinutes > 0
+                ? `⏳ Còn khoảng ${remainingMinutes} phút để hoàn tất mục tiêu`
+                : '✅ Đã hoàn thành mục tiêu thời lượng hôm nay'}
+            </div>
           </div>
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4 text-sm"><span className="text-[var(--text-secondary)]">Hoạt động hoàn tất</span><span className="font-bold text-[var(--text-primary)]">{effectivePlan.completedActivitiesCount} / {effectivePlan.totalActivitiesCount}</span></div>
         </aside>
       </section>
+
+      <div
+        data-testid="today-greeting-banner"
+        aria-label="Lời chào và gợi ý học tập theo thời gian trong ngày"
+        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-2.5 text-xs text-[var(--text-secondary)] shadow-[var(--shadow-xs)]"
+      >
+        <span className="font-semibold text-[var(--text-primary)]">
+          ☀️ Nhịp học khoa học: Kết hợp đọc bài có ngữ cảnh và ôn tập ngắt quãng để ghi nhớ sâu.
+        </span>
+        <span className="font-mono text-[11px] font-bold text-[var(--action-primary)]">
+          {effectivePlan.totalActivitiesCount} hoạt động trong ngày
+        </span>
+      </div>
 
       <section
         data-testid="today-beginner-guide"

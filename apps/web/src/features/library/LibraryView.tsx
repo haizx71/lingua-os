@@ -35,8 +35,12 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
   const [activeTab, setActiveTab] = useState<LibraryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'default' | 'az'>('default');
+  const sortBy = sortOrder;
+  const setSortBy = setSortOrder;
+  const hasActiveFilters = activeTab !== 'all' || Boolean(searchQuery.trim()) || sortBy !== 'default';
   const [copiedExport, setCopiedExport] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
 
   const presentationItems = forcedState ? (initialItems ?? []) : initialItems;
   const library = useLibrary({
@@ -80,7 +84,10 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
 
   const handleExportCopy = async () => {
     try {
-      const textToExport = visibleItems
+      const itemsToExport = selectedItemKeys.size > 0
+        ? visibleItems.filter((item) => selectedItemKeys.has(`${item.itemType}:${item.id}`))
+        : visibleItems;
+      const textToExport = itemsToExport
         .map((item) => (item.itemType === 'concept' ? item.canonicalForm : item.itemType === 'sentence' ? item.text : item.title))
         .join('\n');
       if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
@@ -197,6 +204,40 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <div data-testid="library-bulk-actions" className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="library-select-all"
+                  onClick={() => {
+                    if (selectedItemKeys.size === visibleItems.length && visibleItems.length > 0) {
+                      setSelectedItemKeys(new Set());
+                    } else {
+                      setSelectedItemKeys(new Set(visibleItems.map((item) => `${item.itemType}:${item.id}`)));
+                    }
+                  }}
+                >
+                  {selectedItemKeys.size === visibleItems.length && visibleItems.length > 0
+                    ? `Bỏ chọn tất cả (${selectedItemKeys.size})`
+                    : `Chọn tất cả (${visibleItems.length})`}
+                </Button>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-testid="library-reset-filters"
+                    aria-label="Đặt lại bộ lọc thư viện"
+                    onClick={() => {
+                      setActiveTab('all');
+                      setSearchQuery('');
+                      setSortBy('default');
+                    }}
+                  >
+                    Đặt lại bộ lọc
+                  </Button>
+                )}
+              </div>
+
               <button
                 type="button"
                 data-testid="library-sort-toggle"
@@ -216,7 +257,13 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                     : 'border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--action-primary)] hover:bg-[var(--surface-subtle)]'
                 }`}
               >
-                {copiedExport ? 'Đã sao chép danh sách' : 'Sao chép danh sách'}
+                {copiedExport
+                  ? selectedItemKeys.size > 0
+                    ? `Đã sao chép danh sách (${selectedItemKeys.size})`
+                    : 'Đã sao chép danh sách'
+                  : selectedItemKeys.size > 0
+                    ? `Sao chép danh sách (${selectedItemKeys.size})`
+                    : 'Sao chép danh sách'}
               </button>
             </div>
           </div>
@@ -261,19 +308,45 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2" role="list">
           {visibleItems.map((item) => {
             const key = `${item.itemType}:${item.id}`;
+            const isSelected = selectedItemKeys.has(key);
             return (
               <Card
                 key={key}
                 variant="interactive"
                 padding="none"
-                className="group flex min-w-0 flex-col justify-between overflow-hidden rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)] p-4 sm:p-5 transition-all hover:border-[var(--action-primary)]/35 hover:shadow-[var(--shadow-sm)]"
+                className={`group flex min-w-0 flex-col justify-between overflow-hidden rounded-[22px] border p-4 sm:p-5 transition-all hover:border-[var(--action-primary)]/35 hover:shadow-[var(--shadow-sm)] ${
+                  isSelected
+                    ? 'border-[var(--action-primary)] bg-[var(--surface-blue)]/20'
+                    : 'border-[var(--border-subtle)] bg-[var(--surface)]'
+                }`}
                 data-testid="library-item"
                 data-item-type={item.itemType}
+                data-selected={isSelected ? 'true' : 'false'}
                 role="listitem"
               >
                 <div>
                   <div className="flex min-w-0 items-start justify-between gap-3">
-                    <Badge variant="primary" size="sm">{item.itemType === 'content' ? 'Bài đọc' : item.itemType === 'sentence' ? 'Câu' : 'Khái niệm'}</Badge>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setSelectedItemKeys((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key)) {
+                              next.delete(key);
+                            } else {
+                              next.add(key);
+                            }
+                            return next;
+                          });
+                        }}
+                        aria-label={`Chọn mục: ${item.itemType === 'concept' ? item.canonicalForm : item.itemType === 'sentence' ? item.text : item.title}`}
+                        className="h-4 w-4 rounded border-[var(--border-subtle)] text-[var(--action-primary)] focus:ring-[var(--focus-ring)] cursor-pointer"
+                      />
+                      <Badge variant="primary" size="sm">{item.itemType === 'content' ? 'Bài đọc' : item.itemType === 'sentence' ? 'Câu' : 'Khái niệm'}</Badge>
+                    </div>
                     <time className="flex shrink-0 items-center gap-1 text-[11px] text-[var(--text-muted)] sm:text-xs" dateTime={item.savedAt}><Bookmark className="h-3.5 w-3.5" aria-hidden="true" />{savedLabel(item.savedAt)}</time>
                   </div>
 

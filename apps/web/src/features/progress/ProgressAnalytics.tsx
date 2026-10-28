@@ -116,6 +116,7 @@ export function ProgressAnalytics({
   const avgMinutes = history.length > 0 ? Math.round(minutes / history.length) : 0;
   const peakDay = history.reduce<{ dayLabel: string; minutesSpent: number } | null>((best, cur) => (!best || cur.minutesSpent > best.minutesSpent ? cur : best), null);
   const avgRetention = history.length > 0 ? Math.round(history.reduce((sum, d) => sum + d.retentionPercent, 0) / history.length) : (data.retentionScore ?? 0);
+  const retentionHealthLabel = avgRetention >= 85 ? '💚 Trí nhớ ổn định tốt' : '💛 Cần tăng cường ôn tập FSRS';
   const isLive = !initialData && !localForcedState;
   const selectedWindow = progress.window;
 
@@ -136,6 +137,9 @@ export function ProgressAnalytics({
 
   const milestonePercent = Math.min(100, Math.round((wordsSolidified / targetWords) * 100));
   const wordsRemaining = Math.max(0, targetWords - wordsSolidified);
+  const estimatedWordsPerDay = Math.max(2, Math.round(avgMinutes / 3));
+  const projectedDaysToTarget =
+    wordsRemaining > 0 ? Math.max(1, Math.ceil(wordsRemaining / estimatedWordsPerDay)) : 0;
 
   const windowDays = selectedWindow === 'week' ? '7d' : '30d';
   const activeDaysCount = history.filter((d) => d.minutesSpent > 0).length;
@@ -228,6 +232,25 @@ export function ProgressAnalytics({
             ? `Cần làm chủ thêm ${wordsRemaining} từ vựng nữa để hoàn thành cột mốc ${targetBand}.`
             : `Xuất sắc! Bạn đã đạt cột mốc từ vựng ${targetBand}.`}
         </p>
+        <div
+          data-testid="progress-velocity-forecast"
+          aria-label="Dự báo thời gian hoàn thành cột mốc CEFR"
+          className="mt-2.5 inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+        >
+          <span>🚀 Tốc độ dự kiến:</span>
+          <span className="text-[var(--action-primary)]">
+            {wordsRemaining > 0
+              ? `Khoảng ${projectedDaysToTarget} ngày nữa đạt ${targetBand} (~${estimatedWordsPerDay} từ/ngày)`
+              : `Đã hoàn thành mục tiêu ${targetBand}`}
+          </span>
+        </div>
+        <span
+          data-testid="progress-retention-status-badge"
+          aria-label="Đánh giá sức khỏe trí nhớ FSRS"
+          className="mt-2.5 ml-2 inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+        >
+          {retentionHealthLabel} ({avgRetention}%)
+        </span>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)]">
