@@ -26,6 +26,7 @@ export interface UserSettingsData {
   defaultSpeechRate?: 1 | 0.75;
   preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
   preferredAccent?: 'en-US' | 'en-GB';
+  dailyReviewCap?: 20 | 50 | 100;
 }
 
 export interface SettingsViewProps {
@@ -47,6 +48,7 @@ function getStoredUserSettings(): {
   defaultSpeechRate?: 1 | 0.75;
   preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
   preferredAccent?: 'en-US' | 'en-GB';
+  dailyReviewCap?: 20 | 50 | 100;
 } {
   if (typeof window === 'undefined') return {};
   try {
@@ -122,6 +124,13 @@ export function SettingsView({
     const stored = getStoredUserSettings();
     return stored.preferredAccent === 'en-GB' ? 'en-GB' : 'en-US';
   });
+  const [dailyReviewCap, setDailyReviewCap] = useState<20 | 50 | 100>(() => {
+    if (initialSettings?.dailyReviewCap !== undefined) return initialSettings.dailyReviewCap;
+    const stored = getStoredUserSettings();
+    return stored.dailyReviewCap === 20 || stored.dailyReviewCap === 50 || stored.dailyReviewCap === 100
+      ? stored.dailyReviewCap
+      : 50;
+  });
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
@@ -171,6 +180,7 @@ export function SettingsView({
           defaultSpeechRate?: 1 | 0.75;
           preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
           preferredAccent?: 'en-US' | 'en-GB';
+          dailyReviewCap?: 20 | 50 | 100;
         };
         if (initialSettings?.newWordsBudgetPerDay === undefined && typeof parsed.newWordsBudgetPerDay === 'number') {
           setNewWordsBudget(parsed.newWordsBudgetPerDay);
@@ -197,11 +207,17 @@ export function SettingsView({
         if (initialSettings?.preferredAccent === undefined && parsed.preferredAccent === 'en-GB') {
           setPreferredAccent('en-GB');
         }
+        if (
+          initialSettings?.dailyReviewCap === undefined &&
+          (parsed.dailyReviewCap === 20 || parsed.dailyReviewCap === 50 || parsed.dailyReviewCap === 100)
+        ) {
+          setDailyReviewCap(parsed.dailyReviewCap);
+        }
       }
     } catch {
       // Ignore corrupted localStorage
     }
-  }, [initialSettings?.audioAutoplay, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.preferredAccent, initialSettings?.preferredReminderTime, initialSettings?.reducedMotion]);
+  }, [initialSettings?.audioAutoplay, initialSettings?.dailyReviewCap, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.preferredAccent, initialSettings?.preferredReminderTime, initialSettings?.reducedMotion]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -224,6 +240,7 @@ export function SettingsView({
       defaultSpeechRate,
       ...(preferredReminderTime !== 'off' ? { preferredReminderTime } : {}),
       ...(preferredAccent !== 'en-US' ? { preferredAccent } : {}),
+      ...(dailyReviewCap !== 50 ? { dailyReviewCap } : {}),
     };
     if (typeof window !== 'undefined') {
       try {
@@ -240,6 +257,9 @@ export function SettingsView({
         }
         if (preferredAccent !== 'en-US') {
           storedSettingsPayload.preferredAccent = preferredAccent;
+        }
+        if (dailyReviewCap !== 50) {
+          storedSettingsPayload.dailyReviewCap = dailyReviewCap;
         }
         window.localStorage.setItem(
           'lingua-user-settings-v1',
@@ -505,6 +525,38 @@ export function SettingsView({
                       );
                     })}
                   </div>
+                </div>
+              </div>
+
+              <div
+                data-testid="settings-review-cap-selector"
+                role="group"
+                aria-label="Giới hạn số thẻ ôn tập tối đa mỗi ngày"
+                className="space-y-2 border-t border-[var(--border-subtle)] pt-4"
+              >
+                <span className="block text-sm font-bold text-[var(--text-primary)]">
+                  Giới hạn thẻ ôn tập FSRS mỗi ngày
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {([20, 50, 100] as const).map((cap) => {
+                    const active = dailyReviewCap === cap;
+                    return (
+                      <button
+                        key={cap}
+                        type="button"
+                        data-testid={`settings-review-cap-${cap}`}
+                        aria-pressed={active}
+                        onClick={() => setDailyReviewCap(cap)}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                          active
+                            ? 'bg-[var(--action-primary)] text-white'
+                            : 'border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        {cap} thẻ/ngày
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

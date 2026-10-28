@@ -240,6 +240,20 @@ export function LanguageBrainCanvas({
     return { a1, a2, b1, b2, A1: a1, A2: a2, B1: b1, B2: b2 };
   }, [nodes]);
 
+  const dueNodesCount = useMemo(
+    () =>
+      nodes.filter(
+        (n) =>
+          Boolean(
+            (n as unknown as { isDueForReview?: boolean; isDue?: boolean }).isDueForReview ||
+              (n as unknown as { isDueForReview?: boolean; isDue?: boolean }).isDue
+          ) ||
+          n.status === 'weak' ||
+          n.status === 'forgotten'
+      ).length,
+    [nodes]
+  );
+
   const handleNodeClick = (node: BrainNodeItem) => {
     setSelectedContextKey(contextKey);
     setSelectedNode(node);
@@ -301,22 +315,31 @@ export function LanguageBrainCanvas({
               <h3 className="truncate text-base font-bold text-[var(--text-primary)]">Khái niệm</h3>
             </div>
             <p className="mt-1 text-xs text-[var(--text-muted)]">{filteredNodes.length} mục</p>
-            <div
-              data-testid="wave9-brain-cefr-breakdown"
-              aria-label="Phân bổ cấp độ CEFR của các từ trong Brain"
-              className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
-            >
-              <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">
-                A1: {cefrCounts.A1}
-              </span>
-              <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">
-                A2: {cefrCounts.A2}
-              </span>
-              <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">
-                B1: {cefrCounts.B1}
-              </span>
-              <span className="rounded-md bg-purple-500/15 px-1.5 py-0.5 text-purple-700 dark:text-purple-300">
-                B2: {cefrCounts.B2}
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div
+                data-testid="wave9-brain-cefr-breakdown"
+                aria-label="Phân bổ cấp độ CEFR của các từ trong Brain"
+                className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+              >
+                <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">
+                  A1: {cefrCounts.A1}
+                </span>
+                <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">
+                  A2: {cefrCounts.A2}
+                </span>
+                <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">
+                  B1: {cefrCounts.B1}
+                </span>
+                <span className="rounded-md bg-purple-500/15 px-1.5 py-0.5 text-purple-700 dark:text-purple-300">
+                  B2: {cefrCounts.B2}
+                </span>
+              </div>
+              <span
+                data-testid="brain-due-count-badge"
+                aria-label="Số lượng khái niệm cần ôn tập ngay"
+                className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--text-primary)]"
+              >
+                🔔 Cần ôn ngay: {dueNodesCount} khái niệm
               </span>
             </div>
           </div>

@@ -68,6 +68,7 @@ export function InteractiveReader({
   const [fontScale, setFontScale] = useState<'standard' | 'large' | 'xlarge'>('standard');
   const [zenMode, setZenMode] = useState(false);
   const [readerTheme, setReaderTheme] = useState<'default' | 'sepia' | 'dark'>('default');
+  const [showGrammarTips, setShowGrammarTips] = useState(true);
   const [speechRate, setSpeechRate] = useState<1 | 0.75>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -152,6 +153,8 @@ export function InteractiveReader({
     }
     return { mastered, learning, unseen, total: mastered + learning + unseen };
   }, [passage]);
+
+  const estimatedReadMinutes = Math.max(1, Math.ceil((passage?.sentences?.length ?? 1) * 0.5));
 
   const readerFontSizeClass =
     fontScale === 'xlarge'
@@ -403,6 +406,13 @@ export function InteractiveReader({
             <span className="rounded-full border border-[var(--action-primary)]/40 bg-[var(--surface-lilac)] px-2.5 py-0.5 text-[var(--text-primary)]">
               {lexicalCounts.unseen} từ mới
             </span>
+            <span
+              data-testid="reader-estimated-time"
+              aria-label="Thời gian đọc ước tính"
+              className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+            >
+              ⏱️ ~{estimatedReadMinutes} phút đọc
+            </span>
           </div>
           <div
             data-testid="wave10-reader-wpm-meter"
@@ -505,6 +515,16 @@ export function InteractiveReader({
         >
           📌 Đã lưu {savedSentenceIds.size} câu
         </span>
+        <Button
+          variant={showGrammarTips ? 'secondary' : 'ghost'}
+          size="sm"
+          data-testid="reader-grammar-tips-toggle"
+          aria-label="Bật/tắt gợi ý cấu trúc ngữ pháp từng câu"
+          aria-pressed={showGrammarTips}
+          onClick={() => setShowGrammarTips((prev) => !prev)}
+        >
+          {showGrammarTips ? '💡 Ngữ pháp: Hiện' : '💡 Ngữ pháp: Ẩn'}
+        </Button>
         {translatableSentenceIds.length > 0 && (
           <Button
             variant="ghost"
@@ -695,13 +715,20 @@ export function InteractiveReader({
                             >
                               {sentence.translationVi}
                             </p>
-                            <p
-                              data-testid={`reader-grammar-tip-${sentence.id}`}
-                              className="mt-1 rounded-xl bg-[var(--surface-lilac)]/45 px-3 py-1.5 text-xs leading-5 text-[var(--text-secondary)]"
-                            >
-                              <span className="font-bold text-[var(--action-primary)]">💡 Mẹo hiểu câu: </span>
-                              {getSentenceStructureTip(sentence.tokens.map((t) => t.raw).join(''))}
-                            </p>
+                            {showGrammarTips && (
+                              <p
+                                data-testid={`reader-grammar-tip-${sentence.id}`}
+                                className="mt-1 rounded-xl bg-[var(--surface-lilac)]/45 px-3 py-1.5 text-xs leading-5 text-[var(--text-secondary)]"
+                              >
+                                <span
+                                  data-testid={`sentence-grammar-tip-${sentence.id}`}
+                                  className="font-bold text-[var(--action-primary)]"
+                                >
+                                  💡 Mẹo hiểu câu:{' '}
+                                </span>
+                                {getSentenceStructureTip(sentence.tokens.map((t) => t.raw).join(''))}
+                              </p>
+                            )}
                           </>
                         )}
                       </div>

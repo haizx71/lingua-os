@@ -145,6 +145,8 @@ export function ProgressAnalytics({
   const windowDays = selectedWindow === 'week' ? '7d' : '30d';
   const activeDaysCount = history.filter((d) => d.minutesSpent > 0).length;
   const totalWindowDays = history.length || (windowDays === '7d' ? 7 : 30);
+  const totalWindowMinutes = minutes;
+  const avgActiveSessionMinutes = activeDaysCount > 0 ? Math.round(totalWindowMinutes / activeDaysCount) : 0;
 
   return (
     <div ref={containerRef} className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
@@ -314,6 +316,13 @@ export function ProgressAnalytics({
               className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--action-primary)]"
             >
               🏆 Kỷ lục ngày: {peakMinutesDay} phút
+            </span>
+            <span
+              data-testid="progress-cadence-insight"
+              aria-label="Thời lượng trung bình mỗi buổi có học"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+            >
+              ⚡ TB buổi học: {avgActiveSessionMinutes} phút/buổi
             </span>
             <span className="font-semibold text-[var(--action-primary)]">
               {activeDaysCount >= Math.ceil(totalWindowDays * 0.7) ? '🔥 Duy trì thói quen rất tốt' : '🌱 Hãy cố gắng học ít nhất 5 phút mỗi ngày'}

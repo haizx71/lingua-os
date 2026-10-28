@@ -438,6 +438,13 @@ export function ReviewSession({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span
+              data-testid="review-shortcuts-help"
+              aria-label="Hướng dẫn phím tắt bàn phím"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+            >
+              ⌨️ Phím tắt: Space (Lật) · 1–4 (Chấm)
+            </span>
+            <span
               data-testid="review-pace-indicator"
               aria-label="Nhịp độ phản xạ khuyến nghị"
               className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"

@@ -217,6 +217,13 @@ export function TodayDashboard({
                 ? `⏳ Còn khoảng ${remainingMinutes} phút để hoàn tất mục tiêu`
                 : '✅ Đã hoàn thành mục tiêu thời lượng hôm nay'}
             </div>
+            <div
+              data-testid="today-completion-percent-badge"
+              aria-label="Phần trăm hoàn thành mục tiêu ngày"
+              className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--surface-lilac)] px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--action-primary)]"
+            >
+              📊 Hoàn thành {progressPercent}% mục tiêu ngày
+            </div>
             <div className="mt-3">
               <Button
                 variant="ghost"

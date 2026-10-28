@@ -15,6 +15,13 @@ export interface DictionaryViewProps {
   apiClient?: ApiClient;
 }
 
+function getWordComplexityLabel(term: string): string {
+  const clean = term.trim();
+  if (clean.length <= 5) return 'Ngắn · Dễ nhớ';
+  if (clean.length <= 8) return 'Độ dài vừa';
+  return 'Đa âm tiết';
+}
+
 export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, forcedState = 'success', forcedErrorCode = 'INTERNAL_ERROR', apiClient }: DictionaryViewProps) {
   const discovery = useConceptDiscovery({ apiClient, initialConcepts });
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
@@ -321,7 +328,14 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   </div>
                   {group.partOfSpeech && <span className="mt-1 block text-xs text-[var(--text-muted)]">{partOfSpeechLabels[group.partOfSpeech] ?? group.partOfSpeech}</span>}
                 </div>
-                <div className="flex flex-wrap gap-2" aria-label={`Các dạng khớp của ${group.lemma}`}>
+                <div className="flex flex-wrap items-center gap-2" aria-label={`Các dạng khớp của ${group.lemma}`}>
+                  <span
+                    data-testid="dictionary-complexity-tag"
+                    aria-label="Độ phức tạp cấu tạo từ"
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+                  >
+                    {getWordComplexityLabel(group.lemma)}
+                  </span>
                   {group.matchedForms.map((form) => <span key={form} className="rounded-full bg-[var(--surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]">{form}</span>)}
                 </div>
               </div>
@@ -441,7 +455,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   </div>
                   {(concept.ipa || concept.pos) && <span className="mt-1 block font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos ? (partOfSpeechLabels[concept.pos] ?? concept.pos) : ''].filter(Boolean).join(' • ')}</span>}
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2"><Badge variant="primary" size="sm">{concept.cefrLevel}</Badge><ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" /></div>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <span
+                    data-testid="dictionary-complexity-tag"
+                    aria-label="Độ phức tạp cấu tạo từ"
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+                  >
+                    {getWordComplexityLabel(concept.term)}
+                  </span>
+                  <Badge variant="primary" size="sm">{concept.cefrLevel}</Badge>
+                  <ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" />
+                </div>
               </div>
               <div className="mt-4">
                 {concept.definitions.length > 0 ? concept.definitions.map((definition, index) => (
@@ -515,7 +539,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   </div>
                   {(concept.ipa || concept.pos) && <span className="mt-1 block truncate font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos ? (partOfSpeechLabels[concept.pos] ?? concept.pos) : ''].filter(Boolean).join(' • ')}</span>}
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2"><Badge variant="primary" size="sm">{concept.cefrLevel}</Badge><ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" /></div>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <span
+                    data-testid="dictionary-complexity-tag"
+                    aria-label="Độ phức tạp cấu tạo từ"
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+                  >
+                    {getWordComplexityLabel(concept.term)}
+                  </span>
+                  <Badge variant="primary" size="sm">{concept.cefrLevel}</Badge>
+                  <ConceptChip status={concept.status} isDue={concept.isDue} term={concept.term} size="sm" />
+                </div>
               </div>
 
               <div className="mt-5 min-w-0">

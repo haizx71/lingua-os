@@ -131,6 +131,8 @@ export function ProfileView({
     },
   ];
 
+  const unlockedBadgesCount = achievements.filter((b) => b.unlocked).length;
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -266,7 +268,16 @@ export function ProfileView({
       </section>
 
       <section data-testid="profile-achievements-grid" aria-label="Huy hiệu học tập" className="space-y-3">
-        <h2 className="text-base font-bold text-[var(--text-primary)]">Huy hiệu & Cột mốc đạt được</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold text-[var(--text-primary)]">Huy hiệu & Cột mốc đạt được</h2>
+          <span
+            data-testid="profile-next-achievement-hint"
+            aria-label="Tiến độ mở khóa huy hiệu học tập"
+            className="inline-flex items-center rounded-full bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]"
+          >
+            🏅 Đã mở khóa {unlockedBadgesCount}/{achievements.length} huy hiệu
+          </span>
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {achievements.map((badge) => (
             <div

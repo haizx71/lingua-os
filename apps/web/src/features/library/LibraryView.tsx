@@ -42,6 +42,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
   const [copiedExport, setCopiedExport] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
+  const [viewDensity, setViewDensity] = useState<'comfortable' | 'compact'>('comfortable');
 
   const presentationItems = forcedState ? (initialItems ?? []) : initialItems;
   const library = useLibrary({
@@ -259,6 +260,16 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                     ? `Bỏ chọn tất cả (${selectedItemKeys.size})`
                     : `Chọn tất cả (${visibleItems.length})`}
                 </Button>
+                <Button
+                  variant={viewDensity === 'compact' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  data-testid="library-density-toggle"
+                  data-density={viewDensity}
+                  aria-label="Chuyển đổi mật độ hiển thị danh sách thư viện"
+                  onClick={() => setViewDensity((prev) => (prev === 'comfortable' ? 'compact' : 'comfortable'))}
+                >
+                  {viewDensity === 'compact' ? '📐 Hiển thị: Thu gọn' : '📐 Hiển thị: Thoáng'}
+                </Button>
                 <div
                   data-testid="wave9-library-mastery-filter"
                   role="group"
@@ -393,7 +404,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       )}
 
       {status === 'success' && visibleItems.length > 0 && (
-        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2" role="list">
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2" role="list" data-view-density={viewDensity}>
           {visibleItems.map((item) => {
             const key = `${item.itemType}:${item.id}`;
             const isSelected = selectedItemKeys.has(key);
