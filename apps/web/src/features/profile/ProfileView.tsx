@@ -30,6 +30,7 @@ export function ProfileView({
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success' | undefined>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [copiedSummary, setCopiedSummary] = useState(false);
+  const [commitmentPace, setCommitmentPace] = useState<'relaxed' | 'regular' | 'intensive'>('regular');
 
   useEffect(() => {
     setLocalForcedState(forcedState);
@@ -68,6 +69,12 @@ export function ProfileView({
   }
 
   const level = profile.startingLevelEstimate?.trim();
+  const cefrCapabilityText =
+    level === 'B1' || level === 'B2'
+      ? '💬 Năng lực hiện tại: Đọc hiểu văn bản dài & diễn đạt ý kiến độc lập trong giao tiếp.'
+      : level === 'A2'
+        ? '💬 Năng lực hiện tại: Giao tiếp tình huống quen thuộc & đọc hiểu đoạn văn ngắn.'
+        : '💬 Năng lực hiện tại: Giao tiếp câu ngắn cơ bản & làm quen từ vựng cốt lõi.';
   const encountered = profile.totalConceptsEncountered;
   const mastered = profile.totalConceptsMastered;
   const masteryPercent = encountered !== undefined && mastered !== undefined && encountered > 0
@@ -157,15 +164,24 @@ export function ProfileView({
           </div>
         )}
         <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="profile-copy-summary"
-            aria-label="Sao chép tóm tắt hồ sơ học tập"
-            onClick={() => void handleCopyProfileSummary()}
-          >
-            {copiedSummary ? 'Đã sao chép hồ sơ' : '📋 Sao chép tóm tắt hồ sơ'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              data-testid="profile-weekly-commitment"
+              aria-label="Cam kết nhịp độ học hàng tuần"
+              className="inline-flex items-center rounded-full bg-[var(--surface-lilac)] px-3 py-1 text-xs font-bold text-[var(--action-primary)]"
+            >
+              📅 Nhịp độ: Đều đặn 5–7 buổi/tuần
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="profile-copy-summary"
+              aria-label="Sao chép tóm tắt hồ sơ học tập"
+              onClick={() => void handleCopyProfileSummary()}
+            >
+              {copiedSummary ? 'Đã sao chép hồ sơ' : '📋 Sao chép tóm tắt hồ sơ'}
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -174,6 +190,45 @@ export function ProfileView({
           >
             Chỉnh sửa mục tiêu & múi giờ
           </Button>
+        </div>
+        <p
+          data-testid="profile-cefr-descriptor"
+          aria-label="Mô tả năng lực giao tiếp theo cấp độ CEFR hiện tại"
+          className="mt-2 text-xs font-medium text-[var(--text-secondary)]"
+        >
+          {cefrCapabilityText}
+        </p>
+        <div
+          data-testid="wave9-profile-pace-selector"
+          role="group"
+          aria-label="Nhịp độ học tập cam kết hàng tuần"
+          className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/70 p-3"
+        >
+          <div>
+            <p className="text-xs font-bold text-[var(--text-primary)]">⏱️ Nhịp độ học cam kết:</p>
+            <p className="text-[11px] text-[var(--text-muted)]">Thiết lập thời gian dành cho tiếng Anh mỗi ngày</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { id: 'relaxed', label: 'Thong thả: 10p' },
+              { id: 'regular', label: 'Đều đặn: 20p' },
+              { id: 'intensive', label: 'Tập trung: 45p' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={commitmentPace === p.id}
+                onClick={() => setCommitmentPace(p.id as any)}
+                className={`rounded-xl px-2.5 py-1 text-xs font-bold transition-all ${
+                  commitmentPace === p.id
+                    ? 'bg-[var(--action-primary)] text-white shadow-xs'
+                    : 'border border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-lilac)]'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
 

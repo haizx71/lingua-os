@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button, Card, ConceptChip, EmptyState, ErrorState, InlineAlert, LoadingState } from '@lingua/ui';
 import { BookOpen, Bookmark, Clock, Search, Sparkles, Trash2, Volume2, X } from 'lucide-react';
@@ -37,7 +37,8 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
   const [sortOrder, setSortOrder] = useState<'default' | 'az'>('default');
   const sortBy = sortOrder;
   const setSortBy = setSortOrder;
-  const hasActiveFilters = activeTab !== 'all' || Boolean(searchQuery.trim()) || sortBy !== 'default';
+  const [statusFilter, setStatusFilter] = useState<'all' | 'learning' | 'mastered' | 'weak'>('all');
+  const hasActiveFilters = activeTab !== 'all' || Boolean(searchQuery.trim()) || sortBy !== 'default' || statusFilter !== 'all';
   const [copiedExport, setCopiedExport] = useState(false);
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
@@ -128,13 +129,38 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       })
     : tabItems;
 
+  const statusFilteredItems = filteredItems.filter((item) => {
+    if (statusFilter === 'all') return true;
+    if (item.itemType !== 'concept') return false;
+    if (statusFilter === 'mastered') return item.status === 'mastered';
+    if (statusFilter === 'weak') return item.status === 'weak' || item.status === 'forgotten';
+    return item.status !== 'mastered' && item.status !== 'weak' && item.status !== 'forgotten';
+  });
+
   const visibleItems = sortOrder === 'az'
-    ? [...filteredItems].sort((a, b) => {
+    ? [...statusFilteredItems].sort((a, b) => {
         const textA = a.itemType === 'concept' ? a.canonicalForm : a.itemType === 'sentence' ? a.text : a.title;
         const textB = b.itemType === 'concept' ? b.canonicalForm : b.itemType === 'sentence' ? b.text : b.title;
         return textA.localeCompare(textB);
       })
-    : filteredItems;
+    : statusFilteredItems;
+
+  const typeCounts = useMemo(() => {
+    let concepts = 0;
+    let sentences = 0;
+    let passages = 0;
+    for (const item of library.items) {
+      const type = (item as { itemType: string }).itemType;
+      if (type === 'concept') {
+        concepts += 1;
+      } else if (type === 'sentence') {
+        sentences += 1;
+      } else if (type === 'passage' || type === 'content') {
+        passages += 1;
+      }
+    }
+    return { concepts, sentences, passages };
+  }, [library.items]);
 
   const count = (filter: LibraryFilter) =>
     filter === 'all'
@@ -152,6 +178,18 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
             </div>
             <h1 className="mt-2 text-3xl font-bold leading-tight tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Thư viện</h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">Bài đọc, câu và khái niệm bạn đã lưu để xem lại.</p>
+            <div
+              data-testid="library-type-counts"
+              aria-label="Thống kê số lượng mục đã lưu theo phân loại"
+              className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
+            >
+              <span>📚 Tổng hợp kho lưu trữ:</span>
+              <span className="font-mono text-[var(--action-primary)]">{typeCounts.concepts} từ vựng</span>
+              <span>·</span>
+              <span className="font-mono">{typeCounts.sentences} câu</span>
+              <span>·</span>
+              <span className="font-mono">{typeCounts.passages} bài đọc</span>
+            </div>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             {!forcedState && <Button className="w-full sm:w-auto" variant="outline" size="md" onClick={library.retry}>Tải lại thư viện</Button>}
@@ -221,6 +259,55 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                     ? `Bỏ chọn tất cả (${selectedItemKeys.size})`
                     : `Chọn tất cả (${visibleItems.length})`}
                 </Button>
+                <div
+                  data-testid="wave9-library-mastery-filter"
+                  role="group"
+                  aria-label="Lọc thư viện theo trạng thái ghi nhớ"
+                  className="flex flex-wrap items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-1 text-xs"
+                >
+                  {(
+                    [
+                      { value: 'all', label: 'Tất cả' },
+                      { value: 'learning', label: 'Đang học' },
+                      { value: 'mastered', label: 'Đã vững' },
+                      { value: 'weak', label: 'Cần củng cố' },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={statusFilter === opt.value}
+                      onClick={() => setStatusFilter(opt.value)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                        statusFilter === opt.value
+                          ? 'bg-[var(--action-primary)] text-white shadow-xs'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--surface)]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  variant={statusFilter !== 'all' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  data-testid="library-status-filter"
+                  aria-label="Lọc theo mức độ ghi nhớ"
+                  onClick={() =>
+                    setStatusFilter((prev) =>
+                      prev === 'all' ? 'learning' : prev === 'learning' ? 'mastered' : prev === 'mastered' ? 'weak' : 'all',
+                    )
+                  }
+                  className="hidden"
+                >
+                  {statusFilter === 'learning'
+                    ? 'Trạng thái: Đang học'
+                    : statusFilter === 'mastered'
+                      ? 'Trạng thái: Đã vững'
+                      : statusFilter === 'weak'
+                        ? 'Trạng thái: Cần củng cố'
+                        : 'Trạng thái: Tất cả'}
+                </Button>
                 {hasActiveFilters && (
                   <Button
                     variant="ghost"
@@ -231,6 +318,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                       setActiveTab('all');
                       setSearchQuery('');
                       setSortBy('default');
+                      setStatusFilter('all');
                     }}
                   >
                     Đặt lại bộ lọc

@@ -25,6 +25,7 @@ export interface UserSettingsData {
   audioAutoplay: boolean;
   defaultSpeechRate?: 1 | 0.75;
   preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
+  preferredAccent?: 'en-US' | 'en-GB';
 }
 
 export interface SettingsViewProps {
@@ -45,6 +46,7 @@ function getStoredUserSettings(): {
   audioAutoplay?: boolean;
   defaultSpeechRate?: 1 | 0.75;
   preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
+  preferredAccent?: 'en-US' | 'en-GB';
 } {
   if (typeof window === 'undefined') return {};
   try {
@@ -115,6 +117,11 @@ export function SettingsView({
     }
     return 'off';
   });
+  const [preferredAccent, setPreferredAccent] = useState<'en-US' | 'en-GB'>(() => {
+    if (initialSettings?.preferredAccent !== undefined) return initialSettings.preferredAccent;
+    const stored = getStoredUserSettings();
+    return stored.preferredAccent === 'en-GB' ? 'en-GB' : 'en-US';
+  });
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
@@ -163,6 +170,7 @@ export function SettingsView({
           audioAutoplay?: boolean;
           defaultSpeechRate?: 1 | 0.75;
           preferredReminderTime?: 'off' | '07:30' | '12:30' | '20:00' | '21:30';
+          preferredAccent?: 'en-US' | 'en-GB';
         };
         if (initialSettings?.newWordsBudgetPerDay === undefined && typeof parsed.newWordsBudgetPerDay === 'number') {
           setNewWordsBudget(parsed.newWordsBudgetPerDay);
@@ -186,11 +194,14 @@ export function SettingsView({
         ) {
           setPreferredReminderTime(parsed.preferredReminderTime);
         }
+        if (initialSettings?.preferredAccent === undefined && parsed.preferredAccent === 'en-GB') {
+          setPreferredAccent('en-GB');
+        }
       }
     } catch {
       // Ignore corrupted localStorage
     }
-  }, [initialSettings?.audioAutoplay, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.preferredReminderTime, initialSettings?.reducedMotion]);
+  }, [initialSettings?.audioAutoplay, initialSettings?.defaultSpeechRate, initialSettings?.newWordsBudgetPerDay, initialSettings?.preferredAccent, initialSettings?.preferredReminderTime, initialSettings?.reducedMotion]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -212,6 +223,7 @@ export function SettingsView({
       audioAutoplay,
       defaultSpeechRate,
       ...(preferredReminderTime !== 'off' ? { preferredReminderTime } : {}),
+      ...(preferredAccent !== 'en-US' ? { preferredAccent } : {}),
     };
     if (typeof window !== 'undefined') {
       try {
@@ -225,6 +237,9 @@ export function SettingsView({
         }
         if (preferredReminderTime !== 'off') {
           storedSettingsPayload.preferredReminderTime = preferredReminderTime;
+        }
+        if (preferredAccent !== 'en-US') {
+          storedSettingsPayload.preferredAccent = preferredAccent;
         }
         window.localStorage.setItem(
           'lingua-user-settings-v1',
@@ -446,6 +461,50 @@ export function SettingsView({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div
+                data-testid="settings-accent-selector"
+                role="group"
+                aria-label="Chọn giọng phát âm tiếng Anh"
+                className="space-y-2 border-t border-[var(--border-subtle)] pt-4"
+              >
+                <div
+                  data-testid="wave9-settings-accent-selector"
+                  role="group"
+                  aria-label="Chọn giọng phát âm mẫu: Anh-Mỹ hoặc Anh-Anh"
+                  className="space-y-2"
+                >
+                  <span className="block text-sm font-bold text-[var(--text-primary)]">
+                    Giọng phát âm ưu tiên (Accent)
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { value: 'en-US', label: '🇺🇸 Anh - Mỹ (en-US)' },
+                        { value: 'en-GB', label: '🇬🇧 Anh - Anh (en-GB)' },
+                      ] as const
+                    ).map((opt) => {
+                      const active = preferredAccent === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          data-testid={`settings-accent-${opt.value}`}
+                          aria-pressed={active}
+                          onClick={() => setPreferredAccent(opt.value)}
+                          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                            active
+                              ? 'bg-[var(--action-primary)] text-white'
+                              : 'border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

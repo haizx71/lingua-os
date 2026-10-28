@@ -115,6 +115,7 @@ export function ProgressAnalytics({
   const maxMinutes = Math.max(1, ...history.map((day) => day.minutesSpent));
   const avgMinutes = history.length > 0 ? Math.round(minutes / history.length) : 0;
   const peakDay = history.reduce<{ dayLabel: string; minutesSpent: number } | null>((best, cur) => (!best || cur.minutesSpent > best.minutesSpent ? cur : best), null);
+  const peakMinutesDay = history.reduce((max, d) => Math.max(max, d.minutesSpent), 0);
   const avgRetention = history.length > 0 ? Math.round(history.reduce((sum, d) => sum + d.retentionPercent, 0) / history.length) : (data.retentionScore ?? 0);
   const retentionHealthLabel = avgRetention >= 85 ? '💚 Trí nhớ ổn định tốt' : '💛 Cần tăng cường ôn tập FSRS';
   const isLive = !initialData && !localForcedState;
@@ -202,6 +203,21 @@ export function ProgressAnalytics({
           </div>
         </Card>
       </section>
+
+      <div
+        data-testid="wave9-progress-streak-freeze"
+        aria-label="Trạng thái lá chắn bảo vệ chuỗi học tập"
+        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-xs text-sky-950 dark:text-sky-200"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base" role="img" aria-hidden="true">🛡️</span>
+          <span className="font-bold">Lá chắn bảo vệ chuỗi:</span>
+          <span>{activeDays >= 3 ? 'Đang kích hoạt (1 ngày nghỉ an toàn được bảo vệ)' : 'Tích lũy từ 3 ngày học để kích hoạt lá chắn bảo vệ'}</span>
+        </div>
+        <span className="rounded-full bg-sky-500/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-sky-700 dark:text-sky-300">
+          {activeDays >= 3 ? '1 lượt an toàn' : `${activeDays}/3 ngày`}
+        </span>
+      </div>
 
       <section
         data-testid="progress-cefr-milestone"
@@ -291,6 +307,13 @@ export function ProgressAnalytics({
           >
             <span>
               Độ đều đặn: <strong className="font-mono text-[var(--text-primary)]">{activeDaysCount}/{totalWindowDays} ngày</strong> có học tập
+            </span>
+            <span
+              data-testid="progress-best-day-badge"
+              aria-label="Kỷ lục thời lượng học cao nhất trong ngày"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--action-primary)]"
+            >
+              🏆 Kỷ lục ngày: {peakMinutesDay} phút
             </span>
             <span className="font-semibold text-[var(--action-primary)]">
               {activeDaysCount >= Math.ceil(totalWindowDays * 0.7) ? '🔥 Duy trì thói quen rất tốt' : '🌱 Hãy cố gắng học ít nhất 5 phút mỗi ngày'}

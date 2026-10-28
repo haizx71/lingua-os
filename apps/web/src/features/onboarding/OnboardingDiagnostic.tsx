@@ -94,6 +94,7 @@ export function OnboardingDiagnostic({
   const isCompleted = currentStep >= questions.length;
   const currentQuestion = questions[currentStep];
   const diagnosticPercent = questions.length > 0 ? Math.round(((currentStep + 1) / questions.length) * 100) : 0;
+  const remainingQuestions = Math.max(1, questions.length - currentStep);
   const isBeginnerCalibration =
     usedBeginnerBypass ||
     selectedAnswers.filter((a) => a === -1).length >= Math.ceil(questions.length / 2);
@@ -308,6 +309,13 @@ export function OnboardingDiagnostic({
                 className="rounded-full bg-[var(--surface-lilac)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--action-primary)]"
               >
                 {diagnosticPercent}%
+              </span>
+              <span
+                data-testid="onboarding-time-estimate"
+                aria-label="Thời gian ước tính hoàn thành bài chẩn đoán"
+                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-0.5 font-mono text-xs font-semibold text-[var(--text-secondary)]"
+              >
+                ⏱️ Còn {remainingQuestions} câu (~1 phút)
               </span>
             </div>
             <Badge variant="primary" size="sm">

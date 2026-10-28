@@ -135,6 +135,13 @@ export function TodayDashboard({
   const progressPercent = targetMinutes > 0 ? Math.min(100, Math.round((completedMinutes / targetMinutes) * 100)) : 0;
   const streakDays = initialStreakDays ?? (effectivePlan.completedActivitiesCount > 0 ? 1 : 0);
   const nextActivity = effectivePlan.activities.find((activity) => !activity.completed);
+  const primaryActivity = effectivePlan.activities[0];
+  const focusSkillLabel =
+    primaryActivity?.type === 'review'
+      ? 'Kích hoạt trí nhớ dài hạn (Spaced Retrieval)'
+      : primaryActivity?.type === 'learn'
+        ? 'Mở rộng mạng lưới khái niệm ngôn ngữ'
+        : 'Đọc hiểu ngữ cảnh & Mở rộng từ vựng';
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
       <PageHeading />
@@ -149,6 +156,14 @@ export function TodayDashboard({
       <section aria-label="Kế hoạch học tập hôm nay" className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(250px,0.7fr)]">
         <div className="min-w-0 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-7">
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--action-primary)]"><Sun className="h-4 w-4" aria-hidden="true" /><span>Kế hoạch hôm nay</span></div>
+          <div
+            data-testid="wave9-today-skill-focus"
+            aria-label="Kỹ năng trọng tâm của kế hoạch hôm nay"
+            className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-[var(--action-primary)]/30 bg-[var(--surface-lilac)] px-3 py-1 text-xs font-semibold text-[var(--action-primary)]"
+          >
+            <span>🎯 Trọng tâm hôm nay:</span>
+            <span className="font-bold text-[var(--text-primary)]">{focusSkillLabel}</span>
+          </div>
           <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Bắt đầu từ một bước nhỏ.</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">{completedMinutes} trên {targetMinutes} phút đã hoàn thành hôm nay.</p>
           <div className="mt-5 max-w-xl rounded-2xl bg-[var(--surface-lilac)] p-4">
@@ -202,6 +217,17 @@ export function TodayDashboard({
                 ? `⏳ Còn khoảng ${remainingMinutes} phút để hoàn tất mục tiêu`
                 : '✅ Đã hoàn thành mục tiêu thời lượng hôm nay'}
             </div>
+            <div className="mt-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="today-quick-review-link"
+                aria-label="Mở nhanh phiên ôn tập thẻ nhớ đến hạn"
+                onClick={() => clientNavigate('/review')}
+              >
+                ⚡ Ôn nhanh thẻ đến hạn
+              </Button>
+            </div>
           </div>
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4 text-sm"><span className="text-[var(--text-secondary)]">Hoạt động hoàn tất</span><span className="font-bold text-[var(--text-primary)]">{effectivePlan.completedActivitiesCount} / {effectivePlan.totalActivitiesCount}</span></div>
         </aside>
@@ -214,6 +240,13 @@ export function TodayDashboard({
       >
         <span className="font-semibold text-[var(--text-primary)]">
           ☀️ Nhịp học khoa học: Kết hợp đọc bài có ngữ cảnh và ôn tập ngắt quãng để ghi nhớ sâu.
+        </span>
+        <span
+          data-testid="today-focus-skill-badge"
+          aria-label="Trọng tâm kỹ năng hôm nay"
+          className="inline-flex items-center rounded-full bg-[var(--surface-lilac)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--action-primary)]"
+        >
+          🎯 Trọng tâm: Đọc hiểu & Phản xạ từ vựng
         </span>
         <span className="font-mono text-[11px] font-bold text-[var(--action-primary)]">
           {effectivePlan.totalActivitiesCount} hoạt động trong ngày

@@ -22,6 +22,10 @@ import {
   formatBeginnerPosVi,
   getVietnamesePronunciationTip,
   getSentenceStructureTip,
+  getLearnerTrapWarning,
+  getFalseFriendTrap,
+  getIrregularVerbInfo,
+  getWordFamilyHint,
 } from './beginnerLexicon';
 import { getApiClient } from '../../lib/api/client';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
@@ -63,6 +67,7 @@ export function InteractiveReader({
   const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
   const [fontScale, setFontScale] = useState<'standard' | 'large' | 'xlarge'>('standard');
   const [zenMode, setZenMode] = useState(false);
+  const [readerTheme, setReaderTheme] = useState<'default' | 'sepia' | 'dark'>('default');
   const [speechRate, setSpeechRate] = useState<1 | 0.75>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -121,6 +126,7 @@ export function InteractiveReader({
 
   const status = presentationState === 'success' ? reader.status : presentationState;
   const passage = reader.passage;
+  const savedSentenceIds = reader.savedSentenceIds;
 
   const activeToken = reader.selectedToken ?? quickLookupToken;
   const closeActiveInspector = React.useCallback(() => {
@@ -367,7 +373,14 @@ export function InteractiveReader({
   return (
     <div
       data-reader-zen={zenMode ? 'true' : 'false'}
-      className={`mx-auto w-full min-w-0 max-w-4xl space-y-2 sm:space-y-4 ${zenMode ? 'rounded-3xl bg-[var(--surface-subtle)]/35 p-3 sm:p-6 transition-all' : ''}`}
+      data-reader-theme={readerTheme}
+      className={`mx-auto w-full min-w-0 max-w-4xl space-y-2 sm:space-y-4 ${
+        readerTheme === 'sepia'
+          ? 'bg-amber-50/40'
+          : readerTheme === 'dark'
+            ? 'bg-slate-900/5'
+            : ''
+      } ${zenMode ? 'rounded-3xl bg-[var(--surface-subtle)]/35 p-3 sm:p-6 transition-all' : ''}`.trim()}
     >
       <header className="flex min-w-0 items-center gap-3 rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface)] to-[var(--surface-warm)]/35 p-4 shadow-[var(--shadow-xs)] sm:gap-5 sm:p-6">
         <div className="min-w-0 flex-1">
@@ -390,6 +403,13 @@ export function InteractiveReader({
             <span className="rounded-full border border-[var(--action-primary)]/40 bg-[var(--surface-lilac)] px-2.5 py-0.5 text-[var(--text-primary)]">
               {lexicalCounts.unseen} từ mới
             </span>
+          </div>
+          <div
+            data-testid="wave10-reader-wpm-meter"
+            aria-label="Tốc độ đọc ước tính và thời gian đọc bài"
+            className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
+          >
+            <span>⏱️ ~{Math.max(1, Math.ceil(passage.wordCount / 120))} phút đọc (tốc độ tiêu chuẩn 120 từ/phút)</span>
           </div>
         </div>
         <Image src="/assets/reader-tea-book.png" alt="" aria-hidden="true" width={270} height={190} className="h-auto w-[34%] max-w-[175px] shrink-0 object-contain" />
@@ -461,6 +481,30 @@ export function InteractiveReader({
         >
           {zenMode ? '🧘 Đang tập trung' : '🧘 Đọc tập trung'}
         </Button>
+        <Button
+          variant={readerTheme !== 'default' ? 'secondary' : 'ghost'}
+          size="sm"
+          data-testid="wave9-reader-reading-theme-toggle"
+          aria-label="Chuyển chế độ nền đọc: Mặc định, Sepia ấm áp hoặc Đêm"
+          onClick={() =>
+            setReaderTheme((prev) =>
+              prev === 'default' ? 'sepia' : prev === 'sepia' ? 'dark' : 'default',
+            )
+          }
+        >
+          {readerTheme === 'sepia'
+            ? '📜 Nền: Vàng dịu'
+            : readerTheme === 'dark'
+              ? '🌙 Nền: Dịu tối'
+              : '☀️ Nền: Mặc định'}
+        </Button>
+        <span
+          data-testid="reader-saved-sentences-count"
+          aria-label="Số câu đã lưu trong bài đọc"
+          className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-xs font-semibold text-[var(--text-secondary)]"
+        >
+          📌 Đã lưu {savedSentenceIds.size} câu
+        </span>
         {translatableSentenceIds.length > 0 && (
           <Button
             variant="ghost"
@@ -518,7 +562,14 @@ export function InteractiveReader({
                 id={`reader-segment-${segment.id}`}
                 data-testid="reader-segment"
                 data-segment-id={segment.id}
-                className="min-w-0 scroll-mt-6 space-y-4 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4 shadow-[var(--shadow-xs)] sm:p-6"
+                data-reading-theme={readerTheme}
+                className={`min-w-0 scroll-mt-6 space-y-4 rounded-3xl border border-[var(--border-subtle)] p-4 shadow-[var(--shadow-xs)] sm:p-6 transition-colors ${
+                  readerTheme === 'sepia'
+                    ? 'bg-[#FAF3E0] text-[#3E2C1C]'
+                    : readerTheme === 'dark'
+                      ? 'bg-[#18181B] text-[#F4F4F5]'
+                      : 'bg-[var(--surface)]'
+                }`}
               >
                 {segment.sentences.map((sentence) => {
                   const sentenceSaved = reader.savedSentenceIds.has(sentence.id);
@@ -796,6 +847,34 @@ export function InteractiveReader({
             <p data-testid="inspector-pron-tip" className="mt-1.5 text-xs text-[var(--action-primary)]">
               🗣️ {getVietnamesePronunciationTip(selectedToken.lemma ?? selectedToken.raw, selectedToken.ipa)}
             </p>
+            <p data-testid="inspector-trap-warning" className="mt-1 text-[11px] text-[var(--text-secondary)]">
+              ⚠️ {getLearnerTrapWarning(selectedToken.lemma ?? selectedToken.raw)}
+            </p>
+            <p data-testid="inspector-word-family" className="mt-1 text-[11px] text-[var(--text-secondary)]">
+              🌱 {getWordFamilyHint(selectedToken.lemma ?? selectedToken.raw)}
+            </p>
+            {(() => {
+              const falseFriendTrap = getFalseFriendTrap(selectedToken.lemma ?? selectedToken.raw);
+              return falseFriendTrap ? (
+                <div
+                  data-testid="wave9-false-friend-warning"
+                  className="mt-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs font-medium text-amber-900 dark:text-amber-200"
+                >
+                  ⚠️ {falseFriendTrap}
+                </div>
+              ) : null;
+            })()}
+            {(() => {
+              const irregular = getIrregularVerbInfo(selectedToken.lemma ?? selectedToken.raw);
+              return irregular ? (
+                <div
+                  data-testid="wave10-irregular-verb-info"
+                  className="mt-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1.5 text-xs font-medium text-indigo-950 dark:text-indigo-200"
+                >
+                  📘 Động từ bất quy tắc: <strong>{irregular.base}</strong> → Quá khứ: <strong>{irregular.past}</strong> (Phân từ: {irregular.participle}) · Nghĩa: {irregular.vi}
+                </div>
+              ) : null;
+            })()}
             {selectedToken.explanationEn && <details className="mt-1 text-xs text-[var(--text-muted)]"><summary className="cursor-pointer">Định nghĩa tiếng Anh</summary><p className="mt-1 leading-4">{selectedToken.explanationEn}</p></details>}
           </div>
 

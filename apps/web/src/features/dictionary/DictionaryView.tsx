@@ -20,9 +20,25 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [copiedTermId, setCopiedTermId] = useState<string | null>(null);
   const [selectedCefr, setSelectedCefr] = useState<'ALL' | 'A1' | 'A2' | 'B1'>('ALL');
   const [recentSearches, setRecentSearches] = useState<string[]>(['morning', 'practice']);
   const [searchDirection, setSearchDirection] = useState<'en-vi' | 'vi-en'>('en-vi');
+
+  const handleCopyTerm = async (id: string, term: string, ipa?: string) => {
+    const text = ipa ? `${term} (${ipa})` : term;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        // ignore clipboard errors
+      }
+    }
+    setCopiedTermId(id);
+    setTimeout(() => {
+      setCopiedTermId((curr) => (curr === id ? null : curr));
+    }, 1800);
+  };
 
   const recordSearchTerm = (term: string) => {
     const clean = term.trim();
@@ -283,6 +299,25 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                     >
                       🐢 0.75x
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="wave9-dict-super-slow-audio"
+                      onClick={() => handlePlayAudio(`${group.lexemeId}:ultraslow`, group.lemma, 0.5)}
+                      aria-label={`Nghe siêu chậm 0.5x để phân tích âm vị từ ${group.lemma}`}
+                      title="Nghe siêu chậm 0.5x để phân tích âm vị"
+                    >
+                      <span data-testid="dictionary-ultraslow-audio" className="pointer-events-none">🐢 0.5x Siêu chậm</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="dictionary-copy-term"
+                      aria-label={`Sao chép từ ${group.lemma}`}
+                      onClick={() => void handleCopyTerm(group.lexemeId, group.lemma, (group as { ipa?: string }).ipa)}
+                    >
+                      {copiedTermId === group.lexemeId ? 'Đã sao chép' : '📋 Sao chép từ'}
+                    </Button>
                   </div>
                   {group.partOfSpeech && <span className="mt-1 block text-xs text-[var(--text-muted)]">{partOfSpeechLabels[group.partOfSpeech] ?? group.partOfSpeech}</span>}
                 </div>
@@ -384,6 +419,25 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                     >
                       🐢 0.75x
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="wave9-dict-super-slow-audio"
+                      onClick={() => handlePlayAudio(`${concept.id}:ultraslow`, concept.term, 0.5)}
+                      aria-label={`Nghe siêu chậm 0.5x để phân tích âm vị từ ${concept.term}`}
+                      title="Nghe siêu chậm 0.5x để phân tích âm vị"
+                    >
+                      <span data-testid="dictionary-ultraslow-audio" className="pointer-events-none">🐢 0.5x Siêu chậm</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="dictionary-copy-term"
+                      aria-label={`Sao chép từ ${concept.term}`}
+                      onClick={() => void handleCopyTerm(concept.id, concept.term, concept.ipa)}
+                    >
+                      {copiedTermId === concept.id ? 'Đã sao chép' : '📋 Sao chép từ'}
+                    </Button>
                   </div>
                   {(concept.ipa || concept.pos) && <span className="mt-1 block font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos ? (partOfSpeechLabels[concept.pos] ?? concept.pos) : ''].filter(Boolean).join(' • ')}</span>}
                 </div>
@@ -438,6 +492,25 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                       title="Nghe phát âm chậm 0.75x"
                     >
                       🐢 0.75x
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="wave9-dict-super-slow-audio"
+                      onClick={() => handlePlayAudio(`${concept.id}:ultraslow`, concept.term, 0.5)}
+                      aria-label={`Nghe siêu chậm 0.5x để phân tích âm vị từ ${concept.term}`}
+                      title="Nghe siêu chậm 0.5x để phân tích âm vị"
+                    >
+                      <span data-testid="dictionary-ultraslow-audio" className="pointer-events-none">🐢 0.5x Siêu chậm</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="dictionary-copy-term"
+                      aria-label={`Sao chép từ ${concept.term}`}
+                      onClick={() => void handleCopyTerm(concept.id, concept.term, concept.ipa)}
+                    >
+                      {copiedTermId === concept.id ? 'Đã sao chép' : '📋 Sao chép từ'}
                     </Button>
                   </div>
                   {(concept.ipa || concept.pos) && <span className="mt-1 block truncate font-mono text-xs text-[var(--text-muted)]">{[concept.ipa, concept.pos ? (partOfSpeechLabels[concept.pos] ?? concept.pos) : ''].filter(Boolean).join(' • ')}</span>}

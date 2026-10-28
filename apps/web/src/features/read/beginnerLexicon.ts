@@ -1784,3 +1784,113 @@ export function getSentenceStructureTip(sentenceText: string): string {
   }
   return 'Cấu trúc câu chuẩn (Chủ ngữ + Động từ + Cụm bổ ngữ): Dịch từ người/vật thực hiện hành động sang hành động chính và nơi chốn/thời gian.';
 }
+
+const LEARNER_TRAP_WARNINGS: Readonly<Record<string, string>> = {
+  tea: 'Lưu ý: "tea" đồng âm với chữ cái "T" (/tiː/), không đọc là "tia".',
+  schedule: 'Bẫy phát âm: Anh-Mỹ đọc là /ˈskedʒ.uːl/ (âm đầu sk-), không đọc là "sche-đun".',
+  appointment: 'Lưu ý: Chứa âm đôi /ɔɪ/ ở âm tiết 2 (ờ-POIN-mần) và bật nhẹ âm cuối -nt.',
+  talk: 'Bẫy âm câm: Chữ "l" trong "talk" (/tɔːk/) là âm câm, không cong lưỡi đọc chữ l.',
+  walk: 'Bẫy âm câm: Chữ "l" trong "walk" (/wɔːk/) là âm câm.',
+  know: 'Bẫy âm câm: Chữ "k" đầu từ "know" (/nəʊ/) là âm câm, đọc giống "no".',
+  write: 'Bẫy âm câm: Chữ "w" đầu từ "write" (/raɪt/) là âm câm, đọc từ âm r-.',
+  house: 'Lưu ý: Danh từ "house" kết thúc bằng âm /s/, đừng quên xì nhẹ cuối từ.',
+  visit: 'Lưu ý: Trọng âm rơi vào âm tiết 1 (/ˈvɪz.ɪt/), tránh nhấn nhầm sang âm 2.',
+};
+
+export function getLearnerTrapWarning(term: string): string | null {
+  const clean = term.trim().toLowerCase().replace(/[^a-z']/g, '');
+  if (!clean) return null;
+  if (LEARNER_TRAP_WARNINGS[clean]) return LEARNER_TRAP_WARNINGS[clean];
+  const entry = lookupBeginnerWord(clean);
+  if (entry && (LEARNER_TRAP_WARNINGS[entry.lemma] || LEARNER_TRAP_WARNINGS[entry.lemma.toLowerCase()])) {
+    return LEARNER_TRAP_WARNINGS[entry.lemma] || LEARNER_TRAP_WARNINGS[entry.lemma.toLowerCase()];
+  }
+  return 'Mẹo nhớ sâu: Đọc to từ này 2 lần gắn với ngữ cảnh câu để tránh dịch từng chữ rời rạc.';
+}
+
+export const FALSE_FRIENDS_TRAPS: Readonly<Record<string, string>> = {
+  actually: 'Cảnh báo từ dễ nhầm (False Friend): "actually" có nghĩa là "thực ra / thực sự", KHÔNG PHẢI "hiện tại" (hiện tại là "currently / presently").',
+  eventually: 'Cảnh báo từ dễ nhầm (False Friend): "eventually" có nghĩa là "cuối cùng thì / rốt cuộc", KHÔNG PHẢI "thỉnh thoảng" (thỉnh thoảng là "occasionally").',
+  sympathy: 'Cảnh báo từ dễ nhầm (False Friend): "sympathy" có nghĩa là "sự đồng cảm / thương hại", KHÔNG PHẢI "thông cảm" thông thường.',
+  chef: 'Cảnh báo phát âm & nghĩa: "chef" là đầu bếp trưởng (/ʃef/), KHÔNG PHẢI sếp/thủ lĩnh (sếp là "chief" /tʃiːf/).',
+  sensible: 'Cảnh báo từ dễ nhầm (False Friend): "sensible" có nghĩa là "biết điều / hợp lý", KHÔNG PHẢI "nhạy cảm" (nhạy cảm là "sensitive").',
+  confident: 'Cảnh báo từ dễ nhầm (False Friend): "confident" có nghĩa là "tự tin", KHÔNG PHẢI "người tâm sự" (người tâm sự là "confidant").',
+  tea: 'Cảnh báo từ dễ nhầm: "tea" đồng âm với chữ cái "T" (/tiː/), không đọc là "tia".',
+  appointment: 'Cảnh báo bẫy ngữ âm: "appointment" nhấn trọng âm 2 (/əˈpɔɪnt.mənt/), không nhấn âm đầu.',
+};
+
+export function getFalseFriendTrap(term: string): string | null {
+  if (!term) return null;
+  const clean = term.trim().toLowerCase().replace(/[^a-z']/g, '');
+  if (!clean) return null;
+  if (FALSE_FRIENDS_TRAPS[clean]) return FALSE_FRIENDS_TRAPS[clean];
+  const entry = lookupBeginnerWord(clean);
+  if (entry) {
+    const lemmaClean = entry.lemma.toLowerCase().replace(/[^a-z']/g, '');
+    if (FALSE_FRIENDS_TRAPS[lemmaClean]) return FALSE_FRIENDS_TRAPS[lemmaClean];
+  }
+  return null;
+}
+
+export interface IrregularVerbConjugation {
+  readonly base: string;
+  readonly past: string;
+  readonly participle: string;
+  readonly vi: string;
+}
+
+export const IRREGULAR_VERBS_MAP: Readonly<Record<string, IrregularVerbConjugation>> = {
+  go: { base: 'go', past: 'went', participle: 'gone', vi: 'đi' },
+  went: { base: 'go', past: 'went', participle: 'gone', vi: 'đã đi (quá khứ của go)' },
+  gone: { base: 'go', past: 'went', participle: 'gone', vi: 'đã đi (phân từ của go)' },
+  drink: { base: 'drink', past: 'drank', participle: 'drunk', vi: 'uống' },
+  drank: { base: 'drink', past: 'drank', participle: 'drunk', vi: 'đã uống (quá khứ của drink)' },
+  drunk: { base: 'drink', past: 'drank', participle: 'drunk', vi: 'đã uống (phân từ của drink)' },
+  buy: { base: 'buy', past: 'bought', participle: 'bought', vi: 'mua' },
+  bought: { base: 'buy', past: 'bought', participle: 'bought', vi: 'đã mua (quá khứ/phân từ của buy)' },
+  think: { base: 'think', past: 'thought', participle: 'thought', vi: 'nghĩ, suy nghĩ' },
+  thought: { base: 'think', past: 'thought', participle: 'thought', vi: 'đã nghĩ (quá khứ/phân từ của think)' },
+  see: { base: 'see', past: 'saw', participle: 'seen', vi: 'nhìn thấy' },
+  saw: { base: 'see', past: 'saw', participle: 'seen', vi: 'đã thấy (quá khứ của see)' },
+  seen: { base: 'see', past: 'saw', participle: 'seen', vi: 'đã thấy (phân từ của see)' },
+  eat: { base: 'eat', past: 'ate', participle: 'eaten', vi: 'ăn' },
+  ate: { base: 'eat', past: 'ate', participle: 'eaten', vi: 'đã ăn (quá khứ của eat)' },
+  eaten: { base: 'eat', past: 'ate', participle: 'eaten', vi: 'đã ăn (phân từ của eat)' },
+  take: { base: 'take', past: 'took', participle: 'taken', vi: 'cầm, lấy' },
+  took: { base: 'take', past: 'took', participle: 'taken', vi: 'đã lấy (quá khứ của take)' },
+  taken: { base: 'take', past: 'took', participle: 'taken', vi: 'đã lấy (phân từ của take)' },
+  write: { base: 'write', past: 'wrote', participle: 'written', vi: 'viết' },
+  wrote: { base: 'write', past: 'wrote', participle: 'written', vi: 'đã viết (quá khứ của write)' },
+  written: { base: 'write', past: 'wrote', participle: 'written', vi: 'đã viết (phân từ của write)' },
+};
+
+export function getIrregularVerbInfo(term: string): IrregularVerbConjugation | null {
+  if (!term) return null;
+  const clean = term.trim().toLowerCase().replace(/[^a-z']/g, '');
+  if (!clean) return null;
+  return IRREGULAR_VERBS_MAP[clean] ?? null;
+}
+
+export const WORD_FAMILY_HINTS: Readonly<Record<string, string>> = {
+  tea: 'Họ từ & từ ghép: teapot (ấm trà), teacup (tách trà), teahouse (quán trà).',
+  schedule: 'Họ từ (Word family): scheduled (adj - theo lịch), unscheduled (adj - đột xuất), scheduler (n).',
+  appointment: 'Họ từ (Word family): appoint (v - bổ nhiệm/hẹn), appointed (adj - đã định).',
+  morning: 'Từ ghép thông dụng: morning routine (thói quen buổi sáng), early morning (sáng sớm).',
+  visit: 'Họ từ (Word family): visitor (n - khách thăm), visiting (n/adj - chuyến thăm).',
+  work: 'Họ từ (Word family): worker (n - người lao động), workplace (n - nơi làm việc), working (adj).',
+  help: 'Họ từ (Word family): helpful (adj - hữu ích), helpless (adj - bất lực), helper (n).',
+  learn: 'Họ từ (Word family): learner (n - người học), learning (n - việc học), learned (adj).',
+};
+
+export function getWordFamilyHint(term: string): string | null {
+  const clean = term.trim().toLowerCase().replace(/[^a-z']/g, '');
+  if (!clean) return null;
+  if (WORD_FAMILY_HINTS[clean]) return WORD_FAMILY_HINTS[clean];
+  const entry = lookupBeginnerWord(clean);
+  if (entry && (WORD_FAMILY_HINTS[entry.lemma] || WORD_FAMILY_HINTS[entry.lemma.toLowerCase()])) {
+    return WORD_FAMILY_HINTS[entry.lemma] || WORD_FAMILY_HINTS[entry.lemma.toLowerCase()];
+  }
+  return `Họ từ & biến thể: Chú ý các hậu tố thường gặp (-er, -ing, -ed, -ly) khi gặp "${clean}" trong bài đọc.`;
+}
+
+

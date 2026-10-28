@@ -197,8 +197,11 @@ export function LanguageBrainCanvas({
     if (selectedStatus !== 'ALL' && n.status !== selectedStatus) return false;
     if (selectedGroup !== 'ALL' && n.groupLabel !== selectedGroup) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      if (!n.label.toLowerCase().includes(q) && !n.translationVi.toLowerCase().includes(q)) return false;
+      const q = searchQuery.trim().toLowerCase();
+      const anyNode = n as { term?: string; meaningVi?: string; label?: string; translationVi?: string };
+      const termVal = (anyNode.term ?? anyNode.label ?? '').toLowerCase();
+      const meaningVal = (anyNode.meaningVi ?? anyNode.translationVi ?? '').toLowerCase();
+      if (!termVal.includes(q) && !meaningVal.includes(q)) return false;
     }
     return true;
   }), [effectiveNodes, selectedCefr, selectedStatus, selectedGroup, searchQuery]);
@@ -221,6 +224,20 @@ export function LanguageBrainCanvas({
       forgotten,
       weakOrForgotten: weak + forgotten,
     };
+  }, [nodes]);
+
+  const cefrCounts = React.useMemo(() => {
+    let a1 = 0;
+    let a2 = 0;
+    let b1 = 0;
+    let b2 = 0;
+    for (const n of nodes) {
+      if (n.cefr === 'A1') a1 += 1;
+      else if (n.cefr === 'A2') a2 += 1;
+      else if (n.cefr === 'B1') b1 += 1;
+      else if (n.cefr === 'B2') b2 += 1;
+    }
+    return { a1, a2, b1, b2, A1: a1, A2: a2, B1: b1, B2: b2 };
   }, [nodes]);
 
   const handleNodeClick = (node: BrainNodeItem) => {
@@ -278,7 +295,31 @@ export function LanguageBrainCanvas({
 
       <Card padding="lg" className="min-w-0 overflow-hidden rounded-[28px]">
           <div className="flex min-w-0 flex-col gap-4 border-b border-[var(--border-subtle)] pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><Brain className="h-5 w-5 shrink-0 text-[var(--action-primary)]" /><h3 className="truncate text-base font-bold text-[var(--text-primary)]">Khái niệm</h3></div><p className="mt-1 text-xs text-[var(--text-muted)]">{filteredNodes.length} mục</p></div>
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <Brain className="h-5 w-5 shrink-0 text-[var(--action-primary)]" />
+              <h3 className="truncate text-base font-bold text-[var(--text-primary)]">Khái niệm</h3>
+            </div>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">{filteredNodes.length} mục</p>
+            <div
+              data-testid="wave9-brain-cefr-breakdown"
+              aria-label="Phân bổ cấp độ CEFR của các từ trong Brain"
+              className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+            >
+              <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">
+                A1: {cefrCounts.A1}
+              </span>
+              <span className="rounded-md bg-sky-500/15 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">
+                A2: {cefrCounts.A2}
+              </span>
+              <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">
+                B1: {cefrCounts.B1}
+              </span>
+              <span className="rounded-md bg-purple-500/15 px-1.5 py-0.5 text-purple-700 dark:text-purple-300">
+                B2: {cefrCounts.B2}
+              </span>
+            </div>
+          </div>
           <div className="flex shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-subtle)] p-1">
             <Button variant="ghost" size="icon" onClick={() => handleZoomChange(zoomLevel - 10)} aria-label="Thu nhỏ mạng lưới"><ZoomOut className="h-4 w-4" /></Button>
             <span className="w-11 text-center font-mono text-[11px] text-[var(--text-muted)]">{zoomLevel}%</span>
@@ -292,6 +333,19 @@ export function LanguageBrainCanvas({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
             <label htmlFor="brain-concept-search" className="sr-only">Tìm khái niệm trong Brain</label>
             <input id="brain-concept-search" type="search" placeholder="Lọc từ vựng trong Brain..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="min-h-11 w-full min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-9 pr-3 text-base text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus-ring)] sm:text-sm" />
+          </div>
+
+          <div
+            data-testid="brain-cefr-distribution"
+            aria-label="Phân bổ khái niệm theo cấp độ CEFR"
+            className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
+          >
+            <span className="font-bold text-[var(--action-primary)]">Cấp độ CEFR:</span>
+            <span>A1 ({cefrCounts.a1})</span>
+            <span>·</span>
+            <span>A2 ({cefrCounts.a2})</span>
+            <span>·</span>
+            <span>B1 ({cefrCounts.b1})</span>
           </div>
 
           <div
@@ -350,6 +404,18 @@ export function LanguageBrainCanvas({
                 <span className="text-[var(--status-warning)]">Cần củng cố / Đã quên: {nodeStatusCounts.weakOrForgotten}</span>
               </div>
             </div>
+
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="search"
+                data-testid="brain-node-search"
+                aria-label="Tìm nhanh khái niệm trong mạng lưới"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="🔍 Tìm nhanh từ vựng trong Brain..."
+                className="w-full max-w-xs rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--action-primary)] focus:outline-none"
+              />
+            </div>
           </div>
 
           {availableGroups.length > 1 && (
@@ -390,7 +456,7 @@ export function LanguageBrainCanvas({
           <div ref={stageRef} className="flex min-w-full flex-wrap content-start gap-3 p-4 will-change-transform sm:p-6" style={{ transformOrigin: '0 0' }}>
             {filteredNodes.length === 0 ? <div className="w-full py-12 text-center text-sm text-[var(--text-secondary)]">Không tìm thấy từ vựng nào khớp với bộ lọc.</div> : filteredNodes.map((node) => (
               <button key={node.id} ref={(el) => { nodeRefs.current[node.id] = el; }} type="button" onClick={() => handleNodeClick(node)} className="rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]">
-                <ConceptChip status={node.status} isDue={node.isDue} term={node.label} size="md" className={`cursor-pointer hover:shadow-sm ${selectedNodeForContext?.id === node.id ? 'ring-2 ring-[var(--focus-ring)] shadow-md' : ''}`} />
+                <ConceptChip status={node.status} isDue={node.isDue} term={node.label ?? (node as { term?: string }).term ?? ''} size="md" className={`cursor-pointer hover:shadow-sm ${selectedNodeForContext?.id === node.id ? 'ring-2 ring-[var(--focus-ring)] shadow-md' : ''}`} />
               </button>
             ))}
           </div>
