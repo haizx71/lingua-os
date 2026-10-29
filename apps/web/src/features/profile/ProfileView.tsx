@@ -290,7 +290,14 @@ export function ProfileView({
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.7fr)]">
         <Card padding="lg" className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-xs)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="lingua-kicker">Năng lực</p><h2 className="mt-1 text-xl font-bold text-[var(--text-primary)]">Khái niệm đã củng cố</h2></div>
+            <div>
+              <p className="lingua-kicker">Năng lực</p>
+              <h2 className="mt-1 text-xl font-bold text-[var(--text-primary)]">
+                <span data-testid="profile-solidified-heading-vi">
+                  Từ vựng đã củng cố vững (Khái niệm đã củng cố)
+                </span>
+              </h2>
+            </div>
             {masteryPercent !== null && <span className="rounded-full bg-[var(--status-success-bg)] px-3 py-1.5 text-xs font-bold text-[var(--status-success)]">{masteryPercent}%</span>}
           </div>
           {masteryPercent !== null ? (
@@ -313,7 +320,7 @@ export function ProfileView({
               aria-label="Mở bản đồ mạng lưới từ vựng Language Brain"
               onClick={() => clientNavigate('/brain')}
             >
-              🧠 Mở bản đồ Language Brain
+              🧠 Mở bản đồ Language Brain (Bản đồ từ vựng)
             </Button>
           </div>
         </Card>

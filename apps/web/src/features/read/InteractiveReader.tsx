@@ -974,7 +974,17 @@ export function InteractiveReader({
                 ) : null;
               })()}
             </div>
-            {selectedToken.explanationEn && <details className="mt-1 text-xs text-[var(--text-muted)]"><summary className="cursor-pointer">Định nghĩa tiếng Anh</summary><p className="mt-1 leading-4">{selectedToken.explanationEn}</p></details>}
+            {selectedToken.explanationEn && (
+              <details className="mt-1 text-xs text-[var(--text-muted)]">
+                <summary
+                  data-testid="inspector-english-def-summary"
+                  className="cursor-pointer font-medium text-[var(--text-secondary)]"
+                >
+                  Định nghĩa gốc tiếng Anh (Tham khảo nâng cao)
+                </summary>
+                <p className="mt-1 leading-4">{selectedToken.explanationEn}</p>
+              </details>
+            )}
           </div>
 
           <div className="mt-2 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
@@ -995,7 +1005,9 @@ export function InteractiveReader({
               </Button>
               {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
                 <Button variant="secondary" size="sm" leftIcon={<Check className="h-3.5 w-3.5" />} disabled>
-                  Đã lưu vào Kho từ nhớ
+                  <span data-testid="inspector-saved-status-label">
+                    Đã lưu vào ôn tập (Kho từ nhớ)
+                  </span>
                 </Button>
               ) : (
                 <Button

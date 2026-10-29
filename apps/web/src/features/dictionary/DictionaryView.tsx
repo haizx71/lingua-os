@@ -180,7 +180,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             aria-label="Tổng số khái niệm đã lưu vào kho cá nhân"
             className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-3 py-1 text-xs font-bold text-[var(--action-primary)]"
           >
-            ⭐ Đã lưu {totalSavedConceptsCount} khái niệm
+            ⭐ Đã lưu {totalSavedConceptsCount} khái niệm (từ vựng)
           </span>
         </div>
       </header>
@@ -414,7 +414,13 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                                   <ConceptChip status={concept.status} isDue={concept.isDue} term={concept.canonicalForm} size="sm" />
                                 </div>
                               </div>
-                              {linked.mastery !== null && <p className="mt-2 text-xs text-[var(--text-muted)]">Độ vững: {Math.round(linked.mastery * 100)}%</p>}
+                              {linked.mastery !== null && (
+                                <p className="mt-2">
+                                  <span data-testid="dictionary-related-mastery-label" className="text-[11px] text-[var(--text-muted)]">
+                                    Mức độ ghi nhớ: {Math.round(linked.mastery * 100)}%
+                                  </span>
+                                </p>
+                              )}
                               {detail ? (
                                 <div className="mt-3 space-y-2 border-t border-[var(--border-subtle)] pt-3">
                                   {detail.definitions.map((definition, index) => (

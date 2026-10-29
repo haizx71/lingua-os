@@ -576,6 +576,12 @@ export function SettingsView({
                     );
                   })}
                 </div>
+                <p
+                  data-testid="settings-fsrs-cap-beginner-note"
+                  className="mt-1.5 text-xs text-[var(--text-muted)]"
+                >
+                  💡 Giải thích: Hệ thống chỉ đưa ra tối đa số thẻ này mỗi ngày để bạn không bao giờ bị quá tải bài ôn.
+                </p>
               </div>
             </div>
           </Card>

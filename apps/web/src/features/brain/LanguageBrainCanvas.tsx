@@ -612,7 +612,11 @@ export function LanguageBrainCanvas({
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <h3 className="truncate text-xl font-black tracking-[-0.03em] text-[var(--text-primary)]">{visibleSelectedNode.label}</h3>
-                {visibleSelectedNode.cefr && <Badge variant="primary" size="sm">{visibleSelectedNode.cefr}</Badge>}
+                {visibleSelectedNode.cefr && (
+                  <Badge variant="primary" size="sm" data-testid="brain-selected-cefr-badge">
+                    Cấp độ: {visibleSelectedNode.cefr}
+                  </Badge>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -628,15 +632,12 @@ export function LanguageBrainCanvas({
                   {visibleSelectedNode.ipa && <span className="font-mono">{visibleSelectedNode.ipa}</span>}
                   {visibleSelectedNode.ipa && visibleSelectedNode.pos && <span>•</span>}
                   {visibleSelectedNode.pos && (
-                    <>
-                      <span className="font-mono">{visibleSelectedNode.pos}</span>
-                      <span
-                        data-testid="brain-selected-pos-vi"
-                        className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]"
-                      >
-                        {mapBrainPosVi(visibleSelectedNode.pos)}
-                      </span>
-                    </>
+                    <span
+                      data-testid="brain-selected-pos-vi"
+                      className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]"
+                    >
+                      {mapBrainPosVi(visibleSelectedNode.pos)}
+                    </span>
                   )}
                 </div>
               )}

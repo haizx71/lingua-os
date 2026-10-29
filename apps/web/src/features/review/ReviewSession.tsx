@@ -419,7 +419,7 @@ export function ReviewSession({
   };
 
   if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
-    return <LoadingState message="Đang chuẩn bị thẻ ôn tập thông minh (FSRS)..." count={3} />;
+    return <LoadingState message="Đang tải hàng đợi thẻ ôn tập thông minh (FSRS)..." count={3} />;
   }
 
   if (localForcedState === 'error' || (error && !localForcedState)) {
@@ -515,7 +515,7 @@ export function ReviewSession({
                 aria-label="Hướng dẫn phím tắt bàn phím"
                 className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
               >
-                ⌨️ Phím tắt: Space (Lật) · 1–4 (Chấm)
+                ⌨️ Phím tắt: Space (Lật) · 1–4 (Chấm) · Phím Cách = Space
               </span>
               <span
                 data-testid="review-pace-indicator"
@@ -531,7 +531,11 @@ export function ReviewSession({
               >
                 🎯 {accuracyPercent}%{sessionStreak > 0 ? ` · 🔥 ${sessionStreak}` : ''}
               </span>
-              {displayDueCount !== null && <Badge variant="warning" size="md">{displayDueCount} còn lại</Badge>}
+              {displayDueCount !== null && (
+                <Badge variant="warning" size="md" data-testid="review-total-due-badge">
+                  Tổng cần ôn: {displayDueCount} thẻ (<span>{displayDueCount} còn lại</span>)
+                </Badge>
+              )}
             </div>
 
             <div data-testid="review-controls-row" className="flex flex-wrap items-center gap-1.5">
@@ -789,7 +793,7 @@ export function ReviewSession({
             {!isAnswerRevealed && (
               <div className="mt-7">
                 <Button variant="primary" size="md" onClick={() => setIsAnswerRevealed(true)} className="px-6">
-                  {hiddenAnswerMode ? 'Hiện đáp án (Space)' : 'Hiện đáp án & nghĩa (Space)'}
+                  {hiddenAnswerMode ? 'Hiện đáp án (Phím Cách / Space)' : 'Hiện đáp án & nghĩa (Phím Cách / Space)'}
                 </Button>
               </div>
             )}

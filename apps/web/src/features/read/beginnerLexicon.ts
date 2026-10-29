@@ -1872,7 +1872,7 @@ export function getIrregularVerbInfo(term: string): IrregularVerbConjugation | n
 }
 
 export const WORD_FAMILY_HINTS: Readonly<Record<string, string>> = {
-  tea: 'Họ từ & từ ghép: teapot (ấm trà), teacup (tách trà), teahouse (quán trà).',
+  tea: 'Họ từ (Từ cùng gốc) & từ ghép: teapot (ấm trà), teacup (tách trà), teahouse (quán trà).',
   schedule: 'Họ từ (Từ cùng gốc): scheduled (tính từ: theo lịch), unscheduled (tính từ: đột xuất), scheduler (danh từ).',
   appointment: 'Họ từ (Từ cùng gốc): appoint (động từ: bổ nhiệm/hẹn), appointed (tính từ: đã định).',
   morning: 'Từ ghép thông dụng: morning routine (thói quen buổi sáng), early morning (sáng sớm).',
@@ -1894,7 +1894,7 @@ export function getWordFamilyHint(term: string): string | null {
 }
 
 export const SEMANTIC_CONTRAST_TIPS: Readonly<Record<string, string>> = {
-  morning: 'Đối lập ngữ nghĩa: evening (buổi tối) / night (ban đêm) · Cùng chủ đề: dawn (bình minh).',
+  morning: 'Từ trái nghĩa: evening (buổi tối) / night (ban đêm) · Cùng chủ đề: dawn (bình minh).',
   hot: 'Trái nghĩa: cold (lạnh), cool (mát mẻ) · Nâng cao: warm (ấm áp).',
   early: 'Trái nghĩa: late (trễ, muộn) · Đồng nghĩa: ahead of time (sớm hơn dự kiến).',
   tea: 'Cùng nhóm đồ uống: coffee (cà phê), juice (nước ép), water (nước lọc).',
@@ -1912,7 +1912,7 @@ export function getSemanticContrastTip(term: string): string | null {
   if (entry && (SEMANTIC_CONTRAST_TIPS[entry.lemma] || SEMANTIC_CONTRAST_TIPS[entry.lemma.toLowerCase()])) {
     return SEMANTIC_CONTRAST_TIPS[entry.lemma] || SEMANTIC_CONTRAST_TIPS[entry.lemma.toLowerCase()];
   }
-  return `Liên kết ngữ nghĩa: Hãy đặt "${clean}" cạnh 1 từ đồng nghĩa hoặc trái nghĩa để nhớ nhanh gấp đôi.`;
+  return `Mẹo liên kết từ vựng (Liên kết ngữ nghĩa): Hãy đặt "${clean}" cạnh 1 từ đồng nghĩa hoặc trái nghĩa để nhớ nhanh gấp đôi.`;
 }
 
 

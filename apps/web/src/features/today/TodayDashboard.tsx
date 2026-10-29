@@ -365,7 +365,7 @@ export function TodayDashboard({
                       data-testid={`today-step-priority-${activity.id}`}
                       className="text-[11px] font-semibold text-[var(--action-primary)]"
                     >
-                      👉 Bước chính: Bấm &ldquo;Bắt đầu&rdquo; để vào bài học
+                      👉 Bước chính: Bấm nút màu xanh (&ldquo;Bắt đầu&rdquo; / &ldquo;Mở bài&rdquo;) để vào bài học
                     </span>
                   )}
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">

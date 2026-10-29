@@ -433,7 +433,7 @@ export function OnboardingDiagnostic({
               </span>
               <h2 className="text-2xl font-bold text-[var(--text-primary)]">
                 <span data-testid="onboarding-level-label-vi">
-                  {isBeginnerCalibration ? 'A1 Cơ bản (Dành cho người mới bắt đầu)' : 'A2 Sơ cấp (Giao tiếp cơ bản)'}
+                  {isBeginnerCalibration ? 'A1 Cơ bản (Dành cho người mới bắt đầu)' : 'A2 Sơ cấp (A2 Elementary — Giao tiếp cơ bản)'}
                 </span>
               </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
@@ -505,7 +505,7 @@ export function OnboardingDiagnostic({
                 </p>
               </div>
               <div className="p-3 bg-[var(--surface-subtle)] rounded-xl border border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Ngân sách từ mới:</span>
+                <span className="text-[var(--text-muted)]">Mục tiêu từ mới mỗi ngày:</span>
                 <p className="font-bold text-sm text-[var(--text-primary)] mt-0.5">
                   {isBeginnerCalibration ? '3–5 từ mới/ngày (vừa sức cho người mới)' : '5–8 từ mới/ngày'}
                 </p>
@@ -520,7 +520,7 @@ export function OnboardingDiagnostic({
                 {usedBeginnerBypass ? 'Lộ trình cơ bản cho người mất gốc' : 'Chuẩn đánh giá năng lực CEFR'}
               </span>
               <span className="rounded-lg bg-[var(--surface-subtle)] px-2.5 py-1">
-                {isBeginnerCalibration ? '3–5 từ mới/ngày (vừa sức cho người mới)' : '5–8 từ mới/ngày'}
+                <span data-testid="onboarding-budget-label-vi">Mục tiêu từ mới mỗi ngày:</span> {isBeginnerCalibration ? '3–5 từ mới/ngày (vừa sức cho người mới)' : '5–8 từ mới/ngày'}
               </span>
             </div>
 

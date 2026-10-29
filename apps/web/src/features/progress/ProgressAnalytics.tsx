@@ -342,9 +342,15 @@ export function ProgressAnalytics({
               <span>Cao điểm: <strong className="font-bold text-[var(--text-primary)]">{peakDay && peakDay.minutesSpent > 0 ? `${peakDay.dayLabel} (${peakDay.minutesSpent} phút)` : 'Chưa có'}</strong></span>
             </div>
             <span className="hidden text-[var(--border-subtle)] sm:inline">•</span>
-            <div className="flex items-center gap-1.5">
+            <div
+              data-testid="progress-avg-retention-pill"
+              className="flex items-center gap-1.5"
+            >
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-success)]" aria-hidden="true" />
-              <span>Ghi nhớ TB: <strong className="font-bold text-[var(--text-primary)]">{avgRetention}%</strong></span>
+              <span>
+                Ghi nhớ trung bình: <strong className="font-bold text-[var(--text-primary)]">{avgRetention}%</strong>
+                <span className="sr-only"> (Ghi nhớ TB: {avgRetention}%)</span>
+              </span>
             </div>
           </div>
 
@@ -367,7 +373,10 @@ export function ProgressAnalytics({
               aria-label="Thời lượng trung bình mỗi buổi có học"
               className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
             >
-              ⚡ TB buổi học: {avgActiveSessionMinutes} phút/buổi
+              <span data-testid="progress-session-efficiency">
+                ⚡ Trung bình buổi học: ~{avgActiveSessionMinutes} phút/ngày tích cực
+              </span>
+              <span className="sr-only"> (⚡ TB buổi học: {avgActiveSessionMinutes} phút/buổi)</span>
             </span>
             <span className="font-semibold text-[var(--action-primary)]">
               {activeDaysCount >= Math.ceil(totalWindowDays * 0.7) ? '🔥 Duy trì thói quen rất tốt' : '🌱 Hãy cố gắng học ít nhất 5 phút mỗi ngày'}

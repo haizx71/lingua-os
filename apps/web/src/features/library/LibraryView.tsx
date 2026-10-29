@@ -32,6 +32,17 @@ function savedLabel(savedAt: string): string {
     : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeZone: 'UTC' }).format(timestamp);
 }
 
+function formatLibraryPosVi(pos?: string): string {
+  if (!pos) return '';
+  const normalized = pos.trim().toLowerCase();
+  if (normalized === 'noun' || normalized === 'n') return 'Danh từ';
+  if (normalized === 'verb' || normalized === 'v') return 'Động từ';
+  if (normalized === 'adjective' || normalized === 'adj') return 'Tính từ';
+  if (normalized === 'adverb' || normalized === 'adv') return 'Trạng từ';
+  if (normalized === 'phrase') return 'Cụm từ';
+  return pos;
+}
+
 export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorCode = 'INTERNAL_ERROR' }: LibraryViewProps) {
   const [activeTab, setActiveTab] = useState<LibraryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -518,8 +529,28 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                     {item.itemType === 'concept' && (
                       <div className="min-w-0">
                         <h2 className="truncate text-lg font-bold tracking-[-0.02em] text-[var(--text-primary)]">{item.canonicalForm}</h2>
-                        {(item.ipa || item.partOfSpeech) && <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">{[item.ipa, item.partOfSpeech].filter(Boolean).join(' • ')}</p>}
-                        <div className="mt-2 flex flex-wrap items-center gap-2">{item.level && <Badge variant="neutral" size="sm">{item.level}</Badge>}<ConceptChip status={item.status} isDue={item.isDue} size="sm" /></div>
+                        {(item.ipa || item.partOfSpeech) && (
+                          <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">
+                            {item.ipa && <span>{item.ipa}</span>}
+                            {item.ipa && item.partOfSpeech && <span> • </span>}
+                            {item.partOfSpeech && (
+                              <span
+                                data-testid="library-concept-pos-vi"
+                                className="text-xs italic text-[var(--text-muted)]"
+                              >
+                                ({formatLibraryPosVi(item.partOfSpeech)})
+                              </span>
+                            )}
+                          </p>
+                        )}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {item.level && (
+                            <Badge variant="neutral" size="sm" data-testid="library-concept-level-badge">
+                              Cấp độ: {item.level}
+                            </Badge>
+                          )}
+                          <ConceptChip status={item.status} isDue={item.isDue} size="sm" />
+                        </div>
                         <p
                           data-testid="library-concept-meaning-vi"
                           className="mt-1 text-sm font-semibold text-[var(--action-primary)]"
