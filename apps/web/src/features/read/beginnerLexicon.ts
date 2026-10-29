@@ -1809,12 +1809,12 @@ export function getLearnerTrapWarning(term: string): string | null {
 }
 
 export const FALSE_FRIENDS_TRAPS: Readonly<Record<string, string>> = {
-  actually: 'Cảnh báo từ dễ nhầm (False Friend): "actually" có nghĩa là "thực ra / thực sự", KHÔNG PHẢI "hiện tại" (hiện tại là "currently / presently").',
-  eventually: 'Cảnh báo từ dễ nhầm (False Friend): "eventually" có nghĩa là "cuối cùng thì / rốt cuộc", KHÔNG PHẢI "thỉnh thoảng" (thỉnh thoảng là "occasionally").',
-  sympathy: 'Cảnh báo từ dễ nhầm (False Friend): "sympathy" có nghĩa là "sự đồng cảm / thương hại", KHÔNG PHẢI "thông cảm" thông thường.',
+  actually: 'Cảnh báo từ dễ nhầm (Từ dễ nhầm nghĩa): "actually" có nghĩa là "thực ra / thực sự", KHÔNG PHẢI "hiện tại" (hiện tại là "currently / presently").',
+  eventually: 'Cảnh báo từ dễ nhầm (Từ dễ nhầm nghĩa): "eventually" có nghĩa là "cuối cùng thì / rốt cuộc", KHÔNG PHẢI "thỉnh thoảng" (thỉnh thoảng là "occasionally").',
+  sympathy: 'Cảnh báo từ dễ nhầm (Từ dễ nhầm nghĩa): "sympathy" có nghĩa là "sự đồng cảm / thương hại", KHÔNG PHẢI "thông cảm" thông thường.',
   chef: 'Cảnh báo phát âm & nghĩa: "chef" là đầu bếp trưởng (shef), KHÔNG PHẢI sếp/thủ lĩnh (sếp là "chief" chiif).',
-  sensible: 'Cảnh báo từ dễ nhầm (False Friend): "sensible" có nghĩa là "biết điều / hợp lý", KHÔNG PHẢI "nhạy cảm" (nhạy cảm là "sensitive").',
-  confident: 'Cảnh báo từ dễ nhầm (False Friend): "confident" có nghĩa là "tự tin", KHÔNG PHẢI "người tâm sự" (người tâm sự là "confidant").',
+  sensible: 'Cảnh báo từ dễ nhầm (Từ dễ nhầm nghĩa): "sensible" có nghĩa là "biết điều / hợp lý", KHÔNG PHẢI "nhạy cảm" (nhạy cảm là "sensitive").',
+  confident: 'Cảnh báo từ dễ nhầm (Từ dễ nhầm nghĩa): "confident" có nghĩa là "tự tin", KHÔNG PHẢI "người tâm sự" (người tâm sự là "confidant").',
   tea: 'Cảnh báo từ dễ nhầm: "tea" đồng âm với chữ cái "T" (ti), không đọc là "tia".',
   appointment: 'Cảnh báo bẫy ngữ âm: "appointment" nhấn trọng âm 2 (ơ-POIN-mần), không nhấn âm đầu.',
 };
@@ -1873,13 +1873,13 @@ export function getIrregularVerbInfo(term: string): IrregularVerbConjugation | n
 
 export const WORD_FAMILY_HINTS: Readonly<Record<string, string>> = {
   tea: 'Họ từ & từ ghép: teapot (ấm trà), teacup (tách trà), teahouse (quán trà).',
-  schedule: 'Họ từ (Word family): scheduled (adj - theo lịch), unscheduled (adj - đột xuất), scheduler (n).',
-  appointment: 'Họ từ (Word family): appoint (v - bổ nhiệm/hẹn), appointed (adj - đã định).',
+  schedule: 'Họ từ (Từ cùng gốc): scheduled (adj - theo lịch), unscheduled (adj - đột xuất), scheduler (n).',
+  appointment: 'Họ từ (Từ cùng gốc): appoint (v - bổ nhiệm/hẹn), appointed (adj - đã định).',
   morning: 'Từ ghép thông dụng: morning routine (thói quen buổi sáng), early morning (sáng sớm).',
-  visit: 'Họ từ (Word family): visitor (n - khách thăm), visiting (n/adj - chuyến thăm).',
-  work: 'Họ từ (Word family): worker (n - người lao động), workplace (n - nơi làm việc), working (adj).',
-  help: 'Họ từ (Word family): helpful (adj - hữu ích), helpless (adj - bất lực), helper (n).',
-  learn: 'Họ từ (Word family): learner (n - người học), learning (n - việc học), learned (adj).',
+  visit: 'Họ từ (Từ cùng gốc): visitor (n - khách thăm), visiting (n/adj - chuyến thăm).',
+  work: 'Họ từ (Từ cùng gốc): worker (n - người lao động), workplace (n - nơi làm việc), working (adj).',
+  help: 'Họ từ (Từ cùng gốc): helpful (adj - hữu ích), helpless (adj - bất lực), helper (n).',
+  learn: 'Họ từ (Từ cùng gốc): learner (n - người học), learning (n - việc học), learned (adj).',
 };
 
 export function getWordFamilyHint(term: string): string | null {

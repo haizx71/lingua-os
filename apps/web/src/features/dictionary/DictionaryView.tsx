@@ -20,7 +20,7 @@ function getWordComplexityLabel(term: string): string {
   const clean = term.trim();
   if (clean.length <= 5) return 'Ngắn · Dễ nhớ';
   if (clean.length <= 8) return 'Độ dài vừa';
-  return 'Đa âm tiết';
+  return 'Từ dài (Đọc chậm từng âm)';
 }
 
 export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, forcedState = 'success', forcedErrorCode = 'INTERNAL_ERROR', apiClient }: DictionaryViewProps) {
@@ -439,7 +439,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                           );
                         })}
                       </div>
-                    ) : <p className="mt-3 text-xs text-[var(--text-muted)]">Chưa có khái niệm liên kết được duyệt.</p>}
+                    ) : <p className="mt-3 text-xs text-[var(--text-muted)]">Chưa có từ liên quan mở rộng cho mục này.</p>}
                   </section>
                 ))}
               </div>

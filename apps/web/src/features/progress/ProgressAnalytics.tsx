@@ -307,6 +307,12 @@ export function ProgressAnalytics({
         >
           💡 Giải thích cho người mới: Thang CEFR chia trình độ từ A1 (Mới bắt đầu) → A2 (Giao tiếp cơ bản) → B1 (Đọc hiểu tự tin). Hệ thống FSRS giúp nhắc bạn ôn đúng lúc sắp quên.
         </p>
+        <p
+          data-testid="progress-retention-practical-meaning"
+          className="mt-1 text-[11px] font-medium text-[var(--text-secondary)]"
+        >
+          🎯 Ý nghĩa thực tế: Tỷ lệ ghi nhớ {avgRetention}% nghĩa là cứ 10 từ đã học thì bạn nhớ vững khoảng {Math.round(avgRetention / 10)} từ khi gặp lại.
+        </p>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)]">

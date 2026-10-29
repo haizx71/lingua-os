@@ -318,7 +318,13 @@ export function SettingsView({
       {savedNotification && <InlineAlert variant="success" title="Đã lưu">{savedNotification}</InlineAlert>}
       {persistence.saveError && <InlineAlert variant="danger" title="Không thể lưu thời lượng học">{persistence.saveError.message}</InlineAlert>}
       <InlineAlert variant="info" title="Lưu tùy chọn">
-        Giao diện được lưu trên thiết bị này. Mục tiêu học, ngân sách từ mới, giảm chuyển động và tự phát âm chưa được lưu lâu dài.
+        <p>Giao diện được lưu trên thiết bị này. Mục tiêu học, ngân sách từ mới, giảm chuyển động và tự phát âm chưa được lưu lâu dài.</p>
+        <p
+          data-testid="settings-storage-reassurance"
+          className="mt-1 text-xs text-[var(--text-secondary)]"
+        >
+          💾 Yên tâm: Các tùy chọn giọng đọc, tốc độ nghe và cỡ chữ vẫn được giữ tự động trên trình duyệt của máy này.
+        </p>
       </InlineAlert>
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-start">

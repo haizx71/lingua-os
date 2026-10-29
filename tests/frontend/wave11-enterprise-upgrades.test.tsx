@@ -282,7 +282,8 @@ describe('Wave 11 Enterprise Language Platform Upgrades Test Suite', () => {
       expect(
         firstTag.textContent === 'Ngắn · Dễ nhớ' ||
           firstTag.textContent === 'Độ dài vừa' ||
-          firstTag.textContent === 'Đa âm tiết'
+          firstTag.textContent === 'Đa âm tiết' ||
+          firstTag.textContent === 'Từ dài (Đọc chậm từng âm)'
       ).toBe(true);
     });
   });

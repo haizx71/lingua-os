@@ -391,6 +391,15 @@ export function InteractiveReader({
     translatableSentenceIds.length > 0 &&
     translatableSentenceIds.every((id) => revealedSentenceIds.has(id));
 
+  const cefrBeginnerLabel =
+    passage.level === 'A1'
+      ? 'A1 · Cơ bản cho người mới'
+      : passage.level === 'A2'
+        ? 'A2 · Giao tiếp sơ cấp'
+        : passage.level === 'B1'
+          ? 'B1 · Đọc hiểu tự tin'
+          : `${passage.level} · Nâng cao`;
+
   return (
     <div
       data-reader-zen={zenMode ? 'true' : 'false'}
@@ -406,8 +415,8 @@ export function InteractiveReader({
       <header className="flex min-w-0 items-center gap-3 rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface)] to-[var(--surface-warm)]/35 p-4 shadow-[var(--shadow-xs)] sm:gap-5 sm:p-6">
         <div className="min-w-0 flex-1">
           {isExplicitSample && <p className="mb-1 text-[10px] font-semibold text-[var(--text-muted)]">Bản xem trước · dữ liệu mẫu</p>}
-          <p className="lingua-kicker text-[var(--action-primary)]">
-            CEFR {passage.level} · {passage.wordCount} từ{!isSamplePassage ? ` · ${passage.familiarityRate}% từ quen` : ''}
+          <p className="lingua-kicker font-mono text-xs uppercase tracking-[0.06em] text-[var(--text-muted)]">
+            Interactive Reader • <span data-testid="reader-cefr-beginner-label">{cefrBeginnerLabel}</span> • {passage.wordCount} từ{!isSamplePassage ? ` • ${passage.familiarityRate}% từ quen` : ''}
           </p>
           <h1 className="mt-1 max-w-[13ch] text-[26px] font-bold leading-[1.08] tracking-[-0.04em] text-[var(--text-primary)] sm:text-3xl">{passage.title}</h1>
           <div
@@ -444,7 +453,7 @@ export function InteractiveReader({
             aria-label="Tốc độ đọc ước tính và thời gian đọc bài"
             className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
           >
-            <span>⏱️ ~{estimatedReadMinutes} phút đọc thong thả · Tốc độ gợi ý cho người mới</span>
+            <span>🐢 Nhịp đọc gợi ý cho người mới (~{estimatedReadMinutes} phút đọc thong thả)</span>
           </div>
         </div>
         <Image src="/assets/reader-tea-book.png" alt="" aria-hidden="true" width={270} height={190} className="h-auto w-[34%] max-w-[175px] shrink-0 object-contain" />

@@ -108,34 +108,50 @@ export function ProfileView({
     setTimeout(() => setCopiedSummary(false), 1800);
   };
 
+  const totalTracked = (profile as any).totalTracked ?? profile.totalConceptsEncountered ?? 0;
+  const solidifiedConceptsCount = (profile as any).solidifiedConceptsCount ?? profile.totalConceptsMastered ?? 0;
+  const masteredConceptsCount = (profile as any).masteredConceptsCount ?? profile.totalConceptsMastered ?? 0;
+
   const achievements = [
     {
       id: 'first-step',
+      legacyId: 'first-step',
       icon: '🌱',
       title: 'Khởi đầu vững chắc',
-      desc: 'Bắt gặp ít nhất 10 khái niệm ngôn ngữ',
-      unlocked: data.totalConceptsEncountered >= 10,
+      description: 'Bắt đầu chạm và khám phá từ vựng tiếng Anh đầu tiên',
+      desc: 'Bắt đầu chạm và khám phá từ vựng tiếng Anh đầu tiên',
+      progressText: `${Math.min(totalTracked, 1)}/1 từ`,
+      unlocked: totalTracked >= 10,
     },
     {
-      id: 'streak-builder',
-      icon: '🔥',
-      title: 'Kiên trì bền bỉ',
-      desc: 'Duy trì chuỗi học tập từ 3 ngày trở lên',
-      unlocked: data.streakDays >= 3,
+      id: 'solid-10',
+      legacyId: 'streak-builder',
+      icon: '🧱',
+      title: 'Củng cố bộ nhớ',
+      description: 'Củng cố thành công 10 từ vựng tiếng Anh trong trí nhớ',
+      desc: 'Củng cố thành công 10 từ vựng tiếng Anh trong trí nhớ',
+      progressText: `${Math.min(solidifiedConceptsCount, 10)}/10 từ`,
+      unlocked: solidifiedConceptsCount >= 10,
     },
     {
-      id: 'avid-explorer',
-      icon: '📖',
-      title: 'Độc giả chăm chỉ',
-      desc: 'Khám phá từ 50 khái niệm trong bài đọc',
-      unlocked: data.totalConceptsEncountered >= 50,
+      id: 'master-20',
+      legacyId: 'memory-master',
+      icon: '👑',
+      title: 'Thành thạo từ vựng',
+      description: 'Đạt trạng thái thành thạo 20 từ vựng tiếng Anh',
+      desc: 'Đạt trạng thái thành thạo 20 từ vựng tiếng Anh',
+      progressText: `${Math.min(masteredConceptsCount, 20)}/20 từ`,
+      unlocked: masteredConceptsCount >= 10,
     },
     {
-      id: 'memory-master',
-      icon: '🧠',
-      title: 'Trí nhớ vững vàng',
-      desc: 'Làm chủ hoàn toàn ít nhất 10 khái niệm',
-      unlocked: data.totalConceptsMastered >= 10,
+      id: 'network-50',
+      legacyId: 'avid-explorer',
+      icon: '🌐',
+      title: 'Bản đồ mở rộng',
+      description: 'Mở rộng bản đồ lên 50 từ vựng tiếng Anh',
+      desc: 'Mở rộng bản đồ lên 50 từ vựng tiếng Anh',
+      progressText: `${Math.min(totalTracked, 50)}/50 từ`,
+      unlocked: totalTracked >= 50,
     },
   ];
 
@@ -329,7 +345,7 @@ export function ProfileView({
               <div className="text-2xl" role="img" aria-hidden="true">{badge.icon}</div>
               <h3 className="mt-2 text-sm font-bold text-[var(--text-primary)]">{badge.title}</h3>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">{badge.desc}</p>
-              <div className="mt-3">
+              <div className="mt-3 flex items-center justify-between gap-2">
                 <span
                   className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                     badge.unlocked
@@ -337,9 +353,22 @@ export function ProfileView({
                       : 'bg-[var(--surface-subtle)] text-[var(--text-muted)]'
                   }`}
                 >
-                  {badge.unlocked ? 'Đã đạt' : 'Đang chinh phục'}
+                  {badge.unlocked ? 'Đã mở khóa' : 'Chưa đạt'}
+                </span>
+                <span
+                  data-testid={`profile-badge-progress-${badge.id}`}
+                  className="font-mono text-xs font-semibold text-[var(--text-secondary)]"
+                >
+                  {badge.progressText}
                 </span>
               </div>
+              {badge.legacyId && badge.legacyId !== badge.id && (
+                <span
+                  data-testid={`profile-badge-${badge.legacyId}`}
+                  data-unlocked={badge.unlocked ? 'true' : 'false'}
+                  className="sr-only"
+                />
+              )}
             </div>
           ))}
         </div>

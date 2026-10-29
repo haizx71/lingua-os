@@ -521,6 +521,13 @@ export function OnboardingDiagnostic({
                 {isBeginnerCalibration ? '3–5 từ mới/ngày (vừa sức cho người mới)' : '5–8 từ mới/ngày'}
               </span>
             </div>
+
+            <p
+              data-testid="onboarding-day1-tip"
+              className="mt-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-2 text-xs text-[var(--text-secondary)]"
+            >
+              💡 Cách học mỗi ngày: Chỉ cần bấm nghe phát âm, xem nghĩa tiếng Việt và chọn mức độ nhớ — hệ thống sẽ tự nhắc lại đúng lúc bạn sắp quên.
+            </p>
           </div>
 
           {/* Action Buttons */}

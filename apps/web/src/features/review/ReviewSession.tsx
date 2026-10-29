@@ -73,6 +73,40 @@ export function computeIntervalPreview(
   }
 }
 
+export interface RatingOptionItem {
+  rating: ReviewRating;
+  label: string;
+  hint: string;
+  className: string;
+}
+
+export const RATING_OPTIONS: RatingOptionItem[] = [
+  {
+    rating: 'again',
+    label: 'Quên (Again)',
+    hint: 'Chưa nhớ',
+    className: 'border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]',
+  },
+  {
+    rating: 'hard',
+    label: 'Khó (Hard)',
+    hint: 'Cần gợi ý',
+    className: 'border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]',
+  },
+  {
+    rating: 'good',
+    label: 'Tốt (Good)',
+    hint: 'Nhớ đúng',
+    className: 'border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-blue)]',
+  },
+  {
+    rating: 'easy',
+    label: 'Dễ (Easy)',
+    hint: 'Đã thuộc lòng',
+    className: 'border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)]',
+  },
+];
+
 export interface ReviewSessionProps {
   initialQueue?: ReviewCardItem[];
   forcedState?: 'loading' | 'empty' | 'error' | 'success';
@@ -758,10 +792,29 @@ export function ReviewSession({
               <span><kbd className="mr-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-1 font-mono text-[10px]">4</kbd>{computeIntervalPreview('easy', currentCard.status)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-danger-border)] text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]" onClick={() => void submitRating('again', needsTextResponse ? responseText : undefined)}>Quên (Again)</Button>
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-warning-border)] text-[var(--status-warning)] hover:bg-[var(--status-warning-bg)]" onClick={() => void submitRating('hard', needsTextResponse ? responseText : undefined)}>Khó (Hard)</Button>
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--border-default)] text-[var(--action-primary)] hover:bg-[var(--surface-blue)]" onClick={() => void submitRating('good', needsTextResponse ? responseText : undefined)}>Tốt (Good)</Button>
-              <Button variant="outline" size="sm" disabled={isSubmitting || Boolean(pendingRetryOperation)} className="min-h-[44px] border-[var(--status-success-border)] text-[var(--status-success)] hover:bg-[var(--status-success-bg)]" onClick={() => void submitRating('easy', needsTextResponse ? responseText : undefined)}>Dễ (Easy)</Button>
+              {RATING_OPTIONS.map((option, idx) => (
+                <Button
+                  key={option.rating}
+                  variant="outline"
+                  size="sm"
+                  disabled={isSubmitting || Boolean(pendingRetryOperation)}
+                  className={`min-h-[44px] flex flex-wrap items-center justify-center gap-1.5 ${option.className}`}
+                  onClick={() => void submitRating(option.rating, needsTextResponse ? responseText : undefined)}
+                >
+                  <span
+                    data-testid={`review-key-badge-${option.rating}`}
+                    className="rounded border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--text-muted)]"
+                  >
+                    [Phím {idx + 1}]
+                  </span>
+                  <span>{option.label}</span>
+                  {option.hint && (
+                    <span className="hidden text-[10px] text-[var(--text-muted)] sm:inline">
+                      ({option.hint})
+                    </span>
+                  )}
+                </Button>
+              ))}
             </div>
             <p className="mt-2.5 text-center text-[11px] text-[var(--text-muted)]">
               Mẹo cho người mới: Chọn <strong>Quên</strong> nếu chưa nhớ • <strong>Khó</strong> nếu cần gợi ý • <strong>Tốt</strong> nếu nhớ đúng • <strong>Dễ</strong> nếu đã thuộc lòng

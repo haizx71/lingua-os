@@ -54,12 +54,12 @@ function computeRemediationAdvice(node: BrainNodeItem): string {
   const production = node.productionScore ?? 0;
 
   if (listening < recognition && listening <= production) {
-    return 'Ưu tiên luyện Nghe & Điền từ (Listening / Cloze) để cân bằng trí nhớ âm thanh.';
+    return 'Gợi ý khắc phục: Khái niệm này vừa bị quên hoặc chưa vững. Hãy ưu tiên luyện Nghe & Điền từ ngữ cảnh (Nghe câu & Điền từ còn thiếu) và đọc lại câu ví dụ thực tế trước khi lật thẻ.';
   }
   if (production < recognition && production <= listening) {
-    return 'Ưu tiên luyện Nhớ chủ động & Gõ từ (Production / Typing) để chuyển từ nhận diện sang sử dụng.';
+    return 'Gợi ý khắc phục: Độ bền trí nhớ đang ở mức trung bình. Hãy ưu tiên luyện Nhớ chủ động & Gõ từ (Tự nhớ lại & Gõ từ vựng) trong phiên Ôn tập để củng cố phản xạ nhớ lâu.';
   }
-  return 'Tiếp tục đọc ngữ cảnh (Reader) và ôn tập định kỳ để củng cố nhận diện mặt chữ.';
+  return 'Gợi ý khắc phục: Tiếp tục đọc ngữ cảnh và ôn tập định kỳ để củng cố nhận diện mặt chữ.';
 }
 
 function getCollocationsForConcept(term: string): ReadonlyArray<{ phrase: string; meaningVi: string }> {

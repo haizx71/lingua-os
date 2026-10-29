@@ -322,25 +322,38 @@ export function TodayDashboard({
           <span className="text-xs text-[var(--text-muted)]">{effectivePlan.activities.length} mục</span>
         </div>
         <div className="divide-y divide-[var(--border-subtle)]">
-          {effectivePlan.activities.map((activity: TodayActivityViewModel, index) => (
-            <article key={activity.id} className="flex min-w-0 flex-col gap-3 py-4 first:pt-3 last:pb-1 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--action-primary)]"><ActivityIcon type={activity.type} /></span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-[var(--text-muted)]">{index + 1}</span>
-                    <h3 className="min-w-0 break-words text-sm font-bold text-[var(--text-primary)]">{activity.title}</h3>
-                    {activity.completed ? <Badge variant="success" size="sm" icon={<CheckCircle2 className="h-3 w-3" />}>Đã xong</Badge> : <Badge variant={activity.badgeVariant} size="sm">{activity.badgeLabel}</Badge>}
+          {effectivePlan.activities.map((activity: TodayActivityViewModel, index) => {
+            const isDone = Boolean(activity.completed);
+            return (
+              <article key={activity.id} className="flex min-w-0 flex-col gap-3 py-4 first:pt-3 last:pb-1 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--action-primary)]"><ActivityIcon type={activity.type} /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-[var(--text-muted)]">{index + 1}</span>
+                      <h3 className="min-w-0 break-words text-sm font-bold text-[var(--text-primary)]">{activity.title}</h3>
+                      {isDone ? <Badge variant="success" size="sm" icon={<CheckCircle2 className="h-3 w-3" />}>Đã xong</Badge> : <Badge variant={activity.badgeVariant} size="sm">{activity.badgeLabel}</Badge>}
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{activity.reasonText}</p>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{activity.reasonText}</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
-                <Link href={activity.targetUrl} className="min-w-0"><Button className="w-full sm:w-auto" variant={activity.completed ? 'secondary' : activity.id === nextActivity?.id ? 'primary' : 'outline'} size="sm" onClick={() => onActivityStart?.(activity.id)}>{activity.completed ? getCompletedActionLabel(activity.type) : getPendingActionLabel(activity.type)}</Button></Link>
-                {!activity.completed && <Button className="w-full sm:w-auto" variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang lưu...' : 'Đánh dấu xong'}</Button>}
-              </div>
-            </article>
-          ))}
+                <div className="flex flex-col gap-1.5 sm:items-end">
+                  {!isDone && (
+                    <span
+                      data-testid={`today-step-priority-${activity.id}`}
+                      className="text-[11px] font-semibold text-[var(--action-primary)]"
+                    >
+                      👉 Bước chính: Bấm &ldquo;Bắt đầu&rdquo; để vào bài học
+                    </span>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
+                    <Link href={activity.targetUrl} className="min-w-0"><Button className="w-full sm:w-auto" variant={isDone ? 'secondary' : activity.id === nextActivity?.id ? 'primary' : 'outline'} size="sm" onClick={() => onActivityStart?.(activity.id)}>{isDone ? getCompletedActionLabel(activity.type) : getPendingActionLabel(activity.type)}</Button></Link>
+                    {!isDone && <Button className="w-full sm:w-auto" variant="ghost" size="sm" disabled={isCompleting(activity.id)} onClick={() => void completeActivity(activity.id, activity.durationMinutes * 60)} aria-label={`Hoàn thành hoạt động ${activity.title}`}>{isCompleting(activity.id) ? 'Đang lưu...' : 'Đánh dấu xong'}</Button>}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>

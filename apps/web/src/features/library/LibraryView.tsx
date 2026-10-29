@@ -7,6 +7,7 @@ import { BookOpen, Bookmark, Clock, Search, Sparkles, Trash2, Volume2, X } from 
 import { type ApiClient, type ApiErrorCode, type LibraryItemViewModel } from '@lingua/types';
 import { useLibrary } from './useLibrary';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
+import { lookupBeginnerWord } from '../read/beginnerLexicon';
 
 type LibraryFilter = 'all' | LibraryItemViewModel['itemType'];
 
@@ -457,6 +458,21 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
           {visibleItems.map((item) => {
             const key = `${item.itemType}:${item.id}`;
             const isSelected = selectedItemKeys.has(key);
+            const itemTerm = item.itemType === 'concept' ? ((item as unknown as { term?: string; canonicalForm?: string }).term ?? item.canonicalForm) : '';
+            const rawLexicon = item.itemType === 'concept' ? lookupBeginnerWord(itemTerm) : null;
+            const conceptLexicon = item.itemType === 'concept'
+              ? (rawLexicon
+                  ? {
+                      ...rawLexicon,
+                      partOfSpeechVi: (rawLexicon as { partOfSpeechVi?: string; posVi?: string }).partOfSpeechVi ?? rawLexicon.posVi,
+                    }
+                  : (item as unknown as { meaningVi?: string }).meaningVi
+                    ? {
+                        meaningVi: (item as unknown as { meaningVi: string }).meaningVi,
+                        partOfSpeechVi: (item as unknown as { partOfSpeechVi?: string; partOfSpeech?: string }).partOfSpeechVi ?? (item as unknown as { partOfSpeech?: string }).partOfSpeech ?? 'Từ vựng',
+                      }
+                    : null)
+              : null;
             return (
               <Card
                 key={key}
@@ -504,6 +520,12 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                         <h2 className="truncate text-lg font-bold tracking-[-0.02em] text-[var(--text-primary)]">{item.canonicalForm}</h2>
                         {(item.ipa || item.partOfSpeech) && <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">{[item.ipa, item.partOfSpeech].filter(Boolean).join(' • ')}</p>}
                         <div className="mt-2 flex flex-wrap items-center gap-2">{item.level && <Badge variant="neutral" size="sm">{item.level}</Badge>}<ConceptChip status={item.status} isDue={item.isDue} size="sm" /></div>
+                        <p
+                          data-testid="library-concept-meaning-vi"
+                          className="mt-1 text-sm font-semibold text-[var(--action-primary)]"
+                        >
+                          🇻🇳 Nghĩa: {conceptLexicon ? `${conceptLexicon.meaningVi} (${conceptLexicon.partOfSpeechVi})` : 'Từ vựng đã lưu trong kho cá nhân'}
+                        </p>
                       </div>
                     )}
                     {item.itemType === 'sentence' && (
