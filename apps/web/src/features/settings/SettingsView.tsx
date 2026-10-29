@@ -373,6 +373,12 @@ export function SettingsView({
                   </div>
                   <span className="shrink-0 rounded-full bg-[var(--accent-teal-soft)] px-3 py-1.5 text-xs font-extrabold text-[var(--accent-teal-strong)]">{newWordsBudget} từ mới / ngày</span>
                 </div>
+                <p
+                  data-testid="settings-budget-beginner-note"
+                  className="mt-1 text-xs text-[var(--text-muted)]"
+                >
+                  💡 Giải thích: Số lượng từ tiếng Anh mới tối đa bạn muốn học thêm mỗi ngày (chỉ tiêu học tập, không phải chi phí tiền bạc).
+                </p>
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[2, 4, 6, 8].map((count) => (
                     <button
@@ -506,7 +512,7 @@ export function SettingsView({
                 className="space-y-2 border-t border-[var(--border-subtle)] pt-4"
               >
                 <span className="block text-sm font-bold text-[var(--text-primary)]">
-                  Giọng phát âm ưu tiên (Accent)
+                  Giọng phát âm ưu tiên (Chuẩn Anh-Mỹ hoặc Anh-Anh)
                 </span>
                 <div
                   data-testid="wave9-settings-accent-selector"

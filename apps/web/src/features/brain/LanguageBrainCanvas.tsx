@@ -30,6 +30,41 @@ import {
 import { type ApiErrorCode, type BrainSummaryViewModel } from '@lingua/types';
 import { defaultBrainNodes, type BrainNodeItem } from '../../fixtures/brainFixture';
 
+export const FILTER_OPTIONS = [
+  { id: 'ALL', label: 'Tất cả trạng thái' },
+  { id: 'mastered', label: 'Đã vững' },
+  { id: 'learning', label: 'Đang học' },
+  { id: 'weak', label: 'Cần củng cố' },
+  { id: 'forgotten', label: 'Đã quên' },
+] as const;
+
+export function mapBrainPosVi(pos?: string): string {
+  if (!pos) return '';
+  const normalized = pos.trim().toLowerCase();
+  switch (normalized) {
+    case 'noun':
+      return 'Danh từ';
+    case 'verb':
+      return 'Động từ';
+    case 'adjective':
+    case 'adj':
+      return 'Tính từ';
+    case 'adverb':
+    case 'adv':
+      return 'Trạng từ';
+    case 'pronoun':
+      return 'Đại từ';
+    case 'preposition':
+      return 'Giới từ';
+    case 'conjunction':
+      return 'Liên từ';
+    case 'interjection':
+      return 'Thán từ';
+    default:
+      return pos;
+  }
+}
+
 if (typeof window !== 'undefined') gsap.registerPlugin(useGSAP);
 
 export interface LanguageBrainCanvasProps {
@@ -452,13 +487,13 @@ export function LanguageBrainCanvas({
                     {lvl === 'ALL' ? 'Tất cả CEFR' : lvl}
                   </button>
                 ))}
-                {[
-                  { id: 'ALL', label: 'Tất cả' },
-                  { id: 'mastered', label: 'Đã vững' },
-                  { id: 'learning', label: 'Đang học' },
-                  { id: 'weak', label: 'Cần củng cố' },
-                  { id: 'forgotten', label: 'Đã quên' },
-                ].map((st) => (
+                <span
+                  data-testid="brain-status-filter-prefix"
+                  className="text-xs font-semibold text-[var(--text-secondary)]"
+                >
+                  Trạng thái:
+                </span>
+                {FILTER_OPTIONS.map((st) => (
                   <button
                     key={st.id}
                     type="button"
@@ -588,7 +623,23 @@ export function LanguageBrainCanvas({
                   <Volume2 className="h-4 w-4 text-[var(--action-primary)]" />
                 </Button>
               </div>
-              {(visibleSelectedNode.ipa || visibleSelectedNode.pos) && <p className="mt-1 truncate font-mono text-xs text-[var(--text-muted)]">{[visibleSelectedNode.ipa, visibleSelectedNode.pos].filter(Boolean).join(' • ')}</p>}
+              {(visibleSelectedNode.ipa || visibleSelectedNode.pos) && (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                  {visibleSelectedNode.ipa && <span className="font-mono">{visibleSelectedNode.ipa}</span>}
+                  {visibleSelectedNode.ipa && visibleSelectedNode.pos && <span>•</span>}
+                  {visibleSelectedNode.pos && (
+                    <>
+                      <span className="font-mono">{visibleSelectedNode.pos}</span>
+                      <span
+                        data-testid="brain-selected-pos-vi"
+                        className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]"
+                      >
+                        {mapBrainPosVi(visibleSelectedNode.pos)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)} aria-label="Đóng bảng chi tiết"><X className="h-4 w-4" /></Button>
           </div>

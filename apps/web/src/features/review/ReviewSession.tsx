@@ -41,6 +41,17 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(useGSAP);
 }
 
+function mapPosToVietnamese(pos?: string): string {
+  if (!pos) return '';
+  const normalized = pos.trim().toLowerCase();
+  if (normalized === 'noun' || normalized === 'n') return 'Danh từ';
+  if (normalized === 'verb' || normalized === 'v') return 'Động từ';
+  if (normalized === 'adjective' || normalized === 'adj') return 'Tính từ';
+  if (normalized === 'adverb' || normalized === 'adv') return 'Trạng từ';
+  if (normalized === 'phrase') return 'Cụm từ';
+  return pos;
+}
+
 function buildSpellingHint(term: string, meaningVi: string, level: number): string {
   const clean = term.trim();
   if (level === 1) {
@@ -145,7 +156,7 @@ export function ReviewSession({
   const {
     queue,
     currentIndex,
-    currentCard,
+    currentCard: rawCurrentCard,
     isFinished,
     isLoading,
     error,
@@ -167,6 +178,8 @@ export function ReviewSession({
     onRatingSubmit,
     onSessionComplete,
   });
+
+  const currentCard = rawCurrentCard as (typeof rawCurrentCard & { partOfSpeech?: string; posVi?: string });
 
   const submitRating = useCallback(
     (rating: ReviewRating, responseTextValue?: string) => {
@@ -406,7 +419,7 @@ export function ReviewSession({
   };
 
   if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
-    return <LoadingState message="Đang tải hàng đợi thẻ ôn tập FSRS..." count={3} />;
+    return <LoadingState message="Đang chuẩn bị thẻ ôn tập thông minh (FSRS)..." count={3} />;
   }
 
   if (localForcedState === 'error' || (error && !localForcedState)) {
@@ -633,7 +646,7 @@ export function ReviewSession({
       {recoveryAlert}
 
       {!actionError && lastFeedback && (
-        <InlineAlert variant="info" title="Hệ thống FSRS">{lastFeedback}</InlineAlert>
+        <InlineAlert variant="info" title="Hệ thống ghi nhớ thông minh (FSRS)">{lastFeedback}</InlineAlert>
       )}
 
       <div ref={sessionCardRef}>
@@ -675,9 +688,17 @@ export function ReviewSession({
             <h2 className="mt-3 text-3xl font-black tracking-[-0.045em] text-[var(--text-primary)] sm:text-5xl">
               {hiddenAnswerMode && !isAnswerRevealed ? 'Từ cần nhớ' : currentCard.term}
             </h2>
-            {!hiddenAnswerMode && (currentCard.ipa || currentCard.pos) && (
+            {!hiddenAnswerMode && currentCard.ipa && (
               <p className="mt-2 font-mono text-sm text-[var(--text-secondary)]">
-                {[currentCard.ipa, currentCard.pos ? `(${currentCard.pos})` : undefined].filter(Boolean).join(' ')}
+                {currentCard.ipa}
+              </p>
+            )}
+            {(currentCard.pos || currentCard.partOfSpeech || currentCard.posVi) && (
+              <p
+                data-testid="review-card-pos-vi"
+                className="mt-1 text-xs italic text-[var(--text-muted)]"
+              >
+                ({mapPosToVietnamese(currentCard.posVi ?? currentCard.pos ?? currentCard.partOfSpeech)})
               </p>
             )}
 

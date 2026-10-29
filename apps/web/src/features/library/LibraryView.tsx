@@ -548,11 +548,25 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                 <div className="mt-4 flex min-w-0 items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-3">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                     {item.itemType === 'content' && (
-                      <Link className="min-h-11 min-w-0 flex-1 rounded-xl px-2 py-3 text-sm font-bold text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" href={`/read?contentId=${encodeURIComponent(item.id)}`}>Mở trong Reader</Link>
+                      <Link
+                        data-testid="library-open-reader-btn"
+                        aria-label="Mở trong Reader"
+                        className="min-h-11 min-w-0 flex-1 rounded-xl px-2 py-3 text-sm font-bold text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                        href={`/read?contentId=${encodeURIComponent(item.id)}`}
+                      >
+                        📖 Mở bài đọc (Mở trong Reader)
+                      </Link>
                     )}
                     {item.itemType === 'concept' && (
                       <>
-                        <Link className="inline-flex min-h-11 items-center rounded-xl px-2 text-xs font-bold text-[var(--action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" href="/brain">Xem trong Brain</Link>
+                        <Link
+                          data-testid="library-open-brain-btn"
+                          aria-label="Xem trong Brain"
+                          className="inline-flex min-h-11 items-center rounded-xl px-2 text-xs font-bold text-[var(--action-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                          href="/brain"
+                        >
+                          🧠 Xem bản đồ từ (Xem trong Brain)
+                        </Link>
                         <Button
                           variant="ghost"
                           size="sm"

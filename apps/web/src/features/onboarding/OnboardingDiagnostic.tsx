@@ -432,7 +432,9 @@ export function OnboardingDiagnostic({
                 Ước lượng trình độ khởi điểm
               </span>
               <h2 className="text-2xl font-bold text-[var(--text-primary)]">
-                {isBeginnerCalibration ? 'A1 Beginner (Lộ trình cho người mất gốc)' : 'A2 Elementary'}
+                <span data-testid="onboarding-level-label-vi">
+                  {isBeginnerCalibration ? 'A1 Cơ bản (Dành cho người mới bắt đầu)' : 'A2 Sơ cấp (Giao tiếp cơ bản)'}
+                </span>
               </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                 Độ tin cậy: <span className="font-semibold text-[var(--status-success)]">{isBeginnerCalibration ? 'Cao' : 'Vừa'}</span> • {usedBeginnerBypass ? 1 : Math.max(selectedAnswers.length, mockLanguageProfile.startingLevelEstimate.evidenceCount)} bằng chứng

@@ -1873,13 +1873,13 @@ export function getIrregularVerbInfo(term: string): IrregularVerbConjugation | n
 
 export const WORD_FAMILY_HINTS: Readonly<Record<string, string>> = {
   tea: 'Họ từ & từ ghép: teapot (ấm trà), teacup (tách trà), teahouse (quán trà).',
-  schedule: 'Họ từ (Từ cùng gốc): scheduled (adj - theo lịch), unscheduled (adj - đột xuất), scheduler (n).',
-  appointment: 'Họ từ (Từ cùng gốc): appoint (v - bổ nhiệm/hẹn), appointed (adj - đã định).',
+  schedule: 'Họ từ (Từ cùng gốc): scheduled (tính từ: theo lịch), unscheduled (tính từ: đột xuất), scheduler (danh từ).',
+  appointment: 'Họ từ (Từ cùng gốc): appoint (động từ: bổ nhiệm/hẹn), appointed (tính từ: đã định).',
   morning: 'Từ ghép thông dụng: morning routine (thói quen buổi sáng), early morning (sáng sớm).',
-  visit: 'Họ từ (Từ cùng gốc): visitor (n - khách thăm), visiting (n/adj - chuyến thăm).',
-  work: 'Họ từ (Từ cùng gốc): worker (n - người lao động), workplace (n - nơi làm việc), working (adj).',
-  help: 'Họ từ (Từ cùng gốc): helpful (adj - hữu ích), helpless (adj - bất lực), helper (n).',
-  learn: 'Họ từ (Từ cùng gốc): learner (n - người học), learning (n - việc học), learned (adj).',
+  visit: 'Họ từ (Từ cùng gốc): visitor (danh từ: khách thăm), visiting (danh từ/tính từ: chuyến thăm).',
+  work: 'Họ từ (Từ cùng gốc): worker (danh từ: người lao động), workplace (danh từ: nơi làm việc), working (tính từ).',
+  help: 'Họ từ (Từ cùng gốc): helpful (tính từ: hữu ích), helpless (tính từ: bất lực), helper (danh từ).',
+  learn: 'Họ từ (Từ cùng gốc): learner (danh từ: người học), learning (danh từ: việc học), learned (tính từ).',
 };
 
 export function getWordFamilyHint(term: string): string | null {
@@ -1890,11 +1890,11 @@ export function getWordFamilyHint(term: string): string | null {
   if (entry && (WORD_FAMILY_HINTS[entry.lemma] || WORD_FAMILY_HINTS[entry.lemma.toLowerCase()])) {
     return WORD_FAMILY_HINTS[entry.lemma] || WORD_FAMILY_HINTS[entry.lemma.toLowerCase()];
   }
-  return `Họ từ & biến thể: Chú ý các hậu tố thường gặp (-er, -ing, -ed, -ly) khi gặp "${clean}" trong bài đọc.`;
+  return `Họ từ & biến thể: Chú ý các đuôi từ thường gặp (-er, -ing, -ed, -ly) khi gặp "${clean}" trong bài đọc.`;
 }
 
 export const SEMANTIC_CONTRAST_TIPS: Readonly<Record<string, string>> = {
-  morning: 'Đối lập ngữ nghĩa: evening (buổi tối) / night (ban đêm) · Cùng trường nghĩa: dawn (bình minh).',
+  morning: 'Đối lập ngữ nghĩa: evening (buổi tối) / night (ban đêm) · Cùng chủ đề: dawn (bình minh).',
   hot: 'Trái nghĩa: cold (lạnh), cool (mát mẻ) · Nâng cao: warm (ấm áp).',
   early: 'Trái nghĩa: late (trễ, muộn) · Đồng nghĩa: ahead of time (sớm hơn dự kiến).',
   tea: 'Cùng nhóm đồ uống: coffee (cà phê), juice (nước ép), water (nước lọc).',

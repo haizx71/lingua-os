@@ -48,6 +48,23 @@ function getCompletedActionLabel(type: LearningActivityType): string {
   }
 }
 
+function formatActivityReasonVi(reasonText: string): string {
+  if (!reasonText) return '';
+  if (reasonText.includes('FSRS phát hiện từ sắp quên.')) {
+    return reasonText.replace(
+      'FSRS phát hiện từ sắp quên.',
+      'Hệ thống ghi nhớ phát hiện từ sắp quên (Cần ôn lại).'
+    );
+  }
+  if (reasonText.includes('FSRS phát hiện từ sắp quên')) {
+    return reasonText.replace(
+      'FSRS phát hiện từ sắp quên',
+      'Hệ thống ghi nhớ phát hiện từ sắp quên (Cần ôn lại)'
+    );
+  }
+  return reasonText;
+}
+
 function ActivityIcon({ type }: { type: LearningActivityType }) {
   const className = 'h-5 w-5';
   if (type === 'review') return <RotateCcw className={className} aria-hidden="true" />;
@@ -161,7 +178,7 @@ export function TodayDashboard({
             aria-label="Kỹ năng trọng tâm của kế hoạch hôm nay"
             className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-[var(--action-primary)]/30 bg-[var(--surface-lilac)] px-3 py-1 text-xs font-semibold text-[var(--action-primary)]"
           >
-            <span>🎯 Trọng tâm hôm nay:</span>
+            <span>🎯 Mục tiêu Trọng tâm hôm nay:</span>
             <span className="font-bold text-[var(--text-primary)]">{focusSkillLabel}</span>
           </div>
           <h2 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Bắt đầu từ một bước nhỏ.</h2>
@@ -273,7 +290,7 @@ export function TodayDashboard({
           aria-label="Trọng tâm kỹ năng hôm nay"
           className="inline-flex items-center rounded-full bg-[var(--surface-lilac)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--action-primary)]"
         >
-          🎯 Trọng tâm: Đọc hiểu & Phản xạ từ vựng
+          🧭 Phương pháp gợi ý: {focusSkillLabel.replace(' (Ôn tập ngắt quãng nhớ lâu)', '')}
         </span>
         <span className="font-mono text-[11px] font-bold text-[var(--action-primary)]">
           {effectivePlan.totalActivitiesCount} hoạt động trong ngày
@@ -334,7 +351,12 @@ export function TodayDashboard({
                       <h3 className="min-w-0 break-words text-sm font-bold text-[var(--text-primary)]">{activity.title}</h3>
                       {isDone ? <Badge variant="success" size="sm" icon={<CheckCircle2 className="h-3 w-3" />}>Đã xong</Badge> : <Badge variant={activity.badgeVariant} size="sm">{activity.badgeLabel}</Badge>}
                     </div>
-                    <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{activity.reasonText}</p>
+                    <p
+                      data-testid={`today-activity-reason-${activity.id}`}
+                      className="mt-1 text-xs leading-5 text-[var(--text-secondary)]"
+                    >
+                      {formatActivityReasonVi(activity.reasonText)}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 sm:items-end">

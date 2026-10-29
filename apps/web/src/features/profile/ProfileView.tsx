@@ -251,11 +251,11 @@ export function ProfileView({
             <p className="text-xs font-bold text-[var(--text-primary)]">⏱️ Nhịp độ học cam kết:</p>
             <p className="text-[11px] text-[var(--text-muted)]">Thiết lập thời gian dành cho tiếng Anh mỗi ngày</p>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div data-testid="profile-pace-scale" className="flex flex-wrap items-center gap-1.5">
             {[
-              { id: 'relaxed', label: 'Thong thả: 10p' },
-              { id: 'regular', label: 'Đều đặn: 20p' },
-              { id: 'intensive', label: 'Tập trung: 45p' },
+              { id: 'relaxed', label: 'Thong thả: 10 phút' },
+              { id: 'regular', label: 'Đều đặn: 20 phút' },
+              { id: 'intensive', label: 'Tập trung: 45 phút' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -297,6 +297,12 @@ export function ProfileView({
             <>
               <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-[var(--surface-subtle)]" role="progressbar" aria-label="Tỷ lệ khái niệm đã củng cố" aria-valuenow={masteryPercent} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-[var(--status-success)]" style={{ width: `${masteryPercent}%` }} /></div>
               <p className="mt-3 text-sm text-[var(--text-secondary)]">{mastered} trên {encountered} khái niệm đã gặp được ghi nhận là đã củng cố.</p>
+              <p
+                data-testid="profile-solidified-beginner-note"
+                className="mt-1 text-xs text-[var(--text-muted)]"
+              >
+                💡 Giải thích: &ldquo;Đã củng cố&rdquo; là những từ vựng tiếng Anh bạn đã ôn lại nhiều lần và nhớ chắc chắn trong trí nhớ dài hạn.
+              </p>
             </>
           ) : <p className="mt-4 rounded-xl bg-[var(--surface-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]">Chưa đủ dữ liệu để tính tỷ lệ củng cố.</p>}
           <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex justify-end">

@@ -348,10 +348,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                       size="sm"
                       data-testid="wave9-dict-super-slow-audio"
                       onClick={() => handlePlayAudio(`${group.lexemeId}:ultraslow`, group.lemma, 0.5)}
-                      aria-label={`Nghe siêu chậm 0.5x để phân tích âm vị từ ${group.lemma}`}
-                      title="Nghe siêu chậm 0.5x để phân tích âm vị"
+                      aria-label={`Nghe siêu chậm 0.5x để nghe rõ từng âm tiết từ ${group.lemma}`}
+                      title="Nghe siêu chậm 0.5x để nghe rõ từng âm tiết"
                     >
-                      <span data-testid="dictionary-ultraslow-audio" className="pointer-events-none">🐢 0.5x Siêu chậm</span>
+                      <span
+                        data-testid="dictionary-slow-audio-05"
+                        aria-label={`Nghe siêu chậm 0.5x để nghe rõ từng âm tiết từ ${group.lemma}`}
+                        title="Nghe siêu chậm 0.5x để nghe rõ từng âm tiết"
+                        className="pointer-events-none"
+                      >
+                        <span data-testid="dictionary-ultraslow-audio">🐢 0.5x Siêu chậm</span>
+                      </span>
                     </Button>
                     <Button
                       variant="ghost"
@@ -372,6 +379,12 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                     className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]"
                   >
                     {getWordComplexityLabel(group.lemma)}
+                  </span>
+                  <span
+                    data-testid="dictionary-matched-forms-label"
+                    className="text-[11px] font-semibold text-[var(--text-muted)]"
+                  >
+                    Các dạng của từ:
                   </span>
                   {group.matchedForms.map((form) => <span key={form} className="rounded-full bg-[var(--surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]">{form}</span>)}
                 </div>
@@ -475,10 +488,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                       size="sm"
                       data-testid="wave9-dict-super-slow-audio"
                       onClick={() => handlePlayAudio(`${concept.id}:ultraslow`, concept.term, 0.5)}
-                      aria-label={`Nghe siêu chậm 0.5x để phân tích âm vị từ ${concept.term}`}
-                      title="Nghe siêu chậm 0.5x để phân tích âm vị"
+                      aria-label={`Nghe siêu chậm 0.5x để nghe rõ từng âm tiết từ ${concept.term}`}
+                      title="Nghe siêu chậm 0.5x để nghe rõ từng âm tiết"
                     >
-                      <span data-testid="dictionary-ultraslow-audio" className="pointer-events-none">🐢 0.5x Siêu chậm</span>
+                      <span
+                        data-testid="dictionary-slow-audio-05"
+                        aria-label={`Nghe siêu chậm 0.5x để nghe rõ từng âm tiết từ ${concept.term}`}
+                        title="Nghe siêu chậm 0.5x để nghe rõ từng âm tiết"
+                        className="pointer-events-none"
+                      >
+                        <span data-testid="dictionary-ultraslow-audio">🐢 0.5x Siêu chậm</span>
+                      </span>
                     </Button>
                     <Button
                       variant="ghost"
@@ -559,10 +579,17 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                       size="sm"
                       data-testid="wave9-dict-super-slow-audio"
                       onClick={() => handlePlayAudio(`${concept.id}:ultraslow`, concept.term, 0.5)}
-                      aria-label={`Nghe siêu chậm 0.5x để phân tích âm vị từ ${concept.term}`}
-                      title="Nghe siêu chậm 0.5x để phân tích âm vị"
+                      aria-label={`Nghe siêu chậm 0.5x để nghe rõ từng âm tiết từ ${concept.term}`}
+                      title="Nghe siêu chậm 0.5x để nghe rõ từng âm tiết"
                     >
-                      <span data-testid="dictionary-ultraslow-audio" className="pointer-events-none">🐢 0.5x Siêu chậm</span>
+                      <span
+                        data-testid="dictionary-slow-audio-05"
+                        aria-label={`Nghe siêu chậm 0.5x để nghe rõ từng âm tiết từ ${concept.term}`}
+                        title="Nghe siêu chậm 0.5x để nghe rõ từng âm tiết"
+                        className="pointer-events-none"
+                      >
+                        <span data-testid="dictionary-ultraslow-audio">🐢 0.5x Siêu chậm</span>
+                      </span>
                     </Button>
                     <Button
                       variant="ghost"

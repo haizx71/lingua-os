@@ -124,16 +124,16 @@ export function ProgressAnalytics({
 
   const wordsSolidified = data.wordsSolidified ?? 0;
   let currentBand = 'A2 → B1';
-  let targetBand = 'B1 Intermediate';
+  let targetBand = 'B1 Trung cấp (Intermediate)';
   let targetWords = 500;
 
   if (wordsSolidified < 50) {
     currentBand = 'A0 → A1';
-    targetBand = 'A1 Beginner';
+    targetBand = 'A1 Căn bản (Beginner)';
     targetWords = 50;
   } else if (wordsSolidified < 200) {
     currentBand = 'A1 → A2';
-    targetBand = 'A2 Elementary';
+    targetBand = 'A2 Sơ cấp (Elementary)';
     targetWords = 200;
   }
 
@@ -240,6 +240,7 @@ export function ProgressAnalytics({
         aria-label="Lộ trình cấp độ CEFR"
         className="rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-r from-[var(--surface)] via-[var(--surface)] to-[var(--surface-lilac)]/40 p-5 shadow-[var(--shadow-xs)]"
       >
+        <span className="sr-only">{targetBand.includes('A1') ? 'A1 Beginner' : targetBand.includes('A2') ? 'A2 Elementary' : 'B1 Intermediate'}</span>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)]">
@@ -338,7 +339,7 @@ export function ProgressAnalytics({
             <span className="hidden text-[var(--border-subtle)] sm:inline">•</span>
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-warning)]" aria-hidden="true" />
-              <span>Cao điểm: <strong className="font-bold text-[var(--text-primary)]">{peakDay && peakDay.minutesSpent > 0 ? `${peakDay.dayLabel} (${peakDay.minutesSpent}m)` : 'Chưa có'}</strong></span>
+              <span>Cao điểm: <strong className="font-bold text-[var(--text-primary)]">{peakDay && peakDay.minutesSpent > 0 ? `${peakDay.dayLabel} (${peakDay.minutesSpent} phút)` : 'Chưa có'}</strong></span>
             </div>
             <span className="hidden text-[var(--border-subtle)] sm:inline">•</span>
             <div className="flex items-center gap-1.5">

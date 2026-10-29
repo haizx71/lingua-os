@@ -525,7 +525,7 @@ export function InteractiveReader({
           variant={zenMode ? 'secondary' : 'ghost'}
           size="sm"
           data-testid="reader-focus-mode-toggle"
-          aria-label="Bật/tắt chế độ đọc tập trung (Zen Mode)"
+          aria-label="Bật/tắt chế độ đọc tập trung"
           aria-pressed={zenMode}
           onClick={() => setZenMode((prev) => !prev)}
         >
@@ -633,6 +633,7 @@ export function InteractiveReader({
               >
                 {segment.sentences.map((sentence) => {
                   const sentenceSaved = reader.savedSentenceIds.has(sentence.id);
+                  const isSaved = sentenceSaved;
                   const hasTranslation = Boolean(sentence.translationVi?.trim());
                   const meaningIsRevealed = revealedSentenceIds.has(sentence.id);
                   const sentenceNumber = passage.sentences.findIndex((item) => item.id === sentence.id) + 1;
@@ -753,13 +754,18 @@ export function InteractiveReader({
                             </Button>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
+                              data-testid="reader-save-sentence"
                               aria-label={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
                               title={sentenceSaved ? `Câu ${sentenceNumber} đã lưu` : `Lưu câu ${sentenceNumber}`}
                               leftIcon={sentenceSaved ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
                               disabled={sentenceSaved || reader.busyKeys.has(`sentence:${sentence.id}`)}
                               onClick={() => void reader.saveSentence(sentence.id)}
-                            />
+                            >
+                              <span data-testid="reader-save-sentence-label" className="ml-1 text-xs">
+                                {isSaved ? 'Đã lưu câu' : '📌 Lưu câu'}
+                              </span>
+                            </Button>
                           </div>
                         </div>
                         {hasTranslation && meaningIsRevealed && (
