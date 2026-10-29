@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { type ApiErrorCode, type BrainSummaryViewModel } from '@lingua/types';
 import { defaultBrainNodes, type BrainNodeItem } from '../../fixtures/brainFixture';
+import { ThreeBrainConstellation } from './ThreeBrainConstellation';
 
 export const FILTER_OPTIONS = [
   { id: 'ALL', label: 'Tất cả trạng thái' },
@@ -150,6 +151,7 @@ export function LanguageBrainCanvas({
   const [selectedNode, setSelectedNode] = useState<BrainNodeItem | null>(null);
   const [selectedContextKey, setSelectedContextKey] = useState(contextKey);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [is3DConstellation, setIs3DConstellation] = useState<boolean>(true);
   const [localForcedState, setLocalForcedState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const currentState = state ?? localForcedState;
 
@@ -395,6 +397,16 @@ export function LanguageBrainCanvas({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1 rounded-2xl bg-[var(--surface-subtle)] p-1">
+            <Button
+              variant={is3DConstellation ? 'secondary' : 'ghost'}
+              size="sm"
+              data-testid="brain-3d-mode-toggle"
+              aria-pressed={is3DConstellation}
+              aria-label="Chuyển đổi chế độ hiển thị tinh vân 3D Three.js"
+              onClick={() => setIs3DConstellation((prev) => !prev)}
+            >
+              {is3DConstellation ? '🌌 Đang bật: Không gian 3D (Three.js)' : '🌌 Bật Không gian 3D (Three.js)'}
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => handleZoomChange(zoomLevel - 10)} aria-label="Thu nhỏ mạng lưới"><ZoomOut className="h-4 w-4" /></Button>
             <span className="w-11 text-center font-mono text-[11px] text-[var(--text-muted)]">{zoomLevel}%</span>
             <Button variant="ghost" size="icon" onClick={() => handleZoomChange(zoomLevel + 10)} aria-label="Phóng to mạng lưới"><ZoomIn className="h-4 w-4" /></Button>
@@ -553,6 +565,17 @@ export function LanguageBrainCanvas({
             )}
           </div>
         </div>
+
+        {is3DConstellation && (
+          <div className="mt-4">
+            <ThreeBrainConstellation
+              nodes={filteredNodes}
+              selectedNodeId={selectedNodeForContext?.id}
+              prefersReducedMotion={prefersReducedMotion}
+              onSelectNode={handleNodeClick}
+            />
+          </div>
+        )}
 
         <div ref={viewportRef} className="relative mt-4 min-h-[250px] w-full overflow-hidden rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)] sm:min-h-[340px]">
           <div ref={stageRef} className="flex min-w-full flex-wrap content-start gap-3 p-4 will-change-transform sm:p-6" style={{ transformOrigin: '0 0' }}>

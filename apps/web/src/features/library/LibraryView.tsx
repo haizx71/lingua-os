@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Badge, Button, Card, ConceptChip, EmptyState, ErrorState, InlineAlert, LoadingState } from '@lingua/ui';
 import { BookOpen, Bookmark, Clock, Search, Sparkles, Trash2, Volume2, X } from 'lucide-react';
 import { type ApiClient, type ApiErrorCode, type LibraryItemViewModel } from '@lingua/types';
 import { useLibrary } from './useLibrary';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
 import { lookupBeginnerWord } from '../read/beginnerLexicon';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(useGSAP);
+}
 
 type LibraryFilter = 'all' | LibraryItemViewModel['itemType'];
 
@@ -44,6 +50,8 @@ function formatLibraryPosVi(pos?: string): string {
 }
 
 export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorCode = 'INTERNAL_ERROR' }: LibraryViewProps) {
+  const libraryRootRef = useRef<HTMLDivElement | null>(null);
+  const gridListRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<LibraryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'default' | 'az'>('default');
@@ -56,6 +64,18 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
   const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
   const [viewDensity, setViewDensity] = useState<'comfortable' | 'compact'>('comfortable');
+
+  useGSAP(
+    () => {
+      if (!gridListRef.current) return;
+      gsap.fromTo(
+        gridListRef.current,
+        { y: 4, scale: 0.99 },
+        { y: 0, scale: 1, duration: 0.25, ease: 'power2.out', clearProps: 'transform' },
+      );
+    },
+    { dependencies: [viewDensity, activeTab], scope: libraryRootRef },
+  );
 
   const presentationItems = forcedState ? (initialItems ?? []) : initialItems;
   const library = useLibrary({
@@ -192,7 +212,7 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       : library.items.filter((item) => item.itemType === filter).length;
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
+    <div ref={libraryRootRef} className="mx-auto w-full min-w-0 max-w-6xl space-y-5 sm:space-y-7">
       <header className="rounded-3xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface)] to-[var(--surface-lilac)]/40 p-5 sm:p-7 shadow-[var(--shadow-xs)]">
         <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0 max-w-2xl">
@@ -283,7 +303,10 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div
+              data-testid="library-glass-filter-dock"
+              className="lingua-glass-panel flex flex-wrap items-center gap-2"
+            >
               <div data-testid="library-bulk-actions" className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="ghost"
@@ -465,7 +488,13 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       )}
 
       {status === 'success' && visibleItems.length > 0 && (
-        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2" role="list" data-view-density={viewDensity}>
+        <div
+          ref={gridListRef}
+          data-testid="library-animated-grid"
+          className="grid grid-cols-1 gap-3.5 md:grid-cols-2"
+          role="list"
+          data-view-density={viewDensity}
+        >
           {visibleItems.map((item) => {
             const key = `${item.itemType}:${item.id}`;
             const isSelected = selectedItemKeys.has(key);

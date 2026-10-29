@@ -28,6 +28,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
   const [currentState, setCurrentState] = useState<'loading' | 'empty' | 'error' | 'success'>(forcedState);
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [activeAudioTerm, setActiveAudioTerm] = useState<string | null>(null);
   const [copiedTermId, setCopiedTermId] = useState<string | null>(null);
   const [selectedCefr, setSelectedCefr] = useState<'ALL' | 'A1' | 'A2' | 'B1'>('ALL');
   const [recentSearches, setRecentSearches] = useState<string[]>(['morning', 'practice']);
@@ -54,19 +55,27 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
     setRecentSearches((prev) => [clean, ...prev.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 5));
   };
 
-  const handlePlayAudio = (id: string, text?: string, rate: number = 1) => {
-    setPlayingAudioId(id);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new window.SpeechSynthesisUtterance(text ?? id);
-        utterance.lang = 'en-US';
-        utterance.rate = rate;
-        window.speechSynthesis.speak(utterance);
-      } catch {
-        // Safe fallback in headless/test environments
+  const handleSpeakTerm = (term: string, rate: number = 1) => {
+    setActiveAudioTerm(term);
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => setActiveAudioTerm((curr) => (curr === term ? null : curr)), 1200);
+      if ('speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new window.SpeechSynthesisUtterance(term);
+          utterance.lang = 'en-US';
+          utterance.rate = rate;
+          window.speechSynthesis.speak(utterance);
+        } catch {
+          // Safe fallback in headless/test environments
+        }
       }
     }
+  };
+
+  const handlePlayAudio = (id: string, text?: string, rate: number = 1) => {
+    setPlayingAudioId(id);
+    handleSpeakTerm(text ?? id, rate);
     setTimeout(() => setPlayingAudioId(null), 800);
   };
 
@@ -185,7 +194,11 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
         </div>
       </header>
 
-      <section className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-[var(--shadow-card)] sm:p-5" aria-label="Tìm từ">
+      <section
+        data-testid="dictionary-glass-search-bar"
+        className="lingua-glass-panel rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-[var(--shadow-card)] sm:p-5"
+        aria-label="Tìm từ"
+      >
         <div>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -307,6 +320,24 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             className="mt-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-secondary)]"
           >
             💡 Mẹo phát âm: Bấm 🔊 để nghe chuẩn, 🐢 0.75x để nghe chậm, hoặc 🔬 0.5x để nghe tách từng âm tiết.
+          </div>
+
+          <div
+            data-testid="dictionary-soundwave-visualizer"
+            data-audio-active={activeAudioTerm ? 'true' : 'false'}
+            aria-label="Bộ hiển thị sóng âm phát âm"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-1 text-xs text-[var(--text-secondary)]"
+          >
+            <div className="flex h-3 items-end gap-0.5">
+              {[0, 1, 2, 3, 4].map((barIdx) => (
+                <div
+                  key={barIdx}
+                  data-soundwave-bar="true"
+                  className="h-2.5 w-1 rounded-full bg-[var(--action-primary)] transition-transform duration-200"
+                />
+              ))}
+            </div>
+            <span>{activeAudioTerm ? `🎵 Đang phát sóng âm: ${activeAudioTerm}` : '🎵 Sóng âm chuẩn bản xứ sẵn sàng'}</span>
           </div>
         </div>
       </section>

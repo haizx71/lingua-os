@@ -14,7 +14,6 @@ import {
   EmptyState,
   ErrorState,
   InlineAlert,
-  componentMotionNumeric,
   usePrefersReducedMotion,
 } from '@lingua/ui';
 import {
@@ -194,8 +193,9 @@ export function ReviewSession({
     [sessionSubmitRating]
   );
 
+  const reviewStageRef = useRef<HTMLDivElement | null>(null);
+  const activeCardAnimRef = useRef<HTMLDivElement | null>(null);
   const sessionCardRef = useRef<HTMLDivElement>(null);
-  const isInitialMount = useRef(true);
   const prefersReducedMotion = usePrefersReducedMotion();
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -203,6 +203,7 @@ export function ReviewSession({
   const getAudioEpoch = authContext?.getActorEpoch;
   const isAudioActorCurrent = authContext?.isCurrentActor;
   const audioActorId = authContext?.user?.id ?? null;
+  const isRevealed = isAnswerRevealed;
 
   useEffect(() => {
     setResponseText('');
@@ -249,32 +250,15 @@ export function ReviewSession({
 
   useGSAP(
     () => {
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        return;
-      }
-
-      if (!sessionCardRef.current || isFinished) return;
-
-      if (prefersReducedMotion) {
-        gsap.set(sessionCardRef.current, { x: 0, opacity: 1, clearProps: 'transform,opacity' });
-        return;
-      }
-
-      gsap.fromTo(
-        sessionCardRef.current,
-        { x: componentMotionNumeric.reviewSession.slideDistance, opacity: 0 },
-        {
-          x: 0,
-          opacity: 1,
-          duration: componentMotionNumeric.reviewSession.slideDuration,
-          ease: componentMotionNumeric.reviewSession.slideEase,
-          clearProps: 'transform',
-          overwrite: 'auto',
-        }
+      if (prefersReducedMotion || !activeCardAnimRef.current) return;
+      const tl = gsap.timeline({ defaults: { duration: 0.32, ease: 'back.out(1.4)' } });
+      tl.fromTo(
+        activeCardAnimRef.current,
+        { rotationX: isRevealed ? -8 : 0, y: 6, scale: 0.985 },
+        { rotationX: 0, y: 0, scale: 1, clearProps: 'transform' }
       );
     },
-    { dependencies: [currentIndex, prefersReducedMotion], scope: sessionCardRef }
+    { dependencies: [isRevealed, currentCard?.id, prefersReducedMotion], scope: reviewStageRef }
   );
 
   const exerciseMode = selectedExerciseMode ?? currentCard?.exerciseMode ?? 'self_recall';
@@ -484,13 +468,14 @@ export function ReviewSession({
 
   return (
     <div
+      ref={reviewStageRef}
       aria-busy={isSubmitting}
       data-focus-mode={focusMode ? 'true' : 'false'}
       className={`mx-auto w-full max-w-3xl space-y-3 sm:space-y-5 ${
         focusMode ? 'py-4 sm:py-6 rounded-3xl bg-[var(--surface-subtle)]/40 px-2 sm:px-4 transition-all' : ''
       }`}
     >
-      <header className="flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-4 py-3 sm:px-5">
+      <header className="flex min-w-0 items-center justify-between gap-3 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] lingua-glass-panel px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <div className="lingua-kicker text-[var(--action-primary)]">Ôn tập</div>
             <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-2xl">Thẻ đến lượt</h1>
@@ -612,7 +597,7 @@ export function ReviewSession({
         <Progress value={progressValue} max={100} label={`Tiến độ buổi ôn: ${reviewedCount} / ${totalCount} thẻ`} showValueText size="sm" />
       </div>
 
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-4 py-3">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] lingua-glass-panel px-4 py-3">
         <div
           role="group"
           aria-label="Chọn hình thức bài tập ôn luyện"
@@ -654,7 +639,13 @@ export function ReviewSession({
       )}
 
       <div ref={sessionCardRef}>
-        <Card
+        <div
+          ref={activeCardAnimRef}
+          data-testid="review-3d-card-stage"
+          data-gsap-flip-ready="true"
+          className="lingua-3d-perspective lingua-3d-card"
+        >
+          <Card
           key={currentCard.id}
           data-testid="review-active-card"
           data-card-flipped={isAnswerRevealed ? 'true' : 'false'}
@@ -848,5 +839,6 @@ export function ReviewSession({
         </Card>
       </div>
     </div>
+  </div>
   );
 }

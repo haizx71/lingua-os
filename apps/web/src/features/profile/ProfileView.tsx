@@ -332,9 +332,23 @@ export function ProfileView({
         </Card>
       </section>
 
-      <section data-testid="profile-achievements-grid" aria-label="Huy hiệu học tập" className="space-y-3">
+      <section
+        data-testid="profile-achievements-grid"
+        data-holographic="true"
+        aria-label="Huy hiệu học tập"
+        className="space-y-3"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-[var(--text-primary)]">Huy hiệu & Cột mốc đạt được</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-bold text-[var(--text-primary)]">Huy hiệu & Cột mốc đạt được</h2>
+            <span
+              data-testid="profile-holographic-achievements"
+              data-holographic="true"
+              className="lingua-shimmer-badge inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold text-[var(--action-primary)]"
+            >
+              ✨ Hiệu ứng Huy hiệu 3D Hologram
+            </span>
+          </div>
           <span
             data-testid="profile-next-achievement-hint"
             aria-label="Tiến độ mở khóa huy hiệu học tập"
@@ -351,7 +365,7 @@ export function ProfileView({
               data-unlocked={badge.unlocked ? 'true' : 'false'}
               className={`rounded-2xl border p-4 transition-all ${
                 badge.unlocked
-                  ? 'border-[var(--border-default)] bg-[var(--surface)] shadow-[var(--shadow-xs)]'
+                  ? 'border-[var(--border-default)] bg-[var(--surface)] shadow-[var(--shadow-xs)] lingua-card-interactive lingua-shimmer-badge'
                   : 'border-[var(--border-subtle)] bg-[var(--surface-subtle)] opacity-60'
               }`}
             >

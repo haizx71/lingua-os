@@ -142,6 +142,10 @@ export function ProgressAnalytics({
   const estimatedWordsPerDay = Math.max(2, Math.round(avgMinutes / 3));
   const projectedDaysToTarget =
     wordsRemaining > 0 ? Math.max(1, Math.ceil(wordsRemaining / estimatedWordsPerDay)) : 0;
+  const cefrMilestone = {
+    progressPercent: milestonePercent,
+    nextLevel: targetBand,
+  };
 
   const windowDays = selectedWindow === 'week' ? '7d' : '30d';
   const activeDaysCount = history.filter((d) => d.minutesSpent > 0).length;
@@ -199,7 +203,11 @@ export function ProgressAnalytics({
         </div>
       </header>
 
-      <section aria-label="Tóm tắt tiến độ" className="grid gap-3 sm:grid-cols-3">
+      <section
+        data-testid="progress-gsap-kpi-strip"
+        aria-label="Chỉ số tổng quan"
+        className="grid gap-3 sm:grid-cols-3"
+      >
         <Card padding="md" className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-xs)]">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-blue)] text-[var(--action-primary)]"><Clock3 className="h-5 w-5" aria-hidden="true" /></span>
@@ -265,6 +273,31 @@ export function ProgressAnalytics({
             ? `Cần làm chủ thêm ${wordsRemaining} từ vựng nữa để hoàn thành cột mốc ${targetBand}.`
             : `Xuất sắc! Bạn đã đạt cột mốc từ vựng ${targetBand}.`}
         </p>
+
+        <div
+          data-testid="progress-3d-orbital-ring"
+          aria-label="Vòng quỹ đạo tích lũy CEFR 3D"
+          className="mt-3 inline-flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-lilac)]/60 px-3.5 py-2"
+        >
+          <svg className="h-10 w-10 shrink-0 -rotate-90" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="16" fill="none" stroke="var(--border-subtle)" strokeWidth="4" />
+            <circle
+              cx="20"
+              cy="20"
+              r="16"
+              fill="none"
+              stroke="var(--action-primary)"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={`${Math.round((cefrMilestone.progressPercent / 100) * 100.5)} 100.5`}
+            />
+          </svg>
+          <div className="text-xs">
+            <div className="font-bold text-[var(--text-primary)]">🪐 Quỹ đạo CEFR: {cefrMilestone.progressPercent}% hoàn thành</div>
+            <div className="text-[11px] text-[var(--text-secondary)]">Tiến tới {cefrMilestone.nextLevel}</div>
+          </div>
+        </div>
+
         <div data-testid="progress-milestone-badges-row" className="mt-3 flex flex-wrap items-center gap-2">
           <div
             data-testid="progress-velocity-forecast"

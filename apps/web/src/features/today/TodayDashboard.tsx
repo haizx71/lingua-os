@@ -1,8 +1,20 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Badge, Button, EmptyState, ErrorState, InlineAlert, LoadingState, Progress } from '@lingua/ui';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  InlineAlert,
+  LoadingState,
+  Progress,
+  usePrefersReducedMotion,
+} from '@lingua/ui';
 import { ArrowRight, BookOpen, CheckCircle2, Headphones, RotateCcw, Sparkles, Sun } from 'lucide-react';
 import {
   isApiErrorCode,
@@ -15,6 +27,10 @@ import { useOptionalAuth } from '../auth/AuthContext';
 import { mapTodayPlanToViewModel, type TodayActivityViewModel, type TodayPlanViewModel } from './adapters';
 import { useTodayPlan } from './useTodayPlan';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(useGSAP);
+}
 
 export interface TodayDashboardProps {
   initialPlan?: TodayPlanViewModel;
@@ -112,6 +128,23 @@ export function TodayDashboard({
     return null;
   }, [livePlan, localForcedState, isAuthOrConfigured]);
 
+  const todayRootRef = useRef<HTMLDivElement | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion || !todayRootRef.current) return;
+      const cards = todayRootRef.current.querySelectorAll('[data-gsap-bento-card]');
+      if (cards.length === 0) return;
+      gsap.fromTo(
+        cards,
+        { y: 8, scale: 0.99 },
+        { y: 0, scale: 1, duration: 0.35, stagger: 0.06, ease: 'power3.out', clearProps: 'transform' }
+      );
+    },
+    { dependencies: [effectivePlan?.id, prefersReducedMotion], scope: todayRootRef }
+  );
+
   if (localForcedState === 'loading' || (isLoading && !localForcedState)) {
     return <LoadingState message="Đang tải kế hoạch học tập hôm nay..." />;
   }
@@ -160,7 +193,7 @@ export function TodayDashboard({
         ? 'Mở rộng mạng lưới khái niệm ngôn ngữ'
         : 'Đọc hiểu ngữ cảnh & Mở rộng từ vựng';
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
+    <div ref={todayRootRef} className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
       <PageHeading />
 
       {(actionError || alertMessage) && (
@@ -170,8 +203,16 @@ export function TodayDashboard({
         </div>
       )}
 
-      <section aria-label="Kế hoạch học tập hôm nay" className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(250px,0.7fr)]">
-        <div className="min-w-0 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-7">
+      <section
+        aria-label="Kế hoạch học tập hôm nay"
+        data-testid="today-bento-stagger-grid"
+        className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"
+      >
+        <Card
+          data-gsap-bento-card="true"
+          padding="none"
+          className="min-w-0 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-7"
+        >
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--action-primary)]"><Sun className="h-4 w-4" aria-hidden="true" /><span>Kế hoạch hôm nay</span></div>
           <div
             data-testid="wave9-today-skill-focus"
@@ -211,9 +252,12 @@ export function TodayDashboard({
               </Link>
             </div>
           )}
-        </div>
+        </Card>
 
-        <aside className="flex min-w-0 flex-col justify-between rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] p-5 sm:p-6">
+        <aside
+          data-gsap-bento-card="true"
+          className="flex min-w-0 flex-col justify-between rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface-lilac)] p-5 sm:p-6"
+        >
           <div>
             <p className="lingua-kicker text-[var(--action-primary)]">Mục tiêu</p>
             <p className="mt-2 text-4xl font-bold tracking-[-0.05em] text-[var(--text-primary)]">{targetMinutes}<span className="ml-1 text-base font-semibold text-[var(--text-secondary)]">phút</span></p>
@@ -342,7 +386,11 @@ export function TodayDashboard({
           {effectivePlan.activities.map((activity: TodayActivityViewModel, index) => {
             const isDone = Boolean(activity.completed);
             return (
-              <article key={activity.id} className="flex min-w-0 flex-col gap-3 py-4 first:pt-3 last:pb-1 sm:flex-row sm:items-center sm:justify-between">
+              <article
+                key={activity.id}
+                data-gsap-bento-card="true"
+                className="flex min-w-0 flex-col gap-3 py-4 first:pt-3 last:pb-1 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-lilac)] text-[var(--action-primary)]"><ActivityIcon type={activity.type} /></span>
                   <div className="min-w-0 flex-1">
@@ -384,10 +432,12 @@ export function TodayDashboard({
 
 function PageHeading() {
   return (
-    <header className="max-w-2xl">
-      <p className="lingua-kicker text-[var(--action-primary)]">Hôm nay</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Kế hoạch của bạn</h1>
-      <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Xem hoạt động được lên lịch và chọn điều muốn bắt đầu.</p>
-    </header>
+    <div data-testid="today-aurora-hero" className="lingua-aurora-hero rounded-3xl p-5 sm:p-6">
+      <header className="max-w-2xl">
+        <p className="lingua-kicker text-[var(--action-primary)]">Hôm nay</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-4xl">Kế hoạch của bạn</h1>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Xem hoạt động được lên lịch và chọn điều muốn bắt đầu.</p>
+      </header>
+    </div>
   );
 }

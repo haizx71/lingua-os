@@ -130,6 +130,34 @@ a {
   background-color: var(--surface) !important;
 }
 
+.lingua-glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+}
+
+.lingua-aurora-hero {
+  background: var(--aurora-gradient);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.lingua-3d-perspective {
+  perspective: 1100px;
+}
+
+.lingua-3d-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.lingua-shimmer-badge {
+  background: linear-gradient(110deg, var(--surface-lilac) 20%, var(--surface) 48%, var(--surface-mint) 80%);
+  border: 1px solid var(--glass-border);
+}
+
 @media (max-width: 767px) {
   input,
   textarea,

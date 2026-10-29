@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   Card,
   Button,
@@ -12,6 +14,10 @@ import {
   EmptyState,
   ErrorState,
 } from '@lingua/ui';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(useGSAP);
+}
 import {
   Sparkles,
   Award,
@@ -83,6 +89,7 @@ export function OnboardingDiagnostic({
   forcedErrorCode = 'INTERNAL_ERROR',
   onComplete,
 }: OnboardingDiagnosticProps) {
+  const onboardingStageRef = useRef<HTMLDivElement | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [currentSelectedOption, setCurrentSelectedOption] = useState<number | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
@@ -91,6 +98,19 @@ export function OnboardingDiagnostic({
   const [errorCode] = useState<ApiErrorCode>(forcedErrorCode);
 
   const isCompleted = currentStep >= questions.length;
+
+  useGSAP(
+    () => {
+      if (onboardingStageRef.current) {
+        gsap.fromTo(
+          onboardingStageRef.current,
+          { y: 6, scale: 0.99 },
+          { y: 0, scale: 1, duration: 0.26, ease: 'power2.out', clearProps: 'transform' }
+        );
+      }
+    },
+    { dependencies: [currentStep, isCompleted], scope: onboardingStageRef }
+  );
   const currentQuestion = questions[currentStep];
   const diagnosticPercent = questions.length > 0 ? Math.round(((currentStep + 1) / questions.length) * 100) : 0;
   const remainingQuestions = Math.max(1, questions.length - currentStep);
@@ -235,7 +255,11 @@ export function OnboardingDiagnostic({
   }
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto py-4">
+    <div
+      ref={onboardingStageRef}
+      data-testid="onboarding-gsap-step-stage"
+      className="space-y-6 max-w-2xl mx-auto py-4"
+    >
       {/* Header */}
       <header className="text-center space-y-1">
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
@@ -423,6 +447,12 @@ export function OnboardingDiagnostic({
       {/* Completion & Calibration Result Card */}
       {isCompleted && (
         <Card variant="elevated" padding="lg" className="space-y-6 animate-fadeIn">
+          <div
+            data-testid="onboarding-3d-celebration-badge"
+            className="lingua-shimmer-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-[var(--action-primary)]"
+          >
+            🎉 Khởi tạo thành công không gian học tập 3D cá nhân hóa
+          </div>
           <div className="flex items-center gap-4 border-b border-[var(--border-subtle)] pb-4">
             <div className="w-16 h-16 rounded-2xl bg-[var(--status-info-bg)] flex items-center justify-center text-[var(--status-info)] text-2xl font-bold border-2 border-[var(--status-info-border)]">
               {isBeginnerCalibration ? 'A1' : 'A2'}

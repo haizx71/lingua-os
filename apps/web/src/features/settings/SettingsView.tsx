@@ -415,12 +415,28 @@ export function SettingsView({
                 </div>
               </div>
 
-              <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[var(--border-subtle)] py-4">
-                <div className="min-w-0">
-                  <span className="text-sm font-bold text-[var(--text-primary)]">Giảm chuyển động</span>
-                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Giảm hiệu ứng hoạt hình và chuyển cảnh.</p>
+              <div className="border-b border-[var(--border-subtle)] py-4">
+                <div className="flex min-w-0 items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-[var(--text-primary)]">Giảm chuyển động</span>
+                    <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Giảm hiệu ứng hoạt hình và chuyển cảnh.</p>
+                  </div>
+                  <Switch checked={reducedMotion} onClick={() => setReducedMotion(!reducedMotion)} label="Giảm chuyển động" />
                 </div>
-                <Switch checked={reducedMotion} onClick={() => setReducedMotion(!reducedMotion)} label="Giảm chuyển động" />
+                <div
+                  data-testid="settings-motion-preview-stage"
+                  data-motion-state={reducedMotion ? 'reduced' : 'active'}
+                  className="mt-3 flex items-center justify-between rounded-xl border border-[var(--glass-border)] bg-[var(--surface-subtle)] px-3.5 py-2.5 text-xs"
+                >
+                  <span className="font-medium text-[var(--text-secondary)]">
+                    {reducedMotion
+                      ? '🧘 Chế độ Tĩnh: Đã tắt hiệu ứng chuyển động 3D & GSAP để mắt thư giãn tối đa.'
+                      : '⚡ Chế độ Sống động (60fps GSAP & 3D): Hiệu ứng lật thẻ 3D và sóng âm đang hoạt động.'}
+                  </span>
+                  <span className="rounded-full bg-[var(--surface-lilac)] px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--action-primary)]">
+                    {reducedMotion ? 'Motion: OFF' : '60FPS GSAP'}
+                  </span>
+                </div>
               </div>
 
               <div className="flex min-w-0 items-center justify-between gap-4 py-4">

@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   Button,
   ConceptChip,
@@ -12,6 +14,7 @@ import {
   InlineAlert,
   Progress,
   conceptStateMetadata,
+  usePrefersReducedMotion,
 } from '@lingua/ui';
 import { Bookmark, Check, Languages, Plus, Volume2, X } from 'lucide-react';
 import { MockApiClient, type ApiClient, type ApiErrorCode } from '@lingua/types';
@@ -30,6 +33,10 @@ import {
 } from './beginnerLexicon';
 import { getApiClient } from '../../lib/api/client';
 import { clientNavigate } from '../../lib/navigation/clientNavigate';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(useGSAP);
+}
 
 export interface InteractiveReaderProps {
   readonly apiClient?: ApiClient;
@@ -63,6 +70,9 @@ export function InteractiveReader({
   forcedErrorCode = 'INTERNAL_ERROR',
   onSaveWord,
 }: InteractiveReaderProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const readerRootRef = useRef<HTMLDivElement | null>(null);
+  const inspectorPanelRef = useRef<HTMLDivElement | null>(null);
   const [presentationState, setPresentationState] = useState(forcedState);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingSentenceId, setPlayingSentenceId] = useState<string | null>(null);
@@ -132,6 +142,27 @@ export function InteractiveReader({
   const savedSentenceIds = reader.savedSentenceIds;
 
   const activeToken = reader.selectedToken ?? quickLookupToken;
+  const selectedToken = activeToken
+    ? {
+        ...activeToken,
+        tokenKey:
+          (activeToken as { tokenKey?: string }).tokenKey ??
+          `${activeToken.conceptId ?? activeToken.raw}:${activeToken.sentenceId ?? ''}:${activeToken.startOffset ?? ''}`,
+      }
+    : null;
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion || !inspectorPanelRef.current) return;
+      gsap.fromTo(
+        inspectorPanelRef.current,
+        { y: 6, scale: 0.985 },
+        { y: 0, scale: 1, duration: 0.28, ease: 'back.out(1.4)', clearProps: 'transform' }
+      );
+    },
+    { dependencies: [selectedToken?.tokenKey, prefersReducedMotion], scope: readerRootRef }
+  );
+
   const closeActiveInspector = React.useCallback(() => {
     setQuickLookupToken(null);
     reader.closeInspector();
@@ -377,7 +408,6 @@ export function InteractiveReader({
     }, 1800);
   };
 
-  const selectedToken = activeToken;
   const selectedSentence = selectedToken?.sentenceId
     ? passage.sentences.find((sentence) => sentence.id === selectedToken.sentenceId)
     : undefined;
@@ -402,6 +432,7 @@ export function InteractiveReader({
 
   return (
     <div
+      ref={readerRootRef}
       data-reader-zen={zenMode ? 'true' : 'false'}
       data-reader-theme={readerTheme}
       className={`mx-auto w-full min-w-0 max-w-4xl space-y-2 sm:space-y-4 ${
@@ -454,6 +485,18 @@ export function InteractiveReader({
             className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
           >
             <span>🐢 Nhịp đọc gợi ý cho người mới (~{estimatedReadMinutes} phút đọc thong thả)</span>
+          </div>
+          <div
+            data-testid="reader-gsap-progress-ribbon"
+            aria-label="Tiến độ tương tác bài đọc"
+            className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-subtle)]"
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[var(--action-primary)] to-[var(--accent-teal)] transition-transform duration-300"
+              style={{
+                width: `${Math.max(15, Math.min(100, passage.familiarityRate || 65))}%`,
+              }}
+            />
           </div>
         </div>
         <Image src="/assets/reader-tea-book.png" alt="" aria-hidden="true" width={270} height={190} className="h-auto w-[34%] max-w-[175px] shrink-0 object-contain" />
@@ -878,9 +921,11 @@ export function InteractiveReader({
 
       {selectedToken && (
         <div
+          ref={inspectorPanelRef}
+          data-testid="inspector-gsap-spring-panel"
           role="dialog"
           aria-label="Chi tiết từ vựng"
-          className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 max-h-[48dvh] overflow-y-auto rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-[var(--shadow-floating)] animate-fadeIn sm:inset-x-4 sm:p-4 md:inset-x-auto md:bottom-8 md:max-h-[80vh] md:w-96 md:rounded-[24px]"
+          className="lingua-glass-panel fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 max-h-[48dvh] overflow-y-auto rounded-[22px] border border-[var(--border-subtle)] bg-[var(--surface)] p-3 shadow-[var(--shadow-floating)] animate-fadeIn sm:inset-x-4 sm:p-4 md:inset-x-auto md:bottom-8 md:max-h-[80vh] md:w-96 md:rounded-[24px]"
         >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="min-w-0">
