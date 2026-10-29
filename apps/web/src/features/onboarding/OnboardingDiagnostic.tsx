@@ -240,7 +240,7 @@ export function OnboardingDiagnostic({
       {/* Header */}
       <header className="text-center space-y-1">
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
-          Diagnostic Placement • Khởi tạo lộ trình
+          Khám phá trình độ • Khởi tạo lộ trình cá nhân
         </span>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
           {isCompleted ? 'Kết quả ước lượng khởi điểm' : 'Kiểm tra năng lực thích nghi'}
@@ -326,7 +326,17 @@ export function OnboardingDiagnostic({
               </span>
             </div>
             <Badge variant="primary" size="sm">
-              Bằng chứng {currentQuestion.skill}
+              Bằng chứng: {
+                (currentQuestion.skill as string) === 'recognition'
+                  ? 'Nhận diện từ vựng'
+                  : (currentQuestion.skill as string) === 'comprehension'
+                    ? 'Đọc hiểu ngữ cảnh'
+                    : (currentQuestion.skill as string) === 'listening'
+                      ? 'Nghe hiểu'
+                      : (currentQuestion.skill as string) === 'production'
+                        ? 'Phản xạ ngôn ngữ'
+                        : currentQuestion.skill
+              }
             </Badge>
           </div>
 
@@ -420,7 +430,7 @@ export function OnboardingDiagnostic({
             </div>
             <div>
               <span className="text-xs font-semibold uppercase tracking-wider text-[var(--action-primary)]">
-                Ước lượng khởi điểm (ADR-009)
+                Ước lượng trình độ khởi điểm
               </span>
               <h2 className="text-2xl font-bold text-[var(--text-primary)]">
                 {isBeginnerCalibration ? 'A1 Beginner (Lộ trình cho người mất gốc)' : 'A2 Elementary'}

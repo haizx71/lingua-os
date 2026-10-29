@@ -178,7 +178,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
           <span
             data-testid="dictionary-saved-counter"
             aria-label="Tổng số khái niệm đã lưu vào kho cá nhân"
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]"
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-3 py-1 text-xs font-bold text-[var(--action-primary)]"
           >
             ⭐ Đã lưu {totalSavedConceptsCount} khái niệm
           </span>
@@ -298,6 +298,13 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
               );
             })}
           </div>
+
+          <div
+            data-testid="dictionary-beginner-audio-tip"
+            className="mt-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3.5 py-2 text-xs text-[var(--text-secondary)]"
+          >
+            💡 Mẹo phát âm: Bấm 🔊 để nghe chuẩn, 🐢 0.75x để nghe chậm, hoặc 🔬 0.5x để nghe tách từng âm tiết.
+          </div>
         </div>
       </section>
 
@@ -359,7 +366,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   <span
                     data-testid="dictionary-complexity-tag"
                     aria-label="Độ phức tạp cấu tạo từ"
-                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]"
                   >
                     {getWordComplexityLabel(group.lemma)}
                   </span>
@@ -486,7 +493,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   <span
                     data-testid="dictionary-complexity-tag"
                     aria-label="Độ phức tạp cấu tạo từ"
-                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]"
                   >
                     {getWordComplexityLabel(concept.term)}
                   </span>
@@ -570,7 +577,7 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
                   <span
                     data-testid="dictionary-complexity-tag"
                     aria-label="Độ phức tạp cấu tạo từ"
-                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]"
                   >
                     {getWordComplexityLabel(concept.term)}
                   </span>

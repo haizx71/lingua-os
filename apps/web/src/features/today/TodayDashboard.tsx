@@ -138,7 +138,7 @@ export function TodayDashboard({
   const primaryActivity = effectivePlan.activities[0];
   const focusSkillLabel =
     primaryActivity?.type === 'review'
-      ? 'Kích hoạt trí nhớ dài hạn (Spaced Retrieval)'
+      ? 'Kích hoạt trí nhớ dài hạn (Ôn tập ngắt quãng nhớ lâu)'
       : primaryActivity?.type === 'learn'
         ? 'Mở rộng mạng lưới khái niệm ngôn ngữ'
         : 'Đọc hiểu ngữ cảnh & Mở rộng từ vựng';
@@ -281,6 +281,12 @@ export function TodayDashboard({
       >
         <p className="text-xs font-bold uppercase tracking-wider text-[var(--action-primary)]">
           Lộ trình 3 bước dễ dàng cho người mới
+        </p>
+        <p
+          data-testid="today-novice-reassurance"
+          className="mt-2 text-xs text-[var(--text-secondary)]"
+        >
+          🌱 Dành cho người mới bắt đầu: Bạn không cần biết trước từ vựng — hãy làm lần lượt từng bước từ Bước 1 đến Bước 3.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-3.5">

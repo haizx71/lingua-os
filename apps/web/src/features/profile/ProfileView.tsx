@@ -207,6 +207,12 @@ export function ProfileView({
         >
           {cefrCapabilityText}
         </p>
+        <p
+          data-testid="profile-beginner-level-note"
+          className="mt-2 text-xs text-[var(--text-secondary)]"
+        >
+          💡 Hồ sơ này tự động cập nhật khi bạn đọc bài và ôn tập mỗi ngày.
+        </p>
         <div
           data-testid="wave9-profile-pace-selector"
           role="group"

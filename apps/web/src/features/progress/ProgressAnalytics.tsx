@@ -301,6 +301,12 @@ export function ProgressAnalytics({
         >
           📚 Tích lũy bền vững: {data.wordsSolidified}/{targetWords} từ
         </span>
+        <p
+          data-testid="progress-cefr-beginner-note"
+          className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]"
+        >
+          💡 Giải thích cho người mới: Thang CEFR chia trình độ từ A1 (Mới bắt đầu) → A2 (Giao tiếp cơ bản) → B1 (Đọc hiểu tự tin). Hệ thống FSRS giúp nhắc bạn ôn đúng lúc sắp quên.
+        </p>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)]">

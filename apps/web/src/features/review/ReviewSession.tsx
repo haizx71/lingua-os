@@ -447,6 +447,12 @@ export function ReviewSession({
           <div className="min-w-0">
             <div className="lingua-kicker text-[var(--action-primary)]">Ôn tập</div>
             <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.04em] text-[var(--text-primary)] sm:text-2xl">Thẻ đến lượt</h1>
+            <p
+              data-testid="review-beginner-fsrs-note"
+              className="mt-1 text-xs font-medium text-[var(--text-secondary)]"
+            >
+              💡 Ôn tập thông minh: Bạn chỉ cần thật thà chọn mức độ nhớ bên dưới, hệ thống sẽ tự tính ngày nhắc lại phù hợp nhất.
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span
@@ -468,7 +474,7 @@ export function ReviewSession({
               aria-label="Nhịp độ phản xạ khuyến nghị"
               className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
             >
-              ⏱️ Nhịp chuẩn: ~8s/thẻ
+              ⏱️ Nhịp chuẩn: ~8s/thẻ (cứ thong thả nhớ lại)
             </span>
             <span
               data-testid="review-session-accuracy-badge"
@@ -532,7 +538,7 @@ export function ReviewSession({
               aria-pressed={blindListeningMode}
               onClick={() => setBlindListeningMode((prev) => !prev)}
             >
-              {blindListeningMode ? '🎧 Nghe mù: Bật' : '🎧 Nghe mù: Tắt'}
+              {blindListeningMode ? '🎧 Đang bật: Luyện nghe đoán từ (Nghe mù)' : '🎧 Luyện nghe đoán từ (Nghe mù)'}
             </Button>
             <Button
               variant="ghost"

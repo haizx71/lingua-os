@@ -327,6 +327,7 @@ export function LanguageBrainCanvas({
               <div
                 data-testid="wave9-brain-cefr-breakdown"
                 aria-label="Phân bổ cấp độ CEFR của các từ trong Brain"
+                title="Cấp độ CEFR từ dễ đến nâng cao"
                 className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
               >
                 <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">
@@ -367,18 +368,46 @@ export function LanguageBrainCanvas({
         </div>
 
         <div className="mt-4 min-w-0 space-y-3">
-          <div className="relative min-w-0">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-            <label htmlFor="brain-concept-search" className="sr-only">Tìm khái niệm trong Brain</label>
-            <input id="brain-concept-search" type="search" placeholder="Lọc từ vựng trong Brain..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="min-h-11 w-full min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-9 pr-3 text-base text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus-ring)] sm:text-sm" />
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+              <label htmlFor="brain-concept-search" className="sr-only">Tìm nhanh khái niệm trong mạng lưới</label>
+              <input
+                id="brain-concept-search"
+                type="search"
+                data-testid="brain-node-search"
+                aria-label="Tìm nhanh khái niệm trong mạng lưới"
+                placeholder="🔍 Tìm nhanh từ vựng trong Brain..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="min-h-11 w-full min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] pl-9 pr-3 text-base text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--focus-ring)] sm:text-sm"
+              />
+            </div>
+            {hasActiveBrainFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="brain-reset-filters"
+                aria-label="Đặt lại bộ lọc mạng lưới Language Brain"
+                onClick={() => {
+                  setSelectedStatus('ALL');
+                  setSelectedCefr('ALL');
+                  setSelectedGroup('ALL');
+                  setSearchQuery('');
+                }}
+              >
+                Đặt lại bộ lọc mạng lưới
+              </Button>
+            )}
           </div>
 
           <div
             data-testid="brain-cefr-distribution"
             aria-label="Phân bổ khái niệm theo cấp độ CEFR"
+            title="Cấp độ CEFR từ dễ đến nâng cao"
             className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
           >
-            <span className="font-bold text-[var(--action-primary)]">Cấp độ CEFR:</span>
+            <span className="font-bold text-[var(--action-primary)]">Cấp độ CEFR từ dễ đến nâng cao:</span>
             <span>A1 ({cefrCounts.a1})</span>
             <span>·</span>
             <span>A2 ({cefrCounts.a2})</span>
@@ -441,34 +470,6 @@ export function LanguageBrainCanvas({
                 <span>·</span>
                 <span className="text-[var(--status-warning)]">Cần củng cố / Đã quên: {nodeStatusCounts.weakOrForgotten}</span>
               </div>
-            </div>
-
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="search"
-                data-testid="brain-node-search"
-                aria-label="Tìm nhanh khái niệm trong mạng lưới"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="🔍 Tìm nhanh từ vựng trong Brain..."
-                className="w-full max-w-xs rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--action-primary)] focus:outline-none"
-              />
-              {hasActiveBrainFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  data-testid="brain-reset-filters"
-                  aria-label="Đặt lại bộ lọc mạng lưới Language Brain"
-                  onClick={() => {
-                    setSelectedStatus('ALL');
-                    setSelectedCefr('ALL');
-                    setSelectedGroup('ALL');
-                    setSearchQuery('');
-                  }}
-                >
-                  Đặt lại bộ lọc mạng lưới
-                </Button>
-              )}
             </div>
           </div>
 
@@ -633,7 +634,7 @@ export function LanguageBrainCanvas({
             className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3.5"
           >
             <p className="text-xs font-bold text-[var(--text-primary)]">
-              🔗 Cụm từ thường đi kèm (Collocations):
+              🔗 Cụm từ thường đi kèm (Collocations — Giúp ghép câu tự nhiên không cần dịch từng chữ):
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {getCollocationsForConcept(

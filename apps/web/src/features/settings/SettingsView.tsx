@@ -499,41 +499,38 @@ export function SettingsView({
                 aria-label="Chọn giọng phát âm tiếng Anh"
                 className="space-y-2 border-t border-[var(--border-subtle)] pt-4"
               >
+                <span className="block text-sm font-bold text-[var(--text-primary)]">
+                  Giọng phát âm ưu tiên (Accent)
+                </span>
                 <div
                   data-testid="wave9-settings-accent-selector"
-                  role="group"
                   aria-label="Chọn giọng phát âm mẫu: Anh-Mỹ hoặc Anh-Anh"
-                  className="space-y-2"
+                  className="flex flex-wrap gap-2"
                 >
-                  <span className="block text-sm font-bold text-[var(--text-primary)]">
-                    Giọng phát âm ưu tiên (Accent)
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {(
-                      [
-                        { value: 'en-US', label: '🇺🇸 Anh - Mỹ (en-US)' },
-                        { value: 'en-GB', label: '🇬🇧 Anh - Anh (en-GB)' },
-                      ] as const
-                    ).map((opt) => {
-                      const active = preferredAccent === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          data-testid={`settings-accent-${opt.value}`}
-                          aria-pressed={active}
-                          onClick={() => setPreferredAccent(opt.value)}
-                          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                            active
-                              ? 'bg-[var(--action-primary)] text-white'
-                              : 'border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {(
+                    [
+                      { value: 'en-US', label: '🇺🇸 Anh - Mỹ (en-US)' },
+                      { value: 'en-GB', label: '🇬🇧 Anh - Anh (en-GB)' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = preferredAccent === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        data-testid={`settings-accent-${opt.value}`}
+                        aria-pressed={active}
+                        onClick={() => setPreferredAccent(opt.value)}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                          active
+                            ? 'bg-[var(--action-primary)] text-white'
+                            : 'border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

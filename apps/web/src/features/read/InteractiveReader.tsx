@@ -444,7 +444,7 @@ export function InteractiveReader({
             aria-label="Tốc độ đọc ước tính và thời gian đọc bài"
             className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
           >
-            <span>⏱️ ~{Math.max(1, Math.ceil(passage.wordCount / 120))} phút đọc (tốc độ tiêu chuẩn 120 từ/phút)</span>
+            <span>⏱️ ~{estimatedReadMinutes} phút đọc thong thả · Tốc độ gợi ý cho người mới</span>
           </div>
         </div>
         <Image src="/assets/reader-tea-book.png" alt="" aria-hidden="true" width={270} height={190} className="h-auto w-[34%] max-w-[175px] shrink-0 object-contain" />
@@ -473,6 +473,12 @@ export function InteractiveReader({
       )}
 
       <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+        <span
+          data-testid="reader-beginner-toolbar-hint"
+          className="text-[11px] font-semibold text-[var(--text-muted)]"
+        >
+          💡 Mẹo cho người mới: Chạm vào bất kỳ từ tiếng Anh nào trong bài để xem nghĩa tiếng Việt và nghe phát âm.
+        </span>
         {(Boolean(passage.audioUrl) || passage.sentences.length > 0) && (
           <Button
             variant="ghost"

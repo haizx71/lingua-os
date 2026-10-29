@@ -1786,15 +1786,15 @@ export function getSentenceStructureTip(sentenceText: string): string {
 }
 
 const LEARNER_TRAP_WARNINGS: Readonly<Record<string, string>> = {
-  tea: 'Lưu ý: "tea" đồng âm với chữ cái "T" (/tiː/), không đọc là "tia".',
-  schedule: 'Bẫy phát âm: Anh-Mỹ đọc là /ˈskedʒ.uːl/ (âm đầu sk-), không đọc là "sche-đun".',
-  appointment: 'Lưu ý: Chứa âm đôi /ɔɪ/ ở âm tiết 2 (ờ-POIN-mần) và bật nhẹ âm cuối -nt.',
-  talk: 'Bẫy âm câm: Chữ "l" trong "talk" (/tɔːk/) là âm câm, không cong lưỡi đọc chữ l.',
-  walk: 'Bẫy âm câm: Chữ "l" trong "walk" (/wɔːk/) là âm câm.',
-  know: 'Bẫy âm câm: Chữ "k" đầu từ "know" (/nəʊ/) là âm câm, đọc giống "no".',
-  write: 'Bẫy âm câm: Chữ "w" đầu từ "write" (/raɪt/) là âm câm, đọc từ âm r-.',
-  house: 'Lưu ý: Danh từ "house" kết thúc bằng âm /s/, đừng quên xì nhẹ cuối từ.',
-  visit: 'Lưu ý: Trọng âm rơi vào âm tiết 1 (/ˈvɪz.ɪt/), tránh nhấn nhầm sang âm 2.',
+  tea: 'Lưu ý: "tea" đồng âm với chữ cái "T" (ti), không đọc là "tia".',
+  schedule: 'Bẫy phát âm: Anh-Mỹ đọc là SKE-dù (âm đầu sk-), không đọc là "sche-đun".',
+  appointment: 'Lưu ý: Chứa âm đôi oi ở âm tiết 2 (ờ-POIN-mần) và bật nhẹ âm cuối -nt.',
+  talk: 'Bẫy âm câm: Chữ "l" trong "talk" (took) là âm câm, không cong lưỡi đọc chữ l.',
+  walk: 'Bẫy âm câm: Chữ "l" trong "walk" (wook) là âm câm.',
+  know: 'Bẫy âm câm: Chữ "k" đầu từ "know" (nôu) là âm câm, đọc giống "no".',
+  write: 'Bẫy âm câm: Chữ "w" đầu từ "write" (rait) là âm câm, đọc từ âm r-.',
+  house: 'Lưu ý: Danh từ "house" kết thúc bằng âm s, đừng quên xì nhẹ cuối từ.',
+  visit: 'Lưu ý: Trọng âm rơi vào âm tiết 1 (VI-zit), tránh nhấn nhầm sang âm 2.',
 };
 
 export function getLearnerTrapWarning(term: string): string | null {
@@ -1812,11 +1812,11 @@ export const FALSE_FRIENDS_TRAPS: Readonly<Record<string, string>> = {
   actually: 'Cảnh báo từ dễ nhầm (False Friend): "actually" có nghĩa là "thực ra / thực sự", KHÔNG PHẢI "hiện tại" (hiện tại là "currently / presently").',
   eventually: 'Cảnh báo từ dễ nhầm (False Friend): "eventually" có nghĩa là "cuối cùng thì / rốt cuộc", KHÔNG PHẢI "thỉnh thoảng" (thỉnh thoảng là "occasionally").',
   sympathy: 'Cảnh báo từ dễ nhầm (False Friend): "sympathy" có nghĩa là "sự đồng cảm / thương hại", KHÔNG PHẢI "thông cảm" thông thường.',
-  chef: 'Cảnh báo phát âm & nghĩa: "chef" là đầu bếp trưởng (/ʃef/), KHÔNG PHẢI sếp/thủ lĩnh (sếp là "chief" /tʃiːf/).',
+  chef: 'Cảnh báo phát âm & nghĩa: "chef" là đầu bếp trưởng (shef), KHÔNG PHẢI sếp/thủ lĩnh (sếp là "chief" chiif).',
   sensible: 'Cảnh báo từ dễ nhầm (False Friend): "sensible" có nghĩa là "biết điều / hợp lý", KHÔNG PHẢI "nhạy cảm" (nhạy cảm là "sensitive").',
   confident: 'Cảnh báo từ dễ nhầm (False Friend): "confident" có nghĩa là "tự tin", KHÔNG PHẢI "người tâm sự" (người tâm sự là "confidant").',
-  tea: 'Cảnh báo từ dễ nhầm: "tea" đồng âm với chữ cái "T" (/tiː/), không đọc là "tia".',
-  appointment: 'Cảnh báo bẫy ngữ âm: "appointment" nhấn trọng âm 2 (/əˈpɔɪnt.mənt/), không nhấn âm đầu.',
+  tea: 'Cảnh báo từ dễ nhầm: "tea" đồng âm với chữ cái "T" (ti), không đọc là "tia".',
+  appointment: 'Cảnh báo bẫy ngữ âm: "appointment" nhấn trọng âm 2 (ơ-POIN-mần), không nhấn âm đầu.',
 };
 
 export function getFalseFriendTrap(term: string): string | null {

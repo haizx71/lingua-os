@@ -213,6 +213,12 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
                 ⚡ Ôn tập từ đã lưu
               </Button>
             </div>
+            <p
+              data-testid="library-beginner-tip"
+              className="mt-2 text-xs text-[var(--text-secondary)]"
+            >
+              💡 Mẹo cho người mới: Mọi từ vựng và câu bạn bấm &ldquo;Lưu&rdquo; khi đọc bài hoặc tra từ điển đều nằm tại đây để bạn nghe lại và ôn tập bất cứ lúc nào.
+            </p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             {!forcedState && <Button className="w-full sm:w-auto" variant="outline" size="md" onClick={library.retry}>Tải lại thư viện</Button>}
