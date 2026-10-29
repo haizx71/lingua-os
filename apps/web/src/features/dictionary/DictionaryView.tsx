@@ -199,10 +199,13 @@ export function DictionaryView({ initialConcepts = defaultDictionaryConcepts, fo
             />
             {discovery.searchQuery && <button type="button" onClick={discovery.clearSearch} className="absolute right-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" aria-label="Xóa từ khóa tìm kiếm"><X className="h-4 w-4" /></button>}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span className="rounded-full bg-white/80 px-3 py-1.5">Nghĩa tiếng Việt</span>
-            <span className="rounded-full bg-white/80 px-3 py-1.5">IPA & từ loại</span>
-            <span className="rounded-full bg-white/80 px-3 py-1.5">Ví dụ ngữ cảnh</span>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p
+              data-testid="dictionary-capabilities-caption"
+              className="text-xs font-medium text-[var(--text-secondary)]"
+            >
+              📖 Kết quả tra cứu hiển thị đầy đủ: Nghĩa tiếng Việt • Phiên âm IPA &amp; từ loại • Ví dụ ngữ cảnh
+            </p>
             <button
               type="button"
               data-testid="dictionary-search-lang-toggle"

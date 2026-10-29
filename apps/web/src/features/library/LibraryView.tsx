@@ -230,7 +230,8 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
       </header>
 
       {status !== 'loading' && status !== 'error' && (
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="group" aria-label="Lọc thư viện">
             {tabs.map((tab) => (
               <button
@@ -406,7 +407,16 @@ export function LibraryView({ apiClient, initialItems, forcedState, forcedErrorC
             </div>
           </div>
         </div>
-      )}
+        <p
+          data-testid="library-selection-status"
+          className="text-xs font-medium text-[var(--text-secondary)]"
+        >
+          {selectedItemKeys.size > 0
+            ? `📌 Đã chọn ${selectedItemKeys.size} mục — Bấm "Sao chép danh sách" hoặc "Xuất sang Anki" để lấy dữ liệu đã chọn.`
+            : '📌 Mẹo: Bạn có thể lọc theo trạng thái thuộc từ hoặc bấm "Sao chép danh sách" để lưu toàn bộ từ vựng.'}
+        </p>
+      </div>
+    )}
 
       {library.mutationError && (
         <InlineAlert variant="danger" title="Không thể xóa mục đã lưu">Mục này vẫn được giữ nguyên vì máy chủ chưa xác nhận thao tác.</InlineAlert>

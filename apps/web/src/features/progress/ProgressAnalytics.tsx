@@ -249,20 +249,9 @@ export function ProgressAnalytics({
               Hướng tới {targetBand} ({wordsSolidified}/{targetWords} từ vững)
             </h2>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="progress-copy-report"
-              aria-label="Sao chép báo cáo tóm tắt tiến độ học tập"
-              onClick={() => void handleCopyProgressReport()}
-            >
-              {copiedReport ? 'Đã sao chép báo cáo' : '📋 Sao chép báo cáo tiến độ'}
-            </Button>
-            <span className="rounded-full bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]">
-              {milestonePercent}%
-            </span>
-          </div>
+          <span className="rounded-full bg-[var(--surface-lilac)] px-3 py-1 font-mono text-xs font-bold text-[var(--action-primary)]">
+            {milestonePercent}%
+          </span>
         </div>
         <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[var(--surface-subtle)]">
           <div
@@ -275,32 +264,43 @@ export function ProgressAnalytics({
             ? `Cần làm chủ thêm ${wordsRemaining} từ vựng nữa để hoàn thành cột mốc ${targetBand}.`
             : `Xuất sắc! Bạn đã đạt cột mốc từ vựng ${targetBand}.`}
         </p>
-        <div
-          data-testid="progress-velocity-forecast"
-          aria-label="Dự báo thời gian hoàn thành cột mốc CEFR"
-          className="mt-2.5 inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
-        >
-          <span>🚀 Tốc độ dự kiến:</span>
-          <span className="text-[var(--action-primary)]">
-            {wordsRemaining > 0
-              ? `Khoảng ${projectedDaysToTarget} ngày nữa đạt ${targetBand} (~${estimatedWordsPerDay} từ/ngày)`
-              : `Đã hoàn thành mục tiêu ${targetBand}`}
+        <div data-testid="progress-milestone-badges-row" className="mt-3 flex flex-wrap items-center gap-2">
+          <div
+            data-testid="progress-velocity-forecast"
+            aria-label="Dự báo thời gian hoàn thành cột mốc CEFR"
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+          >
+            <span>🚀 Tốc độ dự kiến:</span>
+            <span className="text-[var(--action-primary)]">
+              {wordsRemaining > 0
+                ? `Khoảng ${projectedDaysToTarget} ngày nữa đạt ${targetBand} (~${estimatedWordsPerDay} từ/ngày)`
+                : `Đã hoàn thành mục tiêu ${targetBand}`}
+            </span>
+          </div>
+          <span
+            data-testid="progress-retention-status-badge"
+            aria-label="Đánh giá sức khỏe trí nhớ FSRS"
+            className="inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+          >
+            {retentionHealthLabel} ({avgRetention}%)
           </span>
+          <span
+            data-testid="progress-solidified-ratio"
+            aria-label="Tỷ lệ tích lũy từ vựng bền vững"
+            className="inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+          >
+            📚 Tích lũy bền vững: {data.wordsSolidified}/{targetWords} từ
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="progress-copy-report"
+            aria-label="Sao chép báo cáo tóm tắt tiến độ học tập"
+            onClick={() => void handleCopyProgressReport()}
+          >
+            {copiedReport ? 'Đã sao chép báo cáo' : '📋 Sao chép báo cáo tiến độ'}
+          </Button>
         </div>
-        <span
-          data-testid="progress-retention-status-badge"
-          aria-label="Đánh giá sức khỏe trí nhớ FSRS"
-          className="mt-2.5 ml-2 inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
-        >
-          {retentionHealthLabel} ({avgRetention}%)
-        </span>
-        <span
-          data-testid="progress-solidified-ratio"
-          aria-label="Tỷ lệ tích lũy từ vựng bền vững"
-          className="mt-2.5 ml-2 inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
-        >
-          📚 Tích lũy bền vững: {data.wordsSolidified}/{targetWords} từ
-        </span>
         <p
           data-testid="progress-cefr-beginner-note"
           className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]"

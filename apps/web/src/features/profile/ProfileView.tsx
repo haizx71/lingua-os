@@ -75,6 +75,14 @@ export function ProfileView({
       : level === 'A2'
         ? '💬 Năng lực hiện tại: Giao tiếp tình huống quen thuộc & đọc hiểu đoạn văn ngắn.'
         : '💬 Năng lực hiện tại: Giao tiếp câu ngắn cơ bản & làm quen từ vựng cốt lõi.';
+  const confidenceLabelVi =
+    profile?.startingLevelConfidence === 'high'
+      ? 'Cao'
+      : profile?.startingLevelConfidence === 'medium'
+        ? 'Khá chuẩn'
+        : profile?.startingLevelConfidence === 'low'
+          ? 'Cơ bản'
+          : profile?.startingLevelConfidence;
   const encountered = profile.totalConceptsEncountered;
   const mastered = profile.totalConceptsMastered;
   const masteryPercent = encountered !== undefined && mastered !== undefined && encountered > 0
@@ -160,9 +168,13 @@ export function ProfileView({
           </div>
         </div>
         {(profile.timeZone || profile.startingLevelConfidence) && (
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--border-subtle)] pt-4 text-xs text-[var(--text-secondary)]">
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--border-subtle)] pt-4 text-xs text-[var(--text-secondary)]">
             {profile.timeZone && <span>Múi giờ: {profile.timeZone}</span>}
-            {profile.startingLevelConfidence && <span>Độ tin cậy ước lượng: {profile.startingLevelConfidence}</span>}
+            {profile.startingLevelConfidence && (
+              <Badge variant="neutral" data-testid="profile-confidence-badge">
+                Độ tin cậy ước lượng: {confidenceLabelVi}
+              </Badge>
+            )}
           </div>
         )}
         <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2">

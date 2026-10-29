@@ -454,101 +454,106 @@ export function ReviewSession({
               💡 Ôn tập thông minh: Bạn chỉ cần thật thà chọn mức độ nhớ bên dưới, hệ thống sẽ tự tính ngày nhắc lại phù hợp nhất.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span
-              data-testid="review-remaining-encouragement"
-              aria-label="Số thẻ còn lại trong phiên ôn tập"
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--action-primary)]"
-            >
-              💪 Còn {remainingQueueCards} thẻ trong phiên
-            </span>
-            <span
-              data-testid="review-shortcuts-help"
-              aria-label="Hướng dẫn phím tắt bàn phím"
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
-            >
-              ⌨️ Phím tắt: Space (Lật) · 1–4 (Chấm)
-            </span>
-            <span
-              data-testid="review-pace-indicator"
-              aria-label="Nhịp độ phản xạ khuyến nghị"
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
-            >
-              ⏱️ Nhịp chuẩn: ~8s/thẻ (cứ thong thả nhớ lại)
-            </span>
-            <span
-              data-testid="review-session-accuracy-badge"
-              aria-label="Độ chính xác và chuỗi trả lời đúng trong buổi học"
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--action-primary)]"
-            >
-              🎯 {accuracyPercent}%{sessionStreak > 0 ? ` · 🔥 ${sessionStreak}` : ''}
-            </span>
-            {displayDueCount !== null && <Badge variant="warning" size="md">{displayDueCount} còn lại</Badge>}
-            <div
-              data-testid="wave9-review-batch-size"
-              role="group"
-              aria-label="Chọn số lượng thẻ ôn tập mỗi phiên"
-              className="flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-1 text-xs"
-            >
-              {(['all', 5, 10, 15] as const).map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  data-batch-size={String(size)}
-                  aria-pressed={sprintBatchSize === size}
-                  onClick={() => setSprintBatchSize(size)}
-                  className={`rounded-lg px-2 py-0.5 text-xs font-semibold transition-colors ${
-                    sprintBatchSize === size
-                      ? 'bg-[var(--action-primary)] text-white shadow-xs'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
-                  }`}
-                >
-                  {size === 'all' ? 'Tất cả' : `${size} thẻ`}
-                </button>
-              ))}
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <div data-testid="review-hud-summary-row" className="flex flex-wrap items-center gap-1.5">
+              <span
+                data-testid="review-remaining-encouragement"
+                aria-label="Số thẻ còn lại trong phiên ôn tập"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-lilac)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--action-primary)]"
+              >
+                💪 Còn {remainingQueueCards} thẻ trong phiên
+              </span>
+              <span
+                data-testid="review-shortcuts-help"
+                aria-label="Hướng dẫn phím tắt bàn phím"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--text-secondary)]"
+              >
+                ⌨️ Phím tắt: Space (Lật) · 1–4 (Chấm)
+              </span>
+              <span
+                data-testid="review-pace-indicator"
+                aria-label="Nhịp độ phản xạ khuyến nghị"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-semibold text-[var(--text-secondary)]"
+              >
+                ⏱️ Nhịp chuẩn: ~8s/thẻ (cứ thong thả nhớ lại)
+              </span>
+              <span
+                data-testid="review-session-accuracy-badge"
+                aria-label="Độ chính xác và chuỗi trả lời đúng trong buổi học"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--action-primary)]"
+              >
+                🎯 {accuracyPercent}%{sessionStreak > 0 ? ` · 🔥 ${sessionStreak}` : ''}
+              </span>
+              {displayDueCount !== null && <Badge variant="warning" size="md">{displayDueCount} còn lại</Badge>}
             </div>
-            <Button
-              variant={sprintBatchSize !== 'all' ? 'secondary' : 'ghost'}
-              size="sm"
-              data-testid="review-batch-selector"
-              data-sprint-target={String(sprintBatchSize)}
-              aria-label="Chọn quy mô phiên ôn tập nhanh"
-              onClick={() =>
-                setSprintBatchSize((prev) => (prev === 'all' ? 5 : prev === 5 ? 10 : prev === 10 ? 15 : 'all'))
-              }
-              className="hidden"
-            >
-              {sprintBatchSize === 'all' ? '⚡ Phiên: Tất cả' : `⚡ Phiên: ${sprintBatchSize} thẻ`}
-            </Button>
-            <Button
-              variant={soundFeedbackEnabled ? 'secondary' : 'ghost'}
-              size="sm"
-              data-testid="review-audio-feedback-toggle"
-              aria-label="Bật/tắt âm thanh phản hồi khi trả lời thẻ"
-              aria-pressed={soundFeedbackEnabled}
-              onClick={() => setSoundFeedbackEnabled((prev) => !prev)}
-            >
-              {soundFeedbackEnabled ? '🔔 Âm phản hồi: Bật' : '🔕 Âm phản hồi: Tắt'}
-            </Button>
-            <Button
-              variant={blindListeningMode ? 'secondary' : 'ghost'}
-              size="sm"
-              data-testid="wave10-review-blind-listening-toggle"
-              aria-label="Bật/tắt chế độ nghe mù không nhìn chữ"
-              aria-pressed={blindListeningMode}
-              onClick={() => setBlindListeningMode((prev) => !prev)}
-            >
-              {blindListeningMode ? '🎧 Đang bật: Luyện nghe đoán từ (Nghe mù)' : '🎧 Luyện nghe đoán từ (Nghe mù)'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setFocusMode(!focusMode)}
-              aria-label={focusMode ? 'Tắt chế độ tập trung' : 'Bật chế độ tập trung'}
-              title={focusMode ? 'Tắt Focus Mode' : 'Bật Focus Mode'}
-            >
-              {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
+
+            <div data-testid="review-controls-row" className="flex flex-wrap items-center gap-1.5">
+              <div
+                data-testid="wave9-review-batch-size"
+                role="group"
+                aria-label="Chọn số lượng thẻ ôn tập mỗi phiên"
+                className="flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-1 text-xs"
+              >
+                {(['all', 5, 10, 15] as const).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    data-batch-size={String(size)}
+                    aria-pressed={sprintBatchSize === size}
+                    onClick={() => setSprintBatchSize(size)}
+                    className={`rounded-lg px-2 py-0.5 text-xs font-semibold transition-colors ${
+                      sprintBatchSize === size
+                        ? 'bg-[var(--action-primary)] text-white shadow-xs'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+                    }`}
+                  >
+                    {size === 'all' ? 'Tất cả' : `${size} thẻ`}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant={sprintBatchSize !== 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                data-testid="review-batch-selector"
+                data-sprint-target={String(sprintBatchSize)}
+                aria-label="Chọn quy mô phiên ôn tập nhanh"
+                onClick={() =>
+                  setSprintBatchSize((prev) => (prev === 'all' ? 5 : prev === 5 ? 10 : prev === 10 ? 15 : 'all'))
+                }
+                className="hidden"
+              >
+                {sprintBatchSize === 'all' ? '⚡ Phiên: Tất cả' : `⚡ Phiên: ${sprintBatchSize} thẻ`}
+              </Button>
+              <Button
+                variant={soundFeedbackEnabled ? 'secondary' : 'ghost'}
+                size="sm"
+                data-testid="review-audio-feedback-toggle"
+                aria-label="Bật/tắt âm thanh phản hồi khi trả lời thẻ"
+                aria-pressed={soundFeedbackEnabled}
+                onClick={() => setSoundFeedbackEnabled((prev) => !prev)}
+              >
+                {soundFeedbackEnabled ? '🔔 Âm phản hồi: Bật' : '🔕 Âm phản hồi: Tắt'}
+              </Button>
+              <Button
+                variant={blindListeningMode ? 'secondary' : 'ghost'}
+                size="sm"
+                data-testid="wave10-review-blind-listening-toggle"
+                aria-label="Bật/tắt chế độ nghe mù không nhìn chữ"
+                aria-pressed={blindListeningMode}
+                onClick={() => setBlindListeningMode((prev) => !prev)}
+              >
+                {blindListeningMode ? '🎧 Đang bật: Luyện nghe đoán từ (Nghe mù)' : '🎧 Luyện nghe đoán từ (Nghe mù)'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFocusMode(!focusMode)}
+                aria-label={focusMode ? 'Tắt chế độ tập trung' : 'Bật chế độ tập trung'}
+                title={focusMode ? 'Tắt Focus Mode' : 'Bật Focus Mode'}
+              >
+                {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
       </header>
 

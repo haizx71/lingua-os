@@ -475,7 +475,7 @@ export function InteractiveReader({
       <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
         <span
           data-testid="reader-beginner-toolbar-hint"
-          className="text-[11px] font-semibold text-[var(--text-muted)]"
+          className="w-full basis-full pb-1 text-[11px] font-semibold text-[var(--text-muted)]"
         >
           💡 Mẹo cho người mới: Chạm vào bất kỳ từ tiếng Anh nào trong bài để xem nghĩa tiếng Việt và nghe phát âm.
         </span>
@@ -725,7 +725,7 @@ export function InteractiveReader({
                                 )
                               }
                             >
-                              🗣️ Nhại lại
+                              🗣️ Đọc theo mẫu (Shadowing)
                             </Button>
                             <Button
                               variant="ghost"
@@ -923,12 +923,6 @@ export function InteractiveReader({
             <p data-testid="inspector-trap-warning" className="mt-1 text-[11px] text-[var(--text-secondary)]">
               ⚠️ {getLearnerTrapWarning(selectedToken.lemma ?? selectedToken.raw)}
             </p>
-            <p data-testid="inspector-word-family" className="mt-1 text-[11px] text-[var(--text-secondary)]">
-              🌱 {getWordFamilyHint(selectedToken.lemma ?? selectedToken.raw)}
-            </p>
-            <p data-testid="inspector-semantic-contrast" className="mt-1 text-[11px] text-[var(--text-secondary)]">
-              ⚖️ {getSemanticContrastTip(selectedToken.lemma ?? selectedToken.raw)}
-            </p>
             {(() => {
               const falseFriendTrap = getFalseFriendTrap(selectedToken.lemma ?? selectedToken.raw);
               return falseFriendTrap ? (
@@ -940,24 +934,38 @@ export function InteractiveReader({
                 </div>
               ) : null;
             })()}
-            {(() => {
-              const irregular = getIrregularVerbInfo(selectedToken.lemma ?? selectedToken.raw);
-              return irregular ? (
-                <div
-                  data-testid="wave10-irregular-verb-info"
-                  className="mt-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1.5 text-xs font-medium text-indigo-950 dark:text-indigo-200"
-                >
-                  📘 Động từ bất quy tắc: <strong>{irregular.base}</strong> → Quá khứ: <strong>{irregular.past}</strong> (Phân từ: {irregular.participle}) · Nghĩa: {irregular.vi}
-                </div>
-              ) : null;
-            })()}
+            <div
+              data-testid="inspector-extended-tips-box"
+              className="mt-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]/50 p-2.5 space-y-1"
+            >
+              <p className="text-[11px] font-bold text-[var(--text-primary)]">
+                📚 Mở rộng vốn từ &amp; Ngữ cảnh:
+              </p>
+              <p data-testid="inspector-word-family" className="mt-1 text-[11px] text-[var(--text-secondary)]">
+                🌱 {getWordFamilyHint(selectedToken.lemma ?? selectedToken.raw)}
+              </p>
+              <p data-testid="inspector-semantic-contrast" className="mt-1 text-[11px] text-[var(--text-secondary)]">
+                ⚖️ {getSemanticContrastTip(selectedToken.lemma ?? selectedToken.raw)}
+              </p>
+              {(() => {
+                const irregular = getIrregularVerbInfo(selectedToken.lemma ?? selectedToken.raw);
+                return irregular ? (
+                  <div
+                    data-testid="wave10-irregular-verb-info"
+                    className="mt-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-1.5 text-xs font-medium text-indigo-950 dark:text-indigo-200"
+                  >
+                    📘 Động từ bất quy tắc: <strong>{irregular.base}</strong> → Quá khứ: <strong>{irregular.past}</strong> (Phân từ: {irregular.participle}) · Nghĩa: {irregular.vi}
+                  </div>
+                ) : null;
+              })()}
+            </div>
             {selectedToken.explanationEn && <details className="mt-1 text-xs text-[var(--text-muted)]"><summary className="cursor-pointer">Định nghĩa tiếng Anh</summary><p className="mt-1 leading-4">{selectedToken.explanationEn}</p></details>}
           </div>
 
           <div className="mt-2 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2">
             {!selectedToken.conceptId && (
               <span className="text-xs text-[var(--text-muted)]">
-                Từ bổ trợ trong câu · Bấm từ gạch chân để lưu vào Brain
+                Từ bổ trợ tiếng Anh cơ bản (Bấm từ gạch chân để lưu vào Kho từ nhớ)
               </span>
             )}
             <div className="ml-auto flex items-center gap-2">
@@ -972,7 +980,7 @@ export function InteractiveReader({
               </Button>
               {selectedToken.conceptId && reader.savedConceptIds.has(selectedToken.conceptId) ? (
                 <Button variant="secondary" size="sm" leftIcon={<Check className="h-3.5 w-3.5" />} disabled>
-                  Đã lưu vào Brain
+                  Đã lưu vào Kho từ nhớ
                 </Button>
               ) : (
                 <Button

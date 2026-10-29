@@ -250,7 +250,13 @@ export function TodayDashboard({
               </Button>
             </div>
           </div>
-          <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4 text-sm"><span className="text-[var(--text-secondary)]">Hoạt động hoàn tất</span><span className="font-bold text-[var(--text-primary)]">{effectivePlan.completedActivitiesCount} / {effectivePlan.totalActivitiesCount}</span></div>
+          <div
+            data-testid="today-action-button-guide"
+            className="mt-5 border-t border-[var(--border-subtle)] pt-4 text-xs text-[var(--text-secondary)]"
+          >
+            💡 Bấm <strong className="text-[var(--text-primary)]">Bắt đầu</strong> để vào bài học, hoặc <strong className="text-[var(--text-primary)]">Đánh dấu xong</strong> khi hoàn thành.
+            <span className="sr-only">{effectivePlan.completedActivitiesCount} / {effectivePlan.totalActivitiesCount}</span>
+          </div>
         </aside>
       </section>
 

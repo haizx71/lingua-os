@@ -23,7 +23,6 @@ import {
   Volume2,
 } from 'lucide-react';
 import {
-  PERSISTENCE_GAPS,
   mockLanguageProfile,
   type ApiErrorCode,
   type CompetenceDimension,
@@ -493,24 +492,34 @@ export function OnboardingDiagnostic({
               <div className="p-3 bg-[var(--surface-subtle)] rounded-xl border border-[var(--border-subtle)]">
                 <span className="text-[var(--text-muted)]">Phiên bản phương pháp:</span>
                 <p className="font-bold text-sm text-[var(--action-primary)] mt-0.5">
-                  {isBeginnerCalibration
-                    ? (usedBeginnerBypass ? 'beginner-zero-to-one-bypass-v1' : 'beginner-no-guessing-heuristic-v1')
-                    : 'starting-level-heuristic-v1'}
+                  {usedBeginnerBypass ? 'Lộ trình cơ bản cho người mất gốc' : 'Chuẩn đánh giá năng lực CEFR'}
                 </p>
               </div>
 
               <div className="p-3 bg-[var(--surface-subtle)] rounded-xl border border-[var(--border-subtle)]">
                 <span className="text-[var(--text-muted)]">Kế hoạch tiếp theo:</span>
                 <p className="font-bold text-sm text-[var(--text-primary)] mt-0.5">
-                  Today API sẽ cung cấp hoạt động phù hợp
+                  Kế hoạch Hôm nay sẽ tự động cung cấp bài học phù hợp ngay khi bạn bắt đầu.
                 </p>
               </div>
               <div className="p-3 bg-[var(--surface-subtle)] rounded-xl border border-[var(--border-subtle)]">
                 <span className="text-[var(--text-muted)]">Ngân sách từ mới:</span>
                 <p className="font-bold text-sm text-[var(--text-primary)] mt-0.5">
-                  {PERSISTENCE_GAPS.newConceptBudget}
+                  {isBeginnerCalibration ? '3–5 từ mới/ngày (vừa sức cho người mới)' : '5–8 từ mới/ngày'}
                 </p>
               </div>
+            </div>
+
+            <div
+              data-testid="onboarding-clean-summary-meta"
+              className="pt-2 flex flex-wrap gap-2 text-xs text-[var(--text-muted)]"
+            >
+              <span className="rounded-lg bg-[var(--surface-subtle)] px-2.5 py-1">
+                {usedBeginnerBypass ? 'Lộ trình cơ bản cho người mất gốc' : 'Chuẩn đánh giá năng lực CEFR'}
+              </span>
+              <span className="rounded-lg bg-[var(--surface-subtle)] px-2.5 py-1">
+                {isBeginnerCalibration ? '3–5 từ mới/ngày (vừa sức cho người mới)' : '5–8 từ mới/ngày'}
+              </span>
             </div>
           </div>
 

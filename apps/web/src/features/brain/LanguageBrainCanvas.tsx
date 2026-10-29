@@ -402,109 +402,121 @@ export function LanguageBrainCanvas({
           </div>
 
           <div
-            data-testid="brain-cefr-distribution"
-            aria-label="Phân bổ khái niệm theo cấp độ CEFR"
-            title="Cấp độ CEFR từ dễ đến nâng cao"
-            className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
+            data-testid="brain-unified-filter-panel"
+            className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3 sm:p-4"
           >
-            <span className="font-bold text-[var(--action-primary)]">Cấp độ CEFR từ dễ đến nâng cao:</span>
-            <span>A1 ({cefrCounts.a1})</span>
-            <span>·</span>
-            <span>A2 ({cefrCounts.a2})</span>
-            <span>·</span>
-            <span>B1 ({cefrCounts.b1})</span>
-          </div>
-
-          <div
-            data-testid="brain-mastery-summary-filter"
-            role="group"
-            aria-label="Lọc nhanh khái niệm theo sức khỏe ghi nhớ"
-            className="space-y-2"
-          >
-            <div
-              role="group"
-              aria-label="Lọc trạng thái khái niệm"
-              className="lingua-mobile-scroller -mx-1 flex snap-x items-center gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+            <p
+              data-testid="brain-filter-guide-label"
+              className="text-xs font-semibold text-[var(--text-secondary)]"
             >
-              {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => (
-                <button
-                  key={lvl}
-                  type="button"
-                  aria-label={lvl === 'ALL' ? 'ALL' : undefined}
-                  onClick={() => setSelectedCefr(lvl)}
-                  className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
-                    selectedCefr === lvl
-                      ? 'bg-[var(--action-primary)] text-white'
-                      : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {lvl === 'ALL' ? 'Tất cả CEFR' : lvl}
-                </button>
-              ))}
-              {[
-                { id: 'ALL', label: 'Tất cả' },
-                { id: 'mastered', label: 'Đã vững' },
-                { id: 'learning', label: 'Đang học' },
-                { id: 'weak', label: 'Cần củng cố' },
-                { id: 'forgotten', label: 'Đã quên' },
-              ].map((st) => (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => setSelectedStatus(st.id)}
-                  className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
-                    selectedStatus === st.id
-                      ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
-                      : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {st.label}
-                </button>
-              ))}
+              🧭 Bộ lọc mạng lưới: Chọn cấp độ (A1–B2), mức độ thuộc từ hoặc chủ đề để thu gọn bản đồ
+            </p>
+
+            <div
+              data-testid="brain-cefr-distribution"
+              aria-label="Phân bổ khái niệm theo cấp độ CEFR"
+              title="Cấp độ CEFR từ dễ đến nâng cao"
+              className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]"
+            >
+              <span className="font-bold text-[var(--action-primary)]">Cấp độ CEFR từ dễ đến nâng cao:</span>
+              <span>A1 ({cefrCounts.a1})</span>
+              <span>·</span>
+              <span>A2 ({cefrCounts.a2})</span>
+              <span>·</span>
+              <span>B1 ({cefrCounts.b1})</span>
+            </div>
+
+            <div
+              data-testid="brain-mastery-summary-filter"
+              role="group"
+              aria-label="Lọc nhanh khái niệm theo sức khỏe ghi nhớ"
+              className="space-y-2"
+            >
               <div
-                className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-xl bg-[var(--surface-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
+                role="group"
+                aria-label="Lọc trạng thái khái niệm"
+                className="lingua-mobile-scroller -mx-1 flex snap-x items-center gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
               >
-                <span className="text-[var(--status-success)]">Đã vững: {nodeStatusCounts.mastered}</span>
-                <span>·</span>
-                <span className="text-[var(--action-primary)]">Đang học: {nodeStatusCounts.learning}</span>
-                <span>·</span>
-                <span className="text-[var(--status-warning)]">Cần củng cố / Đã quên: {nodeStatusCounts.weakOrForgotten}</span>
+                {['ALL', 'A1', 'A2', 'B1', 'B2'].map((lvl) => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    aria-label={lvl === 'ALL' ? 'ALL' : undefined}
+                    onClick={() => setSelectedCefr(lvl)}
+                    className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                      selectedCefr === lvl
+                        ? 'bg-[var(--action-primary)] text-white'
+                        : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {lvl === 'ALL' ? 'Tất cả CEFR' : lvl}
+                  </button>
+                ))}
+                {[
+                  { id: 'ALL', label: 'Tất cả' },
+                  { id: 'mastered', label: 'Đã vững' },
+                  { id: 'learning', label: 'Đang học' },
+                  { id: 'weak', label: 'Cần củng cố' },
+                  { id: 'forgotten', label: 'Đã quên' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setSelectedStatus(st.id)}
+                    className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                      selectedStatus === st.id
+                        ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
+                        : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+                <div
+                  className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-xl bg-[var(--surface-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)]"
+                >
+                  <span className="text-[var(--status-success)]">Đã vững: {nodeStatusCounts.mastered}</span>
+                  <span>·</span>
+                  <span className="text-[var(--action-primary)]">Đang học: {nodeStatusCounts.learning}</span>
+                  <span>·</span>
+                  <span className="text-[var(--status-warning)]">Cần củng cố / Đã quên: {nodeStatusCounts.weakOrForgotten}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {availableGroups.length > 1 && (
-            <div
-              data-testid="brain-group-filter"
-              className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedGroup('ALL')}
-                className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
-                  selectedGroup === 'ALL'
-                    ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
-                    : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
-                }`}
+            {availableGroups.length > 1 && (
+              <div
+                data-testid="brain-group-filter"
+                className="lingua-mobile-scroller -mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
               >
-                Tất cả chủ đề
-              </button>
-              {availableGroups.map((group) => (
                 <button
-                  key={group}
                   type="button"
-                  onClick={() => setSelectedGroup(group)}
+                  onClick={() => setSelectedGroup('ALL')}
                   className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
-                    selectedGroup === group
+                    selectedGroup === 'ALL'
                       ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
                       : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
                   }`}
                 >
-                  {group}
+                  Tất cả chủ đề
                 </button>
-              ))}
-            </div>
-          )}
+                {availableGroups.map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    onClick={() => setSelectedGroup(group)}
+                    className={`min-h-10 shrink-0 snap-start rounded-xl px-3 text-xs font-bold ${
+                      selectedGroup === group
+                        ? 'bg-[var(--action-primary)] text-[var(--action-primary-text)]'
+                        : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {group}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div ref={viewportRef} className="relative mt-4 min-h-[250px] w-full overflow-hidden rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-subtle)] sm:min-h-[340px]">

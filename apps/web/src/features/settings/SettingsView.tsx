@@ -541,7 +541,7 @@ export function SettingsView({
                 className="space-y-2 border-t border-[var(--border-subtle)] pt-4"
               >
                 <span className="block text-sm font-bold text-[var(--text-primary)]">
-                  Giới hạn thẻ ôn tập FSRS mỗi ngày
+                  Giới hạn thẻ ôn tập FSRS mỗi ngày (Nhịp nhắc thông minh vừa sức)
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {([20, 50, 100] as const).map((cap) => {
